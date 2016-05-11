@@ -1,0 +1,9 @@
+target/
+.cache
+.classpath
+.project
+.settings/
+.idea/
+*Scratch.sc
+*Creds.scala
+*.iml
