@@ -13,9 +13,11 @@ object DashboarderBuild extends Build {
     "org.scala-js" %%% "scalajs-dom" % "0.9.0",
     "com.lihaoyi" %%% "scalatags" % "0.5.5",
     "com.lihaoyi" %%% "upickle" % "0.4.0",
+    "com.lihaoyi" %%% "pprint" % "0.4.0",
     "com.thoughtworks.each" %%% "each" % "0.5.1",
     "com.github.marklister" %%% "base64" % "0.2.2",
-    "net.lullabyte" %%% "scala-js-chrome" % "0.2.1"
+    "net.lullabyte" %%% "scala-js-chrome" % "0.2.1",
+    "com.github.japgolly.scalacss" %%% "ext-scalatags" % "0.4.1"
   ))
 
   val chromePackageContent = SettingKey[File]("chromePackageContent",
