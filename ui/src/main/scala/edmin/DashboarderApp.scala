@@ -1,5 +1,7 @@
 package edmin
 
+import java.util.regex.Pattern
+
 import chrome.app
 import chrome.app.runtime.bindings.{LaunchData, Request}
 import chrome.app.window.Window
@@ -25,7 +27,8 @@ object DashboarderApp extends scalajs.js.JSApp {
   @JSExport
   def main(): Unit = {
     import scalajs.concurrent.JSExecutionContext.Implicits.queue
-    for {
+    val longRegex = Pattern.compile("\n+\\s*", Pattern.MULTILINE)
+    val f = for {
       cookieResp <- Ajax.post("https://auviknetworks.atlassian.net/rest/auth/1/session", timeout = 4000,
         data = json.write(Creds.authData), headers = Map("Content-Type" -> "application/json"))
       session = json.read(cookieResp.responseText).obj("session").obj
@@ -45,28 +48,25 @@ object DashboarderApp extends scalajs.js.JSApp {
       searchResults = searchRequests.map(r => json.read(r.responseText).obj("issues").arr.map { issueObj =>
         val fields = issueObj("fields").obj
         val url = issueObj("self").str
-        println(s"Url: $url")
+        val summary = fields("summary").str
         val key = issueObj("key").str
-        println(s"Key: $key")
         val project = fields("project").obj("name").str
-        println(s"Project: $project")
         val status = fields("status").obj("name").str
-        println(s"Status: $status")
+        val shortStatus = new String(status.split(" ").filter(_.nonEmpty).map(s => Character.toUpperCase(s.charAt(0))).toArray)
         val assignee = try { Some(fields("assignee").obj("name").str) } catch { case _: Exception => None }
-        println(s"Assignee: $assignee")
         val reporter = try { Some(fields("reporter").obj("name").str) } catch { case _: Exception => None }
-        println(s"Reporter: $reporter")
+        val description = longRegex.matcher(fields("description").str).replaceAll(" ↪ ")
         Issue(
-          url, key, project, assignee, reporter, status
+          url, summary, key, project, assignee, reporter, shortStatus, description
           //          created = new Date(fields("created").str),
           //          updated = new Date(fields("updated").str)
         )
       })
-    } yield {
-      println("Done getting issues!")
+    } yield (favoriteFilters, searchResults)
+    f.onSuccess { case r =>
       val render =
-        new SearchPage((favoriteFilters, searchResults).zipped.map(SearchResult(_, _))(collection.breakOut))
-      println(s"Rendered ${favoriteFilters.length} filters!")
+        new SearchPage(r.zipped.map(SearchResult(_, _))(collection.breakOut))
+      println(s"Rendered ${r._2.length} filters!")
       org.scalajs.dom.document.body.appendChild(render.htmlFrag.render)
     }
   }

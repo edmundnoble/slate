@@ -28,7 +28,7 @@ object DashboarderBuild extends Build {
   val chromeGenerateManifest = TaskKey[File]("chromeGenerateManifest")
   val chromeManifest = TaskKey[chrome.Manifest]("chromeManifest")
 
-  object SnakePickle extends upickle.AttributeTagged{
+  object SnakePickle extends upickle.AttributeTagged {
     def camelToSnake(s: String) = {
       val res = s.split("(?=[A-Z])", -1).map(_.toLowerCase).mkString("_")
       res
@@ -46,12 +46,12 @@ object DashboarderBuild extends Build {
       super.CaseW[T, V](f, names.map(camelToSnake), defaults)
     }
     override implicit def OptionW[T: Writer]: Writer[Option[T]] = Writer {
-      case None    => Js.Null
+      case None => Js.Null
       case Some(s) => implicitly[Writer[T]].write(s)
     }
 
     override implicit def OptionR[T: Reader]: Reader[Option[T]] = Reader {
-      case Js.Null     => None
+      case Js.Null => None
       case v: Js.Value => Some(implicitly[Reader[T]].read.apply(v))
     }
   }
@@ -65,9 +65,24 @@ object DashboarderBuild extends Build {
   lazy val baseSettings: Seq[Def.Setting[_]] = Seq(
     chromePackageContent := file("content"),
     chromeBuildOpt := {
-      Chrome.buildExtentionDirectory(target.value / "chrome" / "unpacked")(
+      val unpacked = target.value / "chrome" / "unpackedopt"
+      (resourceDirectory in Compile).value.listFiles().foreach(f => IO.copyFile(f, unpacked / f.getName))
+
+      Chrome.buildExtentionDirectory(unpacked)(
         (chromeGenerateManifest in Compile).value,
         (fullOptJS in Compile).value.data,
+        (packageMinifiedJSDependencies in Compile).value,
+        (packageScalaJSLauncher in Compile).value.data,
+        (chromePackageContent in Compile).value
+      )
+    },
+    chromeBuildFast := {
+      val unpacked = target.value / "chrome" / "unpackedfast"
+      (resourceDirectory in Compile).value.listFiles().foreach(f => IO.copyFile(f, unpacked / f.getName))
+
+      Chrome.buildExtentionDirectory(unpacked)(
+        (chromeGenerateManifest in Compile).value,
+        (fastOptJS in Compile).value.data,
         (packageJSDependencies in Compile).value,
         (packageScalaJSLauncher in Compile).value.data,
         (chromePackageContent in Compile).value
@@ -94,21 +109,24 @@ object DashboarderBuild extends Build {
                                  version: String = "0.0.1",
                                  manifestVersion: Int = 2,
                                  background: Impl.Background = Impl.Background(scripts = List("deps.js", "main.js", "launcher.js")),
-//                                 description: Option[String] = None,
+                                 //                                 description: Option[String] = None,
                                  offlineEnabled: Boolean = true,
                                  permissions: Set[String] = Set("https://auviknetworks.atlassian.net/*"),
-//                                 icons: Map[Int, String] = Map(),
+                                 //                                 icons: Map[Int, String] = Map(),
                                  chromeUrlOverrides: Overrides = Overrides())
 
   object DashboarderManifest {
     implicit val pkl = upickle.default.macroRW[DashboarderManifest]
   }
 
-  val otherSettings: Seq[sbt.Def.Setting[_]] = Seq(name := "dashboarder", version := "0.0.1",
+  val otherSettings: Seq[sbt.Def.Setting[_]] = Seq(
+    name := "dashboarder",
+    version := "0.0.1",
     scalaVersion := "2.11.7",
     persistLauncher in Compile := true,
     persistLauncher in Test := false,
-    relativeSourceMaps := true)
+    relativeSourceMaps := true
+  )
 
   val sets = Defaults.projectCore ++ otherSettings ++ deps ++ ScalaJSPlugin.projectSettings ++ baseSettings
 
@@ -118,6 +136,5 @@ object DashboarderBuild extends Build {
   lazy val ui = Project(id = "ui", base = file("ui")).dependsOn(root)
     .enablePlugins(ScalaJSPlugin)
     .settings(sets)
-
 
 }
