@@ -13,6 +13,8 @@ import upickle.default._
 import pprint._
 import utils.ChromeApp
 import edmin.SearchPage.{Filter, Issue, SearchResult}
+import japgolly.scalajs.react.ReactDOM
+import org.scalajs.dom.raw.Element
 
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monad._
@@ -23,6 +25,9 @@ import scala.util.Try
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
+
+  import scalacss.ScalaCssReact._
+  import scalacss.Defaults._
 
   @JSExport
   def main(): Unit = {
@@ -53,21 +58,36 @@ object DashboarderApp extends scalajs.js.JSApp {
         val project = fields("project").obj("name").str
         val status = fields("status").obj("name").str
         val shortStatus = new String(status.split(" ").filter(_.nonEmpty).map(s => Character.toUpperCase(s.charAt(0))).toArray)
-        val assignee = try { Some(fields("assignee").obj("name").str) } catch { case _: Exception => None }
-        val reporter = try { Some(fields("reporter").obj("name").str) } catch { case _: Exception => None }
+        val assignee = try {
+          Some(fields("assignee").obj("name").str)
+        } catch {
+          case _: Exception => None
+        }
+        val reporter = try {
+          Some(fields("reporter").obj("name").str)
+        } catch {
+          case _: Exception => None
+        }
         val description = longRegex.matcher(fields("description").str).replaceAll(" ↪ ")
         Issue(
-          url, summary, key, project, assignee, reporter, shortStatus, description
-          //          created = new Date(fields("created").str),
-          //          updated = new Date(fields("updated").str)
+          url, summary, key, project, assignee, reporter, shortStatus, description,
+          new Date(fields("created").str).getTime(),
+          new Date(fields("updated").str).getTime()
         )
       })
     } yield (favoriteFilters, searchResults)
     f.onSuccess { case r =>
       val render =
-        new SearchPage(r.zipped.map(SearchResult(_, _))(collection.breakOut))
+        SearchPage.makeSearchPage(r.zipped.map(SearchResult(_, _))(collection.breakOut))
       println(s"Rendered ${r._2.length} filters!")
-      org.scalajs.dom.document.body.appendChild(render.htmlFrag.render)
+      Styles.addToDocument()
+      val container: Element = org.scalajs.dom.document.body.children.namedItem("container")
+      ReactDOM.render(render, container)
+//      org.scalajs.dom.document.body.appendChild(render.htmlFrag.render)
+    }
+    f.onFailure { case e =>
+      System.err.println("EXCEPTION INTERRUPTED MAIN:")
+      e.printStackTrace(System.err)
     }
   }
 

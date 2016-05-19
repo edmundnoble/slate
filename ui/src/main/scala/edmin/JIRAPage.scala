@@ -1,15 +1,26 @@
 package edmin
 
 import SearchPage._
+import japgolly.scalajs.react._
 import org.scalajs.dom
 import org.scalajs.dom.raw.HTMLStyleElement
 
 import scala.scalajs.js.Date
-import scalacss.{Css, NonEmptyVector, Renderer}
-import scalatags.generic.{Aliases, Modifier}
+import scalacss.Defaults._
+import scalacss.{ClassName, Css, NonEmptyVector, Pseudo, Renderer, StyleA, StyleS}
+import com.softwaremill.quicklens._
+import japgolly.scalajs.react.Addons.ReactCssTransitionGroup
+import japgolly.scalajs.react.CompScope.DuringCallbackU
 
+import scala.concurrent.duration._
+import scalaz.Const
 
 object SearchPage {
+
+  import japgolly.scalajs.react.vdom.prefix_<^._
+  import scala.language.implicitConversions
+
+  import scalacss.ScalaCssReact._
 
   case class Filter(url: String, name: String, owner: String, jql: String, viewUrl: String)
   object Filter {
@@ -17,8 +28,7 @@ object SearchPage {
   }
 
   case class Issue(url: String, summary: String, key: String, project: String, assignee: Option[String], reporter: Option[String],
-                   status: String, description: String)
-  //created: Date, updated: Date)
+                   status: String, description: String, created: Double, updated: Double)
   object Issue {
     implicit val pkl = upickle.default.macroRW[Issue]
   }
@@ -28,9 +38,99 @@ object SearchPage {
     implicit val pkl = upickle.default.macroRW[SearchResult]
   }
 
-}
+  def issueTemplate(issue: Issue) =
+    ReactComponentB[Unit]("Issue")
+      .render(_ =>
+        <.div(Styles.filterIssue,
+          <.div(Styles.filterIssueHeader,
+            <.a(
+              issue.status + " - " + issue.key + " - " + issue.summary,
+              ^.href := "https://auviknetworks.atlassian.net/browse/" + issue.key
+            )
+          ),
+          <.div(Styles.filterIssueDescription,
+            s"${issue.description}"
+          )
+        )
+      )
+      .build()
 
-import scalacss.Defaults._
+  def single[A](op: Option[A]): Seq[A] =
+    op.fold(Vector.empty[A])(Vector.empty[A] :+ _)
+
+  def filterRowTemplate(firstResult: Option[SearchResult], secondResult: Option[SearchResult]) =
+    <.div(Styles.filterContainer,
+      <.div(Styles.innerFilterContainer,
+        single(firstResult.map(filterCardTemplate))
+      ),
+      <.div(Styles.innerFilterContainer,
+        single(secondResult.map(filterCardTemplate))
+      )
+    )
+
+  case class FilterState(expanded: Boolean)
+
+  def filterCardTemplate(result: SearchResult) = {
+    import ScalazReact._
+    val ST = ReactS.Fix[FilterState]
+    val toggleExpanded = ST.mod(_.modify(_.expanded).using(s => {
+      println(s);
+      !s
+    }))
+    ReactComponentB[Unit]("JIRA filter card")
+      .initialState(FilterState(expanded = false))
+      .renderS { ($: DuringCallbackU[Unit, FilterState, Unit], state) =>
+        <.div(Styles.filter,
+          <.div(Styles.filterHeader,
+            <.div(Styles.filterName,
+              <.a(result.filter.name, ^.href := result.filter.viewUrl)
+            ),
+            <.button(Styles.filterButton,
+              ^.onClick --> $.runState(toggleExpanded),
+              if (state.expanded) "-" else "+")
+          ),
+          ReactCssTransitionGroup(Styles.filterIssueContainer.className)(
+            if (state.expanded) {
+              <.div(
+                ^.key := result.filter.url,
+                result.issues.sortBy(_.updated).map(issueTemplate)
+              )
+            } else {
+              Vector.empty[ReactTag]
+            }
+          )
+        )
+      }
+      .build()
+  }
+
+  def makeSearchPage(searchResults: Seq[SearchResult]) = {
+    val htmlFrag =
+      <.div(
+        <.div(Styles.appBar,
+          <.table(
+            <.tr(Styles.appBarRow,
+              <.td(Styles.appBarText,
+                "Dashboarder")
+            )
+          )
+        ),
+        <.div(
+          <.div(Styles.searchResults,
+            if (searchResults.nonEmpty) {
+              searchResults.grouped(2).map(xs => filterRowTemplate(xs.headOption, xs.tail.headOption)).toSeq
+            } else {
+              Vector.empty[ReactTagOf[_]]
+            }
+          )
+        )
+      )
+
+    ReactComponentB[Unit]("JIRA search page")
+      .render(_ => htmlFrag)
+      .build()
+  }
+}
 
 object Styles extends StyleSheet.Inline {
 
@@ -38,6 +138,7 @@ object Styles extends StyleSheet.Inline {
   import scala.language.postfixOps
 
   val roboto = scalacss.FontFace("Roboto", src = NonEmptyVector("https://fonts.googleapis.com/css?family=Roboto"))
+  val robotoLight = scalacss.FontFace("Roboto", src = NonEmptyVector("https://fonts.googleapis.com/css?family=Roboto:300"))
   val robotoMedium = scalacss.FontFace("Roboto", src = NonEmptyVector("https://fonts.googleapis.com/css?family=Roboto:700"))
   val robotoHeavy = scalacss.FontFace("Roboto", src = NonEmptyVector("https://fonts.googleapis.com/css?family=Roboto:900"))
 
@@ -46,12 +147,22 @@ object Styles extends StyleSheet.Inline {
 
   val pseudoContent = content := "\"\""
 
-  val searchResultContainer = style(
-    //    addClassName("mui-container")
+  val appBar = style(
+    addClassName("mui-appbar")
+  )
+
+  val appBarRow = style(
+    verticalAlign.middle
+  )
+
+  val appBarText = style(
+    addClassNames("mui--appbar-height", "mui--text-display1"),
+    paddingLeft(10 px),
+    fontFamily(robotoLight)
   )
 
   val searchResults = style(
-    addClassName("mui-container"),
+    addClassName("mui-container-fluid"),
     width(100 %%),
     fontFamily(roboto),
     color(materialBlue),
@@ -73,12 +184,24 @@ object Styles extends StyleSheet.Inline {
   )
 
   val filterSpaced = style(
-//    addClassName("mui-col-md-offset-1"),
+    //    addClassName("mui-col-md-offset-1"),
     filter
   )
 
+  val filterHeader = style(
+    addClassName("mui--divider-bottom"),
+    width(100 %%),
+    display.inlineBlock
+  )
+
+  val filterButton = style(
+    addClassNames("mui-btn", "mui-btn--raised"),
+    float.right
+  )
+
   val filterName = style(
-    addClassNames("mui--divider-bottom", "mui--text-headline"),
+    addClassName("mui--text-headline"),
+    float.left,
     fontFamily(robotoHeavy),
     marginTop(10 px),
     marginBottom(10 px)
@@ -100,6 +223,49 @@ object Styles extends StyleSheet.Inline {
       backgroundImage := "linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 1))"
     )
   )
+
+  abstract class ReactAnimationStyles(val className: String)(implicit r: scalacss.mutable.Register) extends StyleSheet.Inline()(r) {
+    def enterClassName = className + "-enter"
+    def leaveClassName = className + "-leave"
+    def enterActiveClassName = className + "-enter-active"
+    def leaveActiveClassName = className + "-leave-active"
+    val enter: StyleA
+    val leave: StyleA
+    val enterActive: StyleA
+    val leaveActive: StyleA
+  }
+
+  class FilterIssueContainer(implicit r: scalacss.mutable.Register) extends ReactAnimationStyles("filterIssueContainer")(r) {
+
+    val enter: StyleA = style(enterClassName)(
+      maxHeight.`0`,
+      opacity(0)
+    )
+
+    val leave: StyleA = style(leaveClassName)(
+      maxHeight(1000 px),
+      opacity(100)
+    )
+
+    val enterActive: StyleA = style(enterActiveClassName)(
+      maxHeight(1000 px),
+      opacity(100),
+      transitionProperty := "all",
+      transitionDuration(400.millis),
+      transitionTimingFunction.easeIn
+    )
+
+    val leaveActive: StyleA = style(leaveActiveClassName)(
+      maxHeight.`0`,
+      opacity(0),
+      transitionProperty := "all",
+      transitionDuration(400.millis),
+      transitionTimingFunction.easeOut
+    )
+
+  }
+
+  val filterIssueContainer = new FilterIssueContainer
 
   val filterIssueDescription = style(
     addClassName("mui--text-body1"),
@@ -127,69 +293,11 @@ object Styles extends StyleSheet.Inline {
     )
   )
 
-  val filterIssueContainer = style(
-  )
-
-  val linkStyle = style(
-    addClassName("mui--text-dark-secondary")
-  )
-
 }
 
+object LinkStyles extends StyleSheet.Standalone {
 
-class SearchPage(searchResults: Seq[SearchResult]) {
+  import dsl._
 
-  import scalatags.JsDom.{TypedTag, all}
-  import all._
-  import scala.language.implicitConversions
-
-  import scalacss.ScalatagsCss._
-
-  def styleTag = Styles.render[TypedTag[HTMLStyleElement]]
-
-  def styledLink(mods: scalatags.JsDom.Modifier*) =
-    a(styleaToJsDomTag(Styles.linkStyle) +: mods: _*)
-
-  def issueTemplate(issue: Issue) =
-    div(Styles.filterIssue,
-      div(Styles.filterIssueHeader,
-        styledLink(issue.status + " - " + issue.key + " - " + issue.summary,
-          href := ("https://auviknetworks.atlassian.net/browse/" + issue.key))
-      ),
-      div(Styles.filterIssueDescription,
-        s"${issue.description}"
-      )
-    )
-
-
-  def filterRowTemplate(firstResult: Option[SearchResult], secondResult: Option[SearchResult]) =
-    div(Styles.filterContainer,
-      div(Styles.innerFilterContainer,
-        firstResult.map(filterCardTemplate)
-      ),
-      div(Styles.innerFilterContainer,
-        secondResult.map(filterCardTemplate)
-      )
-    )
-
-  def filterCardTemplate(result: SearchResult) =
-    div(Styles.filter,
-      div(Styles.filterName,
-        styledLink(result.filter.name, href := result.filter.viewUrl)
-      ),
-      div(
-        result.issues.map(issueTemplate)
-      )
-    )
-
-  val htmlFrag = div(
-    styleTag,
-    div(Styles.searchResultContainer,
-      div(
-        Styles.searchResults,
-        searchResults.grouped(2).map(xs => filterRowTemplate(xs.headOption, xs.tail.headOption)).toSeq
-      )
-    )
-  )
-
+  "a" - color(c"#616161")
 }
