@@ -8,9 +8,12 @@ import org.scalajs.dom.raw.HTMLStyleElement
 import scala.scalajs.js.Date
 import scalacss.Defaults._
 import scalacss.{ClassName, Css, NonEmptyVector, Pseudo, Renderer, StyleA, StyleS}
-import com.softwaremill.quicklens._
 import japgolly.scalajs.react.Addons.ReactCssTransitionGroup
 import japgolly.scalajs.react.CompScope.DuringCallbackU
+import japgolly.scalajs.react.extra.Reusability
+import japgolly.scalajs.react.vdom.TagMod
+import monocle.{Fold, Lens}
+import monocle.macros.{GenLens, Lenses}
 
 import scala.concurrent.duration._
 import scalaz.Const
@@ -68,36 +71,50 @@ object SearchPage {
       )
     )
 
+
   case class FilterState(expanded: Boolean)
 
+  object FilterState {
+    val expanded = GenLens[FilterState](_.expanded)
+  }
+
+  val ReactTagOfModifiers = Lens((_: ReactTagOf[_]).modifiers)( c => e => e.copy(modifiers = c))
+
   def filterCardTemplate(result: SearchResult) = {
-    import ScalazReact._
-    val ST = ReactS.Fix[FilterState]
-    val toggleExpanded = ST.mod(_.modify(_.expanded).using(s => {
-      println(s);
-      !s
-    }))
+    import monocle.state.all._
+    import MonocleReact._
+    val toggleExpanded = FilterState.expanded.modify(!_)
+    def buttonStyleForState(filterState: FilterState): Seq[TagMod] = {
+      val otherStyles = Vector[TagMod](Styles.filterButtonIcon, "expand_more")
+      if (filterState.expanded) otherStyles.:+[TagMod, Vector[TagMod]](Styles.filterButtonExpanded)
+      else otherStyles
+    }
     ReactComponentB[Unit]("JIRA filter card")
       .initialState(FilterState(expanded = false))
       .renderS { ($: DuringCallbackU[Unit, FilterState, Unit], state) =>
         <.div(Styles.filter,
           <.div(Styles.filterHeader,
-            <.div(Styles.filterName,
-              <.a(result.filter.name, ^.href := result.filter.viewUrl)
+            <.div(Styles.filterHeaderLeft,
+              <.div(Styles.filterNumber,
+                <.a(result.issues.length.toString, ^.href := result.filter.viewUrl)),
+              <.div(Styles.filterName,
+                <.a(result.filter.name, ^.href := result.filter.viewUrl)
+              )
             ),
             <.button(Styles.filterButton,
-              ^.onClick --> $.runState(toggleExpanded),
-              if (state.expanded) "-" else "+")
+              ^.onClick --> $.modState(toggleExpanded),
+              <.i(buttonStyleForState(state): _*)
+            )
           ),
-          ReactCssTransitionGroup(Styles.filterIssueContainer.className)(
-            if (state.expanded) {
+          Styles.filterIssueContainer(
+            (if (state.expanded) {
               <.div(
                 ^.key := result.filter.url,
                 result.issues.sortBy(_.updated).map(issueTemplate)
-              )
+              ) +: Vector.empty
             } else {
               Vector.empty[ReactTag]
-            }
+            }): _*
           )
         )
       }
@@ -117,11 +134,13 @@ object SearchPage {
         ),
         <.div(
           <.div(Styles.searchResults,
-            if (searchResults.nonEmpty) {
-              searchResults.grouped(2).map(xs => filterRowTemplate(xs.headOption, xs.tail.headOption)).toSeq
-            } else {
-              Vector.empty[ReactTagOf[_]]
-            }
+            Styles.searchResultContainer(
+              if (searchResults.nonEmpty) {
+                searchResults.grouped(2).map(xs => filterRowTemplate(xs.headOption, xs.tail.headOption)).toSeq
+              } else {
+                Vector.empty[ReactNode]
+              }
+            )
           )
         )
       )
@@ -183,11 +202,6 @@ object Styles extends StyleSheet.Inline {
     marginBottom(40 px)
   )
 
-  val filterSpaced = style(
-    //    addClassName("mui-col-md-offset-1"),
-    filter
-  )
-
   val filterHeader = style(
     addClassName("mui--divider-bottom"),
     width(100 %%),
@@ -196,28 +210,49 @@ object Styles extends StyleSheet.Inline {
 
   val filterButton = style(
     addClassNames("mui-btn", "mui-btn--raised"),
-    float.right
+    float.right,
+    lineHeight.`0`.important
+  )
+
+  val filterButtonIcon = style(
+    addClassName("material-icons"),
+    (transition := "transform 0.3s ease-out").important
+  )
+
+  val filterButtonExpanded = style(
+    transform := "rotateX(-180deg)",
+    perspective(600 pt)
+  )
+
+  val filterHeaderLeft = style(
+    float left,
+    marginTop(10 px),
+    marginBottom(10 px)
+  )
+
+  val filterNumber = style(
+    addClassName("mui--text-headline"),
+    paddingRight(10 px),
+    display inline
   )
 
   val filterName = style(
     addClassName("mui--text-headline"),
-    float.left,
     fontFamily(robotoHeavy),
-    marginTop(10 px),
-    marginBottom(10 px)
+    display inline
     //fontSize(150 %%)
   )
 
   val filterIssue = style(
-    display.contents,
+    display contents,
     pageBreakInside.avoid,
-    position.relative,
+    position relative,
     marginBottom(10 px),
     &.after(
       height(1.2 em),
       bottom(0 px),
-      position.absolute,
-      textAlign.right,
+      position absolute,
+      textAlign right,
       pseudoContent,
       width(100 %%),
       backgroundImage := "linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 1))"
@@ -233,9 +268,10 @@ object Styles extends StyleSheet.Inline {
     val leave: StyleA
     val enterActive: StyleA
     val leaveActive: StyleA
+    def apply(children: ReactNode*): ReactComponentU_ = ReactCssTransitionGroup(className)(children)
   }
 
-  class FilterIssueContainer(implicit r: scalacss.mutable.Register) extends ReactAnimationStyles("filterIssueContainer")(r) {
+  class ScrollFadeContainer(clasz: String)(implicit r: scalacss.mutable.Register) extends ReactAnimationStyles(clasz)(r) {
 
     val enter: StyleA = style(enterClassName)(
       maxHeight.`0`,
@@ -243,29 +279,30 @@ object Styles extends StyleSheet.Inline {
     )
 
     val leave: StyleA = style(leaveClassName)(
-      maxHeight(1000 px),
+      maxHeight(1200 px),
       opacity(100)
     )
 
     val enterActive: StyleA = style(enterActiveClassName)(
-      maxHeight(1000 px),
+      maxHeight(1200 px),
       opacity(100),
-      transitionProperty := "all",
-      transitionDuration(400.millis),
-      transitionTimingFunction.easeIn
+      transitionProperty := "maxHeight opacity",
+      transitionDuration(300.millis),
+      transitionTimingFunction.easeInOut
     )
 
     val leaveActive: StyleA = style(leaveActiveClassName)(
       maxHeight.`0`,
       opacity(0),
-      transitionProperty := "all",
-      transitionDuration(400.millis),
-      transitionTimingFunction.easeOut
+      transitionProperty := "maxHeight opacity",
+      transitionDuration(300.millis),
+      transitionTimingFunction.easeInOut
     )
 
   }
 
-  val filterIssueContainer = new FilterIssueContainer
+  val filterIssueContainer = new ScrollFadeContainer("filterIssueContainer")
+  val searchResultContainer = new ScrollFadeContainer("searchResultContainer")
 
   val filterIssueDescription = style(
     addClassName("mui--text-body1"),

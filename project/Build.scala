@@ -10,15 +10,22 @@ import upickle.Js
 object DashboarderBuild extends Build {
 
   val deps = libraryDependencies ++= Seq(
+    "com.lihaoyi" %%% "utest" % "0.4.3" % "test",
     "org.scala-js" %%% "scalajs-dom" % "0.9.0",
     "com.lihaoyi" %%% "upickle" % "0.4.0",
     "com.lihaoyi" %%% "pprint" % "0.4.0",
-    "com.softwaremill.quicklens" %%% "quicklens" % "1.4.7",
+    "com.github.julien-truffaut"  %%%  "monocle-core"    % "1.2.1",
+    "com.github.julien-truffaut"  %%%  "monocle-generic" % "1.2.1",
+    "com.github.julien-truffaut"  %%%  "monocle-macro"   % "1.2.1",
+    "com.github.julien-truffaut"  %%%  "monocle-state"   % "1.2.1",
+    "com.lihaoyi" %%% "fastparse" % "0.3.7",
     "com.github.marklister" %%% "base64" % "0.2.2",
     "net.lullabyte" %%% "scala-js-chrome" % "0.2.1",
     "com.github.japgolly.scalajs-react" %%% "core" % "0.11.1",
     "com.github.japgolly.scalajs-react" %%% "ext-scalaz72" % "0.11.1",
-    "com.github.japgolly.scalacss" %%% "ext-react" % "0.4.1"
+    "com.github.japgolly.scalajs-react" %%% "ext-monocle" % "0.11.1",
+    "com.github.japgolly.scalacss" %%% "ext-react" % "0.4.1",
+    "org.monifu" %%% "monifu" % "1.2"
   )
 
   // React JS itself (Note the filenames, adjust as needed, eg. to remove addons.)
@@ -163,7 +170,9 @@ object DashboarderBuild extends Build {
     scalaVersion := "2.11.7",
     persistLauncher in Compile := true,
     persistLauncher in Test := false,
-    relativeSourceMaps := true
+    relativeSourceMaps := true,
+    scalaJSUseRhino in Global := false,
+    testFrameworks += new TestFramework("utest.runner.Framework")
   )
 
   val sets: Seq[Def.Setting[_]] = Defaults.projectCore ++ otherSettings ++ deps ++ //jsDeps ++

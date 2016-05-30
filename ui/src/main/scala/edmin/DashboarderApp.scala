@@ -13,7 +13,7 @@ import upickle.default._
 import pprint._
 import utils.ChromeApp
 import edmin.SearchPage.{Filter, Issue, SearchResult}
-import japgolly.scalajs.react.ReactDOM
+import japgolly.scalajs.react.{Addons, ReactDOM}
 import org.scalajs.dom.raw.Element
 
 import scalaz.std.scalaFuture._
@@ -58,16 +58,8 @@ object DashboarderApp extends scalajs.js.JSApp {
         val project = fields("project").obj("name").str
         val status = fields("status").obj("name").str
         val shortStatus = new String(status.split(" ").filter(_.nonEmpty).map(s => Character.toUpperCase(s.charAt(0))).toArray)
-        val assignee = try {
-          Some(fields("assignee").obj("name").str)
-        } catch {
-          case _: Exception => None
-        }
-        val reporter = try {
-          Some(fields("reporter").obj("name").str)
-        } catch {
-          case _: Exception => None
-        }
+        val assignee = CanThrow(fields("assignee").obj("name").str).toOption
+        val reporter = CanThrow(fields("reporter").obj("name").str).toOption
         val description = longRegex.matcher(fields("description").str).replaceAll(" ↪ ")
         Issue(
           url, summary, key, project, assignee, reporter, shortStatus, description,
@@ -77,12 +69,23 @@ object DashboarderApp extends scalajs.js.JSApp {
       })
     } yield (favoriteFilters, searchResults)
     f.onSuccess { case r =>
-      val render =
+      val searchPage =
         SearchPage.makeSearchPage(r.zipped.map(SearchResult(_, _))(collection.breakOut))
       println(s"Rendered ${r._2.length} filters!")
       Styles.addToDocument()
       val container: Element = org.scalajs.dom.document.body.children.namedItem("container")
-      ReactDOM.render(render, container)
+      if (!scalajs.js.isUndefined(Addons.Perf)) {
+        println("Starting perf")
+        Addons.Perf.start()
+        println("Rendering DOM")
+      }
+      ReactDOM.render(searchPage, container)
+      if (!scalajs.js.isUndefined(Addons.Perf)) {
+        println("Stopping perf")
+        Addons.Perf.stop()
+        println("Printing wasted")
+        println(Addons.Perf.printWasted(Addons.Perf.getLastMeasurements()))
+      }
 //      org.scalajs.dom.document.body.appendChild(render.htmlFrag.render)
     }
     f.onFailure { case e =>
