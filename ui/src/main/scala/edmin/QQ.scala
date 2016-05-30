@@ -12,11 +12,24 @@ object QQ {
     case class ComposeFilters(first: QQFilter, second: QQFilter) extends QQFilter
     case class SilenceExceptions(f: QQFilter) extends AnyVal with QQFilter
     case class EnlistFilter(f: QQFilter) extends AnyVal with QQFilter
-    case class EnsequenceFilters(filters: Seq[QQFilter]) extends AnyVal with QQFilter
+    case class EnsequenceFilters(filters: QQFilter*) extends AnyVal with QQFilter
     case class SelectKey(key: String) extends AnyVal with QQFilter
     case class SelectIndex(index: Int) extends AnyVal with QQFilter
     case class SelectRange(start: Int, end: Int) extends QQFilter
     case class CollectResults(f: QQFilter) extends AnyVal with QQFilter
+
+    def idComposeEliminator(f: QQFilter): QQFilter = f match {
+      case ComposeFilters(IdFilter, s) => idComposeEliminator(s)
+      case ComposeFilters(f, IdFilter) => idComposeEliminator(f)
+      case r => r
+    }
+
+    def ensequenceSingleEliminator(f: QQFilter): QQFilter = f match {
+      case EnsequenceFilters(filter) => filter
+      case r => r
+    }
+
+    def optimize(ast: QQFilter) = (ensequenceSingleEliminator _ compose idComposeEliminator)(ast)
   }
 
   object QQParser {
@@ -45,27 +58,34 @@ object QQ {
 
     val numericLiteral: P[Int] = CharsWhile(Character.isDigit).! map ((_: String).toInt)
 
-    val selectKey: P[SelectKey] = P(escapedStringLiteral |
-      stringLiteral) map SelectKey
-    val selectIndex: P[SelectIndex] = P(numericLiteral) map SelectIndex
-    val selectRange: P[SelectRange] = P(numericLiteral ~ ":" ~/ numericLiteral) map SelectRange.tupled
+    val selectKey: P[SelectKey] = P((escapedStringLiteral |
+      stringLiteral) map SelectKey)
+    val selectIndex: P[SelectIndex] = P(numericLiteral map SelectIndex)
+    val selectRange: P[SelectRange] = P((numericLiteral ~ ":" ~/ numericLiteral) map SelectRange.tupled)
 
     val dottableSimpleFilter: P[QQFilter] = P(
       ("[" ~/ ((escapedStringLiteral map SelectKey) | selectRange | selectIndex) ~ "]") |
         selectKey | selectIndex
     )
     val dottableFilter: P[QQFilter] =
-      for {
-        s <- dottableSimpleFilter
-        f <- "[]".!.?.map(_.map(_ => CollectResults.apply _))
-      } yield f.getOrElse(identity[QQFilter] _)(s)
+      P(
+        for {
+          s <- dottableSimpleFilter
+          f <- "[]".!.?.map(_.fold(identity[QQFilter] _)(_ => CollectResults.apply))
+        } yield f(s)
+      )
 
-    val dottedFilter: P[QQFilter] = dot ~ dottableFilter.rep(sep = dot).map(_.foldLeft[QQFilter](IdFilter)(ComposeFilters))
+    val dottedFilter: P[QQFilter] = P(dot ~ dottableFilter.rep(sep = dot).map(_.foldLeft[QQFilter](IdFilter)(ComposeFilters)))
 
-    val filter: P[QQFilter] = P(dottedFilter)
+    val pipedFilter: P[QQFilter] = P((dottedFilter | ("(" ~/ filter ~ ")")).rep(sep = " ".rep ~ "|" ~ " ".rep, min = 1).map(_.reduceLeft(ComposeFilters)))
 
     val ensequencedFilters: P[EnsequenceFilters] =
-      P(dottedFilter.rep(min = 1, sep = P("," ~ CharsWhile(_ == ' ')))).map(EnsequenceFilters)
+      P(pipedFilter.rep(min = 1, sep = P("," ~ CharsWhile(_ == ' '))).map(EnsequenceFilters(_: _*)))
+
+    val enlistedFilter: P[EnlistFilter] =
+      P(("[" ~/ ensequencedFilters ~ "]").map(EnlistFilter))
+
+    val filter: P[QQFilter] = P(enlistedFilter | ensequencedFilters)
 
   }
 }
