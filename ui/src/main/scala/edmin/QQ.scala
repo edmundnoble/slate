@@ -12,24 +12,35 @@ object QQ {
     case class ComposeFilters(first: QQFilter, second: QQFilter) extends QQFilter
     case class SilenceExceptions(f: QQFilter) extends AnyVal with QQFilter
     case class EnlistFilter(f: QQFilter) extends AnyVal with QQFilter
+    case class CollectResults(f: QQFilter) extends AnyVal with QQFilter
     case class EnsequenceFilters(filters: QQFilter*) extends AnyVal with QQFilter
     case class SelectKey(key: String) extends AnyVal with QQFilter
     case class SelectIndex(index: Int) extends AnyVal with QQFilter
     case class SelectRange(start: Int, end: Int) extends QQFilter
-    case class CollectResults(f: QQFilter) extends AnyVal with QQFilter
 
-    def idComposeEliminator(f: QQFilter): QQFilter = f match {
-      case ComposeFilters(IdFilter, s) => idComposeEliminator(s)
-      case ComposeFilters(f, IdFilter) => idComposeEliminator(f)
-      case r => r
+    type Optimization = PartialFunction[QQFilter, QQFilter]
+
+    def idCompose: Optimization = {
+      case ComposeFilters(IdFilter, s) => optimize(s)
+      case ComposeFilters(f, IdFilter) => optimize(f)
     }
 
-    def ensequenceSingleEliminator(f: QQFilter): QQFilter = f match {
-      case EnsequenceFilters(filter) => filter
-      case r => r
+    def ensequenceSingle: Optimization = {
+      case EnsequenceFilters(filter) => optimize(filter)
     }
 
-    def optimize(ast: QQFilter) = (ensequenceSingleEliminator _ compose idComposeEliminator)(ast)
+    def optimize(ast: QQFilter): QQFilter = {
+      (ensequenceSingle orElse idCompose).lift(ast).getOrElse {
+        ast match {
+          case ComposeFilters(f, s) => ComposeFilters(optimize(f), optimize(s))
+          case SilenceExceptions(f) => SilenceExceptions(optimize(f))
+          case EnlistFilter(f) => EnlistFilter(optimize(f))
+          case f: EnsequenceFilters => EnsequenceFilters(f.filters.map(optimize): _*)
+          case CollectResults(f) => CollectResults(optimize(f))
+          case f => f
+        }
+      }
+    }
   }
 
   object QQParser {
@@ -54,7 +65,7 @@ object QQ {
 
     def isStringLiteralChar(c: Char): Boolean = Character.isAlphabetic(c) || Character.isDigit(c)
     val stringLiteral: P[String] = P(CharsWhile(isStringLiteralChar).!)
-    val escapedStringLiteral: P[String] = P(quote ~/ CharsWhile(c => isStringLiteralChar(c) || c == ' ').! ~ quote)
+    val escapedStringLiteral: P[String] = P(quote ~/ CharsWhile(c => isStringLiteralChar(c) || c == ' ' || c == '\t').! ~ quote)
 
     val numericLiteral: P[Int] = CharsWhile(Character.isDigit).! map ((_: String).toInt)
 

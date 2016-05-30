@@ -20,6 +20,11 @@ object QQTest extends utest.TestSuite {
       QQAST.optimize(ComposeFilters(IdFilter, ComposeFilters(SelectKey("key"), IdFilter))) ==> SelectKey("key")
     }
 
+    "optimize pipes and dots to the same thing" - {
+      QQAST.optimize(QQParser.ensequencedFilters.parse(".key | .dang").get.value) ==> ComposeFilters(SelectKey("key"), SelectKey("dang"))
+      QQAST.optimize(QQParser.ensequencedFilters.parse(".key.dang").get.value) ==> ComposeFilters(SelectKey("key"), SelectKey("dang"))
+    }
+
     "parse selections" - {
       QQParser.selectKey.parse("key").get.value ==> SelectKey("key")
       QQParser.selectIndex.parse("1").get.value ==> SelectIndex(1)
