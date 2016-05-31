@@ -1,11 +1,11 @@
-package edmin
+package edmin.qq
 
 import QQAST._
 import fastparse.core.ParseError
-import fastparse.core.Parsed.Failure
 import utest._
 
 object QQParserTest extends utest.TestSuite {
+
   val tests = this {
 
     "parse plain dots" - {

@@ -1,9 +1,8 @@
-package edmin
+package edmin.qq
 
 object QQParser {
 
   import QQAST._
-
   import fastparse.all._
   import fastparse.parsers
 

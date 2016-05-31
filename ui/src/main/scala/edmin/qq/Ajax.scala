@@ -1,18 +1,17 @@
-package edmin
+package edmin.qq
 
 import java.nio.ByteBuffer
 
 import monix.eval.Task
 import monix.execution.Cancelable
+import org.scalajs.dom
+import org.scalajs.dom.FormData
+import org.scalajs.dom.raw.Blob
 
 import scala.language.implicitConversions
-import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
-import scala.scalajs.js.typedarray._
 import scala.scalajs.js.typedarray.TypedArrayBufferOps._
-import org.scalajs.dom
-import org.scalajs.dom.{FormData, html, raw}
-import org.scalajs.dom.raw.Blob
+import scala.scalajs.js.typedarray._
 
 /**
  * Thrown when `Ajax.get` or `Ajax.post` receives a non-20X response code.

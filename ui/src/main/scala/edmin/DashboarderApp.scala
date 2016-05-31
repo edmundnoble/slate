@@ -12,6 +12,7 @@ import upickle.default._
 import pprint._
 import utils.ChromeApp
 import edmin.SearchPage.{Filter, Issue, SearchResult}
+import edmin.qq.Ajax
 import japgolly.scalajs.react.{Addons, ReactDOM}
 import monix.eval.{Callback, Task}
 import monix.eval.Task.instances

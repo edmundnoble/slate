@@ -1,4 +1,4 @@
-package edmin
+package edmin.qq
 
 import monix.reactive.Observable
 

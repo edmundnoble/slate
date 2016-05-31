@@ -1,12 +1,7 @@
-package edmin
+package edmin.qq
 
-import fastparse.core.ParseError
-import fastparse.core.Parsed.Failure
-import monix.eval.Task
-import monix.execution.Ack
 import utest._
 
-import scala.concurrent.Future
 import scala.scalajs.js
 
 object QQASTTest extends utest.TestSuite {
