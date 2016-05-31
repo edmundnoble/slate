@@ -37,7 +37,7 @@ object QQASTTest extends utest.TestSuite {
 
     "select index" - {
       val arr = js.Array(1, 2)
-      def checkIndex(index: Int, result: Int) =
+      def checkIndex(index: Int, result: Any) =
         compile(SelectIndex(index))(arr).runAsyncGetFirst map { _.get ==> result }
       for {
         _ <- checkIndex(-3, null)
@@ -61,6 +61,13 @@ object QQASTTest extends utest.TestSuite {
         _ <- checkRange(0, 4, Array(1, 2, 3, 4))
         _ <- checkRange(0, 5, Array(1, 2, 3, 4))
         _ <- checkRange(1, 5, Array(2, 3, 4))
+      } yield ()
+    }
+
+    "collect results" - {
+      val arr = js.Array(1, 2, 3, 4)
+      for {
+        _ <- compile(CollectResults(IdFilter))(arr).foldLeftF[List[js.Any]](Nil)((x, y) => y :: x).runAsyncGetFirst map { _.get.reverse ==> List(1, 2, 3, 4) }
       } yield ()
     }
 
