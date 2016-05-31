@@ -39,8 +39,8 @@ object QQParserTest extends utest.TestSuite {
       QQParser.pipedFilter.parse(".key | .dang").get.value ==>
         ComposeFilters(ComposeFilters(IdFilter, SelectKey("key")), ComposeFilters(IdFilter, SelectKey("dang")))
       QQParser.pipedFilter.parse("(.key) | (.dang)").get.value ==>
-        ComposeFilters(EnsequenceFilters(ComposeFilters(IdFilter,SelectKey("key"))),
-          EnsequenceFilters(ComposeFilters(IdFilter,SelectKey("dang"))))
+        ComposeFilters(EnsequenceFilters(ComposeFilters(IdFilter, SelectKey("key"))),
+          EnsequenceFilters(ComposeFilters(IdFilter, SelectKey("dang"))))
     }
 
     "parse ensequenced filters" - {
