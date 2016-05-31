@@ -6,7 +6,6 @@ import chrome.app
 import chrome.app.runtime.bindings.{LaunchData, Request}
 import chrome.app.window.Window
 import chrome.app.window.bindings.{BoundsSpecification, CreateWindowOptions}
-import org.scalajs.dom.ext.Ajax
 import upickle.Js
 import upickle.json
 import upickle.default._
@@ -14,14 +13,18 @@ import pprint._
 import utils.ChromeApp
 import edmin.SearchPage.{Filter, Issue, SearchResult}
 import japgolly.scalajs.react.{Addons, ReactDOM}
+import monix.eval.{Callback, Task}
+import monix.eval.Task.instances
+import org.scalajs.dom.XMLHttpRequest
 import org.scalajs.dom.raw.Element
 
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monad._
+import scalaz.std.vector._
 import scala.concurrent.Future
 import scala.scalajs.js.Date
 import scala.scalajs.js.annotation.JSExport
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
@@ -33,7 +36,7 @@ object DashboarderApp extends scalajs.js.JSApp {
   def main(): Unit = {
     import scalajs.concurrent.JSExecutionContext.Implicits.queue
     val longRegex = Pattern.compile("\n+\\s*", Pattern.MULTILINE)
-    val f = for {
+    val fetchSearchResults = for {
       cookieResp <- Ajax.post("https://auviknetworks.atlassian.net/rest/auth/1/session", timeout = 4000,
         data = json.write(Creds.authData), headers = Map("Content-Type" -> "application/json"))
       session = json.read(cookieResp.responseText).obj("session").obj
@@ -42,14 +45,13 @@ object DashboarderApp extends scalajs.js.JSApp {
         timeout = 4000, headers = authorizationHeaders)
       favoriteFilters = json.read(favoriteFilterRequest.responseText).arr.map { r =>
         Filter(r.obj("self").str, r.obj("name").str, r.obj("owner").obj("name").str, r.obj("jql").str, r.obj("viewUrl").str)
-      }
+      }.toVector
       favoriteFilterJqls = favoriteFilters.map(_.jql)
-      searchRequests <- Future.traverse(favoriteFilterJqls)(jql => {
-        println("Havin a search")
+      searchRequests <- Task.sequence(favoriteFilterJqls.map(jql => {
         Ajax.post(url = s"https://auviknetworks.atlassian.net/rest/api/2/search/",
           data = json.write(Js.Obj("jql" -> Js.Str(jql), "maxResults" -> Js.Num(10))),
           timeout = 4000, headers = authorizationHeaders ++ Map("Content-Type" -> "application/json"))
-      })
+      }))
       searchResults = searchRequests.map(r => json.read(r.responseText).obj("issues").arr.map { issueObj =>
         val fields = issueObj("fields").obj
         val url = issueObj("self").str
@@ -67,30 +69,36 @@ object DashboarderApp extends scalajs.js.JSApp {
           new Date(fields("updated").str).getTime()
         )
       })
-    } yield (favoriteFilters, searchResults)
-    f.onSuccess { case r =>
-      val searchPage =
-        SearchPage.makeSearchPage(r.zipped.map(SearchResult(_, _))(collection.breakOut))
-      println(s"Rendered ${r._2.length} filters!")
-      Styles.addToDocument()
-      val container: Element = org.scalajs.dom.document.body.children.namedItem("container")
-      if (!scalajs.js.isUndefined(Addons.Perf)) {
-        println("Starting perf")
-        Addons.Perf.start()
-        println("Rendering DOM")
+    } yield (favoriteFilters, searchResults).zipped.map(SearchResult(_, _))(collection.breakOut)
+
+    val callback = new Callback[IndexedSeq[SearchResult]] {
+      override def onSuccess(results: IndexedSeq[SearchResult]): Unit = {
+        val searchPage =
+          SearchPage.makeSearchPage(results)
+        println(s"Rendered ${results.length} filters!")
+        val container: Element = org.scalajs.dom.document.body.children.namedItem("container")
+        if (!scalajs.js.isUndefined(Addons.Perf)) {
+          println("Starting perf")
+          Addons.Perf.start()
+          println("Rendering DOM")
+        }
+        ReactDOM.render(searchPage, container)
+        if (!scalajs.js.isUndefined(Addons.Perf)) {
+          println("Stopping perf")
+          Addons.Perf.stop()
+          println("Printing wasted")
+          println(Addons.Perf.printWasted(Addons.Perf.getLastMeasurements()))
+        }
       }
-      ReactDOM.render(searchPage, container)
-      if (!scalajs.js.isUndefined(Addons.Perf)) {
-        println("Stopping perf")
-        Addons.Perf.stop()
-        println("Printing wasted")
-        println(Addons.Perf.printWasted(Addons.Perf.getLastMeasurements()))
+      override def onError(error: Throwable): Unit = {
+        System.err.println("EXCEPTION INTERRUPTED MAIN:")
+        error.printStackTrace(System.err)
       }
-//      org.scalajs.dom.document.body.appendChild(render.htmlFrag.render)
     }
-    f.onFailure { case e =>
-      System.err.println("EXCEPTION INTERRUPTED MAIN:")
-      e.printStackTrace(System.err)
+
+    {
+      import monix.execution.Scheduler.Implicits.global
+      fetchSearchResults.runAsync(callback)
     }
   }
 

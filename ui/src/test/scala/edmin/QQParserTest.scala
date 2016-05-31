@@ -1,28 +1,17 @@
 package edmin
 
-import edmin.QQ.QQAST._
-import edmin.QQ._
+import QQAST._
 import fastparse.core.ParseError
 import fastparse.core.Parsed.Failure
 import utest._
 
-object QQTest extends utest.TestSuite {
+object QQParserTest extends utest.TestSuite {
   val tests = this {
 
     "parse plain dots" - {
       QQParser.dot.parse(".").get.value ==> (())
       intercept[ParseError](QQParser.dot.parse("").get)
       ()
-    }
-
-    "optimize simple compositions" - {
-      QQAST.optimize(ComposeFilters(IdFilter, SelectKey("key"))) ==> SelectKey("key")
-      QQAST.optimize(ComposeFilters(IdFilter, ComposeFilters(SelectKey("key"), IdFilter))) ==> SelectKey("key")
-    }
-
-    "optimize pipes and dots to the same thing" - {
-      QQAST.optimize(QQParser.ensequencedFilters.parse(".key | .dang").get.value) ==> ComposeFilters(SelectKey("key"), SelectKey("dang"))
-      QQAST.optimize(QQParser.ensequencedFilters.parse(".key.dang").get.value) ==> ComposeFilters(SelectKey("key"), SelectKey("dang"))
     }
 
     "parse selections" - {
@@ -36,6 +25,7 @@ object QQTest extends utest.TestSuite {
 
     "parse dotted filters" - {
       QQParser.dottedFilter.parse(".").get.value ==> IdFilter
+      QQParser.dottedFilter.parse(".[]").get.value ==> ComposeFilters(IdFilter, CollectResults(IdFilter))
       QQParser.dottedFilter.parse(".key").get.value ==> ComposeFilters(IdFilter, SelectKey("key"))
       QQParser.dottedFilter.parse(".[1]").get.value ==> ComposeFilters(IdFilter, SelectIndex(1))
       QQParser.dottedFilter.parse(".[1][]").get.value ==> ComposeFilters(IdFilter, CollectResults(SelectIndex(1)))
@@ -67,4 +57,3 @@ object QQTest extends utest.TestSuite {
 
   }
 }
-

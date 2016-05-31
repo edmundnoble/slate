@@ -123,7 +123,7 @@ object SearchPage {
 
   def makeSearchPage(searchResults: Seq[SearchResult]) = {
     val htmlFrag =
-      <.div(
+      <.div(Styles.render[ReactElement],
         <.div(Styles.appBar,
           <.table(
             <.tr(Styles.appBarRow,

@@ -25,7 +25,7 @@ object DashboarderBuild extends Build {
     "com.github.japgolly.scalajs-react" %%% "ext-scalaz72" % "0.11.1",
     "com.github.japgolly.scalajs-react" %%% "ext-monocle" % "0.11.1",
     "com.github.japgolly.scalacss" %%% "ext-react" % "0.4.1",
-    "org.monifu" %%% "monifu" % "1.2"
+    "io.monix" %%% "monix" % "2.0-RC3"
   )
 
   // React JS itself (Note the filenames, adjust as needed, eg. to remove addons.)
