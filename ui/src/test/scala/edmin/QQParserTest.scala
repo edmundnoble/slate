@@ -17,6 +17,7 @@ object QQParserTest extends utest.TestSuite {
     "parse selections" - {
       QQParser.selectKey.parse("key").get.value ==> SelectKey("key")
       QQParser.selectIndex.parse("1").get.value ==> SelectIndex(1)
+      QQParser.selectIndex.parse("-1").get.value ==> SelectIndex(-1)
     }
 
     "parse dottable filters" - {
@@ -28,6 +29,7 @@ object QQParserTest extends utest.TestSuite {
       QQParser.dottedFilter.parse(".[]").get.value ==> ComposeFilters(IdFilter, CollectResults(IdFilter))
       QQParser.dottedFilter.parse(".key").get.value ==> ComposeFilters(IdFilter, SelectKey("key"))
       QQParser.dottedFilter.parse(".[1]").get.value ==> ComposeFilters(IdFilter, SelectIndex(1))
+      QQParser.dottedFilter.parse(".[-1]").get.value ==> ComposeFilters(IdFilter, SelectIndex(-1))
       QQParser.dottedFilter.parse(".[1][]").get.value ==> ComposeFilters(IdFilter, CollectResults(SelectIndex(1)))
       QQParser.dottedFilter.parse(".key[]").get.value ==> ComposeFilters(IdFilter, CollectResults(SelectKey("key")))
       QQParser.dottedFilter.parse(".key.otherkey.1.[1][].[1:3].[\"this key\"]").get.value ==>

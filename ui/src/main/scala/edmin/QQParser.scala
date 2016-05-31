@@ -28,7 +28,12 @@ object QQParser {
 
   val selectKey: P[SelectKey] = P((escapedStringLiteral |
     stringLiteral) map SelectKey)
-  val selectIndex: P[SelectIndex] = P(numericLiteral map SelectIndex)
+  val selectIndex: P[SelectIndex] = P(
+    for {
+      fun <- wspStr("-").!.? map (_.fold(identity[Int] _)(_ => (i: Int) => -i))
+      number <- numericLiteral
+    } yield SelectIndex(fun(number))
+  )
   val selectRange: P[SelectRange] = P((numericLiteral ~ ":" ~/ numericLiteral) map SelectRange.tupled)
 
   val dottableSimpleFilter: P[QQFilter] = P(
