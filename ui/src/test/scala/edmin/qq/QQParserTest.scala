@@ -37,24 +37,39 @@ object QQParserTest extends utest.TestSuite {
           IdFilter, SelectKey("key")), SelectKey("otherkey")), SelectKey("1")), CollectResults(SelectIndex(1))), SelectRange(1, 3)), SelectKey("this key"))
     }
 
+    "parse called filters" - {
+      QQParser.callFilter.parse("test").get.value ==> CallFilter("test")
+    }
+
     "parse piped filters" - {
       QQParser.pipedFilter.parse(".key | .dang").get.value ==>
         ComposeFilters(ComposeFilters(IdFilter, SelectKey("key")), ComposeFilters(IdFilter, SelectKey("dang")))
       QQParser.pipedFilter.parse("(.key) | (.dang)").get.value ==>
-        ComposeFilters(EnsequenceFilters(ComposeFilters(IdFilter, SelectKey("key"))),
-          EnsequenceFilters(ComposeFilters(IdFilter, SelectKey("dang"))))
+        ComposeFilters(EnsequenceFilters(List(ComposeFilters(IdFilter, SelectKey("key")))),
+          EnsequenceFilters(List(ComposeFilters(IdFilter, SelectKey("dang")))))
+      QQParser.pipedFilter.parse("(.key) | (dang)").get.value ==>
+        ComposeFilters(EnsequenceFilters(List(ComposeFilters(IdFilter, SelectKey("key")))),
+          EnsequenceFilters(List(CallFilter("dang"))))
     }
 
     "parse ensequenced filters" - {
       QQParser.ensequencedFilters.parse(".key, .dang").get.value ==>
-        EnsequenceFilters(ComposeFilters(IdFilter, SelectKey("key")), ComposeFilters(IdFilter, SelectKey("dang")))
-      QQParser.ensequencedFilters.parse(".key, .dang | ").get.value ==>
-        EnsequenceFilters(ComposeFilters(IdFilter, SelectKey("key")), ComposeFilters(IdFilter, SelectKey("dang")))
+        EnsequenceFilters(List(ComposeFilters(IdFilter, SelectKey("key")), ComposeFilters(IdFilter, SelectKey("dang"))))
     }
 
     "parse enlisted filters" - {
       QQParser.enlistedFilter.parse("[.key, .dang]").get.value ==>
-        EnlistFilter(EnsequenceFilters(ComposeFilters(IdFilter, SelectKey("key")), ComposeFilters(IdFilter, SelectKey("dang"))))
+        EnlistFilter(EnsequenceFilters(List(ComposeFilters(IdFilter, SelectKey("key")), ComposeFilters(IdFilter, SelectKey("dang")))))
+    }
+
+    "parse definitions" - {
+      QQParser.definition.parse("def id: .;").get.value ==> Definition("id", Nil, EnsequenceFilters(List(IdFilter)))
+    }
+
+    "parse full programs" - {
+      QQParser.program.parse("id").get.value ==> (Seq(), EnsequenceFilters(List(CallFilter("id"))))
+      QQParser.program.parse("def id: .; id").get.value ==>
+        (Seq(Definition("id", Nil, EnsequenceFilters(List(IdFilter)))), EnsequenceFilters(List(CallFilter("id"))))
     }
 
   }
