@@ -1,8 +1,7 @@
+import DashboarderBuild.DashboarderManifest.Background
 import sbt._
 import Keys._
-import chrome.{Impl, Manifest, Sockets}
-import chrome.permissions.{HostPermission, Permission}
-import net.lullabyte.{Chrome, ChromeSbtPlugin, Pickler}
+import net.lullabyte.Chrome
 import org.scalajs.sbtplugin.{OptimizerOptions, ScalaJSPlugin}
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import upickle.Js
@@ -14,10 +13,10 @@ object DashboarderBuild extends Build {
     "org.scala-js" %%% "scalajs-dom" % "0.9.0",
     "com.lihaoyi" %%% "upickle" % "0.4.0",
     "com.lihaoyi" %%% "pprint" % "0.4.0",
-    "com.github.julien-truffaut"  %%%  "monocle-core"    % "1.2.1",
-    "com.github.julien-truffaut"  %%%  "monocle-generic" % "1.2.1",
-    "com.github.julien-truffaut"  %%%  "monocle-macro"   % "1.2.1",
-    "com.github.julien-truffaut"  %%%  "monocle-state"   % "1.2.1",
+    "com.github.julien-truffaut" %%% "monocle-core" % "1.2.1",
+    "com.github.julien-truffaut" %%% "monocle-generic" % "1.2.1",
+    "com.github.julien-truffaut" %%% "monocle-macro" % "1.2.1",
+    "com.github.julien-truffaut" %%% "monocle-state" % "1.2.1",
     "com.lihaoyi" %%% "fastparse" % "0.3.7",
     "com.github.marklister" %%% "base64" % "0.2.2",
     "net.lullabyte" %%% "scala-js-chrome" % "0.2.1",
@@ -25,7 +24,8 @@ object DashboarderBuild extends Build {
     "com.github.japgolly.scalajs-react" %%% "ext-scalaz72" % "0.11.1",
     "com.github.japgolly.scalajs-react" %%% "ext-monocle" % "0.11.1",
     "com.github.japgolly.scalacss" %%% "ext-react" % "0.4.1",
-    "io.monix" %%% "monix" % "2.0-RC3"
+    "io.monix" %%% "monix" % "2.0-RC3",
+    "com.thoughtworks.each" %%% "each" % "0.5.1"
   )
 
   // React JS itself (Note the filenames, adjust as needed, eg. to remove addons.)
@@ -141,7 +141,7 @@ object DashboarderBuild extends Build {
       zipFile
     },
     chromeGenerateManifest := {
-      generateManifest(target.value / "chrome" / "generated_manifest.json")(DashboarderManifest())
+      generateManifest(target.value / "chrome" / "generated_manifest.json")(DashboarderManifest.mySettings)
     }
   )
 
@@ -150,38 +150,51 @@ object DashboarderBuild extends Build {
     implicit val pkl = upickle.default.macroRW[Overrides]
   }
 
-  case class DashboarderManifest(name: String = "Dashboarder",
-                                 version: String = "0.0.1",
-                                 manifestVersion: Int = 2,
-                                 background: Impl.Background = Impl.Background(scripts = List("deps.js", "main.js", "launcher.js")),
+  case class DashboarderManifest(name: String,
+                                 version: String,
+                                 manifestVersion: Int,
+                                 background: Background,
                                  //                                 description: Option[String] = None,
-                                 offlineEnabled: Boolean = true,
-                                 permissions: Set[String] = Set("https://auviknetworks.atlassian.net/*"),
+                                 offlineEnabled: Boolean,
+                                 permissions: Set[String],
                                  //                                 icons: Map[Int, String] = Map(),
-                                 chromeUrlOverrides: Overrides = Overrides())
+                                 chromeUrlOverrides: Overrides)
 
   object DashboarderManifest {
+    case class Background(scripts: List[String])
+
     implicit val pkl = upickle.default.macroRW[DashboarderManifest]
+    val mySettings = DashboarderManifest(
+      name = "Dashboarder",
+      version = "0.0.1",
+      manifestVersion = 2,
+      background = new Background(List("deps.js", "main.js", "launcher.js")),
+      offlineEnabled = true,
+      permissions = Set("https://auviknetworks.atlassian.net/*"),
+      chromeUrlOverrides = Overrides()
+    )
   }
 
   val otherSettings: Seq[sbt.Def.Setting[_]] = Seq(
     name := "dashboarder",
     version := "0.0.1",
-    scalaVersion := "2.11.7",
+    scalaVersion := "2.11.8",
     persistLauncher in Compile := true,
     persistLauncher in Test := false,
     relativeSourceMaps := true,
     scalaJSUseRhino in Global := false,
-    testFrameworks += new TestFramework("utest.runner.Framework")
+    testFrameworks += new TestFramework("utest.runner.Framework"),
+    addCompilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full)
   )
 
   val sets: Seq[Def.Setting[_]] = Defaults.projectCore ++ otherSettings ++ deps ++ //jsDeps ++
     ScalaJSPlugin.projectSettings ++ baseSettings
 
   lazy val root = Project(id = "root",
-    base = file(".")).settings(scalaVersion := "2.11.7")
+    base = file(".")).settings(scalaVersion := "2.11.8")
 
-  lazy val ui = Project(id = "ui", base = file("ui")).dependsOn(root)
+  lazy val ui = Project(id = "ui", base = file("ui"))
+    .dependsOn(root)
     .enablePlugins(ScalaJSPlugin)
     .settings(sets)
 

@@ -22,18 +22,21 @@ object QQ {
     parsed match {
       case Parsed.Success((definitions, main), _) =>
         val optimizedDefinitions = if (optimize) {
-          definitions.map(Definition.body.modify(QQAST.optimize))
+          definitions.map(Definition.body.modify(QQAST.optimize(_).runAttempt.value))
         } else {
           definitions
         }
-        QQAST.compileProgram(optimizedDefinitions, main).leftMap(e => e)
+        QQAST.compileProgram(optimizedDefinitions, main).leftMap(|.from(_))
       case f@Parsed.Failure(_, _, _) =>
         -\/(new ParseError(f))
     }
   }
 
-  def run(qqProgram: String, input: List[js.Any]): Task[Seq[js.Any]] = {
-    parseAndCompile(qqProgram, optimize = true).fold({ e => Task.raiseError(e.merge[Exception]) }, compiledFilter => input.traverse(compiledFilter).map(_.flatten))
+  def run(qqProgram: String, input: List[js.Any]): Task[List[js.Any]] = {
+    parseAndCompile(qqProgram, optimize = true).fold(
+      (err: QQCompilationException | ParseError) => Task.raiseError(err.merge[Exception]),
+      compiledFilter => input.traverse(compiledFilter).map(_.flatten)
+    )
   }
 
 }
