@@ -1,4 +1,3 @@
-import DashboarderBuild.DashboarderManifest.Background
 import sbt._
 import Keys._
 import net.lullabyte.Chrome
@@ -56,6 +55,7 @@ object DashboarderBuild extends Build {
   val chromePackage = TaskKey[File]("chromePackage")
   val chromeGenerateManifest = TaskKey[File]("chromeGenerateManifest")
   val chromeManifest = TaskKey[chrome.Manifest]("chromeManifest")
+  val repl = TaskKey[Unit]("repl")
 
   object SnakePickle extends upickle.AttributeTagged {
     def camelToSnake(s: String) = {
@@ -85,13 +85,13 @@ object DashboarderBuild extends Build {
     }
   }
 
-  def generateManifest(out: File)(manifest: DashboarderManifest): File = {
+  def generateManifest(out: File)(manifest: ChromeManifest): File = {
     val content = SnakePickle.write(manifest, indent = 2)
     IO.write(out, content)
     out
   }
 
-  lazy val baseSettings: Seq[Def.Setting[_]] = Seq(
+  lazy val chromeTasks: Seq[Def.Setting[_]] = Seq(
     chromePackageContent := file("content"),
     chromeBuildOpt := {
       val unpacked = target.value / "chrome" / "unpackedopt"
@@ -141,61 +141,50 @@ object DashboarderBuild extends Build {
       zipFile
     },
     chromeGenerateManifest := {
-      generateManifest(target.value / "chrome" / "generated_manifest.json")(DashboarderManifest.mySettings)
+      generateManifest(target.value / "chrome" / "generated_manifest.json")(ChromeManifest.mySettings)
     }
   )
 
-  case class Overrides(newtab: String = "index-dev.html")
-  object Overrides {
-    implicit val pkl = upickle.default.macroRW[Overrides]
-  }
-
-  case class DashboarderManifest(name: String,
-                                 version: String,
-                                 manifestVersion: Int,
-                                 background: Background,
-                                 //                                 description: Option[String] = None,
-                                 offlineEnabled: Boolean,
-                                 permissions: Set[String],
-                                 //                                 icons: Map[Int, String] = Map(),
-                                 chromeUrlOverrides: Overrides)
-
-  object DashboarderManifest {
-    case class Background(scripts: List[String])
-
-    implicit val pkl = upickle.default.macroRW[DashboarderManifest]
-    val mySettings = DashboarderManifest(
-      name = "Dashboarder",
-      version = "0.0.1",
-      manifestVersion = 2,
-      background = new Background(List("deps.js", "main.js", "launcher.js")),
-      offlineEnabled = true,
-      permissions = Set("https://auviknetworks.atlassian.net/*"),
-      chromeUrlOverrides = Overrides()
-    )
-  }
+  lazy val replMain =
+    mainClass in(Compile, run) := Some("edmin.qq.InterpreterMain")
 
   val otherSettings: Seq[sbt.Def.Setting[_]] = Seq(
-    name := "dashboarder",
     version := "0.0.1",
     scalaVersion := "2.11.8",
-    persistLauncher in Compile := true,
+    persistLauncher in Compile := false,
     persistLauncher in Test := false,
-    relativeSourceMaps := true,
-    scalaJSUseRhino in Global := false,
     testFrameworks += new TestFramework("utest.runner.Framework"),
     addCompilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full)
   )
 
-  val sets: Seq[Def.Setting[_]] = Defaults.projectCore ++ otherSettings ++ deps ++ //jsDeps ++
-    ScalaJSPlugin.projectSettings ++ baseSettings
+  val jsSettings: Seq[sbt.Def.Setting[Boolean]] = Seq(
+    scalaJSUseRhino in Global := false,
+    relativeSourceMaps := true
+  )
 
-  lazy val root = Project(id = "root",
-    base = file(".")).settings(scalaVersion := "2.11.8")
+  val sets: Seq[Def.Setting[_]] = Defaults.projectCore ++ otherSettings ++ deps
+
+  lazy val root: Project = Project(id = "root", base = file("."))
+    .aggregate(qq, ui)
+    .settings(ScalaJSPlugin.globalSettings)
+    .settings(scalaVersion := "2.11.8")
+    .settings(name := "dashboarder")
+
+  lazy val qq: Project = Project(id = "qq", base = file("qq"))
+    .settings(ScalaJSPlugin.projectSettings)
+    .enablePlugins(ScalaJSPlugin)
+    .settings(jsSettings)
+    .settings(sets)
+    .settings(name := "dashboarder")
+    .settings(replMain)
 
   lazy val ui = Project(id = "ui", base = file("ui"))
-    .dependsOn(root)
+    .dependsOn(qq)
+    .settings(ScalaJSPlugin.projectSettings)
     .enablePlugins(ScalaJSPlugin)
+    .settings(chromeTasks)
+    .settings(jsSettings)
     .settings(sets)
+    .settings(name := "ui")
 
 }

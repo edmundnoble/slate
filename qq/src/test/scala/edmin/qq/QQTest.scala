@@ -21,10 +21,12 @@ object QQTest extends utest.TestSuite {
     "ensequenced program" - {
       val dictionary: js.Dictionary[js.Any] = js.Dictionary("lol" -> js.Dictionary[js.Any]("thing" -> 2), "wat" -> "ha")
       QQ.run(".lol, .wat", List(dictionary)).runFuture.map {
-        case (dict: js.Dictionary[js.Any@unchecked]) :: (str: js.Any) :: Nil =>
-        dict.toMap ==> Map[String, js.Any]("thing" -> 2)
-        str ==> "ha"
-        ()
+        case (obj: js.Object) :: (str: js.Any) :: Nil =>
+          val dict = obj.asInstanceOf[js.Dictionary[js.Any]]
+          dict.toMap ==> Map[String, js.Any]("thing" -> 2)
+          str ==> "ha"
+          ()
+        case _ => assert(false)
       }
     }
 
@@ -35,7 +37,9 @@ object QQTest extends utest.TestSuite {
           arr(0).asInstanceOf[js.Dictionary[js.Any]].toMap ==> Map[String, js.Any]("thing" -> 2)
           arr(1) ==> "ha"
           ()
+        case _ => assert(false)
       }
     }
+
   }
 }

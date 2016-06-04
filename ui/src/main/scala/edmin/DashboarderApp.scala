@@ -12,17 +12,20 @@ import upickle.default._
 import pprint._
 import utils.ChromeApp
 import edmin.SearchPage.{Filter, Issue, SearchResult}
-import edmin.qq.Ajax
+import edmin.qq.{Ajax, AjaxException}
 import japgolly.scalajs.react.{Addons, ReactDOM}
-import monix.eval.{Callback, Task}
+import monix.eval.{Callback, Coeval, Task}
 import monix.eval.Task.instances
 import org.scalajs.dom.XMLHttpRequest
 import org.scalajs.dom.raw.Element
+import com.thoughtworks.each.Monadic._
+import qq.Util._
 
 import scalaz.std.scalaFuture._
 import scalaz.syntax.monad._
 import scalaz.std.vector._
 import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.scalajs.js.Date
 import scala.scalajs.js.annotation.JSExport
 import scala.util.{Failure, Success, Try}
@@ -32,28 +35,41 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   import scalacss.ScalaCssReact._
   import scalacss.Defaults._
+  import scala.scalajs.js
+
+  class EmptyResponseException extends java.lang.Exception("Empty response")
 
   @JSExport
   def main(): Unit = {
     import scalajs.concurrent.JSExecutionContext.Implicits.queue
     val longRegex = Pattern.compile("\n+\\s*", Pattern.MULTILINE)
-    val fetchSearchResults = for {
-      cookieResp <- Ajax.post("https://auviknetworks.atlassian.net/rest/auth/1/session", timeout = 4000,
-        data = json.write(Creds.authData), headers = Map("Content-Type" -> "application/json"))
-      session = json.read(cookieResp.responseText).obj("session").obj
-      authorizationHeaders = Map("Set-Cookie" -> s"${session("name").str}=${session("value").str}; Path=/; HttpOnly")
-      favoriteFilterRequest <- Ajax.get(url = "https://auviknetworks.atlassian.net/rest/api/2/filter/favourite",
-        timeout = 4000, headers = authorizationHeaders)
-      favoriteFilters = json.read(favoriteFilterRequest.responseText).arr.map { r =>
+    val fetchSearchResults = monadic[Task] {
+      val (authHeaders, favoriteFilterResponse) = monadic[Task] {
+        val cookieResp = Ajax.post("https://auviknetworks.atlassian.net/rest/auth/1/session", timeout = 4000,
+          data = json.write(Creds.authData), headers = Map("Content-Type" -> "application/json")).each
+        println(s"cookieResp: ${cookieResp.responseText}")
+        val session = json.read(cookieResp.responseText).obj("session").obj
+        println(s"session: $session")
+        val authorizationHeaders = Map("Set-Cookie" -> s"${session("name").str}=${session("value").str}; Path=/; HttpOnly")
+        Ajax.get(url = "https://auviknetworks.atlassian.net/rest/api/2/filter/favourite",
+          timeout = 4000, headers = authorizationHeaders).delayExecution(50.millis).flatMap(response =>
+          if (response.responseText == "[]") {
+            println("EMPTY RESPONSE")
+            Task.raiseError(new EmptyResponseException())
+          } else {
+            Task.now((authorizationHeaders, response))
+          }).each
+      }.each//.onErrorRestart(2).each
+      println(s"favoriteFilterResponse ${favoriteFilterResponse.status} ${favoriteFilterResponse.statusText}: ${favoriteFilterResponse.responseText}")
+      val favoriteFilters = json.read(favoriteFilterResponse.responseText).arr.map { r =>
         Filter(r.obj("self").str, r.obj("name").str, r.obj("owner").obj("name").str, r.obj("jql").str, r.obj("viewUrl").str)
       }.toVector
-      favoriteFilterJqls = favoriteFilters.map(_.jql)
-      searchRequests <- Task.sequence(favoriteFilterJqls.map(jql => {
+      val searchRequests = Task.sequence(favoriteFilters.map(filter => {
         Ajax.post(url = s"https://auviknetworks.atlassian.net/rest/api/2/search/",
-          data = json.write(Js.Obj("jql" -> Js.Str(jql), "maxResults" -> Js.Num(10))),
-          timeout = 4000, headers = authorizationHeaders ++ Map("Content-Type" -> "application/json"))
-      }))
-      searchResults = searchRequests.map(r => json.read(r.responseText).obj("issues").arr.map { issueObj =>
+          data = json.write(Js.Obj("jql" -> Js.Str(filter.jql), "maxResults" -> Js.Num(10))),
+          timeout = 4000, headers = authHeaders ++ Map("Content-Type" -> "application/json"))
+      })).each
+      val searchResults = searchRequests.map(r => json.read(r.responseText).obj("issues").arr.map { issueObj =>
         val fields = issueObj("fields").obj
         val url = issueObj("self").str
         val summary = fields("summary").str
@@ -61,8 +77,8 @@ object DashboarderApp extends scalajs.js.JSApp {
         val project = fields("project").obj("name").str
         val status = fields("status").obj("name").str
         val shortStatus = new String(status.split(" ").filter(_.nonEmpty).map(s => Character.toUpperCase(s.charAt(0))).toArray)
-        val assignee = CanThrow(fields("assignee").obj("name").str).toOption
-        val reporter = CanThrow(fields("reporter").obj("name").str).toOption
+        val assignee = Try(fields("assignee").obj("name").str).toOption
+        val reporter = Try(fields("reporter").obj("name").str).toOption
         val description = longRegex.matcher(fields("description").str).replaceAll(" ↪ ")
         Issue(
           url, summary, key, project, assignee, reporter, shortStatus, description,
@@ -70,7 +86,8 @@ object DashboarderApp extends scalajs.js.JSApp {
           new Date(fields("updated").str).getTime()
         )
       })
-    } yield (favoriteFilters, searchResults).zipped.map(SearchResult(_, _))(collection.breakOut)
+      (favoriteFilters, searchResults).zipped.map(SearchResult(_, _))(collection.breakOut)
+    }
 
     val callback = new Callback[IndexedSeq[SearchResult]] {
       override def onSuccess(results: IndexedSeq[SearchResult]): Unit = {
@@ -78,13 +95,13 @@ object DashboarderApp extends scalajs.js.JSApp {
           SearchPage.makeSearchPage(results)
         println(s"Rendered ${results.length} filters!")
         val container: Element = org.scalajs.dom.document.body.children.namedItem("container")
-        if (!scalajs.js.isUndefined(Addons.Perf)) {
+        if (!js.isUndefined(Addons.Perf)) {
           println("Starting perf")
           Addons.Perf.start()
           println("Rendering DOM")
         }
         ReactDOM.render(searchPage, container)
-        if (!scalajs.js.isUndefined(Addons.Perf)) {
+        if (!js.isUndefined(Addons.Perf)) {
           println("Stopping perf")
           Addons.Perf.stop()
           println("Printing wasted")
@@ -93,6 +110,11 @@ object DashboarderApp extends scalajs.js.JSApp {
       }
       override def onError(error: Throwable): Unit = {
         System.err.println("EXCEPTION INTERRUPTED MAIN:")
+        error match {
+          case AjaxException(req) =>
+            System.err.println(s"status code: ${req.status}")
+          case _ =>
+        }
         error.printStackTrace(System.err)
       }
     }
