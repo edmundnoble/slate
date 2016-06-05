@@ -1,35 +1,26 @@
-package edmin.qq
+package edmin.qq.jsc
 
-import edmin.qq.QQAST.{CompiledFilter, Definition, QQCompilationException}
+import edmin.qq.QQAST._
+import edmin.qq.QQCompiler._
+import edmin.qq.{QQAST, QQParser, Util}
 import fastparse.core.{ParseError, Parsed}
-import monix.eval.{Coeval, Task}
+import monix.eval.Task
 import monix.reactive.Observable
 import monocle.macros._
 import monocle.Lens
 
 import scala.scalajs.js
-import scala.scalajs.js.{Any, |}
+import scala.scalajs.js.|
 import scala.scalajs.js.|._
-import scalaz.{-\/, Monad, Monoid, \/}
+import scalaz.{-\/, \/}
 import scalaz.std.list._
 import scalaz.syntax.traverse._
-import scalaz.syntax.functor._
-import scalaz.syntax.arrow._
-import scalaz.std.function._
-import scalaz.std.partialFunction._
-import scalaz.syntax.id._
-import scalaz.syntax.monoid._
-import scalaz.std.string._
-import scalaz.std.option._
 import Util._
 import upickle.Js
-import upickle.json
 
-import scala.io.StdIn
+object QQJS {
 
-object QQ {
-
-  def parseAndCompile(program: String, optimize: Boolean): \/[QQCompilationException | ParseError, CompiledFilter] = {
+  def parseAndCompile(program: String, optimize: Boolean): \/[QQCompilationException | ParseError, QQJSCompiler.CompiledFilter] = {
     val parsed = QQParser.program.parse(program)
     parsed match {
       case Parsed.Success((definitions, main), _) =>
@@ -38,7 +29,7 @@ object QQ {
         } else {
           definitions
         }
-        QQAST.compileProgram(optimizedDefinitions, main).leftMap(|.from(_))
+        QQJSCompiler.compileProgram(optimizedDefinitions, main).leftMap(|.from(_))
       case f@Parsed.Failure(_, _, _) =>
         -\/(new ParseError(f))
     }
@@ -50,5 +41,6 @@ object QQ {
       compiledFilter => input.traverse(compiledFilter).map(_.flatten)
     )
   }
+
 
 }

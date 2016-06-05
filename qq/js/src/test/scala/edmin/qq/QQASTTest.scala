@@ -13,6 +13,7 @@ object QQASTTest extends utest.TestSuite {
   val tests = this {
 
     import QQAST._
+    import edmin.qq.jsc.QQJSCompiler._
 
     "optimize simple compositions" - {
       optimize(ComposeFilters(IdFilter, SelectKey("key"))).runAttempt.value ==> SelectKey("key")

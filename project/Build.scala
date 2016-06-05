@@ -3,28 +3,31 @@ import Keys._
 import net.lullabyte.Chrome
 import org.scalajs.sbtplugin.{OptimizerOptions, ScalaJSPlugin}
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+import org.scalajs.sbtplugin.cross.CrossProject
 import upickle.Js
 
 object DashboarderBuild extends Build {
 
-  val deps = libraryDependencies ++= Seq(
+  val commonDeps = libraryDependencies ++= Seq(
     "com.lihaoyi" %%% "utest" % "0.4.3" % "test",
-    "org.scala-js" %%% "scalajs-dom" % "0.9.0",
     "com.lihaoyi" %%% "upickle" % "0.4.0",
     "com.lihaoyi" %%% "pprint" % "0.4.0",
+    "com.lihaoyi" %%% "fastparse" % "0.3.7",
+    "io.monix" %%% "monix" % "2.0-RC3",
+    "com.thoughtworks.each" %%% "each" % "0.5.1",
     "com.github.julien-truffaut" %%% "monocle-core" % "1.2.1",
     "com.github.julien-truffaut" %%% "monocle-generic" % "1.2.1",
     "com.github.julien-truffaut" %%% "monocle-macro" % "1.2.1",
-    "com.github.julien-truffaut" %%% "monocle-state" % "1.2.1",
-    "com.lihaoyi" %%% "fastparse" % "0.3.7",
-    "com.github.marklister" %%% "base64" % "0.2.2",
+    "com.github.julien-truffaut" %%% "monocle-state" % "1.2.1"
+  )
+
+  val uiDeps = libraryDependencies ++= Seq(
     "net.lullabyte" %%% "scala-js-chrome" % "0.2.1",
+    "org.scala-js" %%% "scalajs-dom" % "0.9.0",
     "com.github.japgolly.scalajs-react" %%% "core" % "0.11.1",
     "com.github.japgolly.scalajs-react" %%% "ext-scalaz72" % "0.11.1",
     "com.github.japgolly.scalajs-react" %%% "ext-monocle" % "0.11.1",
-    "com.github.japgolly.scalacss" %%% "ext-react" % "0.4.1",
-    "io.monix" %%% "monix" % "2.0-RC3",
-    "com.thoughtworks.each" %%% "each" % "0.5.1"
+    "com.github.japgolly.scalacss" %%% "ext-react" % "0.4.1"
   )
 
   // React JS itself (Note the filenames, adjust as needed, eg. to remove addons.)
@@ -57,7 +60,7 @@ object DashboarderBuild extends Build {
   val chromeManifest = TaskKey[chrome.Manifest]("chromeManifest")
   val repl = TaskKey[Unit]("repl")
 
-  object SnakePickle extends upickle.AttributeTagged {
+  object SnakeOptionPickle extends upickle.AttributeTagged {
     def camelToSnake(s: String) = {
       val res = s.split("(?=[A-Z])", -1).map(_.toLowerCase).mkString("_")
       res
@@ -86,7 +89,7 @@ object DashboarderBuild extends Build {
   }
 
   def generateManifest(out: File)(manifest: ChromeManifest): File = {
-    val content = SnakePickle.write(manifest, indent = 2)
+    val content = SnakeOptionPickle.write(manifest, indent = 2)
     IO.write(out, content)
     out
   }
@@ -153,8 +156,11 @@ object DashboarderBuild extends Build {
     scalaVersion := "2.11.8",
     persistLauncher in Compile := false,
     persistLauncher in Test := false,
-    testFrameworks += new TestFramework("utest.runner.Framework"),
     addCompilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full)
+  )
+
+  val testSettings: Seq[sbt.Def.Setting[_]] = Seq(
+    testFrameworks += new TestFramework("utest.runner.Framework")
   )
 
   val jsSettings: Seq[sbt.Def.Setting[Boolean]] = Seq(
@@ -162,29 +168,31 @@ object DashboarderBuild extends Build {
     relativeSourceMaps := true
   )
 
-  val sets: Seq[Def.Setting[_]] = Defaults.projectCore ++ otherSettings ++ deps
-
   lazy val root: Project = Project(id = "root", base = file("."))
-    .aggregate(qq, ui)
+    .aggregate(ui, qqjvm, qqjs)
+    .settings(Defaults.projectCore)
+    .settings(otherSettings)
     .settings(ScalaJSPlugin.globalSettings)
-    .settings(scalaVersion := "2.11.8")
-    .settings(name := "dashboarder")
 
-  lazy val qq: Project = Project(id = "qq", base = file("qq"))
-    .settings(ScalaJSPlugin.projectSettings)
-    .enablePlugins(ScalaJSPlugin)
-    .settings(jsSettings)
-    .settings(sets)
-    .settings(name := "dashboarder")
-    .settings(replMain)
+  lazy val qq: CrossProject = crossProject.in(file("qq"))
+    .settings(otherSettings: _*)
+    .settings(commonDeps: _*)
+    .settings(replMain: _*)
+    .settings(testSettings: _*)
+    .jsSettings(ScalaJSPlugin.projectSettings: _*)
+
+  lazy val qqjvm = qq.jvm
+  lazy val qqjs = qq.js
 
   lazy val ui = Project(id = "ui", base = file("ui"))
-    .dependsOn(qq)
+    .dependsOn(qqjs)
     .settings(ScalaJSPlugin.projectSettings)
     .enablePlugins(ScalaJSPlugin)
+    .settings(otherSettings)
     .settings(chromeTasks)
     .settings(jsSettings)
-    .settings(sets)
-    .settings(name := "ui")
+    .settings(commonDeps)
+    .settings(testSettings)
+    .settings(uiDeps)
 
 }

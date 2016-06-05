@@ -2,21 +2,13 @@ package edmin
 
 import java.util.regex.Pattern
 
-import chrome.app
 import chrome.app.runtime.bindings.{LaunchData, Request}
-import chrome.app.window.Window
 import chrome.app.window.bindings.{BoundsSpecification, CreateWindowOptions}
 import upickle.Js
 import upickle.json
-import upickle.default._
-import pprint._
-import utils.ChromeApp
 import edmin.SearchPage.{Filter, Issue, SearchResult}
-import edmin.qq.{Ajax, AjaxException}
 import japgolly.scalajs.react.{Addons, ReactDOM}
 import monix.eval.{Callback, Coeval, Task}
-import monix.eval.Task.instances
-import org.scalajs.dom.XMLHttpRequest
 import org.scalajs.dom.raw.Element
 import com.thoughtworks.each.Monadic._
 import qq.Util._

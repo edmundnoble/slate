@@ -1,4 +1,4 @@
-package edmin.qq
+package edmin
 
 import java.nio.ByteBuffer
 
@@ -14,21 +14,21 @@ import scala.scalajs.js.typedarray.TypedArrayBufferOps._
 import scala.scalajs.js.typedarray._
 
 /**
- * Thrown when `Ajax.get` or `Ajax.post` receives a non-20X response code.
- * Contains the XMLHttpRequest that resulted in that response
- */
+  * Thrown when `Ajax.get` or `Ajax.post` receives a non-20X response code.
+  * Contains the XMLHttpRequest that resulted in that response
+  */
 case class AjaxException(xhr: dom.XMLHttpRequest) extends Exception {
   def isTimeout = xhr.status == 0 && xhr.readyState == 4
 }
 
 /**
- * Wraps an XMLHttpRequest to provide an easy one-line way of making
- * an Ajax call, returning a Future.
- */
+  * Wraps an XMLHttpRequest to provide an easy one-line way of making
+  * an Ajax call, returning a Future.
+  */
 object Ajax {
   /**
-   * Supported data formats for Ajax are implicitly converted to InputData
-   */
+    * Supported data formats for Ajax are implicitly converted to InputData
+    */
   @js.native
   sealed trait InputData extends js.Any
 
