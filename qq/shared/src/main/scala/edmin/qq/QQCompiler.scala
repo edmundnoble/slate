@@ -83,7 +83,6 @@ abstract class QQCompiler {
   def enlistCompiledFilters(filter: CompiledFilter): CompiledFilter
   def selectKey(key: String): CompiledFilter
   def selectIndex(index: Int): CompiledFilter
-
   def selectRange(start: Int, end: Int): CompiledFilter
   def collectResults(f: CompiledFilter): CompiledFilter
 }
