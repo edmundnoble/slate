@@ -31,57 +31,59 @@ import scala.io.StdIn
 
 object Interpreter {
 
-    case class Interpreter(run: PartialFunction[String, Task[(String, Interpreter)]]) {
-      def orElse(other: Interpreter): Interpreter = Interpreter(run.orElse(other.run))
-    }
+  case class Interpreter(run: PartialFunction[String, Task[(String, Interpreter)]]) {
+    def orElse(other: Interpreter): Interpreter = Interpreter(run.orElse(other.run))
+  }
 
-    def programInterpreter: Interpreter = taskSwitch orElse Interpreter {
-      case program: String =>
-        QQ.parseAndCompile(program, optimize = true).fold(
-          (err: QQCompilationException | ParseError) => Task(Console.err.println(s"Error: $err")) map (_ => ("", programInterpreter)),
-          (compiledFilter: CompiledFilter) => Task.now(("", programInterpreterOf(compiledFilter)))
-        )
-    }
+  def programInterpreter: Interpreter = taskSwitch orElse Interpreter {
+    case program: String =>
+      QQ.parseAndCompile(program, optimize = true).fold(
+        (err: QQCompilationException | ParseError) => Task(Console.err.println(s"Error: $err")) map (_ => ("", programInterpreter)),
+        (compiledFilter: CompiledFilter) => Task.now(("", programInterpreterOf(compiledFilter)))
+      )
+  }
 
-    def programInterpreterOf(program: CompiledFilter): Interpreter = taskSwitch orElse Interpreter {
-      case input: String =>
-        val inputJson = json.read(input)
-        val jsValue = json.writeJs(inputJson).asInstanceOf[js.Any]
-        val execute = program.apply(jsValue)
-        execute.map { results =>
-          val result = results.mkString("(", ", ", "_")
-          (result, programInterpreterOf(program))
-        }
-    }
+  def programInterpreterOf(program: CompiledFilter): Interpreter = taskSwitch orElse Interpreter {
+    case input: String =>
+      val inputJson = json.read(input)
+      val jsValue = json.writeJs(inputJson).asInstanceOf[js.Any]
+      val execute = program.apply(jsValue)
+      execute.map { results =>
+        val result = results.mkString("(", ", ", "_")
+        (result, programInterpreterOf(program))
+      }
+  }
 
-    def inputInterpreter: Interpreter = taskSwitch orElse Interpreter {
-      case input: String =>
-        val in = json.writeJs(json.read(input)).asInstanceOf[js.Any]
-        Task.now(("", inputInterpreterOf(in)))
-    }
+  def inputInterpreter: Interpreter = taskSwitch orElse Interpreter {
+    case input: String =>
+      val in = json.writeJs(json.read(input)).asInstanceOf[js.Any]
+      Task.now(("", inputInterpreterOf(in)))
+  }
 
-    def inputInterpreterOf(input: js.Any): Interpreter = taskSwitch orElse Interpreter {
-      case program: String =>
-        QQ.parseAndCompile(program, optimize = true).fold(
-          (err: QQCompilationException | ParseError) => Task(Console.err.println(s"Error: $err")) map (_ => ("", programInterpreter)),
-          (compiledFilter: CompiledFilter) => compiledFilter(input).map { results => (results.mkString("(", ", ", "_"), inputInterpreterOf(input)) }
-        )
-    }
+  def inputInterpreterOf(input: js.Any): Interpreter = taskSwitch orElse Interpreter {
+    case program: String =>
+      QQ.parseAndCompile(program, optimize = true).fold(
+        (err: QQCompilationException | ParseError) => Task(Console.err.println(s"Error: $err")) map (_ => ("", programInterpreter)),
+        (compiledFilter: CompiledFilter) => compiledFilter(input).map { results => (results.mkString("(", ", ", "_"), inputInterpreterOf(input)) }
+      )
+  }
 
-    def taskSwitch: Interpreter = Interpreter {
-      case ":p" => Task.now(("", programInterpreter))
-      case ":i" => Task.now(("", inputInterpreter))
-    }
+  def taskSwitch: Interpreter = Interpreter {
+    case ":p" => Task.now(("", programInterpreter))
+    case ":i" => Task.now(("", inputInterpreter))
+  }
 
-    def runInterpreter(interpreter: Interpreter): Task[Unit] = Task {
-      val pf = interpreter.run
-      val in = new BufferedReader(new InputStreamReader(System.in))
-      pf.lift(in.readLine()).fold(Task { Console.println("end!") })(_.flatMap { case (out, next) => Console.println(out); runInterpreter(next) })
-    }.flatten
+  def runInterpreter(interpreter: Interpreter): Task[Unit] = Task.defer {
+    val pf = interpreter.run
+    val in = new BufferedReader(new InputStreamReader(System.in))
+    pf.lift(in.readLine())
+      .fold(Task {
+        Console.println("end!")
+      })(_.flatMap { case (out, next) => Console.println(out); Task.defer(runInterpreter(next)) })
+  }
 
-    def run: Task[Unit] = {
-      runInterpreter(taskSwitch)
-
-    }
+  def run: Task[Unit] = {
+    runInterpreter(taskSwitch)
+  }
 
 }
