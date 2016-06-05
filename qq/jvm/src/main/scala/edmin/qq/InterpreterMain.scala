@@ -7,9 +7,11 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 
 object InterpreterMain extends App {
-  def main(): Unit = {
-    val prom = Promise[Unit]()
-    Interpreter.run.runAsync { prom.complete(_) }
-    Await.result(prom.future, 5.minutes)
+  println("In main!")
+  val prom = Promise[Unit]()
+  Interpreter.run.runAsync {
+    prom.complete(_)
   }
+  Await.result(prom.future, 5.minutes)
+  println("End of main!")
 }
