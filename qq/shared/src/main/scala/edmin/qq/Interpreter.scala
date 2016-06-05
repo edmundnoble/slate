@@ -1,12 +1,8 @@
 package edmin.qq
 
-import java.io.{BufferedReader, InputStreamReader}
-
 import edmin.qq.QQSharedCompiler._
 import monix.eval.Task
 import upickle.{Js, json}
-
-import scala.io.StdIn
 
 object Interpreter {
 
@@ -52,16 +48,6 @@ object Interpreter {
     case ":q" => Task { println("Bye!"); sys.exit(0) }
   })
 
-  def runInterpreter(interpreter: Interpreter): Task[Unit] = Task.defer {
-    println(s"Entered interpreter ${interpreter.name}")
-    interpreter.run.lift(StdIn.readLine())
-      .fold(Task {
-        println("end!")
-      })(_.flatMap { case (out, next) => println(out); Task.defer(runInterpreter(next)) })
-  }
-
-  def run: Task[Unit] = {
-    runInterpreter(taskSwitch)
-  }
+  def run: Interpreter = taskSwitch
 
 }
