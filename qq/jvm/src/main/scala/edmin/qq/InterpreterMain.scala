@@ -3,7 +3,6 @@ package edmin.qq
 import edmin.qq.Interpreter.Interpreter
 import monix.eval.Task
 
-import scala.util.{Failure, Success, Try}
 import monix.execution.Scheduler.Implicits.global
 
 import scala.concurrent.Promise

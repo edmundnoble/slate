@@ -163,7 +163,7 @@ object DashboarderBuild extends Build {
     testFrameworks += new TestFramework("utest.runner.Framework")
   )
 
-  val jsSettings: Seq[sbt.Def.Setting[Boolean]] = Seq(
+  val jsSettings: Seq[sbt.Def.Setting[_]] = Seq(
     scalaJSUseRhino in Global := false,
     relativeSourceMaps := true
   )

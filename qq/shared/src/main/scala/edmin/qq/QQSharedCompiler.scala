@@ -10,7 +10,7 @@ object QQSharedCompiler extends QQCompiler {
   val taskOfListOfNull: Task[List[AnyTy]] = Task.now(List(Js.Null))
   val emptyArray: Js.Arr = Js.Arr()
 
-  def enlistCompiledFilters(filter: CompiledFilter): CompiledFilter = { jsv: Js.Value =>
+  def enlistFilter(filter: CompiledFilter): CompiledFilter = { jsv: Js.Value =>
     for {
       results <- filter(jsv)
     } yield Js.Arr(results: _*) :: Nil

@@ -51,7 +51,7 @@ abstract class QQCompiler {
           compiledF <- EitherT(Coeval.defer(compile(definitions, f).run))
           compiledS <- EitherT(Coeval.defer(compile(definitions, s).run))
         } yield composeCompiledFilters(compiledF, compiledS)
-      case EnlistFilter(f) => EitherT(Coeval.defer(compile(definitions, f).run)).map(enlistCompiledFilters)
+      case EnlistFilter(f) => EitherT(Coeval.defer(compile(definitions, f).run)).map(enlistFilter)
       case SilenceExceptions(f) =>
         for {
           fun <- EitherT(Coeval.defer(compile(definitions, f).run))
@@ -80,7 +80,7 @@ abstract class QQCompiler {
     }
   }
 
-  def enlistCompiledFilters(filter: CompiledFilter): CompiledFilter
+  def enlistFilter(filter: CompiledFilter): CompiledFilter
   def selectKey(key: String): CompiledFilter
   def selectIndex(index: Int): CompiledFilter
   def selectRange(start: Int, end: Int): CompiledFilter

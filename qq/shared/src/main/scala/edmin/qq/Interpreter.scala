@@ -12,7 +12,7 @@ object Interpreter {
 
   def programInterpreter: Interpreter = taskSwitch orElse Interpreter ("program:", {
     case program: String =>
-      QQ.parseAndCompile(program, optimize = true).fold(
+      QQRunner.parseAndCompile(QQSharedCompiler, program, optimize = true).fold(
         (err: Exception) => Task(Console.err.println(s"Error: $err")) map (_ => ("", programInterpreter)),
         (compiledFilter: CompiledFilter) => Task.now(("", programInterpreterOf(program, compiledFilter)))
       )
@@ -36,7 +36,7 @@ object Interpreter {
 
   def inputInterpreterOf(source: String, input: Js.Value): Interpreter = taskSwitch orElse Interpreter (s"input ${source}, program: ", {
     case program: String =>
-      QQ.parseAndCompile(program, optimize = true).fold(
+      QQRunner.parseAndCompile(QQSharedCompiler, program, optimize = true).fold(
         (err: Exception) => Task(Console.err.println(s"Error: $err")) map (_ => ("", programInterpreter)),
         (compiledFilter: CompiledFilter) => compiledFilter(input).map { results => (results.mkString("(", ", ", "_"), inputInterpreterOf(source, input)) }
       )

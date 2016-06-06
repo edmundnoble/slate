@@ -33,7 +33,7 @@ object QQJSCompiler extends QQCompiler {
   val taskOfListOfNull: Task[List[AnyTy]] = Task.now(List(null))
   val emptyArray: js.Array[js.Any] = new js.Array[js.Any](0)
 
-  def enlistCompiledFilters(filter: CompiledFilter): CompiledFilter = { jsv: js.Any =>
+  def enlistFilter(filter: CompiledFilter): CompiledFilter = { jsv: js.Any =>
     for {
       results <- filter(jsv)
     } yield js.Array(results: _*) :: Nil
