@@ -1,23 +1,13 @@
 package edmin.qq
 
-import monix.eval.{Coeval, Task}
-import monix.reactive.Observable
-import monocle.macros.Lenses
+import edmin.qq.Util._
+import monix.eval.Coeval
 import monocle.macros._
-import monocle.Lens
-
-import scalaz.{EitherT, \/, \/-}
-import scalaz.syntax.traverse._
-import scalaz.syntax.std.option._
-import scalaz.syntax.id._
-import scalaz.syntax.monad._
-import scalaz.syntax.validation._
-import scalaz.syntax.either._
-import scalaz.std.list._
-import Util._
-import com.thoughtworks.each.Monadic._
 
 import scala.language.higherKinds
+import scalaz.std.list._
+import scalaz.syntax.monad._
+import scalaz.syntax.traverse._
 
 object QQAST {
   sealed trait QQFilter

@@ -1,18 +1,16 @@
 package edmin.qq
 
-import scala.concurrent.Future
-
 import edmin.qq.Util._
 import monix.execution.Scheduler.Implicits.global
 import utest._
 
 import scala.concurrent.Future
 
-object QQJVMRunnerTest extends utest.TestSuite {
+object QQUpickleRunnerTest extends utest.TestSuite {
   override val tests = TestSuite {
     def runTest(test: QQRunnerTest): Future[Unit] =
       QQRunner
-        .run(QQSharedCompiler, test.program)(List(test.input))
+        .run(QQUpickleCompiler, test.program)(List(test.input))
         .runFuture
         .map(out => assert(out == test.expectedOutput))
 

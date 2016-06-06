@@ -4,9 +4,10 @@ import edmin.qq.QQAST._
 import fastparse.core.{ParseError, Parsed}
 import monix.eval.Task
 
-import scalaz.{-\/, \/}
+import scalaz.\/
 import scalaz.std.list._
 import scalaz.syntax.traverse._
+import scalaz.syntax.either._
 import Util._
 
 object QQRunner {
@@ -22,7 +23,7 @@ object QQRunner {
         }
         compiler.compileProgram(optimizedDefinitions, main)
       case f@Parsed.Failure(_, _, _) =>
-        -\/(new ParseError(f))
+        new ParseError(f).left
     }
   }
 

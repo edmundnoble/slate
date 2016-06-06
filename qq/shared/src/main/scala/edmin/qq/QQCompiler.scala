@@ -28,7 +28,7 @@ abstract class QQCompiler {
   }
 
   def ensequenceCompiledFilters(functions: List[CompiledFilter]): CompiledFilter = { jsv: AnyTy =>
-    functions traverse (_ (jsv)) map (_.flatten)
+    Task.sequence(functions.map(_ (jsv))).map(_.flatten)
   }
 
   def compileProgram(definitions: List[Definition], main: QQFilter): QQCompilationException \/ CompiledFilter = {

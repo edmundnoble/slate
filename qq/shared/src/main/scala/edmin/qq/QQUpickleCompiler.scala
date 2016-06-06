@@ -4,7 +4,7 @@ import upickle.Js
 import QQCompiler._
 import monix.eval.Task
 
-object QQSharedCompiler extends QQCompiler {
+object QQUpickleCompiler extends QQCompiler {
   override type AnyTy = Js.Value
 
   val taskOfListOfNull: Task[List[AnyTy]] = Task.now(List(Js.Null))

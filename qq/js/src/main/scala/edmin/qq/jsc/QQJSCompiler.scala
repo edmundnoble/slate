@@ -1,31 +1,10 @@
 package edmin.qq.jsc
 
 import edmin.qq.QQCompiler
-
+import monix.eval.Task
 import scala.scalajs.js
-
-import monix.eval.{Coeval, Task}
-import monix.reactive.Observable
-import monocle.macros.Lenses
-import monocle.macros._
-import monocle.Lens
-
-import scala.scalajs.js
-import scalaz.{EitherT, \/, \/-}
-import scalaz.syntax.traverse._
-import scalaz.syntax.std.option._
-import scalaz.syntax.id._
-import scalaz.syntax.monad._
-import scalaz.syntax.validation._
-import scalaz.syntax.either._
-import scalaz.std.list._
-import edmin.qq.Util._
-import com.thoughtworks.each.Monadic._
-
 import scala.language.higherKinds
-import edmin.qq.QQAST._
 import QQCompiler._
-
 
 object QQJSCompiler extends QQCompiler {
   override type AnyTy = js.Any
