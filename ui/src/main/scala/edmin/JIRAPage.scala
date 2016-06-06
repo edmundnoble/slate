@@ -72,7 +72,6 @@ object SearchPage {
       )
     )
 
-
   case class FilterState(expanded: Boolean)
 
   object FilterState {
@@ -82,9 +81,7 @@ object SearchPage {
   val ReactTagOfModifiers = Lens((_: ReactTagOf[_]).modifiers)( c => e => e.copy(modifiers = c))
 
   def filterCardTemplate(result: SearchResult) = {
-    import monocle.state.all._
     import MonocleReact._
-    val toggleExpanded = FilterState.expanded.modify(!_)
     def buttonStyleForState(filterState: FilterState): Seq[TagMod] = {
       val otherStyles = Vector[TagMod](Styles.filterButtonIcon, "expand_more")
       if (filterState.expanded) otherStyles.:+[TagMod, Vector[TagMod]](Styles.filterButtonExpanded)
@@ -103,7 +100,7 @@ object SearchPage {
               )
             ),
             <.button(Styles.filterButton,
-              ^.onClick --> $.modState(toggleExpanded),
+              ^.onClick --> $.modStateL(FilterState.expanded)(!_),
               <.i(buttonStyleForState(state): _*)
             )
           ),
