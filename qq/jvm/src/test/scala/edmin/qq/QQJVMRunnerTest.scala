@@ -11,7 +11,10 @@ import scala.concurrent.Future
 object QQJVMRunnerTest extends utest.TestSuite {
   override val tests = TestSuite {
     def runTest(test: QQRunnerTest): Future[Unit] =
-      QQRunner.run(QQSharedCompiler, test.program)(List(test.input)).runFuture.map(out => assert(out == test.expectedOutput))
+      QQRunner
+        .run(QQSharedCompiler, test.program)(List(test.input))
+        .runFuture
+        .map(out => assert(out == test.expectedOutput))
 
     "identity program" - runTest(QQRunnerTest.identityProgram)
     "ensequenced filters program" - runTest(QQRunnerTest.ensequencedFilters)

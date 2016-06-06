@@ -11,7 +11,10 @@ import scala.scalajs.js
 object QQJSRunnerTest extends utest.TestSuite {
   override val tests = TestSuite {
     def runTest(test: QQRunnerTest): Future[Unit] =
-      QQRunner.run(QQJSCompiler, test.program)(List(upickle.json.writeJs(test.input).asInstanceOf[js.Any])).runFuture.map(out => assert(out.map(upickle.json.readJs) == test.expectedOutput))
+      QQRunner
+        .run(QQJSCompiler, test.program)(List(upickle.json.writeJs(test.input).asInstanceOf[js.Any]))
+        .runFuture
+        .map(out => assert(out.map(upickle.json.readJs) == test.expectedOutput))
 
     "identity program" - runTest(QQRunnerTest.identityProgram)
     "ensequenced filters program" - runTest(QQRunnerTest.ensequencedFilters)
