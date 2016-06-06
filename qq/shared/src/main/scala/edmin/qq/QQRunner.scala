@@ -29,7 +29,7 @@ object QQRunner {
   def run(compiler: QQCompiler, qqProgram: String)(input: List[compiler.AnyTy]): Task[List[compiler.AnyTy]] = {
     parseAndCompile(compiler, qqProgram, optimize = true).fold(
       Task.raiseError,
-      compiledFilter => input.traverse(compiledFilter).map(_.flatten)
+      input.traverse(_).map(_.flatten)
     )
   }
 

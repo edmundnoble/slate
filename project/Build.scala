@@ -168,12 +168,6 @@ object DashboarderBuild extends Build {
     relativeSourceMaps := true
   )
 
-  lazy val root: Project = Project(id = "root", base = file("."))
-    .aggregate(ui, qqjvm, qqjs)
-    .settings(Defaults.projectCore)
-    .settings(otherSettings)
-    .settings(ScalaJSPlugin.globalSettings)
-
   lazy val qq: CrossProject = crossProject.in(file("qq"))
     .settings(otherSettings: _*)
     .settings(commonDeps: _*)
@@ -194,5 +188,11 @@ object DashboarderBuild extends Build {
     .settings(commonDeps)
     .settings(testSettings)
     .settings(uiDeps)
+
+  lazy val root: Project = Project(id = "root", base = file("."))
+    .aggregate(ui, qqjvm, qqjs)
+    .settings(Defaults.projectCore)
+    .settings(otherSettings)
+    .settings(ScalaJSPlugin.globalSettings)
 
 }
