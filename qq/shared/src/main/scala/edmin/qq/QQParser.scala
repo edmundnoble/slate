@@ -10,6 +10,7 @@ object QQParser {
 
   import scalaz.Monad
   import scala.collection.mutable
+  import scalaz.syntax.std.option._
 
   implicit object ParserMonad extends Monad[Parser] {
     override def point[A](a: => A): Parser[A] =
@@ -40,7 +41,7 @@ object QQParser {
     stringLiteral) map SelectKey)
   val selectIndex: P[SelectIndex] = P(
     for {
-      fun <- wspStr("-").!.? map (_.fold(identity[Int] _)(_ => (i: Int) => -i))
+      fun <- wspStr("-").!.? map (_.cata(_ => (i: Int) => -i, identity[Int] _))
       number <- numericLiteral
     } yield SelectIndex(fun(number))
   )
@@ -54,7 +55,7 @@ object QQParser {
     P(
       for {
         s <- dottableSimpleFilter
-        f <- "[]".!.?.map(_.fold(identity[QQFilter] _)(_ => CollectResults.apply))
+        f <- "[]".!.?.map(_.cata(_ => CollectResults.apply _, identity[QQFilter] _))
       } yield f(s)
     )
 

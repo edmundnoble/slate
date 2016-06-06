@@ -10,14 +10,18 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.io.StdIn
 
+import scalaz.syntax.std.option._
+
 object InterpreterMain extends App {
 
   def runInterpreter(interpreter: Interpreter): Task[Unit] = Task.defer {
     println(s"Entered interpreter ${interpreter.name}")
     interpreter.run.lift(StdIn.readLine())
-      .fold(Task {
-        println("end!")
-      })(_.flatMap { case (out, next) => println(out); Task.defer(runInterpreter(next)) })
+      .cata(
+        _.flatMap { case (out, next) => println(out); Task.defer(runInterpreter(next)) },
+        Task {
+          println("end!")
+        })
   }
 
   def run: Task[Unit] = {

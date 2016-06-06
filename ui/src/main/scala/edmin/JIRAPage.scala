@@ -17,6 +17,7 @@ import monocle.macros.{GenLens, Lenses}
 
 import scala.concurrent.duration._
 import scalaz.Const
+import scalaz.syntax.std.option._
 
 object SearchPage {
 
@@ -59,7 +60,7 @@ object SearchPage {
       .build()
 
   def single[A](op: Option[A]): Seq[A] =
-    op.fold(Vector.empty[A])(Vector.empty[A] :+ _)
+    op.cata(Vector.empty[A] :+ _, Vector.empty[A])
 
   def filterRowTemplate(firstResult: Option[SearchResult], secondResult: Option[SearchResult]) =
     <.div(Styles.filterContainer,
