@@ -68,10 +68,10 @@ object QQParser {
 
   val smallFilter = P(dottedFilter | callFilter)
 
-  val pipedFilter: P[QQFilter] = P((smallFilter | ("(" ~/ filter ~ ")")).rep(sep = " ".rep ~ "|" ~ " ".rep, min = 1).map(_.reduceLeft(ComposeFilters)))
+  val pipedFilter: P[QQFilter] = P((smallFilter | ("(" ~/ filter ~ ")")).rep(sep = whitespace ~ "|" ~ whitespace, min = 1).map(_.reduceLeft(ComposeFilters)))
 
   val ensequencedFilters: P[EnsequenceFilters] =
-    P(pipedFilter.rep(min = 1, sep = P("," ~ CharsWhile(_ == ' '))).map(EnsequenceFilters))
+    P(pipedFilter.rep(min = 1, sep = P("," ~ whitespace)).map(EnsequenceFilters))
 
   val enlistedFilter: P[EnlistFilter] =
     P(("[" ~/ ensequencedFilters ~ "]").map(EnlistFilter))
