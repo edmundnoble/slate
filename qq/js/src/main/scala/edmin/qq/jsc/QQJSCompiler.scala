@@ -2,9 +2,12 @@ package edmin.qq.jsc
 
 import edmin.qq.QQCompiler
 import monix.eval.Task
+
 import scala.scalajs.js
 import scala.language.higherKinds
 import QQCompiler._
+
+import scalaz.\/
 
 object QQJSCompiler extends QQCompiler {
   override type AnyTy = js.Any
@@ -63,6 +66,9 @@ object QQJSCompiler extends QQCompiler {
       Task.raiseError(new QQRuntimeException(s"Tried to flatten $v but it's not an array"))
   }
 
+  override def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter = { jsv: js.Any =>
+    ???
+  }
 
 }
 

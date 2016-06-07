@@ -65,6 +65,13 @@ abstract class QQCompiler {
         val compiledFilters: EitherT[Coeval, QQCompilationException, List[CompiledFilter]] =
           f.filters.traverse(f => EitherT(Coeval.defer(compile(definitions, f).run)))
         compiledFilters.map(ensequenceCompiledFilters)
+      case EnjectFilter(obj) =>
+        val compiledDown: EitherT[Coeval, QQCompilationException, List[(String \/ CompiledFilter, CompiledFilter)]] = obj.traverse {
+          case (k, v) => {
+            k.traverse(compile(definitions, _)).flatMap(e => compile(definitions, v).map(e -> _))
+          }
+        }
+        compiledDown.map(enjectFilter)
       case SelectKey(k) =>
         EitherT(Coeval.now(selectKey(k).right[QQCompilationException]))
       case SelectIndex(i) =>
@@ -80,6 +87,7 @@ abstract class QQCompiler {
     }
   }
 
+  def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter
   def enlistFilter(filter: CompiledFilter): CompiledFilter
   def selectKey(key: String): CompiledFilter
   def selectIndex(index: Int): CompiledFilter

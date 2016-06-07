@@ -2,7 +2,10 @@ package edmin.qq
 
 import upickle.Js
 import QQCompiler._
-import monix.eval.Task
+import edmin.qq.QQAST.QQFilter
+import monix.eval.{Coeval, Task}
+
+import scalaz.{EitherT, \/}
 
 object QQUpickleCompiler extends QQCompiler {
   override type AnyTy = Js.Value
@@ -64,5 +67,7 @@ object QQUpickleCompiler extends QQCompiler {
     case v =>
       Task.raiseError(new QQRuntimeException(s"Tried to flatten $v but it's not an array"))
   }
-
+  override def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter = {
+    ???
+  }
 }

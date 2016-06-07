@@ -6,6 +6,7 @@ import monocle.macros._
 
 import scala.language.higherKinds
 import scalaz.std.list._
+import scalaz.\/
 import scalaz.syntax.monad._
 import scalaz.syntax.traverse._
 
@@ -22,6 +23,7 @@ object QQAST {
   case class SelectIndex(index: Int) extends QQFilter
   case class SelectRange(start: Int, end: Int) extends QQFilter
   case class CallFilter(name: String) extends QQFilter
+  case class EnjectFilter(obj: List[((String \/ QQFilter), QQFilter)]) extends QQFilter
   case class Definition(name: String, params: List[String], body: QQFilter)
   object Definition {
     val body = GenLens[Definition](_.body)
@@ -49,6 +51,7 @@ object QQAST {
         case EnlistFilter(f) => Coeval.defer(optimize(f).map(EnlistFilter))
         case CollectResults(f) => Coeval.defer(optimize(f).map(CollectResults))
         case EnsequenceFilters(filters) => filters.traverse(f => Coeval.defer(optimize(f))).map(EnsequenceFilters)
+        case EnjectFilter(obj) => obj.traverse { case (k, e) => k.traverse(optimize).flatMap(v => optimize(e).map(v -> _)) }.map(EnjectFilter(_))
         case f@SelectKey(_) => Coeval.now(f)
         case f@SelectIndex(_) => Coeval.now(f)
         case f@SelectRange(_, _) => Coeval.now(f)

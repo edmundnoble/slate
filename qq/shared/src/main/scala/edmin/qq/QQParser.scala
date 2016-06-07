@@ -2,6 +2,8 @@ package edmin.qq
 
 import fastparse.Implicits
 
+import scalaz.\/
+
 object QQParser {
 
   import QQAST._
@@ -11,6 +13,7 @@ object QQParser {
   import scalaz.Monad
   import scala.collection.mutable
   import scalaz.syntax.std.option._
+  import scalaz.syntax.either._
 
   implicit object ParserMonad extends Monad[Parser] {
     override def point[A](a: => A): Parser[A] =
@@ -23,7 +26,7 @@ object QQParser {
     type Acc = mutable.ListBuffer[T]
     def initial: Acc = new mutable.ListBuffer[T]()
     def accumulate(t: T, acc: Acc): Unit = acc += t
-    def result(acc: Acc): List[T]  = acc.result()
+    def result(acc: Acc): List[T] = acc.result()
   }
 
   val dot: P0 = P(".")
@@ -66,7 +69,7 @@ object QQParser {
 
   val callFilter: P[CallFilter] = P(filterIdentifier map CallFilter)
 
-  val smallFilter = P(dottedFilter | callFilter)
+  val smallFilter: P[QQFilter] = P(dottedFilter | callFilter)
 
   val pipedFilter: P[QQFilter] = P((smallFilter | ("(" ~/ filter ~ ")")).rep(sep = whitespace ~ "|" ~ whitespace, min = 1).map(_.reduceLeft(ComposeFilters)))
 
@@ -76,13 +79,19 @@ object QQParser {
   val enlistedFilter: P[EnlistFilter] =
     P(("[" ~/ ensequencedFilters ~ "]").map(EnlistFilter))
 
+  val enjectPair: P[(String \/ QQFilter, QQFilter)] =
+    P((("(" ~/ smallFilter ~ ")").map(_.right[String]) | filterIdentifier.map(_.left[QQFilter])) ~ ":" ~ whitespace ~ filter)
+
+  val enjectedFilter: P[EnjectFilter] =
+    P("{" ~/ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(EnjectFilter) ~ "}")
+
   val arguments: P[List[String]] =
     P("(" ~ filterIdentifier.rep(min = 1, sep = whitespace ~ "," ~ whitespace) ~ ")")
 
   val definition: P[Definition] =
     P("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~ whitespace ~ filter ~ ";" map (Definition.apply _).tupled)
 
-  val filter: P[QQFilter] = P(enlistedFilter | ensequencedFilters)
+  val filter: P[QQFilter] = P(enlistedFilter | ensequencedFilters | enjectedFilter)
 
   val program: P[(List[Definition], QQFilter)] = (definition.rep(sep = whitespace) ~ whitespace).?.map(_.getOrElse(Nil)) ~ filter
 
