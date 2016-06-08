@@ -149,7 +149,7 @@ object DashboarderBuild extends Build {
   )
 
   lazy val replMain =
-    mainClass in(Compile, run) := Some("edmin.qq.InterpreterMain")
+    mainClass in(Compile, run) := Some("qq.InterpreterMain")
 
   val otherSettings: Seq[sbt.Def.Setting[_]] = Seq(
     version := "0.0.1",
@@ -174,6 +174,7 @@ object DashboarderBuild extends Build {
     .settings(replMain: _*)
     .settings(testSettings: _*)
     .jsSettings(ScalaJSPlugin.projectSettings: _*)
+    .jsSettings(requiresDOM in Test := false)
 
   lazy val qqjvm = qq.jvm
   lazy val qqjs = qq.js
