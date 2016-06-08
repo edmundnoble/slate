@@ -39,15 +39,7 @@ object DashboarderApp extends scalajs.js.JSApp {
     import scalajs.concurrent.JSExecutionContext.Implicits.queue
     val longRegex = Pattern.compile("\n+\\s*", Pattern.MULTILINE)
     val fetchSearchResults = monadic[Task] {
-      val favoriteFilterResponse =
-        Ajax.get(url = "https://auviknetworks.atlassian.net/rest/api/2/filter/favourite",
-          timeout = 4000, headers = Creds.authData).delayExecution(loginDelay).flatMap(response =>
-          if (response.responseText == "[]") {
-            println("EMPTY RESPONSE")
-            Task.raiseError(new EmptyResponseException())
-          } else {
-            Task.now(response)
-          }).each
+      val favoriteFilterResponse = Ajax.get(url = "https://auviknetworks.atlassian.net/rest/api/2/filter/favourite", timeout = 4000, headers = Creds.authData).each
       println(s"favoriteFilterResponse ${favoriteFilterResponse.status} ${favoriteFilterResponse.statusText}: ${favoriteFilterResponse.responseText}")
       val favoriteFilters = json.read(favoriteFilterResponse.responseText).arr.map { r =>
         Filter(r.obj("self").str, r.obj("name").str, r.obj("owner").obj("name").str, r.obj("jql").str, r.obj("viewUrl").str)
