@@ -110,7 +110,11 @@ object DashboarderBuild extends Build {
     },
     chromeBuildFast := {
       val unpacked = target.value / "chrome" / "unpackedfast"
-      (resourceDirectory in Compile).value.listFiles().foreach(f => IO.copyFile(f, unpacked / f.getName))
+      (resourceDirectory in Compile).value.listFiles().foreach { resourceFile =>
+        val target = unpacked / resourceFile.getName
+        if (!target.exists() || resourceFile.lastModified() > target.lastModified())
+          IO.copyFile(resourceFile, target)
+      }
 
       Chrome.buildExtentionDirectory(unpacked)(
         (chromeGenerateManifest in Compile).value,
