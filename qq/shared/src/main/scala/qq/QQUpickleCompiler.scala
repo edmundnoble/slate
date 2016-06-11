@@ -2,7 +2,7 @@ package qq
 
 import upickle.Js
 import QQCompiler._
-import qq.QQAST.QQFilter
+import qq.QQAST.QQFilterComponent$
 import monix.eval.{Coeval, Task}
 
 import scalaz.{EitherT, \/}

@@ -1,6 +1,6 @@
 package qq
 
-import qq.QQAST._
+import qq.QQAST.QQFilterComponent._
 import qq.Util._
 import monix.eval.{Coeval, Task}
 
@@ -11,6 +11,8 @@ import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.{EitherT, \/}
 import matryoshka._
+import FunctorT.ops._
+import qq.QQAST.{Definition, QQProgram}
 
 abstract class QQCompiler {
 

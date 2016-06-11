@@ -9,7 +9,7 @@ case class QQDoubleCompilerTest(program: QQProgram, input: Js.Value, expectedOut
 
 object QQDoubleCompilerTest {
 
-  import QQAST.QQFilter
+  import QQAST.QQFilterComponent
 
   val selectKeys: List[QQDoubleCompilerTest] = {
     val dict = Js.Obj("present" -> Js.Num(1))

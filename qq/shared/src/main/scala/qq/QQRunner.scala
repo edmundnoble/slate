@@ -20,8 +20,8 @@ object QQRunner {
       case Parsed.Success((definitions, main), _) =>
         if (optimize) {
           compiler.compileProgram(
-            definitions.map(Definition.body.modify(_.transCataT(QQAST.optimize))),
-            main.transCataT(QQAST.optimize)
+            definitions.map(Definition.body.modify(_.transCataT(QQOptimizer.optimize))),
+            main.transCataT(QQOptimizer.optimize)
           )
         } else {
           compiler.compileProgram(definitions, main)

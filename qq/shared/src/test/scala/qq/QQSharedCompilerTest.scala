@@ -1,17 +1,15 @@
 package qq
 
-import qq.QQAST.{ComposeFilters, IdFilter, QQProgram, SelectKey}
-import qq.{QQAST, QQParser}
 import utest._
-import matryoshka._, FunctorT.ops._
+import matryoshka._
+import FunctorT.ops._
+import qq.QQAST.QQProgram
 
 object QQSharedCompilerTest extends utest.TestSuite {
 
   override val tests = TestSuite {
 
-    def optimize(p: QQProgram): QQProgram = p.transCataT(QQAST.optimize)
-
-    import QQAST.QQFilter
+    def optimize(p: QQProgram): QQProgram = p.transCataT(QQOptimizer.optimize)
 
     "optimize simple compositions" - {
       optimize(QQProgram.compose(QQProgram.id, QQProgram.selectKey("key"))) ==> QQProgram.selectKey("key")
