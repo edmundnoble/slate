@@ -1,23 +1,27 @@
 package qq
 
-import qq.QQAST.{ComposeFilters, IdFilter, SelectKey}
+import qq.QQAST.{ComposeFilters, IdFilter, QQProgram, SelectKey}
 import qq.{QQAST, QQParser}
 import utest._
+import matryoshka._, FunctorT.ops._
 
 object QQSharedCompilerTest extends utest.TestSuite {
 
   override val tests = TestSuite {
 
+    def optimize(p: QQProgram): QQProgram = p.transCataT(QQAST.optimize)
+
+    import QQAST.QQFilter
+
     "optimize simple compositions" - {
-      QQAST.optimize(ComposeFilters(IdFilter, SelectKey("key"))).runAttempt.value ==> SelectKey("key")
-      QQAST.optimize(ComposeFilters(IdFilter, ComposeFilters(SelectKey("key"), IdFilter))).runAttempt.value ==> SelectKey("key")
+      optimize(QQFilter.compose(QQFilter.id, QQFilter.selectKey("key"))) ==> QQFilter.selectKey("key")
+      optimize(QQFilter.compose(QQFilter.id, QQFilter.compose(QQFilter.selectKey("key"), QQFilter.id))) ==> QQFilter.selectKey("key")
     }
 
     "optimize pipes and dots to the same thing" - {
-      QQAST.optimize(QQParser.ensequencedFilters.parse(".key | .dang").get.value)
-        .runAttempt.value ==> ComposeFilters(SelectKey("key"), SelectKey("dang"))
-      QQAST.optimize(QQParser.ensequencedFilters.parse(".key.dang").get.value)
-        .runAttempt.value ==> ComposeFilters(SelectKey("key"), SelectKey("dang"))
+      val out = QQFilter.compose(QQFilter.selectKey("key"), QQFilter.selectKey("dang"))
+      optimize(QQParser.ensequencedFilters.parse(".key | .dang").get.value) ==> out
+      optimize(QQParser.ensequencedFilters.parse(".key.dang").get.value) ==> out
     }
 
   }

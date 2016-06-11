@@ -9,6 +9,8 @@ import scalaz.std.list._
 import scalaz.syntax.traverse._
 import scalaz.syntax.either._
 import Util._
+import matryoshka._
+import FunctorT.ops._
 
 object QQRunner {
 
@@ -17,7 +19,7 @@ object QQRunner {
     parsed match {
       case Parsed.Success((definitions, main), _) =>
         val optimizedDefinitions = if (optimize) {
-          definitions.map(Definition.body.modify(QQAST.optimize(_).runAttempt.value))
+          definitions.map(Definition.body.modify(_.transCataT(QQAST.optimize)))
         } else {
           definitions
         }

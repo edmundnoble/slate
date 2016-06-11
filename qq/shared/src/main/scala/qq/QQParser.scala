@@ -3,6 +3,9 @@ package qq
 import fastparse.Implicits
 
 import scalaz.\/
+import matryoshka._
+import FunctorT.ops._
+import fastparse.parsers.Combinators
 
 object QQParser {
 
@@ -40,59 +43,63 @@ object QQParser {
 
   val numericLiteral: P[Int] = CharsWhile(Character.isDigit).! map ((_: String).toInt)
 
-  val selectKey: P[SelectKey] = P((escapedStringLiteral |
-    stringLiteral) map SelectKey)
-  val selectIndex: P[SelectIndex] = P(
+  def selectKey[A]: P[QQProgram] = P((escapedStringLiteral |
+    stringLiteral) map QQFilter.selectKey)
+  def selectIndex[A]: P[QQProgram] = P(
     for {
       fun <- wspStr("-").!.? map (_.cata(_ => (i: Int) => -i, identity[Int] _))
       number <- numericLiteral
-    } yield SelectIndex(fun(number))
+    } yield QQFilter.selectIndex(fun(number))
   )
-  val selectRange: P[SelectRange] = P((numericLiteral ~ ":" ~/ numericLiteral) map SelectRange.tupled)
+  def selectRange[A]: P[QQProgram] = P((numericLiteral ~ ":" ~/ numericLiteral) map (QQFilter.selectRange _).tupled)
 
-  val dottableSimpleFilter: P[QQFilter] = P(
-    ("[" ~/ ((escapedStringLiteral map SelectKey) | selectRange | selectIndex) ~ "]") |
-      selectKey | selectIndex
+  def dottableSimpleFilter[A]: P[QQProgram] = P(
+    Combinators.Either[QQProgram](
+    "[" ~/ Combinators.Either[QQProgram](escapedStringLiteral map QQFilter.selectKey, selectRange, selectIndex) ~ "]",
+      selectKey, selectIndex)
   )
-  val dottableFilter: P[QQFilter] =
+  def dottableFilter[A]: P[QQProgram] =
     P(
       for {
         s <- dottableSimpleFilter
-        f <- "[]".!.?.map(_.cata(_ => CollectResults.apply _, identity[QQFilter] _))
+        f <- "[]".!.?.map(_.cata(_ => QQFilter.collectResults _, identity[QQProgram] _))
       } yield f(s)
     )
 
-  val dottedFilter: P[QQFilter] =
-    P(dot ~ (wspStr("[]").map(_ => CollectResults(IdFilter)) | dottableFilter).rep(sep = dot).map(_.foldLeft[QQFilter](IdFilter)(ComposeFilters)))
+  def dottedFilter[A]: P[QQProgram] =
+    P(dot ~ (wspStr("[]")
+      .map(_ => QQFilter.collectResults(QQFilter.id)) | dottableFilter)
+      .rep(sep = dot)
+      .map(_.foldLeft[QQProgram](QQFilter.id)(QQFilter.compose)))
 
-  private val filterIdentifier: P[String] = CharsWhile(Character.isAlphabetic(_)).!
+  private def filterIdentifier[A]: P[String] = CharsWhile(Character.isAlphabetic(_)).!
 
-  val callFilter: P[CallFilter] = P(filterIdentifier map CallFilter)
+  def callFilter[A]: P[QQProgram] = P(filterIdentifier map QQFilter.call)
 
-  val smallFilter: P[QQFilter] = P(dottedFilter | callFilter)
+  def smallFilter[A]: P[QQProgram] = P(dottedFilter | callFilter)
 
-  val pipedFilter: P[QQFilter] = P((smallFilter | ("(" ~/ filter ~ ")")).rep(sep = whitespace ~ "|" ~ whitespace, min = 1).map(_.reduceLeft(ComposeFilters)))
+  def pipedFilter[A]: P[QQProgram] = P((smallFilter | ("(" ~/ filter ~ ")")).rep(sep = whitespace ~ "|" ~ whitespace, min = 1).map(_.reduceLeft(QQFilter.compose)))
 
-  val ensequencedFilters: P[EnsequenceFilters] =
-    P(pipedFilter.rep(min = 1, sep = P("," ~ whitespace)).map(EnsequenceFilters))
+  def ensequencedFilters[A]: P[QQProgram] =
+    P(pipedFilter.rep(min = 1, sep = P("," ~ whitespace)).map(EnsequenceFilters(_).embed))
 
-  val enlistedFilter: P[EnlistFilter] =
-    P(("[" ~/ ensequencedFilters ~ "]").map(EnlistFilter))
+  def enlistedFilter[A]: P[QQProgram] =
+    P(("[" ~/ ensequencedFilters ~ "]").map(EnlistFilter(_).embed))
 
-  val enjectPair: P[(String \/ QQFilter, QQFilter)] =
-    P((("(" ~/ smallFilter ~ ")").map(_.right[String]) | filterIdentifier.map(_.left[QQFilter])) ~ ":" ~ whitespace ~ filter)
+  def enjectPair[A]: P[(String \/ QQProgram, QQProgram)] =
+    P((("(" ~/ smallFilter ~ ")").map(_.right[String]) | filterIdentifier.map(_.left[QQProgram])) ~ ":" ~ whitespace ~ filter)
 
-  val enjectedFilter: P[EnjectFilters] =
-    P("{" ~/ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(EnjectFilters) ~ "}")
+  def enjectedFilter[A]: P[QQProgram] =
+    P("{" ~/ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(EnjectFilters(_).embed) ~ "}")
 
-  val arguments: P[List[String]] =
+  def arguments[A]: P[List[String]] =
     P("(" ~ filterIdentifier.rep(min = 1, sep = whitespace ~ "," ~ whitespace) ~ ")")
 
-  val definition: P[Definition] =
+  def definition[A]: P[Definition] =
     P("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~ whitespace ~ filter ~ ";" map (Definition.apply _).tupled)
 
-  val filter: P[QQFilter] = P(enlistedFilter | ensequencedFilters | enjectedFilter)
+  def filter[A]: P[QQProgram] = P(enlistedFilter | ensequencedFilters | enjectedFilter)
 
-  val program: P[(List[Definition], QQFilter)] = (definition.rep(sep = whitespace) ~ whitespace).?.map(_.getOrElse(Nil)) ~ filter
+  def program[A]: P[(List[Definition], QQProgram)] = (definition.rep(sep = whitespace) ~ whitespace).?.map(_.getOrElse(Nil)) ~ filter
 
 }

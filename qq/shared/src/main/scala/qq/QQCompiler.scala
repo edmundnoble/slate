@@ -10,6 +10,7 @@ import scalaz.syntax.either._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.{EitherT, \/}
+import matryoshka._
 
 abstract class QQCompiler {
 
@@ -31,7 +32,7 @@ abstract class QQCompiler {
     Task.sequence(functions.map(_ (jsv))).map(_.flatten)
   }
 
-  def compileProgram(definitions: List[Definition], main: QQFilter): QQCompilationException \/ CompiledFilter = {
+  def compileProgram(definitions: List[Definition], main: QQProgram): QQCompilationException \/ CompiledFilter = {
     val compiledDefinitions: EitherT[Coeval, QQCompilationException, List[CompiledDefinition]] =
       definitions.foldLeft(EitherT(Coeval.now(nil[CompiledDefinition].right[QQCompilationException]))) {
         (soFar, nextDefinition) =>
@@ -42,9 +43,9 @@ abstract class QQCompiler {
     compiledDefinitions.flatMap(compile(_, main)).run.runAttempt.value
   }
 
-  def compile(definitions: List[CompiledDefinition], filter: QQFilter): EitherT[Coeval, QQCompilationException, CompiledFilter] = {
-    filter match {
-      case IdFilter =>
+  def compile(definitions: List[CompiledDefinition], filter: QQProgram): EitherT[Coeval, QQCompilationException, CompiledFilter] = {
+    filter.unFix match {
+      case IdFilter() =>
         EitherT(Coeval.now(((jsv: AnyTy) => Task.now(List(jsv))).right[QQCompilationException]))
       case ComposeFilters(f, s) =>
         for {
@@ -61,9 +62,9 @@ abstract class QQCompiler {
         } yield r
       case CollectResults(f) =>
         EitherT(Coeval.defer(compile(definitions, f).run)).map(collectResults)
-      case f: EnsequenceFilters =>
+      case EnsequenceFilters(filters) =>
         val compiledFilters: EitherT[Coeval, QQCompilationException, List[CompiledFilter]] =
-          f.filters.traverse(f => EitherT(Coeval.defer(compile(definitions, f).run)))
+          filters.traverse(f => EitherT(Coeval.defer(compile(definitions, f).run)))
         compiledFilters.map(ensequenceCompiledFilters)
       case EnjectFilters(obj) =>
         val compiledDown: EitherT[Coeval, QQCompilationException, List[(String \/ CompiledFilter, CompiledFilter)]] = obj.traverse {

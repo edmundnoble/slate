@@ -18,7 +18,8 @@ object DashboarderBuild extends Build {
     "com.github.julien-truffaut" %%% "monocle-core" % "1.2.1",
     "com.github.julien-truffaut" %%% "monocle-generic" % "1.2.1",
     "com.github.julien-truffaut" %%% "monocle-macro" % "1.2.1",
-    "com.github.julien-truffaut" %%% "monocle-state" % "1.2.1"
+    "com.github.julien-truffaut" %%% "monocle-state" % "1.2.1",
+    "com.slamdata" %%% "matryoshka-core" % "0.11.0"
   )
 
   val uiDeps = libraryDependencies ++= Seq(
@@ -94,12 +95,23 @@ object DashboarderBuild extends Build {
     out
   }
 
+  def copyResources(suffices: Seq[String]) = Def.task {
+    val file = (resourceDirectory in Compile).value
+    val unpacked = suffices.foldLeft(target.value)(_ / _)
+    file.listFiles().foreach { resourceFile =>
+      val target = unpacked / resourceFile.getName
+      if (!target.exists() || resourceFile.lastModified() > target.lastModified()) {
+        println(s"Src: $resourceFile, trg: $target")
+        IO.copyFile(resourceFile, target)
+      }
+    }
+    unpacked
+  }
+
   lazy val chromeTasks: Seq[Def.Setting[_]] = Seq(
     chromePackageContent := file("content"),
     chromeBuildOpt := {
-      val unpacked = target.value / "chrome" / "unpackedopt"
-      (resourceDirectory in Compile).value.listFiles().foreach(f => IO.copyFile(f, unpacked / f.getName))
-
+      val unpacked = copyResources(Seq("chrome", "unpackedopt")).value
       Chrome.buildExtentionDirectory(unpacked)(
         (chromeGenerateManifest in Compile).value,
         (fullOptJS in Compile).value.data,
@@ -108,14 +120,9 @@ object DashboarderBuild extends Build {
         (chromePackageContent in Compile).value
       )
     },
-    chromeBuildFast := {
-      val unpacked = target.value / "chrome" / "unpackedfast"
-      (resourceDirectory in Compile).value.listFiles().foreach { resourceFile =>
-        val target = unpacked / resourceFile.getName
-        if (!target.exists() || resourceFile.lastModified() > target.lastModified())
-          IO.copyFile(resourceFile, target)
-      }
 
+    chromeBuildFast := {
+      val unpacked = copyResources(Seq("chrome", "unpackedfast")).value
       Chrome.buildExtentionDirectory(unpacked)(
         (chromeGenerateManifest in Compile).value,
         (fastOptJS in Compile).value.data,
@@ -124,9 +131,9 @@ object DashboarderBuild extends Build {
         (chromePackageContent in Compile).value
       )
     },
+
     chromeBuildUnopt := {
-      val unpacked = target.value / "chrome" / "unpackedunopt"
-      (resourceDirectory in Compile).value.listFiles().foreach(f => IO.copyFile(f, unpacked / f.getName))
+      val unpacked = copyResources(Seq("chrome", "unpackedunopt")).value
       val oldOpts = scalaJSOptimizerOptions.value
       scalaJSOptimizerOptions := oldOpts.withDisableOptimizer(true)
       val file =
@@ -140,6 +147,7 @@ object DashboarderBuild extends Build {
       scalaJSOptimizerOptions := oldOpts
       file
     },
+
     chromePackage := {
       val out = target.value / "chrome"
       val chromeAppDir = chromeBuildOpt.value

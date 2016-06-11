@@ -6,61 +6,82 @@ import monocle.macros._
 
 import scala.language.higherKinds
 import scalaz.std.list._
-import scalaz.\/
+import scalaz.{Functor, \/, ~>}
 import scalaz.syntax.monad._
 import scalaz.syntax.traverse._
+import matryoshka._
+import FunctorT.ops._
+import scalaz.syntax.arrow._
+import scalaz.std.function._
 
 object QQAST {
-  sealed trait QQFilter
-  case object IdFilter extends QQFilter
-  case object FetchApi extends QQFilter
-  final case class ComposeFilters(first: QQFilter, second: QQFilter) extends QQFilter
-  final case class SilenceExceptions(f: QQFilter) extends QQFilter
-  final case class EnlistFilter(f: QQFilter) extends QQFilter
-  final case class CollectResults(f: QQFilter) extends QQFilter
-  final case class EnsequenceFilters(filters: List[QQFilter]) extends QQFilter
-  final case class SelectKey(key: String) extends QQFilter
-  final case class SelectIndex(index: Int) extends QQFilter
-  final case class SelectRange(start: Int, end: Int) extends QQFilter
-  final case class CallFilter(name: String) extends QQFilter
-  final case class EnjectFilters(obj: List[((String \/ QQFilter), QQFilter)]) extends QQFilter
+  type QQProgram = Fix[QQFilter]
 
-  final case class Definition(name: String, params: List[String], body: QQFilter)
+  sealed trait QQFilter[A]
+  final case class IdFilter[A] private () extends QQFilter[A]
+  final case class FetchApi[A] private () extends QQFilter[A]
+  final case class ComposeFilters[A] private (first: A, second: A) extends QQFilter[A]
+  final case class SilenceExceptions[A] private (f: A) extends QQFilter[A]
+  final case class EnlistFilter[A] private (f: A) extends QQFilter[A]
+  final case class CollectResults[A] private (f: A) extends QQFilter[A]
+  final case class EnsequenceFilters[A] private (filters: List[A]) extends QQFilter[A]
+  final case class EnjectFilters[A] private (obj: List[((String \/ A), A)]) extends QQFilter[A]
+  final case class CallFilter[A] private (name: String) extends QQFilter[A]
+  final case class SelectKey[A] private (key: String) extends QQFilter[A]
+  final case class SelectIndex[A] private (index: Int) extends QQFilter[A]
+  final case class SelectRange[A] private (start: Int, end: Int) extends QQFilter[A]
+
+  object QQFilter {
+    def id: QQProgram = Fix(IdFilter())
+    def fetch: QQProgram = Fix(FetchApi())
+    def compose(first: QQProgram, second: QQProgram): QQProgram = Fix(ComposeFilters(first, second))
+    def silence(f: QQProgram): QQProgram = Fix(SilenceExceptions(f))
+    def enlist(f: QQProgram): QQProgram = Fix(EnlistFilter(f))
+    def collectResults(f: QQProgram): QQProgram = Fix(CollectResults(f))
+    def ensequence(filters: List[QQProgram]): QQProgram = Fix(EnsequenceFilters(filters))
+    def enject(obj: List[((String \/ QQProgram), QQProgram)]): QQProgram = Fix(EnjectFilters(obj))
+    def call(name: String): QQProgram = Fix(CallFilter(name))
+    def selectKey(key: String): QQProgram = Fix(SelectKey(key))
+    def selectIndex(index: Int): QQProgram = Fix(SelectIndex(index))
+    def selectRange(start: Int, end: Int): QQProgram = Fix(SelectRange(start, end))
+
+    implicit def qqfunctor = new Functor[QQFilter] {
+      override def map[A, B](fa: QQFilter[A])(f: (A) => B): QQFilter[B] = fa match {
+        case IdFilter() => IdFilter()
+        case FetchApi() => FetchApi()
+        case CallFilter(name) => CallFilter(name)
+        case SelectKey(k) => SelectKey(k)
+        case SelectIndex(i) => SelectIndex(i)
+        case SelectRange(s, e) => SelectRange(s, e)
+        case ComposeFilters(first, second) => ComposeFilters(f(first), f(second))
+        case SilenceExceptions(a) => SilenceExceptions(f(a))
+        case EnlistFilter(a) => EnlistFilter(f(a))
+        case CollectResults(a) => CollectResults(f(a))
+        case EnsequenceFilters(as) => EnsequenceFilters(as.map(f))
+        case EnjectFilters(obj) => EnjectFilters(obj.map { case (k, v) => k.map(f) -> f(v) })
+      }
+    }
+  }
+
+  final case class Definition(name: String, params: List[String], body: QQProgram)
   object Definition {
     val body = GenLens[Definition](_.body)
   }
 
-  type Optimization = PartialFunction[QQFilter, Coeval[QQFilter]]
+  type Optimization = Fix[QQFilter] => Fix[QQFilter]
 
   def idCompose: Optimization = {
-    case ComposeFilters(IdFilter, s) => Coeval.defer(optimize(s))
-    case ComposeFilters(f, IdFilter) => Coeval.defer(optimize(f))
+    case Fix(ComposeFilters(idf, s)) if idf.unFix == IdFilter() => s
+    case Fix(ComposeFilters(f, idf)) if idf.unFix == IdFilter() => f
+    case f => f
   }
 
   def ensequenceSingle: Optimization = {
-    case EnsequenceFilters(oneFilter :: Nil) => Coeval.defer(optimize(oneFilter))
+    case Fix(EnsequenceFilters(onef :: Nil)) => onef
+    case f => f
   }
 
-  def optimize(ast: QQFilter): Coeval[QQFilter] = {
-    (ensequenceSingle orElse idCompose).lift(ast).getOrElse {
-      ast match {
-        case f@IdFilter => Coeval.now(f)
-        case f@FetchApi => Coeval.now(f)
-        case ComposeFilters(f, s) =>
-          (Coeval.defer(optimize(f)) |@| Coeval.defer(optimize(s))) {
-            ComposeFilters
-          }
-        case SilenceExceptions(f) => Coeval.defer(optimize(f).map(SilenceExceptions))
-        case EnlistFilter(f) => Coeval.defer(optimize(f).map(EnlistFilter))
-        case CollectResults(f) => Coeval.defer(optimize(f).map(CollectResults))
-        case EnsequenceFilters(filters) => filters.traverse(f => Coeval.defer(optimize(f))).map(EnsequenceFilters)
-        case EnjectFilters(obj) => obj.traverse { case (k, e) => k.traverse(optimize).flatMap(v => optimize(e).map(v -> _)) }.map(EnjectFilters(_))
-        case f@SelectKey(_) => Coeval.now(f)
-        case f@SelectIndex(_) => Coeval.now(f)
-        case f@SelectRange(_, _) => Coeval.now(f)
-        case f@CallFilter(_) => Coeval.now(f)
-      }
-    }
-  }
+  val optimizations = Vector(idCompose, ensequenceSingle)
+  val optimize = optimizations.reduceLeft(_ <<< _)
 
 }
