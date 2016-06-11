@@ -14,12 +14,12 @@ object QQSharedCompilerTest extends utest.TestSuite {
     import QQAST.QQFilter
 
     "optimize simple compositions" - {
-      optimize(QQFilter.compose(QQFilter.id, QQFilter.selectKey("key"))) ==> QQFilter.selectKey("key")
-      optimize(QQFilter.compose(QQFilter.id, QQFilter.compose(QQFilter.selectKey("key"), QQFilter.id))) ==> QQFilter.selectKey("key")
+      optimize(QQProgram.compose(QQProgram.id, QQProgram.selectKey("key"))) ==> QQProgram.selectKey("key")
+      optimize(QQProgram.compose(QQProgram.id, QQProgram.compose(QQProgram.selectKey("key"), QQProgram.id))) ==> QQProgram.selectKey("key")
     }
 
     "optimize pipes and dots to the same thing" - {
-      val out = QQFilter.compose(QQFilter.selectKey("key"), QQFilter.selectKey("dang"))
+      val out = QQProgram.compose(QQProgram.selectKey("key"), QQProgram.selectKey("dang"))
       optimize(QQParser.ensequencedFilters.parse(".key | .dang").get.value) ==> out
       optimize(QQParser.ensequencedFilters.parse(".key.dang").get.value) ==> out
     }

@@ -18,12 +18,14 @@ object QQRunner {
     val parsed = QQParser.program.parse(program)
     parsed match {
       case Parsed.Success((definitions, main), _) =>
-        val optimizedDefinitions = if (optimize) {
-          definitions.map(Definition.body.modify(_.transCataT(QQAST.optimize)))
+        if (optimize) {
+          compiler.compileProgram(
+            definitions.map(Definition.body.modify(_.transCataT(QQAST.optimize))),
+            main.transCataT(QQAST.optimize)
+          )
         } else {
-          definitions
+          compiler.compileProgram(definitions, main)
         }
-        compiler.compileProgram(optimizedDefinitions, main)
       case f@Parsed.Failure(_, _, _) =>
         new ParseError(f).left
     }

@@ -16,6 +16,20 @@ import scalaz.std.function._
 
 object QQAST {
   type QQProgram = Fix[QQFilter]
+  object QQProgram {
+    def id: QQProgram = Fix(IdFilter())
+    def fetch: QQProgram = Fix(FetchApi())
+    def compose(first: QQProgram, second: QQProgram): QQProgram = Fix(ComposeFilters(first, second))
+    def silence(f: QQProgram): QQProgram = Fix(SilenceExceptions(f))
+    def enlist(f: QQProgram): QQProgram = Fix(EnlistFilter(f))
+    def collectResults(f: QQProgram): QQProgram = Fix(CollectResults(f))
+    def ensequence(filters: List[QQProgram]): QQProgram = Fix(EnsequenceFilters(filters))
+    def enject(obj: List[((String \/ QQProgram), QQProgram)]): QQProgram = Fix(EnjectFilters(obj))
+    def call(name: String): QQProgram = Fix(CallFilter(name))
+    def selectKey(key: String): QQProgram = Fix(SelectKey(key))
+    def selectIndex(index: Int): QQProgram = Fix(SelectIndex(index))
+    def selectRange(start: Int, end: Int): QQProgram = Fix(SelectRange(start, end))
+  }
 
   sealed trait QQFilter[A]
   final case class IdFilter[A] private () extends QQFilter[A]
@@ -32,19 +46,6 @@ object QQAST {
   final case class SelectRange[A] private (start: Int, end: Int) extends QQFilter[A]
 
   object QQFilter {
-    def id: QQProgram = Fix(IdFilter())
-    def fetch: QQProgram = Fix(FetchApi())
-    def compose(first: QQProgram, second: QQProgram): QQProgram = Fix(ComposeFilters(first, second))
-    def silence(f: QQProgram): QQProgram = Fix(SilenceExceptions(f))
-    def enlist(f: QQProgram): QQProgram = Fix(EnlistFilter(f))
-    def collectResults(f: QQProgram): QQProgram = Fix(CollectResults(f))
-    def ensequence(filters: List[QQProgram]): QQProgram = Fix(EnsequenceFilters(filters))
-    def enject(obj: List[((String \/ QQProgram), QQProgram)]): QQProgram = Fix(EnjectFilters(obj))
-    def call(name: String): QQProgram = Fix(CallFilter(name))
-    def selectKey(key: String): QQProgram = Fix(SelectKey(key))
-    def selectIndex(index: Int): QQProgram = Fix(SelectIndex(index))
-    def selectRange(start: Int, end: Int): QQProgram = Fix(SelectRange(start, end))
-
     implicit def qqfunctor = new Functor[QQFilter] {
       override def map[A, B](fa: QQFilter[A])(f: (A) => B): QQFilter[B] = fa match {
         case IdFilter() => IdFilter()
@@ -71,14 +72,14 @@ object QQAST {
   type Optimization = Fix[QQFilter] => Fix[QQFilter]
 
   def idCompose: Optimization = {
-    case Fix(ComposeFilters(idf, s)) if idf.unFix == IdFilter() => s
-    case Fix(ComposeFilters(f, idf)) if idf.unFix == IdFilter() => f
-    case f => f
+    case Fix(ComposeFilters(Fix(IdFilter()), s)) => s
+    case Fix(ComposeFilters(f, Fix(IdFilter()))) => f
+    case x => x
   }
 
   def ensequenceSingle: Optimization = {
     case Fix(EnsequenceFilters(onef :: Nil)) => onef
-    case f => f
+    case x => x
   }
 
   val optimizations = Vector(idCompose, ensequenceSingle)
