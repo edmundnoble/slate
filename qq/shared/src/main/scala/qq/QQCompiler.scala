@@ -1,10 +1,11 @@
 package qq
 
-import qq.QQAST.QQFilterComponent._
 import qq.Util._
-import monix.eval.{Coeval, Task}
+import qq.QQCompiler.{NoSuchMethod, QQCompilationException, QQRuntimeException}
+import qq.Definition
+import qq.QQFilterComponent._
 
-import scala.language.higherKinds
+import monix.eval.{Coeval, Task}
 import scalaz.std.list._
 import scalaz.syntax.either._
 import scalaz.syntax.std.option._
@@ -12,11 +13,8 @@ import scalaz.syntax.traverse._
 import scalaz.{EitherT, \/}
 import matryoshka._
 import FunctorT.ops._
-import qq.QQAST.{Definition, QQProgram}
 
 abstract class QQCompiler {
-
-  import QQCompiler._
 
   type AnyTy
   type CompiledFilter = AnyTy => Task[List[AnyTy]]
@@ -34,7 +32,7 @@ abstract class QQCompiler {
     Task.sequence(functions.map(_ (jsv))).map(_.flatten)
   }
 
-  def compileProgram(definitions: List[Definition], main: QQProgram): QQCompilationException \/ CompiledFilter = {
+  def compileProgram(definitions: List[Definition], main: QQFilter): QQCompilationException \/ CompiledFilter = {
     val compiledDefinitions: EitherT[Coeval, QQCompilationException, List[CompiledDefinition]] =
       definitions.foldLeft(EitherT(Coeval.now(nil[CompiledDefinition].right[QQCompilationException]))) {
         (soFar, nextDefinition) =>
@@ -45,7 +43,7 @@ abstract class QQCompiler {
     compiledDefinitions.flatMap(compile(_, main)).run.runAttempt.value
   }
 
-  def compile(definitions: List[CompiledDefinition], filter: QQProgram): EitherT[Coeval, QQCompilationException, CompiledFilter] = {
+  def compile(definitions: List[CompiledDefinition], filter: QQFilter): EitherT[Coeval, QQCompilationException, CompiledFilter] = {
     filter.unFix match {
       case IdFilter() =>
         EitherT(Coeval.now(((jsv: AnyTy) => Task.now(List(jsv))).right[QQCompilationException]))

@@ -1,9 +1,7 @@
 package qq
 
-import qq.QQAST._
 import fastparse.core.{ParseError, Parsed}
 import monix.eval.Task
-
 import scalaz.\/
 import scalaz.std.list._
 import scalaz.syntax.traverse._
@@ -11,6 +9,8 @@ import scalaz.syntax.either._
 import Util._
 import matryoshka._
 import FunctorT.ops._
+
+import qq.Definition
 
 object QQRunner {
 

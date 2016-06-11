@@ -1,11 +1,9 @@
 package qq
 
 import upickle.Js
-import QQCompiler._
-import qq.QQAST.QQFilterComponent$
-import monix.eval.{Coeval, Task}
-
-import scalaz.{EitherT, \/}
+import monix.eval.Task
+import qq.QQCompiler.QQRuntimeException
+import scalaz.\/
 
 object QQUpickleCompiler extends QQCompiler {
   override type AnyTy = Js.Value
