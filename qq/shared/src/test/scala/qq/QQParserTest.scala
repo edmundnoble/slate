@@ -69,8 +69,16 @@ object QQParserTest extends utest.TestSuite {
     }
 
     "parse enjected pairs" - {
-      QQParser.enjectPair.parse("hello: id").get.value ==> (-\/("hello"), QQFilter.call("id"))
-      QQParser.enjectPair.parse("(hello): id").get.value ==> (\/-(QQFilter.call("hello")), QQFilter.call("id"))
+      QQParser.enjectPair.parse("hello: id").get.value ==> (-\/("hello") -> QQFilter.call("id"))
+      QQParser.enjectPair.parse("(hello): id").get.value ==> (\/-(QQFilter.call("hello")) -> QQFilter.call("id"))
+      QQParser.enjectPair.parse("user").get.value ==> (-\/("user") -> QQFilter.selectKey("user"))
+    }
+
+    "parse enjected filters" - {
+      QQParser.enjectedFilter.parse("{ user, title: .titles[] }").get.value ==> QQFilter.enject(List(
+        -\/("user") -> QQFilter.selectKey("user"),
+        -\/("title") -> QQFilter.compose(QQFilter.id, QQFilter.collectResults(QQFilter.selectKey("titles")))
+      ))
     }
 
     "parse full programs" - {

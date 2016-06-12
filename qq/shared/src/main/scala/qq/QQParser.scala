@@ -2,7 +2,7 @@ package qq
 
 import fastparse.Implicits
 
-import scalaz.{Applicative, \/}
+import scalaz.{-\/, Applicative, \/}
 import matryoshka._
 import fastparse.parsers.Combinators
 import qq.Definition
@@ -41,7 +41,7 @@ object QQParser {
   val escapedStringLiteral: P[String] = P(
     quote ~/ CharsWhile(c => isStringLiteralChar(c) || c == ' ' || c == '\t').! ~ quote
   )
-  val whitespace: P0 = P(CharsWhile(_ == ' '))
+  val whitespace: P0 = P(CharsWhile(_ == ' ').?)
 
   val numericLiteral: P[Int] = P(
     CharsWhile(Character.isDigit).! map ((_: String).toInt)
@@ -108,12 +108,13 @@ object QQParser {
   )
 
   val enjectPair: P[(String \/ QQFilter, QQFilter)] = P(
-    (("(" ~/ smallFilter ~ ")").map(_.right[String]) |
-      filterIdentifier.map(_.left[QQFilter])) ~ ":" ~ whitespace ~ filter
+    ((("(" ~/ smallFilter ~ ")").map(_.right[String]) |
+      filterIdentifier.map(_.left[QQFilter])) ~ ":" ~ whitespace ~ filter) |
+      filterIdentifier.map(id => -\/(id) -> QQFilter.selectKey(id))
   )
 
   val enjectedFilter: P[QQFilter] = P(
-    "{" ~/ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(QQFilter.enject) ~ "}"
+    "{" ~/ whitespace ~ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(QQFilter.enject) ~ whitespace ~ "}"
   )
 
   val arguments: P[List[String]] = P(

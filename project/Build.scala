@@ -185,6 +185,7 @@ object DashboarderBuild extends Build {
     .settings(commonDeps: _*)
     .settings(replMain: _*)
     .settings(testSettings: _*)
+    .jsSettings(scalaJSUseRhino in Global := false)
     .jsSettings(ScalaJSPlugin.projectSettings: _*)
     .jsSettings(requiresDOM in Test := false)
 
