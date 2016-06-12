@@ -3,6 +3,11 @@ package qq
 import matryoshka._
 import FunctorT.ops._
 
+import scalaz.NonEmptyList
+import scalaz.syntax.foldable1._
+import scalaz.syntax.arrow._
+import scalaz.std.function._
+
 object QQOptimizer {
 
   import QQFilterComponent._
@@ -20,8 +25,8 @@ object QQOptimizer {
     case Fix(EnsequenceFilters(onef :: Nil)) => onef
   }
 
-  val optimizations: Vector[QQFilter => QQFilter] = Vector(idCompose, ensequenceSingle) map sealWithId
-  val allOptimizations: QQFilter => QQFilter = optimizations.reduceLeft(_ compose _)
+  val optimizations: NonEmptyList[QQFilter => QQFilter] = NonEmptyList(idCompose, ensequenceSingle) map sealWithId
+  val allOptimizations: QQFilter => QQFilter = optimizations.foldLeft1(_ >>> _)
   def optimize(f: QQFilter): QQFilter = f.transCataT(allOptimizations)
 
 }
