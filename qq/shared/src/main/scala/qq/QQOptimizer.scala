@@ -26,7 +26,7 @@ object QQOptimizer {
   }
 
   val optimizations: NonEmptyList[QQFilter => QQFilter] = NonEmptyList(idCompose, ensequenceSingle) map sealWithId
-  val allOptimizations: QQFilter => QQFilter = optimizations.foldLeft1(_ >>> _)
-  def optimize(f: QQFilter): QQFilter = f.transCataT(allOptimizations)
+  val allOptimizationsƒ: QQFilter => QQFilter = optimizations.foldLeft1(_ >>> _)
+  def optimize(f: QQFilter): QQFilter = f.transCataT(allOptimizationsƒ)
 
 }
