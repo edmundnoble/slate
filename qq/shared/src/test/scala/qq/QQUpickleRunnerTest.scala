@@ -18,5 +18,7 @@ object QQUpickleRunnerTest extends utest.TestSuite {
     "ensequenced filters program" - runTest(QQRunnerTest.ensequencedFilters)
     "enlisted filter program" - runTest(QQRunnerTest.enlistedFilters)
     "select key program" - runTest(QQRunnerTest.selectKeyProgram)
+    "collect results" - runTest(QQRunnerTest.collectResults)
+//    "enject filter program" - runTest(QQRunnerTest.enjectedFilters)
   }
 }

@@ -85,6 +85,7 @@ object QQParserTest extends utest.TestSuite {
       QQParser.program.parse("id").get.value ==>(Seq(), QQFilter.call("id"))
       QQParser.program.parse("def id: .; id").get.value ==>
         (Seq(Definition("id", Nil, QQFilter.id)), QQFilter.call("id"))
+      QQParser.program.parse(".titles[]").get.value ==> (Seq(), QQFilter.compose(QQFilter.id, QQFilter.collectResults(QQFilter.selectKey("titles"))))
     }
 
   }

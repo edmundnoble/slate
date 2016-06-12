@@ -62,13 +62,17 @@ object QQJSCompiler extends QQCompiler {
       }
   }
 
-  def collectResults(f: CompiledFilter): CompiledFilter = {
-    case arr: js.Array[js.Any@unchecked] =>
-      Task.now(arr.toList)
-    case dict: js.Object =>
-      Task.now(dict.asInstanceOf[js.Dictionary[js.Object]].values.toList)
-    case v =>
-      Task.raiseError(new QQRuntimeException(s"Tried to flatten $v but it's not an array"))
+  def collectResults(f: CompiledFilter): CompiledFilter = { jsv: js.Any =>
+    f(jsv).flatMap {
+      _.traverseM {
+        case arr: js.Array[js.Any@unchecked] =>
+          Task.now(arr.toList)
+        case dict: js.Object =>
+          Task.now(dict.asInstanceOf[js.Dictionary[js.Object]].map(_._2)(collection.breakOut))
+        case v =>
+          Task.raiseError(new QQRuntimeException(s"Tried to flatten $v but it's not an array"))
+      }
+    }
   }
 
   override def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter = { jsv: js.Any =>

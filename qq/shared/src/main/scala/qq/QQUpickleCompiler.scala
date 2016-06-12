@@ -9,6 +9,9 @@ import scalaz.std.list._
 import scalaz.syntax.traverse._
 import scalaz.syntax.applicative._
 import qq.Util._
+import com.thoughtworks.each.Monadic._
+
+import scala.collection.immutable.Nil
 
 object QQUpickleCompiler extends QQCompiler {
   override type AnyTy = Js.Value
@@ -62,13 +65,17 @@ object QQUpickleCompiler extends QQCompiler {
       Task.raiseError(new QQRuntimeException(s"Tried to select range $start:$end in $v but it's not an array"))
   }
 
-  def collectResults(f: CompiledFilter): CompiledFilter = {
-    case arr: Js.Arr =>
-      Task.now(arr.value.toList)
-    case dict: Js.Obj =>
-      Task.now(dict.value.map(_._2)(collection.breakOut))
-    case v =>
-      Task.raiseError(new QQRuntimeException(s"Tried to flatten $v but it's not an array"))
+  def collectResults(f: CompiledFilter): CompiledFilter = { jsv: Js.Value =>
+    f(jsv).flatMap {
+      _.traverseM {
+        case arr: Js.Arr =>
+          Task.now(arr.value.toList)
+        case dict: Js.Obj =>
+          Task.now(dict.value.map(_._2)(collection.breakOut))
+        case v =>
+          Task.raiseError(new QQRuntimeException(s"Tried to flatten $v but it's not an array"))
+      }
+    }
   }
 
   override def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter = { jsv: AnyTy =>
