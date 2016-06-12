@@ -18,6 +18,8 @@ object Util {
     override def bind[A, B](fa: Coeval[A])(f: (A) => Coeval[B]): Coeval[B] = fa.flatMap(f)
   }
 
+  def prod[A](xss: List[List[A]], ys: List[A]): List[List[A]] = for { xs <- xss; y <- ys; r <- (y :: xs) :: Nil } yield r
+
   implicit class TaskRunFuture[A](val task: Task[A]) {
     def runFuture(implicit s: Scheduler): Future[A] = {
       val prom = Promise[A]()

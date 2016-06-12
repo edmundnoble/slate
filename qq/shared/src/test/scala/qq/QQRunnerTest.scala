@@ -17,7 +17,11 @@ object QQRunnerTest {
   val collectResults = QQRunnerTest(".titles[]", Js.Obj("titles" -> Js.Arr(Js.Str("lol1"), Js.Str("wat1"))), List(Js.Str("lol1"), Js.Str("wat1")))
   val enjectedFilters = QQRunnerTest(
     "{user, (.titleName[]): .titles[]}",
-    Js.Obj("user" -> Js.Str("stedolan"), "titleName" -> Js.Arr(Js.Str("title1"), Js.Str("title2")), "titles" -> Js.Arr(Js.Str("JQ Primer"), Js.Str("More JQ"))),
+    Js.Obj(
+      "user" -> Js.Str("stedolan"),
+      "titleName" -> Js.Arr(Js.Str("title1"), Js.Str("title2")),
+      "titles" -> Js.Arr(Js.Str("JQ Primer"), Js.Str("More JQ"))
+    ),
     List(
       Js.Obj(
         "title1" -> Js.Str("JQ Primer"),

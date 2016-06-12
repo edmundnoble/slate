@@ -4,8 +4,9 @@ import upickle.Js
 import monix.eval.Task
 import qq.QQCompiler.QQRuntimeException
 
-import scalaz.{-\/, \/, \/-}
+import scalaz.{-\/, NonEmptyList, \/, \/-}
 import scalaz.std.list._
+import scalaz.syntax.std.list._
 import scalaz.syntax.traverse._
 import scalaz.syntax.applicative._
 import qq.Util._
@@ -79,7 +80,6 @@ object QQUpickleCompiler extends QQCompiler {
   }
 
   override def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter = { jsv: AnyTy =>
-    def prod[A](xss: List[List[A]], ys: List[A]): List[List[A]] = for { xs <- xss; y <- ys; r <- (y :: xs) :: Nil } yield r
     for {
       kvPairs <- obj.traverse {
         case (\/-(filterKey), filterValue) =>
@@ -98,13 +98,8 @@ object QQUpickleCompiler extends QQCompiler {
             valueResults <- filterValue(jsv)
           } yield valueResults.map(filterName -> _) :: Nil
       }
-      rs = kvPairs.reduceLeft((l1, l2) => l1.flatMap(a => l2.flatMap(b => List(a, b))))
-      ds = for {
-        kvPairList <- kvPairs
-        aw = kvPairList.flatten
-      } yield aw
-      (fst, snd) = (ds.head, ds.tail)
-      dwag = snd.foldLeft(List(fst))(prod)
-    } yield dwag.map(Js.Obj(_: _*))
+      kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => l.foldLeft(List(h))(prod) }
+    } yield kvPairsProducts.map(Js.Obj(_: _*))
   }
+
 }
