@@ -98,7 +98,7 @@ object QQUpickleCompiler extends QQCompiler {
             valueResults <- filterValue(jsv)
           } yield valueResults.map(filterName -> _) :: Nil
       }
-      kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => l.foldLeft(List(h))(prod) }
+      kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => l.foldLeft(h :: Nil)(prod) }
     } yield kvPairsProducts.map(Js.Obj(_: _*))
   }
 
