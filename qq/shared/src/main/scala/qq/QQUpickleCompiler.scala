@@ -79,23 +79,32 @@ object QQUpickleCompiler extends QQCompiler {
   }
 
   override def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter = { jsv: AnyTy =>
-    val kvPairs: Task[List[List[(String, AnyTy)]]] = obj.traverseM {
-      case (\/-(filterKey), filterValue) =>
-        for {
-          keyResults <- filterKey(jsv)
-          valueResults <- filterValue(jsv)
-          keyValuePairs <- keyResults.traverse {
-            case Js.Str(keyString) =>
-              Task.now(valueResults.map(keyString -> _))
-            case k =>
-              Task.raiseError(new QQRuntimeException(s"Tried to use $k as a key for an object but it's not a string"))
-          }
-        } yield keyValuePairs
-      case (-\/(filterName), filterValue) =>
-        for {
-          valueResults <- filterValue(jsv)
-        } yield valueResults.map(filterName -> _) :: Nil
-    }
-    kvPairs.map(_.map(Js.Obj(_: _*)))
+    def prod[A](xss: List[List[A]], ys: List[A]): List[List[A]] = for { xs <- xss; y <- ys; r <- (y :: xs) :: Nil } yield r
+    for {
+      kvPairs <- obj.traverse {
+        case (\/-(filterKey), filterValue) =>
+          for {
+            keyResults <- filterKey(jsv)
+            valueResults <- filterValue(jsv)
+            keyValuePairs <- keyResults.traverse {
+              case Js.Str(keyString) =>
+                Task.now(valueResults.map(keyString -> _))
+              case k =>
+                Task.raiseError(new QQRuntimeException(s"Tried to use $k as a key for an object but it's not a string"))
+            }
+          } yield keyValuePairs
+        case (-\/(filterName), filterValue) =>
+          for {
+            valueResults <- filterValue(jsv)
+          } yield valueResults.map(filterName -> _) :: Nil
+      }
+      rs = kvPairs.reduceLeft((l1, l2) => l1.flatMap(a => l2.flatMap(b => List(a, b))))
+      ds = for {
+        kvPairList <- kvPairs
+        aw = kvPairList.flatten
+      } yield aw
+      (fst, snd) = (ds.head, ds.tail)
+      dwag = snd.foldLeft(List(fst))(prod)
+    } yield dwag.map(Js.Obj(_: _*))
   }
 }
