@@ -8,7 +8,6 @@ import scalaz.syntax.traverse._
 import scalaz.syntax.either._
 import Util._
 import matryoshka._
-import FunctorT.ops._
 
 import qq.Definition
 
@@ -20,8 +19,8 @@ object QQRunner {
       case Parsed.Success((definitions, main), _) =>
         if (optimize) {
           compiler.compileProgram(
-            definitions.map(Definition.body.modify(_.transCataT(QQOptimizer.optimize))),
-            main.transCataT(QQOptimizer.optimize)
+            definitions.map(Definition.body.modify(QQOptimizer.optimize)),
+            QQOptimizer.optimize(main)
           )
         } else {
           compiler.compileProgram(definitions, main)

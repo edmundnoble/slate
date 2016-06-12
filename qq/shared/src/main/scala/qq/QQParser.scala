@@ -4,7 +4,6 @@ import fastparse.Implicits
 
 import scalaz.{Applicative, \/}
 import matryoshka._
-import FunctorT.ops._
 import fastparse.parsers.Combinators
 import qq.Definition
 

@@ -1,6 +1,7 @@
 package qq
 
 import matryoshka._
+import FunctorT.ops._
 
 object QQOptimizer {
 
@@ -20,6 +21,6 @@ object QQOptimizer {
   }
 
   val optimizations: Vector[QQFilter => QQFilter] = Vector(idCompose, ensequenceSingle) map sealWithId
-  val optimize: QQFilter => QQFilter = optimizations.reduceLeft(_ compose _)
+  def optimize(f: QQFilter): QQFilter = f.transCataT(optimizations.reduceLeft(_ compose _))
 
 }
