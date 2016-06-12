@@ -75,7 +75,7 @@ object QQJSCompiler extends QQCompiler {
 
   override def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter = { jsv: AnyTy =>
     for {
-      kvPairs <- obj.traverseM {
+      kvPairs <- obj.traverse {
         case (\/-(filterKey), filterValue) =>
           for {
             keyResults <- filterKey(jsv)
@@ -92,7 +92,7 @@ object QQJSCompiler extends QQCompiler {
             valueResults <- filterValue(jsv)
           } yield valueResults.map(filterName -> _) :: Nil
       }
-      kvPairsProducts = kvPairs <^> { case NonEmptyList(h, l) => l.foldLeft(h :: Nil)(prod) }
+      kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => l.foldLeft(h :: Nil)(prod) }
     } yield kvPairsProducts.map(js.Dictionary[js.Any](_: _*))
   }
 
