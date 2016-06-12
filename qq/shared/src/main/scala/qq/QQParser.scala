@@ -97,9 +97,10 @@ object QQParser {
   )
 
   val ensequencedFilters: P[QQFilter] = P(
-    pipedFilter
-      .rep(min = 1, sep = P("," ~ whitespace))
-      .map(QQFilter.ensequence)
+    for {
+      first <- pipedFilter
+      f <- ("," ~ whitespace ~ pipedFilter.rep(min = 1, sep = P("," ~ whitespace))).?.map(fs => (f: QQFilter) => fs.fold(f)(l => QQFilter.ensequence(f :: l)))
+    } yield f(first)
   )
 
   val enlistedFilter: P[QQFilter] = P(

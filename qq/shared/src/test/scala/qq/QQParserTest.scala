@@ -4,6 +4,8 @@ import fastparse.core.ParseError
 import qq.Definition
 import utest._
 
+import scalaz.{-\/, \/-}
+
 object QQParserTest extends utest.TestSuite {
 
   val tests = this {
@@ -45,11 +47,11 @@ object QQParserTest extends utest.TestSuite {
       QQParser.pipedFilter.parse(".key | .dang").get.value ==>
         QQFilter.compose(QQFilter.compose(QQFilter.id, QQFilter.selectKey("key")), QQFilter.compose(QQFilter.id, QQFilter.selectKey("dang")))
       QQParser.pipedFilter.parse("(.key) | (.dang)").get.value ==>
-        QQFilter.compose(QQFilter.ensequence(List(QQFilter.compose(QQFilter.id, QQFilter.selectKey("key")))),
-          QQFilter.ensequence(List(QQFilter.compose(QQFilter.id, QQFilter.selectKey("dang")))))
+        QQFilter.compose(QQFilter.compose(QQFilter.id, QQFilter.selectKey("key")),
+          QQFilter.compose(QQFilter.id, QQFilter.selectKey("dang")))
       QQParser.pipedFilter.parse("(.key) | (dang)").get.value ==>
-        QQFilter.compose(QQFilter.ensequence(List(QQFilter.compose(QQFilter.id, QQFilter.selectKey("key")))),
-          QQFilter.ensequence(List(QQFilter.call("dang"))))
+        QQFilter.compose(QQFilter.compose(QQFilter.id, QQFilter.selectKey("key")),
+          QQFilter.call("dang"))
     }
 
     "parse ensequenced filters" - {
@@ -63,13 +65,18 @@ object QQParserTest extends utest.TestSuite {
     }
 
     "parse definitions" - {
-      QQParser.definition.parse("def id: .;").get.value ==> Definition("id", Nil, QQFilter.ensequence(List(QQFilter.id)))
+      QQParser.definition.parse("def id: .;").get.value ==> Definition("id", Nil, QQFilter.id)
+    }
+
+    "parse enjected pairs" - {
+      QQParser.enjectPair.parse("hello: id").get.value ==> (-\/("hello"), QQFilter.call("id"))
+      QQParser.enjectPair.parse("(hello): id").get.value ==> (\/-(QQFilter.call("hello")), QQFilter.call("id"))
     }
 
     "parse full programs" - {
-      QQParser.program.parse("id").get.value ==>(Seq(), QQFilter.ensequence(List(QQFilter.call("id"))))
+      QQParser.program.parse("id").get.value ==>(Seq(), QQFilter.call("id"))
       QQParser.program.parse("def id: .; id").get.value ==>
-        (Seq(Definition("id", Nil, QQFilter.ensequence(List(QQFilter.id)))), QQFilter.ensequence(List(QQFilter.call("id"))))
+        (Seq(Definition("id", Nil, QQFilter.id)), QQFilter.call("id"))
     }
 
   }

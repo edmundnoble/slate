@@ -14,18 +14,13 @@ object QQOptimizer {
 
   type Optimization = PartialFunction[QQFilter, QQFilter]
 
-  def sealWithId[A](pf: PartialFunction[A, A]): A => A = { (a: A) => pf.applyOrElse(a, identity[A]) }
-
   def idCompose: Optimization = {
     case Fix(ComposeFilters(Fix(IdFilter()), s)) => s
     case Fix(ComposeFilters(f, Fix(IdFilter()))) => f
   }
 
-  def ensequenceSingle: Optimization = {
-    case Fix(EnsequenceFilters(onef :: Nil)) => onef
-  }
-
-  val optimizations: NonEmptyList[QQFilter => QQFilter] = NonEmptyList(idCompose, ensequenceSingle) map sealWithId
+  val optimizations: NonEmptyList[QQFilter => QQFilter] =
+    NonEmptyList(idCompose) map (f => repeatedly(f.lift))
   val allOptimizationsƒ: QQFilter => QQFilter = optimizations.foldLeft1(_ >>> _)
   def optimize(f: QQFilter): QQFilter = f.transCataT(allOptimizationsƒ)
 
