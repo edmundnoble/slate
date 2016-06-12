@@ -1,6 +1,8 @@
 package qq
 
-import scalaz.{Functor, \/}
+import scalaz.{Applicative, Functor, Traverse, \/}
+import scalaz.syntax.traverse._
+import scalaz.std.list._
 
 sealed abstract class QQFilterComponent[A]
 
@@ -18,7 +20,7 @@ object QQFilterComponent {
   final case class SelectIndex[A](index: Int) extends QQFilterComponent[A]
   final case class SelectRange[A](start: Int, end: Int) extends QQFilterComponent[A]
 
-  implicit def qqfiltercomponent = new Functor[QQFilterComponent] {
+  implicit def qqfiltercomponent = new Traverse[QQFilterComponent] {
     override def map[A, B](fa: QQFilterComponent[A])(f: (A) => B): QQFilterComponent[B] = fa match {
       case IdFilter() => IdFilter()
       case FetchApi() => FetchApi()
@@ -32,6 +34,22 @@ object QQFilterComponent {
       case CollectResults(a) => CollectResults(f(a))
       case EnsequenceFilters(as) => EnsequenceFilters(as.map(f))
       case EnjectFilters(obj) => EnjectFilters(obj.map { case (k, v) => k.map(f) -> f(v) })
+    }
+    override def traverseImpl[G[_], A, B](fa: QQFilterComponent[A])(f: (A) => G[B])(implicit G: Applicative[G]): G[QQFilterComponent[B]] = {
+      fa match {
+        case IdFilter() => G.point(IdFilter())
+        case FetchApi() => G.point(FetchApi())
+        case CallFilter(name) => G.point(CallFilter(name))
+        case SelectKey(k) => G.point(SelectKey(k))
+        case SelectIndex(i) => G.point(SelectIndex(i))
+        case SelectRange(s, e) => G.point(SelectRange(s, e))
+        case ComposeFilters(first, second) => G.apply2(f(first), f(second))(ComposeFilters(_, _))
+        case SilenceExceptions(a) => G.map(f(a))(SilenceExceptions(_))
+        case EnlistFilter(a) => G.map(f(a))(EnlistFilter(_))
+        case CollectResults(a) => G.map(f(a))(CollectResults(_))
+        case EnsequenceFilters(as) => as.traverse(f).map(EnsequenceFilters(_))
+        case EnjectFilters(obj) => obj.traverse { case (k, v) => G.tuple2(k.traverse(f), f(v)) }.map(EnjectFilters(_))
+      }
     }
   }
 
