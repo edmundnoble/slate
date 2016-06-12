@@ -21,6 +21,7 @@ object QQOptimizer {
   }
 
   val optimizations: Vector[QQFilter => QQFilter] = Vector(idCompose, ensequenceSingle) map sealWithId
-  def optimize(f: QQFilter): QQFilter = f.transCataT(optimizations.reduceLeft(_ compose _))
+  val allOptimizations: QQFilter => QQFilter = optimizations.reduceLeft(_ compose _)
+  def optimize(f: QQFilter): QQFilter = f.transCataT(allOptimizations)
 
 }

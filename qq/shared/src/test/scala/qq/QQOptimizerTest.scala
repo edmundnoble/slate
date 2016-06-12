@@ -3,7 +3,7 @@ package qq
 import utest._
 import matryoshka._
 
-object QQSharedCompilerTest extends utest.TestSuite {
+object QQOptimizerTest extends utest.TestSuite {
 
   override val tests = TestSuite {
 
