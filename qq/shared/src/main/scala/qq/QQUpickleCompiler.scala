@@ -3,7 +3,12 @@ package qq
 import upickle.Js
 import monix.eval.Task
 import qq.QQCompiler.QQRuntimeException
-import scalaz.\/
+
+import scalaz.{-\/, \/, \/-}
+import scalaz.std.list._
+import scalaz.syntax.traverse._
+import scalaz.syntax.applicative._
+import qq.Util._
 
 object QQUpickleCompiler extends QQCompiler {
   override type AnyTy = Js.Value
@@ -65,7 +70,25 @@ object QQUpickleCompiler extends QQCompiler {
     case v =>
       Task.raiseError(new QQRuntimeException(s"Tried to flatten $v but it's not an array"))
   }
-  override def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter = {
-    ???
+
+  override def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter = { jsv: AnyTy =>
+    val kvPairs: Task[List[List[(String, AnyTy)]]] = obj.traverseM {
+      case (\/-(filterKey), filterValue) =>
+        for {
+          keyResults <- filterKey(jsv)
+          valueResults <- filterValue(jsv)
+          keyValuePairs <- keyResults.traverse {
+            case Js.Str(keyString) =>
+              Task.now(valueResults.map(keyString -> _))
+            case k =>
+              Task.raiseError(new QQRuntimeException(s"Tried to use $k as a key for an object but it's not a string"))
+          }
+        } yield keyValuePairs
+      case (-\/(filterName), filterValue) =>
+        for {
+          valueResults <- filterValue(jsv)
+        } yield valueResults.map(filterName -> _) :: Nil
+    }
+    kvPairs.map(_.map(Js.Obj(_: _*)))
   }
 }

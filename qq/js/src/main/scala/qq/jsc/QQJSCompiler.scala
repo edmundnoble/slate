@@ -1,11 +1,16 @@
 package qq.jsc
 
-import qq.QQCompiler
 import monix.eval.Task
 
 import scala.scalajs.js
-import scala.language.higherKinds
-import QQCompiler._
+
+import scalaz.{-\/, \/, \/-}
+import scalaz.std.list._
+import scalaz.syntax.traverse._
+import scalaz.syntax.applicative._
+import qq.QQCompiler
+import qq.QQCompiler.QQRuntimeException
+import qq.Util._
 
 import scalaz.\/
 
@@ -67,7 +72,24 @@ object QQJSCompiler extends QQCompiler {
   }
 
   override def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter = { jsv: js.Any =>
-    ???
+    val kvPairs: Task[List[List[(String, AnyTy)]]] = obj.traverseM {
+      case (\/-(filterKey), filterValue) =>
+        for {
+          keyResults <- filterKey(jsv)
+          valueResults <- filterValue(jsv)
+          keyValuePairs <- keyResults.traverse {
+            case keyString: js.Any if keyString.isInstanceOf[String] =>
+              Task.now(valueResults.map(keyString.asInstanceOf[String] -> _))
+            case k =>
+              Task.raiseError(new QQRuntimeException(s"Tried to use $k as a key for an object but it's not a string"))
+          }
+        } yield keyValuePairs
+      case (-\/(filterName), filterValue) =>
+        for {
+          valueResults <- filterValue(jsv)
+        } yield valueResults.map(filterName -> _) :: Nil
+    }
+    kvPairs.map(_.map(js.Dictionary[js.Any](_: _*)))
   }
 
 }

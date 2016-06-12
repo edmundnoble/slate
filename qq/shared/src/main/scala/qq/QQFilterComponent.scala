@@ -21,6 +21,7 @@ object QQFilterComponent {
   final case class SelectRange[A](start: Int, end: Int) extends QQFilterComponent[A]
 
   implicit def qqfiltercomponent = new Traverse[QQFilterComponent] {
+
     override def map[A, B](fa: QQFilterComponent[A])(f: (A) => B): QQFilterComponent[B] = fa match {
       case IdFilter() => IdFilter()
       case FetchApi() => FetchApi()
@@ -35,6 +36,7 @@ object QQFilterComponent {
       case EnsequenceFilters(as) => EnsequenceFilters(as.map(f))
       case EnjectFilters(obj) => EnjectFilters(obj.map { case (k, v) => k.map(f) -> f(v) })
     }
+
     override def traverseImpl[G[_], A, B](fa: QQFilterComponent[A])(f: (A) => G[B])(implicit G: Applicative[G]): G[QQFilterComponent[B]] = {
       fa match {
         case IdFilter() => G.point(IdFilter())
