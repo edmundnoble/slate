@@ -51,9 +51,7 @@ abstract class QQCompiler {
     case IdFilter() => ((jsv: AnyTy) => Task.now(jsv :: Nil)).right
     case ComposeFilters(f, s) => composeCompiledFilters(f, s).right
     case EnlistFilter(f) => enlistFilter(f).right
-    case SilenceExceptions(f) => ((jsv: AnyTy) => f(jsv).onErrorRecover {
-      case _: QQRuntimeException => Nil
-    }).right
+    case SilenceExceptions(f) => ((jsv: AnyTy) => f(jsv).onErrorRecover { case _: QQRuntimeException => Nil }).right
     case CollectResults(f) => collectResults(f).right
     case EnsequenceFilters(filters) => ensequenceCompiledFilters(filters).right
     case EnjectFilters(obj) => enjectFilter(obj).right
