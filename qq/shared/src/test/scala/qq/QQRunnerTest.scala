@@ -53,4 +53,10 @@ object QQRunnerTest {
     List(Js.Num(2), Js.Num(6), Js.Num(1), Js.Num(0))
   )
 
+  val keys = QQRunnerTest(
+    "keys",
+    Js.Obj("abc" -> Js.Num(1), "abcd" -> Js.Num(2), "Foo" -> Js.Num(3)),
+    List(Js.Arr(Js.Str("abc"), Js.Str("abcd"), Js.Str("Foo")))
+  )
+
 }

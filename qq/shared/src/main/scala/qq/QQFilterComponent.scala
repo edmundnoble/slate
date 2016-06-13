@@ -19,6 +19,7 @@ object QQFilterComponent {
   final case class SelectKey[A](key: String) extends QQFilterComponent[A]
   final case class SelectIndex[A](index: Int) extends QQFilterComponent[A]
   final case class SelectRange[A](start: Int, end: Int) extends QQFilterComponent[A]
+  final case class ConstInt[A](value: Double) extends QQFilterComponent[A]
 
   implicit def qqfiltercomponent = new Traverse[QQFilterComponent] {
 

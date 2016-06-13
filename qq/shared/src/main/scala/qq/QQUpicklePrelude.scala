@@ -9,8 +9,7 @@ object QQUpicklePrelude extends QQUpickleCompiler.QQPrelude {
   override def length: CompiledDefinition =
     CompiledDefinition(
       "length",
-      Nil,
-      {
+      Nil, {
         case arr: Js.Arr => Task.now(Js.Num(arr.value.length) :: Nil)
         case Js.Str(str) => Task.now(Js.Num(str.length) :: Nil)
         case obj: Js.Obj => Task.now(Js.Num(obj.value.length) :: Nil)
@@ -18,4 +17,14 @@ object QQUpicklePrelude extends QQUpickleCompiler.QQPrelude {
         case k => Task.raiseError(new QQRuntimeException(s"Tried to get length of $k"))
       }
     )
+
+  override def keys: CompiledDefinition =
+    CompiledDefinition(
+      "keys",
+      Nil, {
+        case obj: Js.Obj => Task.now(Js.Arr(obj.value.map(p => Js.Str(p._1)): _*) :: Nil)
+        case k => Task.raiseError(new QQRuntimeException(s"Tried to get keys of $k"))
+      }
+    )
+
 }

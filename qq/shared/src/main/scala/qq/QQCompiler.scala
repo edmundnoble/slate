@@ -22,9 +22,11 @@ abstract class QQCompiler {
   type AnyTy
   type CompiledFilter = AnyTy => Task[List[AnyTy]]
   type OrCompilationError[T] = QQCompilationException \/ T
+
   trait QQPrelude {
     def length: CompiledDefinition
-    def all: List[CompiledDefinition] = List(length)
+    def keys: CompiledDefinition
+    def all: List[CompiledDefinition] = List(length, keys )
   }
 
   case class CompiledDefinition(name: String, params: List[String], body: CompiledFilter)

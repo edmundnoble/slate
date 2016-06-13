@@ -9,8 +9,7 @@ object QQJSPrelude extends QQJSCompiler.QQPrelude {
   override def length: CompiledDefinition =
     CompiledDefinition(
       "length",
-      Nil,
-      {
+      Nil, {
         case arr: js.Array[js.Any@unchecked] => Task.now(arr.length :: Nil)
         case str if str.isInstanceOf[String] => Task.now(str.asInstanceOf[String].length :: Nil)
         case obj: js.Object => Task.now(obj.asInstanceOf[js.Dictionary[js.Any]].toArray.length :: Nil)
@@ -18,4 +17,14 @@ object QQJSPrelude extends QQJSCompiler.QQPrelude {
         case k => Task.raiseError(new QQRuntimeException(s"Tried to get length of $k"))
       }
     )
+
+  override def keys: CompiledDefinition =
+    CompiledDefinition(
+      "keys",
+      Nil, {
+        case obj: js.Object => Task.now(js.Array(obj.asInstanceOf[js.Dictionary[js.Any]].keys.toSeq: _*) :: Nil)
+        case k => Task.raiseError(new QQRuntimeException(s"Tried to get keys of $k"))
+      }
+    )
+
 }
