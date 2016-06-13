@@ -20,5 +20,7 @@ object QQUpickleRunnerTest extends utest.TestSuite {
     "select key program" - runTest(QQRunnerTest.selectKeyProgram)
     "collect results" - runTest(QQRunnerTest.collectResults)
     "enject filter program" - runTest(QQRunnerTest.enjectedFilters)
+    "pipes program" - runTest(QQRunnerTest.pipes)
+    "length program" - runTest(QQRunnerTest.length)
   }
 }

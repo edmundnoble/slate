@@ -96,5 +96,7 @@ object QQJSCompiler extends QQCompiler {
     } yield kvPairsProducts.map(js.Dictionary[js.Any](_: _*))
   }
 
+  override def prelude = QQJSPrelude
+
 }
 

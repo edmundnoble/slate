@@ -40,4 +40,17 @@ object QQRunnerTest {
         "user" -> Js.Str("stedolan")
       )
     ))
+
+  val pipes = QQRunnerTest(
+    ".[] | .name",
+    Js.Arr(Js.Obj("name" -> Js.Str("JSON"), "good" -> Js.True), Js.Obj("name" -> Js.Str("XML"), "good" -> Js.False)),
+    List(Js.Str("JSON"), Js.Str("XML"))
+  )
+
+  val length = QQRunnerTest(
+    ".[] | length",
+    Js.Arr(Js.Arr(Js.Num(1), Js.Num(2)), Js.Str("string"), Js.Obj("a" -> Js.Num(2)), Js.Null),
+    List(Js.Num(2), Js.Num(6), Js.Num(1), Js.Num(0))
+  )
+
 }

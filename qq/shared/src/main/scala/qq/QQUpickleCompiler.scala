@@ -102,4 +102,6 @@ object QQUpickleCompiler extends QQCompiler {
     } yield kvPairsProducts.map(Js.Obj(_: _*))
   }
 
+  def prelude = QQUpicklePrelude
+
 }

@@ -22,6 +22,10 @@ abstract class QQCompiler {
   type AnyTy
   type CompiledFilter = AnyTy => Task[List[AnyTy]]
   type OrCompilationError[T] = QQCompilationException \/ T
+  trait QQPrelude {
+    def length: CompiledDefinition
+    def all: List[CompiledDefinition] = List(length)
+  }
 
   case class CompiledDefinition(name: String, params: List[String], body: CompiledFilter)
 
@@ -63,9 +67,10 @@ abstract class QQCompiler {
   }
 
   def compile(definitions: List[CompiledDefinition], filter: QQFilter): OrCompilationError[CompiledFilter] = {
-    filter.cataM[OrCompilationError, CompiledFilter](compileStep(definitions, _))
+    filter.cataM[OrCompilationError, CompiledFilter](compileStep(prelude.all ++ definitions, _))
   }
 
+  def prelude: QQPrelude
   def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter
   def enlistFilter(filter: CompiledFilter): CompiledFilter
   def selectKey(key: String): CompiledFilter
