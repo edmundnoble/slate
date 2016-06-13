@@ -7,17 +7,21 @@ import qq.QQFilterComponent._
 
 import monix.eval.{Coeval, Task}
 import scalaz.std.list._
+import scalaz.{EitherT, \/}
+import matryoshka._
+import Recursive.ops._
+import Corecursive.ops._
+import TraverseT.ops._
 import scalaz.syntax.either._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
-import scalaz.{EitherT, \/}
-import matryoshka._
-import FunctorT.ops._
+import scalaz.syntax.monad._
 
 abstract class QQCompiler {
 
   type AnyTy
   type CompiledFilter = AnyTy => Task[List[AnyTy]]
+  type OrCompilationError[T] = QQCompilationException \/ T
 
   case class CompiledDefinition(name: String, params: List[String], body: CompiledFilter)
 
@@ -33,59 +37,35 @@ abstract class QQCompiler {
   }
 
   def compileProgram(definitions: List[Definition], main: QQFilter): QQCompilationException \/ CompiledFilter = {
-    val compiledDefinitions: EitherT[Coeval, QQCompilationException, List[CompiledDefinition]] =
-      definitions.foldLeft(EitherT(Coeval.now(nil[CompiledDefinition].right[QQCompilationException]))) {
+    val compiledDefinitions: QQCompilationException \/ List[CompiledDefinition] =
+      definitions.foldLeft(nil[CompiledDefinition].right[QQCompilationException]) {
         (soFar, nextDefinition) =>
           soFar.flatMap(definitionsSoFar =>
-            EitherT(Coeval.defer(compile(definitionsSoFar, nextDefinition.body).run))
+            compile(definitionsSoFar, nextDefinition.body)
               .map(CompiledDefinition(nextDefinition.name, nextDefinition.params, _) :: definitionsSoFar))
       }
-    compiledDefinitions.flatMap(compile(_, main)).run.runAttempt.value
+    compiledDefinitions.flatMap(compile(_, main))
   }
 
-  def compile(definitions: List[CompiledDefinition], filter: QQFilter): EitherT[Coeval, QQCompilationException, CompiledFilter] = {
-    filter.unFix match {
-      case IdFilter() =>
-        EitherT(Coeval.now(((jsv: AnyTy) => Task.now(List(jsv))).right[QQCompilationException]))
-      case ComposeFilters(f, s) =>
-        for {
-          compiledF <- EitherT(Coeval.defer(compile(definitions, f).run))
-          compiledS <- EitherT(Coeval.defer(compile(definitions, s).run))
-        } yield composeCompiledFilters(compiledF, compiledS)
-      case EnlistFilter(f) => EitherT(Coeval.defer(compile(definitions, f).run)).map(enlistFilter)
-      case SilenceExceptions(f) =>
-        for {
-          fun <- EitherT(Coeval.defer(compile(definitions, f).run))
-          r = (jsv: AnyTy) => fun(jsv).onErrorRecover {
-            case _: QQRuntimeException => Nil
-          }
-        } yield r
-      case CollectResults(f) =>
-        EitherT(Coeval.defer(compile(definitions, f).run)).map(collectResults)
-      case EnsequenceFilters(filters) =>
-        val compiledFilters: EitherT[Coeval, QQCompilationException, List[CompiledFilter]] =
-          filters.traverse(f => EitherT(Coeval.defer(compile(definitions, f).run)))
-        compiledFilters.map(ensequenceCompiledFilters)
-      case EnjectFilters(obj) =>
-        val compiledDown: EitherT[Coeval, QQCompilationException, List[(String \/ CompiledFilter, CompiledFilter)]] = obj.traverse {
-          case (k, v) => {
-            k.traverse(compile(definitions, _)).flatMap(e => compile(definitions, v).map(e -> _))
-          }
-        }
-        compiledDown.map(enjectFilter)
-      case SelectKey(k) =>
-        EitherT(Coeval.now(selectKey(k).right[QQCompilationException]))
-      case SelectIndex(i) =>
-        EitherT(Coeval.now(selectIndex(i).right[QQCompilationException]))
-      case SelectRange(s, e) =>
-        EitherT(Coeval.now(selectRange(s, e).right[QQCompilationException]))
-      case CallFilter(filterIdentifier) =>
-        EitherT(Coeval.now(
-          definitions
-            .find(_.name == filterIdentifier)
-            .cata(_.body.right, NoSuchMethod(filterIdentifier).left)
-        ))
-    }
+  def compileStep(definitions: List[CompiledDefinition], filter: QQFilterComponent[CompiledFilter]): OrCompilationError[CompiledFilter] = filter match {
+    case IdFilter() => ((jsv: AnyTy) => Task.now(jsv :: Nil)).right
+    case ComposeFilters(f, s) => composeCompiledFilters(f, s).right
+    case EnlistFilter(f) => enlistFilter(f).right
+    case SilenceExceptions(f) => ((jsv: AnyTy) => f(jsv).onErrorRecover {
+      case _: QQRuntimeException => Nil
+    }).right
+    case CollectResults(f) => collectResults(f).right
+    case EnsequenceFilters(filters) => ensequenceCompiledFilters(filters).right
+    case EnjectFilters(obj) => enjectFilter(obj).right
+    case SelectKey(k) => selectKey(k).right
+    case SelectRange(s, e) => selectRange(s, e).right
+    case SelectIndex(i) => selectIndex(i).right
+    case CallFilter(filterIdentifier) =>
+      definitions.find(_.name == filterIdentifier).cata(_.body.right, NoSuchMethod(filterIdentifier).left)
+  }
+
+  def compile(definitions: List[CompiledDefinition], filter: QQFilter): OrCompilationError[CompiledFilter] = {
+    filter.cataM[OrCompilationError, CompiledFilter](compileStep(definitions, _))
   }
 
   def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter

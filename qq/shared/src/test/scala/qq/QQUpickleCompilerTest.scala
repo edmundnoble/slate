@@ -15,7 +15,7 @@ object QQUpickleCompilerTest extends utest.TestSuite {
 
     def testRun(qQDoubleCompilerTest: QQDoubleCompilerTest) = qQDoubleCompilerTest match {
       case QQDoubleCompilerTest(filter, input, result) =>
-        compile(Nil, filter).getOrElse(???).runAttempt.value(input).runFuture map (_ ==> result)
+        compile(Nil, filter).getOrElse(???).apply(input).runFuture map (_ ==> result)
     }
 
     "select keys" - Future.traverse(QQDoubleCompilerTest.selectKeys)(testRun)
