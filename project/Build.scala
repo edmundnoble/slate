@@ -101,7 +101,6 @@ object DashboarderBuild extends Build {
     file.listFiles().foreach { resourceFile =>
       val target = unpacked / resourceFile.getName
       if (!target.exists() || resourceFile.lastModified() > target.lastModified()) {
-        println(s"Src: $resourceFile, trg: $target")
         IO.copyFile(resourceFile, target)
       }
     }
