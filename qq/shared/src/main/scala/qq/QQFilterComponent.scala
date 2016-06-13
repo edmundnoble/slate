@@ -15,11 +15,22 @@ object QQFilterComponent {
   final case class CollectResults[A](f: A) extends QQFilterComponent[A]
   final case class EnsequenceFilters[A](filters: List[A]) extends QQFilterComponent[A]
   final case class EnjectFilters[A](obj: List[((String \/ A), A)]) extends QQFilterComponent[A]
+
   final case class CallFilter[A](name: String) extends QQFilterComponent[A]
+
   final case class SelectKey[A](key: String) extends QQFilterComponent[A]
   final case class SelectIndex[A](index: Int) extends QQFilterComponent[A]
   final case class SelectRange[A](start: Int, end: Int) extends QQFilterComponent[A]
-  final case class ConstInt[A](value: Double) extends QQFilterComponent[A]
+
+  sealed abstract class ConstantComponent[A] extends QQFilterComponent[A]
+  final case class ConstInt[A](value: Double) extends ConstantComponent[A]
+  final case class ConstString[A](value: String) extends ConstantComponent[A]
+
+  final case class AddFilters[A](first: A, second: A) extends QQFilterComponent[A]
+  final case class SubtractFilters[A](first: A, second: A) extends QQFilterComponent[A]
+  final case class MultiplyFilters[A](first: A, second: A) extends QQFilterComponent[A]
+  final case class DivideFilters[A](first: A, second: A) extends QQFilterComponent[A]
+  final case class ModuloFilters[A](first: A, second: A) extends QQFilterComponent[A]
 
   implicit def qqfiltercomponent = new Traverse[QQFilterComponent] {
 
