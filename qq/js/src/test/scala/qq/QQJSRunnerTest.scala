@@ -15,7 +15,7 @@ object QQJSRunnerTest extends utest.TestSuite {
       QQRunner
         .run(QQJSCompiler, test.program)(List(upickle.json.writeJs(test.input).asInstanceOf[js.Any]))
         .runFuture
-        .map(out => assert(out.map(upickle.json.readJs) == test.expectedOutput))
+        .map { out => val js = out.map(upickle.json.readJs); assert(js == test.expectedOutput) }
 
     "identity program" - runTest(identityProgram)
     "ensequenced filters program" - runTest(ensequencedFilters)

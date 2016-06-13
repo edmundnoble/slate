@@ -41,6 +41,7 @@ object QQJSPrelude extends QQJSCompiler.QQPrelude {
       "objects",
       Nil, {
         case null => Task.now(Nil)
+        case arr: js.Array[_] => Task.now(Nil)
         case obj: js.Object => Task.now(obj :: Nil)
         case k => Task.now(Nil)
       })
