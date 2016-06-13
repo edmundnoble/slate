@@ -59,4 +59,59 @@ object QQRunnerTest {
     List(Js.Arr(Js.Str("abc"), Js.Str("abcd"), Js.Str("Foo")))
   )
 
+  val numbers = QQRunnerTest(
+    ".[]|numbers",
+    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    List(Js.Num(1))
+  )
+
+  val arrays = QQRunnerTest(
+    ".[]|arrays",
+    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    List(Js.Arr())
+  )
+
+  val objects = QQRunnerTest(
+    ".[]|objects",
+    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    List(Js.Obj())
+  )
+
+  val iterables = QQRunnerTest(
+    ".[]|iterables",
+    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    List(Js.Arr(), Js.Obj())
+  )
+
+  val booleans = QQRunnerTest(
+    ".[]|booleans",
+    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    List(Js.True, Js.False)
+  )
+
+  val strings = QQRunnerTest(
+    ".[]|strings",
+    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    List(Js.Str("foo"))
+  )
+
+  val nulls = QQRunnerTest(
+    ".[]|nulls",
+    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    List(Js.Null)
+  )
+
+  val values = QQRunnerTest(
+    ".[]|values",
+    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    List(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.True, Js.False)
+  )
+
+  val scalars = QQRunnerTest(
+    ".[]|scalars",
+    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    List(Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False)
+  )
+
+
 }

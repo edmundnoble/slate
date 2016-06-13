@@ -26,7 +26,18 @@ abstract class QQCompiler {
   trait QQPrelude {
     def length: CompiledDefinition
     def keys: CompiledDefinition
-    def all: List[CompiledDefinition] = List(length, keys )
+    def arrays: CompiledDefinition
+    def objects: CompiledDefinition
+    def iterables: CompiledDefinition
+    def booleans: CompiledDefinition
+    def numbers: CompiledDefinition
+    def strings: CompiledDefinition
+    def nulls: CompiledDefinition
+    def values: CompiledDefinition
+    def scalars: CompiledDefinition
+
+    def all: List[CompiledDefinition] =
+      List(length, keys, arrays, objects, iterables, booleans, numbers, strings, nulls, values, scalars)
   }
 
   case class CompiledDefinition(name: String, params: List[String], body: CompiledFilter)
