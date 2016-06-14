@@ -94,7 +94,7 @@ object SearchPage {
           <.div(Styles.filterHeader,
             <.div(Styles.filterHeaderLeft,
               <.div(Styles.filterNumber,
-                <.a(result.issues.length.toString, ^.href := result.filter.viewUrl)),
+                <.a(result.issues.length.toString(), ^.href := result.filter.viewUrl)),
               <.div(Styles.filterName,
                 <.a(result.filter.name, ^.href := result.filter.viewUrl)
               )

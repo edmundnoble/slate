@@ -24,7 +24,7 @@ object QQFilter {
   def collectResults(f: QQFilter): QQFilter = Fix(CollectResults(f))
   def ensequence(filters: List[QQFilter]): QQFilter = Fix(EnsequenceFilters(filters))
   def enject(obj: List[((String \/ QQFilter), QQFilter)]): QQFilter = Fix(EnjectFilters(obj))
-  def call(name: String): QQFilter = Fix(CallFilter(name, Nil))
+  def call(name: String, params: List[QQFilter] = Nil): QQFilter = Fix(CallFilter(name, params))
   def selectKey(key: String): QQFilter = Fix(SelectKey(key))
   def selectIndex(index: Int): QQFilter = Fix(SelectIndex(index))
   def selectRange(start: Int, end: Int): QQFilter = Fix(SelectRange(start, end))

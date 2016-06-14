@@ -45,7 +45,9 @@ object QQParserTest extends utest.TestSuite {
     }
 
     "parse called filters" - {
-      QQParser.callFilter.parse("test").get.value ==> QQFilter.call("test")
+      QQParser.callFilter.parse("test").get.value ==> QQFilter.call("test", Nil)
+      QQParser.callFilter.parse("test(.)").get.value ==> QQFilter.call("test", List(QQFilter.id))
+      QQParser.callFilter.parse("test(.;.)").get.value ==> QQFilter.call("test", List(QQFilter.id, QQFilter.id))
     }
 
     "parse piped filters" - {

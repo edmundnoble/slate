@@ -87,7 +87,10 @@ object QQParser {
   )
 
   val callFilter: P[QQFilter] = P(
-    filterIdentifier map QQFilter.call
+    for {
+      identifier <- filterIdentifier
+      params <- ("(" ~/ whitespace ~ filter.rep(min = 1, sep = whitespace ~ ";" ~ whitespace) ~ whitespace ~ ")").?.map(_.getOrElse(Nil))
+    } yield QQFilter.call(identifier, params)
   )
 
   val smallFilter: P[QQFilter] = P(dottedFilter | callFilter)
