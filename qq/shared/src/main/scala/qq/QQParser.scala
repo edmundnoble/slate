@@ -6,6 +6,8 @@ import scalaz.{-\/, Applicative, \/}
 import matryoshka._
 import fastparse.parsers.Combinators
 import qq.Definition
+import shapeless.ops.nat.ToInt
+import shapeless.{Nat, Sized}
 
 object QQParser {
 
@@ -121,15 +123,21 @@ object QQParser {
     "(" ~ filterIdentifier.rep(min = 1, sep = whitespace ~ "," ~ whitespace) ~ ")"
   )
 
-  val definition: P[Definition] = P(
-    "def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~ whitespace ~ filter ~ ";" map (Definition.apply _).tupled
+  val definition: P[Definition[_]] = P(
+    "def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~ whitespace ~ filter ~ ";" map {
+      case (identifier, args, body) =>
+        val size = args.size
+        Definition(identifier, Sized.wrap[List[String], Nat](args), body)(new ToInt[Nat] {
+          def apply() = size
+        })
+    }
   )
 
   val filter: P[QQFilter] = P(
     enlistedFilter | ensequencedFilters | enjectedFilter
   )
 
-  val program: P[(List[Definition], QQFilter)] = P(
+  val program: P[(List[Definition[_]], QQFilter)] = P(
     (definition.rep(sep = whitespace) ~ whitespace).?.map(_.getOrElse(Nil)) ~ filter
   )
 

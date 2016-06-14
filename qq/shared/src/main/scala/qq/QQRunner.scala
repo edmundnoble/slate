@@ -19,7 +19,7 @@ object QQRunner {
       case Parsed.Success((definitions, main), _) =>
         if (optimize) {
           compiler.compileProgram(
-            definitions.map(Definition.body.modify(QQOptimizer.optimize)),
+            definitions.map(defn => defn.modifyBody(QQOptimizer.optimize)),
             QQOptimizer.optimize(main)
           )
         } else {

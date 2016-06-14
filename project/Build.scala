@@ -165,6 +165,7 @@ object DashboarderBuild extends Build {
   val otherSettings: Seq[sbt.Def.Setting[_]] = Seq(
     version := "0.0.1",
     scalaVersion := "2.11.8",
+    scalacOptions += "-Xexperimental",
     persistLauncher in Compile := true,
     persistLauncher in Test := false,
     addCompilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full),

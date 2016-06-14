@@ -14,8 +14,6 @@ import Corecursive.ops._
 import TraverseT.ops._
 import monocle.macros.GenLens
 import shapeless._
-import ops.hlist.{Length, Mapped}
-import shapeless.LUBConstraint.<<:
 import shapeless.ops.nat.ToInt
 import shapeless.syntax.sized._
 
@@ -28,17 +26,16 @@ abstract class QQCompiler {
   type AnyTy
   type CompiledFilter = AnyTy => Task[List[AnyTy]]
   type OrCompilationError[T] = QQCompilationException \/ T
-  sealed abstract class CDefBase {
-    type Aux <: Nat
-  }
 
-  case class CompiledDefinition[
-  N <: Nat
-  ](name: String, body: Sized[List[CompiledFilter], N] => QQCompilationException \/ CompiledFilter)(implicit val numParams: ToInt[N]) extends CDefBase {
-    override type Aux = N
-  }
+  case class CompiledDefinition[N <: Nat]
+  (name: String, body: Sized[List[CompiledFilter], N] => QQCompilationException \/ CompiledFilter)
+  (implicit val ev: ToInt[N with Nat])
 
   trait QQPrelude {
+    def noParamDefinition(name: String, fun: CompiledFilter): CompiledDefinition[_0] = {
+      CompiledDefinition[_0](name, (_: Sized[List[CompiledFilter], _0]) => fun.right)
+    }
+
     def length: CompiledDefinition[_0]
 
     def keys: CompiledDefinition[_0]
@@ -77,34 +74,24 @@ abstract class QQCompiler {
     Task.sequence(functions.map(_ (jsv))).map(_.flatten)
   }
 
-  import ops.hlist.Comapped
-
-  object foldfun extends Poly2 {
-    implicit def st0[In0 <: HList, N <: Nat](implicit ev: UnaryTCConstraint[In0, CompiledDefinition]) =
-      at[\/[QQCompilationException, List[CompiledDefinition[_]]], Definition[N]] { (soFar, nextDefinition) =>
-        soFar.map(definitionsSoFar =>
-          CompiledDefinition[nextDefinition.Aux](nextDefinition.name, (params: Sized[List[CompiledFilter], N]) => {
-            val paramsAsDefinitions = (nextDefinition.params.unsized, params.unsized).zipped.map((name, value) => CompiledDefinition[_0](name, _ => value.right))
-            compile(definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body)
-          })(nextDefinition.numParams)
-        )
-      }
+  def foldfun(soFar: QQCompilationException \/ List[CompiledDefinition[_]], nextDefinition: Definition[_]) = {
+    soFar.map(definitionsSoFar =>
+      CompiledDefinition(nextDefinition.name, (params: Sized[List[CompiledFilter], Nat]) => {
+        val paramsAsDefinitions = (nextDefinition.params.unsized, params.unsized).zipped.map((name, value) => CompiledDefinition(name, (_: Sized[List[CompiledFilter], _0]) => value.right[QQCompilationException]))
+        compile(definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body)
+      })(nextDefinition.ev.asInstanceOf[ToInt[Nat]]) :: definitionsSoFar
+    )
   }
 
-  def compileProgram[NS <: HList, L <: HList](definitions: L, main: QQFilter)(implicit ev: Comapped.Aux[L, Definition, NS],
-                                                                                      ev2: LUBConstraint[NS, Nat]): QQCompilationException \/ CompiledFilter = {
-    val compiledDefinitions: List[CompiledDefinition[_]] =
+  def compileProgram(definitions: List[Definition[_]], main: QQFilter): QQCompilationException \/ CompiledFilter = {
+    val compiledDefinitions: QQCompilationException \/ List[CompiledDefinition[_]] =
       definitions.foldLeft(nil[CompiledDefinition[_]].right[QQCompilationException])(foldfun)
-    compile(compiledDefinitions, main)
+    compiledDefinitions.flatMap(compile(_, main))
   }
 
-  class findDefinition(name: String) extends Poly2 {
-    implicit def st0 = at[Option[CompiledDefinition[_]], CompiledDefinition[_]] { (maybe, next) =>
-      maybe.orElse(if (next.name == name) Some(next) else None)
-    }
-  }
-
-  def compileStep(definitions: List[CompiledDefinition[_]], filter: QQFilterComponent[CompiledFilter]): OrCompilationError[CompiledFilter] = filter match {
+  def compileStep
+  (definitions: List[CompiledDefinition[_]], filter: QQFilterComponent[CompiledFilter]
+  ): OrCompilationError[CompiledFilter] = filter match {
     case IdFilter() => ((jsv: AnyTy) => Task.now(jsv :: Nil)).right
     case ComposeFilters(f, s) => composeCompiledFilters(f, s).right
     case EnlistFilter(f) => enlistFilter(f).right
@@ -118,18 +105,21 @@ abstract class QQCompiler {
     case CallFilter(filterIdentifier, params) =>
       definitions.find(_.name == filterIdentifier).cata(
         { (defn: CompiledDefinition[_]) =>
-          params.sized[defn.Aux](defn.numParams).cata({
+          params.sized(defn.ev).cata({
             verifiedParams =>
-              defn.body(verifiedParams)
+              val d: (Sized[List[CompiledFilter], Nat] => QQCompilationException \/ CompiledFilter)  = defn.body.asInstanceOf[(Function[Sized[List[CompiledFilter], Nat], \/[QQCompilationException, CompiledFilter]])]
+              d(verifiedParams.asInstanceOf[Sized[List[CompiledFilter], Nat]])
           },
-            WrongNumParams(filterIdentifier, defn.numParams(), params.length).left
+            WrongNumParams(filterIdentifier, defn.ev(), params.length).left
           )
         },
         NoSuchMethod(filterIdentifier).left
       )
   }
 
-  def compile(definitions: List[CompiledDefinition[_]], filter: QQFilter): OrCompilationError[CompiledFilter] = {
+  def compile
+  (definitions: List[CompiledDefinition[_]], filter: QQFilter
+  ): OrCompilationError[CompiledFilter] = {
     filter.cataM[OrCompilationError, CompiledFilter](compileStep(prelude.all ++ definitions, _))
   }
 

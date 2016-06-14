@@ -8,9 +8,8 @@ import shapeless.ops.nat.ToInt
 
 final case class Definition[N <: Nat](name: String,
                                       params: Sized[List[String], N],
-                                      body: QQFilter)
-                                     (implicit val numParams: ToInt[N]) {
-  type Aux = N
+                                      body: QQFilter)(implicit val ev: ToInt[N]) {
+  def modifyBody(fun: QQFilter => QQFilter) = copy[N](name, params, fun(body))(ev)
 }
 
 object QQFilter {

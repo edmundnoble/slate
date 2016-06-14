@@ -5,10 +5,15 @@ import qq.Definition
 import utest._
 
 import scalaz.{-\/, \/-}
+import scalaz.syntax.std.list._
+import shapeless._
+import shapeless.ops.sized._
+import shapeless.syntax.sized._
 
 object QQParserTest extends utest.TestSuite {
 
   val tests = this {
+    val emptySized = (Nil: List[String]).ensureSized[_0]
 
     "parse plain dots" - {
       QQParser.dot.parse(".").get.value ==> (())
@@ -65,7 +70,7 @@ object QQParserTest extends utest.TestSuite {
     }
 
     "parse definitions" - {
-      QQParser.definition.parse("def id: .;").get.value ==> Definition("id", Nil, QQFilter.id)
+      QQParser.definition.parse("def id: .;").get.value.asInstanceOf[Definition[Nat]] ==> Definition[_0]("id", emptySized, QQFilter.id)
     }
 
     "parse enjected pairs" - {
@@ -84,7 +89,7 @@ object QQParserTest extends utest.TestSuite {
     "parse full programs" - {
       QQParser.program.parse("id").get.value ==>(Seq(), QQFilter.call("id"))
       QQParser.program.parse("def id: .; id").get.value ==>
-        (Seq(Definition("id", Nil, QQFilter.id)), QQFilter.call("id"))
+        (Seq(Definition[_0]("id", emptySized, QQFilter.id)), QQFilter.call("id"))
       QQParser.program.parse(".titles[]").get.value ==> (Seq(), QQFilter.compose(QQFilter.id, QQFilter.collectResults(QQFilter.selectKey("titles"))))
     }
 
