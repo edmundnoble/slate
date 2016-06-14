@@ -16,7 +16,7 @@ object QQFilterComponent {
   final case class EnsequenceFilters[A](filters: List[A]) extends QQFilterComponent[A]
   final case class EnjectFilters[A](obj: List[((String \/ A), A)]) extends QQFilterComponent[A]
 
-  final case class CallFilter[A](name: String) extends QQFilterComponent[A]
+  final case class CallFilter[A](name: String, params: List[A]) extends QQFilterComponent[A]
 
   final case class SelectKey[A](key: String) extends QQFilterComponent[A]
   final case class SelectIndex[A](index: Int) extends QQFilterComponent[A]
@@ -37,7 +37,7 @@ object QQFilterComponent {
     override def map[A, B](fa: QQFilterComponent[A])(f: (A) => B): QQFilterComponent[B] = fa match {
       case IdFilter() => IdFilter()
       case FetchApi() => FetchApi()
-      case CallFilter(name) => CallFilter(name)
+      case CallFilter(name, params) => CallFilter(name, params map f)
       case SelectKey(k) => SelectKey(k)
       case SelectIndex(i) => SelectIndex(i)
       case SelectRange(s, e) => SelectRange(s, e)
@@ -53,7 +53,7 @@ object QQFilterComponent {
       fa match {
         case IdFilter() => G.point(IdFilter())
         case FetchApi() => G.point(FetchApi())
-        case CallFilter(name) => G.point(CallFilter(name))
+        case CallFilter(name, params) => params.traverse(f).map(CallFilter(name, _))
         case SelectKey(k) => G.point(SelectKey(k))
         case SelectIndex(i) => G.point(SelectIndex(i))
         case SelectRange(s, e) => G.point(SelectRange(s, e))

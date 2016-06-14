@@ -8,7 +8,7 @@ import upickle.Js
 
 object DashboarderBuild extends Build {
 
-  val commonDeps = libraryDependencies ++= Seq(
+  val commonDeps = Seq(libraryDependencies ++= Seq(
     "com.lihaoyi" %%% "utest" % "0.4.3" % "test",
     "com.lihaoyi" %%% "upickle" % "0.4.0",
     "com.lihaoyi" %%% "pprint" % "0.4.0",
@@ -20,7 +20,7 @@ object DashboarderBuild extends Build {
     "com.github.julien-truffaut" %%% "monocle-macro" % "1.2.1",
     "com.github.julien-truffaut" %%% "monocle-state" % "1.2.1",
     "com.slamdata" %%% "matryoshka-core" % "0.11.0"
-  )
+  ), resolvers += Resolver.sonatypeRepo("releases"))
 
   val uiDeps = libraryDependencies ++= Seq(
     "net.lullabyte" %%% "scala-js-chrome" % "0.2.1",
@@ -167,7 +167,8 @@ object DashboarderBuild extends Build {
     scalaVersion := "2.11.8",
     persistLauncher in Compile := true,
     persistLauncher in Test := false,
-    addCompilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full)
+    addCompilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full),
+    addCompilerPlugin("org.spire-math" % "kind-projector" % "0.8.0" cross CrossVersion.binary)
   )
 
   val testSettings: Seq[sbt.Def.Setting[_]] = Seq(

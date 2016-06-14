@@ -75,7 +75,7 @@ abstract class QQCompiler {
     case SelectKey(k) => selectKey(k).right
     case SelectRange(s, e) => selectRange(s, e).right
     case SelectIndex(i) => selectIndex(i).right
-    case CallFilter(filterIdentifier) =>
+    case CallFilter(filterIdentifier, params) =>
       definitions.find(_.name == filterIdentifier).cata(_.body.right, NoSuchMethod(filterIdentifier).left)
   }
 
