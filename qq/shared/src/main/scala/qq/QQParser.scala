@@ -126,11 +126,11 @@ object QQParser {
     "(" ~ filterIdentifier.rep(min = 1, sep = whitespace ~ "," ~ whitespace) ~ ")"
   )
 
-  val definition: P[Definition[_]] = P(
+  val definition: P[Definition[Nat]] = P(
     "def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~ whitespace ~ filter ~ ";" map {
       case (identifier, args, body) =>
         val size = args.size
-        Definition(identifier, Sized.wrap[List[String], Nat](args), body)(new ToInt[Nat] {
+        Definition[Nat](identifier, Sized.wrap[List[String], Nat](args), body)(new ToInt[Nat] {
           def apply() = size
         })
     }
@@ -140,7 +140,7 @@ object QQParser {
     enlistedFilter | ensequencedFilters | enjectedFilter
   )
 
-  val program: P[(List[Definition[_]], QQFilter)] = P(
+  val program: P[(List[Definition[Nat]], QQFilter)] = P(
     (definition.rep(sep = whitespace) ~ whitespace).?.map(_.getOrElse(Nil)) ~ filter
   )
 

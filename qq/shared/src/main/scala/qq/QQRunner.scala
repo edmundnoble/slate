@@ -2,14 +2,15 @@ package qq
 
 import fastparse.core.{ParseError, Parsed}
 import monix.eval.Task
+
 import scalaz.\/
 import scalaz.std.list._
 import scalaz.syntax.traverse._
 import scalaz.syntax.either._
 import Util._
 import matryoshka._
-
 import qq.Definition
+import shapeless.{Nat, Sized}
 
 object QQRunner {
 
@@ -19,7 +20,7 @@ object QQRunner {
       case Parsed.Success((definitions, main), _) =>
         if (optimize) {
           compiler.compileProgram(
-            definitions.map(defn => defn.modifyBody(QQOptimizer.optimize)),
+            definitions.map(defn => defn.copy[Nat](name = defn.name, params = Sized.wrap[List[String], Nat](defn.params.unsized), body = QQOptimizer.optimize(defn.body))(defn.ev)),
             QQOptimizer.optimize(main)
           )
         } else {

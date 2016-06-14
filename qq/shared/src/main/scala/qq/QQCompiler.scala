@@ -58,7 +58,7 @@ abstract class QQCompiler {
 
     def scalars: CompiledDefinition[_0]
 
-    def all: List[CompiledDefinition[_]] =
+    def all: List[CompiledDefinition[_ <: Nat]] =
       length :: keys :: arrays :: objects :: iterables :: booleans ::
         numbers :: strings :: nulls :: values :: scalars :: Nil
   }
@@ -74,18 +74,9 @@ abstract class QQCompiler {
     Task.sequence(functions.map(_ (jsv))).map(_.flatten)
   }
 
-  def foldfun(soFar: QQCompilationException \/ List[CompiledDefinition[_]], nextDefinition: Definition[_]) = {
-    soFar.map(definitionsSoFar =>
-      CompiledDefinition(nextDefinition.name, (params: Sized[List[CompiledFilter], Nat]) => {
-        val paramsAsDefinitions = (nextDefinition.params.unsized, params.unsized).zipped.map((name, value) => CompiledDefinition(name, (_: Sized[List[CompiledFilter], _0]) => value.right[QQCompilationException]))
-        compile(definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body)
-      })(nextDefinition.ev.asInstanceOf[ToInt[Nat]]) :: definitionsSoFar
-    )
-  }
-
-  def compileProgram(definitions: List[Definition[_]], main: QQFilter): QQCompilationException \/ CompiledFilter = {
+  def compileProgram(definitions: List[Definition[Nat]], main: QQFilter): QQCompilationException \/ CompiledFilter = {
     val compiledDefinitions: QQCompilationException \/ List[CompiledDefinition[_]] =
-      definitions.foldLeft(nil[CompiledDefinition[_]].right[QQCompilationException])(foldfun)
+      definitions.foldLeft(nil[CompiledDefinition[_]].right[QQCompilationException])((x, y) => y.foldfun(this)(x))
     compiledDefinitions.flatMap(compile(_, main))
   }
 
@@ -107,7 +98,8 @@ abstract class QQCompiler {
         { (defn: CompiledDefinition[_]) =>
           params.sized(defn.ev).cata({
             verifiedParams =>
-              val d: (Sized[List[CompiledFilter], Nat] => QQCompilationException \/ CompiledFilter)  = defn.body.asInstanceOf[(Function[Sized[List[CompiledFilter], Nat], \/[QQCompilationException, CompiledFilter]])]
+              val d: (Sized[List[CompiledFilter], Nat] => QQCompilationException \/ CompiledFilter) =
+                defn.body.asInstanceOf[(Function[Sized[List[CompiledFilter], Nat], \/[QQCompilationException, CompiledFilter]])]
               d(verifiedParams.asInstanceOf[Sized[List[CompiledFilter], Nat]])
           },
             WrongNumParams(filterIdentifier, defn.ev(), params.length).left
