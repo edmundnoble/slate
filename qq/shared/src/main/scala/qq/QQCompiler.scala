@@ -29,7 +29,11 @@ abstract class QQCompiler {
 
   case class CompiledDefinition[N <: Nat]
   (name: String, body: Sized[List[CompiledFilter], N] => QQCompilationException \/ CompiledFilter)
-  (implicit val ev: ToInt[N with Nat])
+  (implicit val ev: ToInt[N]) {
+    def applyIfSized(args: List[CompiledFilter]): Option[QQCompilationException \/ CompiledFilter] = {
+      args.sized(ev).map(body(_))
+    }
+  }
 
   trait QQPrelude {
     def noParamDefinition(name: String, fun: CompiledFilter): CompiledDefinition[_0] = {
@@ -96,14 +100,7 @@ abstract class QQCompiler {
     case CallFilter(filterIdentifier, params) =>
       definitions.find(_.name == filterIdentifier).cata(
         { (defn: CompiledDefinition[_]) =>
-          params.sized(defn.ev).cata({
-            verifiedParams =>
-              val d: (Sized[List[CompiledFilter], Nat] => QQCompilationException \/ CompiledFilter) =
-                defn.body.asInstanceOf[(Function[Sized[List[CompiledFilter], Nat], \/[QQCompilationException, CompiledFilter]])]
-              d(verifiedParams.asInstanceOf[Sized[List[CompiledFilter], Nat]])
-          },
-            WrongNumParams(filterIdentifier, defn.ev(), params.length).left
-          )
+          defn.applyIfSized(params).getOrElse(WrongNumParams(filterIdentifier, defn.ev(), params.length).left[CompiledFilter])
         },
         NoSuchMethod(filterIdentifier).left
       )
