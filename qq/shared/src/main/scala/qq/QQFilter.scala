@@ -41,5 +41,13 @@ object QQFilter {
   def selectKey(key: String): QQFilter = Fix(SelectKey(key))
   def selectIndex(index: Int): QQFilter = Fix(SelectIndex(index))
   def selectRange(start: Int, end: Int): QQFilter = Fix(SelectRange(start, end))
+  def addFilters(first: QQFilter, second: QQFilter): QQFilter = Fix(AddFilters(first, second))
+  def subtractFilters(first: QQFilter, second: QQFilter): QQFilter = Fix(SubtractFilters(first, second))
+  def multiplyFilters(first: QQFilter, second: QQFilter): QQFilter = Fix(MultiplyFilters(first, second))
+  def divideFilters(first: QQFilter, second: QQFilter): QQFilter = Fix(DivideFilters(first, second))
+  def moduloFilters(first: QQFilter, second: QQFilter): QQFilter = Fix(ModuloFilters(first, second))
+  def constNumber(value: Double): QQFilter = Fix(ConstNumber(value))
+  def constString(value: String): QQFilter = Fix(ConstString(value))
+
 
 }

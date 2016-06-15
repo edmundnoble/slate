@@ -6,6 +6,7 @@ import scalaz.{-\/, Applicative, \/}
 import matryoshka._
 import fastparse.parsers.Combinators
 import qq.Definition
+import qq.QQFilterComponent.MultiplyFilters
 import shapeless.ops.nat.ToInt
 import shapeless.{Nat, Sized}
 
@@ -136,8 +137,14 @@ object QQParser {
     }
   )
 
+  val addFilters = P((filter ~ whitespace ~ "+" ~ whitespace ~ filter) map (QQFilter.addFilters _).tupled)
+  val subtractFilters = P((filter ~ whitespace ~ "-" ~ whitespace ~ filter) map (QQFilter.subtractFilters _).tupled)
+  val multiplyFilters = P((filter ~ whitespace ~ "*" ~ whitespace ~ filter) map (QQFilter.multiplyFilters _).tupled)
+  val divideFilters = P((filter ~ whitespace ~ "/" ~ whitespace ~ filter) map (QQFilter.divideFilters _).tupled)
+  val moduloFilters= P((filter ~ whitespace ~ "%" ~ whitespace ~ filter) map (QQFilter.moduloFilters _).tupled)
+
   val filter: P[QQFilter] = P(
-    enlistedFilter | ensequencedFilters | enjectedFilter
+    enlistedFilter | ensequencedFilters | enjectedFilter | addFilters | subtractFilters | multiplyFilters | divideFilters | moduloFilters
   )
 
   val program: P[(List[Definition[Nat]], QQFilter)] = P(
