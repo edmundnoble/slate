@@ -11,6 +11,8 @@ import scalaz.syntax.traverse._
 import scalaz.syntax.applicative._
 import qq.Util._
 import com.thoughtworks.each.Monadic._
+import scalaz.syntax.std.map._
+import scalaz.std.map._
 
 import scala.collection.immutable.Nil
 
@@ -19,6 +21,63 @@ object QQUpickleCompiler extends QQCompiler {
 
   val taskOfListOfNull: Task[List[AnyTy]] = Task.now(List(Js.Null))
   val emptyArray: Js.Arr = Js.Arr()
+
+  override def constNumber(num: Double): CompiledFilter = {
+    _ => Task.now(Js.Num(num) :: Nil)
+  }
+
+  override def constString(str: String): CompiledFilter = {
+    _ => Task.now(Js.Str(str) :: Nil)
+  }
+
+  def addJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
+    case (Js.Num(f), Js.Num(s)) if f.isInstanceOf[Double] && s.isInstanceOf[Double] =>
+      Task.now(Js.Num(f + s))
+    case (Js.Str(f), Js.Str(s)) =>
+      Task.now(Js.Str(f + s))
+    case (f: Js.Arr, s: Js.Arr) =>
+      Task.now(Js.Arr(f.value ++ s.value: _*))
+    case (f: Js.Obj, s: Js.Obj) =>
+      Task.now(Js.Obj((f.value.toMap ++ s.value.toMap).toSeq: _*))
+    case (f, s) =>
+      Task.raiseError(new QQRuntimeException(s"can't add $f and $s"))
+  }
+
+  def subtractJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
+    case (Js.Num(f), Js.Num(s)) if f.isInstanceOf[Double] && s.isInstanceOf[Double] =>
+      Task.now(Js.Num(f - s))
+    case (f: Js.Arr, s: Js.Arr) =>
+      Task.now(Js.Arr(f.value.filter(!s.value.contains(_)): _*))
+    case (f: Js.Obj, s: Js.Obj) =>
+      val contents: Seq[(String, Js.Value)] = (f.value.toMap -- s.value.map[String, Set[String]](_._1)(collection.breakOut)).toSeq
+      Task.now(Js.Obj(contents: _*))
+    case (f, s) =>
+      Task.raiseError(new QQRuntimeException(s"can't subtract $f and $s"))
+  }
+
+  def multiplyJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
+    case (Js.Num(f), Js.Num(s)) if f.isInstanceOf[Double] && s.isInstanceOf[Double] => Task.now(f.asInstanceOf[Double] * s.asInstanceOf[Double])
+      Task.now(if (s == 0) Js.Null else Js.Num(f * s))
+    case (Js.Str(f), Js.Num(s)) => Task.now(Js.Str(f + s))
+    case (f: Js.Obj, s: Js.Obj) =>
+      val firstMap = f.value.toMap.mapValues(Task.now)
+      val secondMap = s.value.toMap.mapValues(Task.now)
+      firstMap.unionWith(secondMap) { (f, s) => (f |@| s)(addJsValues(_, _)).flatten[Js.Value] }.sequence.map(o => Js.Obj(o.toSeq: _*))
+    case (f, s) =>
+      Task.raiseError(new QQRuntimeException(s"can't multiply $f and $s"))
+  }
+
+  def divideJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
+    case (Js.Num(f), Js.Num(s)) => Task.now(Js.Num(f / s))
+    case (f, s) =>
+      Task.raiseError(new QQRuntimeException(s"can't divide $f by $s"))
+  }
+
+  def moduloJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
+    case (Js.Num(f), Js.Num(s)) => Task.now(Js.Num(f % s))
+    case (f, s) =>
+      Task.raiseError(new QQRuntimeException(s"can't modulo $f by $s"))
+  }
 
   def enlistFilter(filter: CompiledFilter): CompiledFilter = { jsv: Js.Value =>
     for {

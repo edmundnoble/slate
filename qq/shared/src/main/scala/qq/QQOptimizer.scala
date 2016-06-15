@@ -19,8 +19,13 @@ object QQOptimizer {
     case Fix(ComposeFilters(f, Fix(IdFilter()))) => f
   }
 
+  def collectEnlist: Optimization = {
+    case Fix(EnlistFilter(Fix(CollectResults(f)))) => f
+    case Fix(CollectResults(Fix(EnlistFilter(f)))) => f
+  }
+
   val optimizations: NonEmptyList[QQFilter => QQFilter] =
-    NonEmptyList(idCompose) map (f => repeatedly(f.lift))
+    NonEmptyList(idCompose, collectEnlist) map (f => repeatedly(f.lift))
   val allOptimizationsƒ: QQFilter => QQFilter = optimizations.foldLeft1(_ >>> _)
   def optimize(f: QQFilter): QQFilter = f.transCataT(allOptimizationsƒ)
 

@@ -12,8 +12,8 @@ final case class Definition[N <: Nat](name: String,
                                       params: Sized[List[String], N],
                                       body: QQFilter)(implicit val ev: ToInt[N]) {
   def modifyBody(fun: QQFilter => QQFilter) = copy[N](name, params, fun(body))(ev)
-  //  def appl
-  def foldfun(compiler: QQCompiler)(soFar: QQCompilationException \/ List[compiler.CompiledDefinition[_]]) = {
+
+  private[qq] def foldfun(compiler: QQCompiler)(soFar: QQCompilationException \/ List[compiler.CompiledDefinition[_]]) = {
     soFar.map(definitionsSoFar =>
       compiler.CompiledDefinition[N](name, (params: Sized[List[compiler.CompiledFilter], N]) => {
         val paramsAsDefinitions = (params.unsized, params.unsized).zipped.map { (filterName, value) =>
