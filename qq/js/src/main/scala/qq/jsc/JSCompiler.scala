@@ -11,13 +11,13 @@ import scalaz.syntax.either._
 import scalaz.syntax.std.list._
 import scalaz.syntax.std.map._
 import scalaz.syntax.applicative._
-import qq.QQCompiler
-import qq.QQCompiler.QQRuntimeException
+import qq.Compiler
+import qq.Compiler.QQRuntimeException
 import qq.Util._
 
 import scala.scalajs.js.{Any, Dictionary}
 
-object QQJSCompiler extends QQCompiler {
+object JSCompiler extends Compiler {
   override type AnyTy = js.Any
 
   val taskOfListOfNull: Task[List[AnyTy]] = Task.now(List(null))
@@ -160,7 +160,7 @@ object QQJSCompiler extends QQCompiler {
     } yield kvPairsProducts.map(js.Dictionary[js.Any](_: _*))
   }
 
-  override def prelude = QQJSPrelude
+  override def prelude = JSPrelude
 
 }
 

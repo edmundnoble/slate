@@ -8,11 +8,11 @@ import scalaz.syntax.foldable1._
 import scalaz.syntax.arrow._
 import scalaz.std.function._
 
-object QQOptimizer {
+object Optimizer {
 
-  import QQFilterComponent._
+  import FilterComponent._
 
-  type Optimization = PartialFunction[QQFilter, QQFilter]
+  type Optimization = PartialFunction[Filter, Filter]
 
   def idCompose: Optimization = {
     case Fix(ComposeFilters(Fix(IdFilter()), s)) => s
@@ -24,9 +24,9 @@ object QQOptimizer {
     case Fix(CollectResults(Fix(EnlistFilter(f)))) => f
   }
 
-  val optimizations: NonEmptyList[QQFilter => QQFilter] =
+  val optimizations: NonEmptyList[Filter => Filter] =
     NonEmptyList(idCompose, collectEnlist) map (f => repeatedly(f.lift))
-  val allOptimizationsƒ: QQFilter => QQFilter = optimizations.foldLeft1(_ >>> _)
-  def optimize(f: QQFilter): QQFilter = f.transCataT(allOptimizationsƒ)
+  val allOptimizationsƒ: Filter => Filter = optimizations.foldLeft1(_ >>> _)
+  def optimize(f: Filter): Filter = f.transCataT(allOptimizationsƒ)
 
 }

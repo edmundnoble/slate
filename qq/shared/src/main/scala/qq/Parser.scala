@@ -6,12 +6,12 @@ import scalaz.{-\/, Applicative, \/}
 import matryoshka._
 import fastparse.parsers.Combinators
 import qq.Definition
-import qq.QQFilterComponent.MultiplyFilters
+import qq.FilterComponent.MultiplyFilters
 import shapeless.ops.nat.ToInt
 import scalaz.syntax.monad._
 import shapeless.{Nat, Sized}
 
-object QQParser {
+object Parser {
 
   import fastparse.all._
   import fastparse.parsers
@@ -37,7 +37,7 @@ object QQParser {
   }
 
   val dot: P0 = P(".")
-  val fetch: P[QQFilter] = P("fetch") map (_ => QQFilter.fetch)
+  val fetch: P[Filter] = P("fetch") map (_ => Filter.fetch)
   val quote: P0 = P("\"")
 
   def isStringLiteralChar(c: Char): Boolean = Character.isAlphabetic(c) || Character.isDigit(c)
@@ -56,77 +56,77 @@ object QQParser {
     CharsWhile(Character.isDigit).! map ((_: String).toInt)
   )
 
-  val selectKey: P[QQFilter] = P(
-    (escapedStringLiteral | stringLiteral) map QQFilter.selectKey
+  val selectKey: P[Filter] = P(
+    (escapedStringLiteral | stringLiteral) map Filter.selectKey
   )
 
-  val selectIndex: P[QQFilter] = P(
+  val selectIndex: P[Filter] = P(
     for {
       fun <- wspStr("-").!.? map (_.cata(_ => (i: Int) => -i, identity[Int] _))
       number <- numericLiteral
-    } yield QQFilter.selectIndex(fun(number))
+    } yield Filter.selectIndex(fun(number))
   )
 
-  val selectRange: P[QQFilter] = P(
-    (numericLiteral ~ ":" ~/ numericLiteral) map (QQFilter.selectRange _).tupled
+  val selectRange: P[Filter] = P(
+    (numericLiteral ~ ":" ~/ numericLiteral) map (Filter.selectRange _).tupled
   )
 
-  val dottableSimpleFilter: P[QQFilter] = P(
-    ("[" ~/ ((escapedStringLiteral map QQFilter.selectKey) | selectRange | selectIndex) ~ "]") | selectKey | selectIndex
+  val dottableSimpleFilter: P[Filter] = P(
+    ("[" ~/ ((escapedStringLiteral map Filter.selectKey) | selectRange | selectIndex) ~ "]") | selectKey | selectIndex
   )
 
-  val dottableFilter: P[QQFilter] = P(
+  val dottableFilter: P[Filter] = P(
     for {
       s <- dottableSimpleFilter
-      f <- "[]".!.?.map(_.cata(_ => QQFilter.collectResults _, identity[QQFilter] _))
+      f <- "[]".!.?.map(_.cata(_ => Filter.collectResults _, identity[Filter] _))
     } yield f(s)
   )
 
-  val dottedFilter: P[QQFilter] = P(
+  val dottedFilter: P[Filter] = P(
     dot ~
-      (wspStr("[]").map(_ => QQFilter.collectResults(QQFilter.id)) | dottableFilter)
+      (wspStr("[]").map(_ => Filter.collectResults(Filter.id)) | dottableFilter)
         .rep(sep = dot)
-        .map(_.foldLeft[QQFilter](QQFilter.id)(QQFilter.compose))
+        .map(_.foldLeft[Filter](Filter.id)(Filter.compose))
   )
 
   private val filterIdentifier: P[String] = P(
     CharsWhile(Character.isAlphabetic(_)).!
   )
 
-  val callFilter: P[QQFilter] = P(
+  val callFilter: P[Filter] = P(
     for {
       identifier <- filterIdentifier
       params <- ("(" ~/ whitespace ~ filter.rep(min = 1, sep = whitespace ~ ";" ~ whitespace) ~ whitespace ~ ")").?.map(_.getOrElse(Nil))
-    } yield QQFilter.call(identifier, params)
+    } yield Filter.call(identifier, params)
   )
 
-  val smallFilter: P[QQFilter] = P(dottedFilter | callFilter)
+  val smallFilter: P[Filter] = P(dottedFilter | callFilter)
 
-  val pipedFilter: P[QQFilter] = P(
+  val pipedFilter: P[Filter] = P(
     (smallFilter | ("(" ~/ filter ~ ")"))
       .rep(sep = whitespace ~ "|" ~ whitespace, min = 1)
-      .map(_.reduceLeft(QQFilter.compose))
+      .map(_.reduceLeft(Filter.compose))
   )
 
-  val ensequencedFilters: P[QQFilter] = P(
+  val ensequencedFilters: P[Filter] = P(
     for {
       first <- pipedFilter
-      f <- ("," ~ whitespace ~ pipedFilter.rep(min = 1, sep = P("," ~ whitespace))).?.map(fs => (f: QQFilter) => fs.fold(f)(l => QQFilter.ensequence(f :: l)))
+      f <- ("," ~ whitespace ~ pipedFilter.rep(min = 1, sep = P("," ~ whitespace))).?.map(fs => (f: Filter) => fs.fold(f)(l => Filter.ensequence(f :: l)))
     } yield f(first)
   )
 
-  val enlistedFilter: P[QQFilter] = P(
-    "[" ~/ ensequencedFilters.map(QQFilter.enlist) ~ "]"
+  val enlistedFilter: P[Filter] = P(
+    "[" ~/ ensequencedFilters.map(Filter.enlist) ~ "]"
   )
 
-  val enjectPair: P[(String \/ QQFilter, QQFilter)] = P(
+  val enjectPair: P[(String \/ Filter, Filter)] = P(
     ((("(" ~/ smallFilter ~ ")").map(_.right[String]) |
-      filterIdentifier.map(_.left[QQFilter])) ~ ":" ~ whitespace ~ filter) |
-      filterIdentifier.map(id => -\/(id) -> QQFilter.selectKey(id))
+      filterIdentifier.map(_.left[Filter])) ~ ":" ~ whitespace ~ filter) |
+      filterIdentifier.map(id => -\/(id) -> Filter.selectKey(id))
   )
 
-  val enjectedFilter: P[QQFilter] = P(
-    "{" ~/ whitespace ~ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(QQFilter.enject) ~ whitespace ~ "}"
+  val enjectedFilter: P[Filter] = P(
+    "{" ~/ whitespace ~ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(Filter.enject) ~ whitespace ~ "}"
   )
 
   val arguments: P[List[String]] = P(
@@ -139,36 +139,39 @@ object QQParser {
     }
   )
 
-  val constInt: P[QQFilter] = P(numericLiteral map (d => QQFilter.constNumber(d)))
-  val constString: P[QQFilter] = P("\"" ~ (stringLiteral map QQFilter.constString) ~ "\"")
+  val constInt: P[Filter] = P(numericLiteral map (d => Filter.constNumber(d)))
+  val constString: P[Filter] = P("\"" ~ (stringLiteral map Filter.constString) ~ "\"")
 
-  val basicFilter: P[QQFilter] = P(
+  val basicFilter: P[Filter] = P(
     enlistedFilter | ensequencedFilters | enjectedFilter | constInt | constString
   )
 
-  val expr: P[QQFilter] =
+  def foldOperators(begin: Filter, operators: List[((Filter, Filter) => Filter, Filter)]): Filter =
+    operators.foldLeft(begin) { case (f, (combFun, nextF)) => combFun(f, nextF) }
+
+  val expr: P[Filter] =
     P((term ~ whitespace ~
       (
-        ((wspStr("+") >| QQFilter.addFilters _) |
-          (wspStr("-") >| QQFilter.subtractFilters _)) ~ whitespace ~ term
+        ((wspStr("+") >| Filter.addFilters _) |
+          (wspStr("-") >| Filter.subtractFilters _)) ~ whitespace ~ term
         )
         .rep
-      ).map { l => l._2.foldLeft(l._1) { case (f, (combFun, nextF)) => combFun(f, nextF) } })
-  val term: P[QQFilter] =
+      ).map ((foldOperators _).tupled))
+  val term: P[Filter] =
     P((factor ~ whitespace ~
       (
-        ((wspStr("*") >| QQFilter.multiplyFilters _) |
-          (wspStr("/") >| QQFilter.divideFilters _) |
-          (wspStr("%") >| QQFilter.moduloFilters _)) ~ whitespace ~ factor)
+        ((wspStr("*") >| Filter.multiplyFilters _) |
+          (wspStr("/") >| Filter.divideFilters _) |
+          (wspStr("%") >| Filter.moduloFilters _)) ~ whitespace ~ factor)
         .rep
-      ).map(l => l._2.foldLeft(l._1) { case (f, (combFun, nextF)) => combFun(f, nextF) }))
-  val factor: P[QQFilter] = P(("(" ~ expr ~ ")") | basicFilter)
+      ).map ((foldOperators _).tupled))
+  val factor: P[Filter] = P(("(" ~ expr ~ ")") | basicFilter)
 
-  val filter: P[QQFilter] = P(
+  val filter: P[Filter] = P(
     expr
   )
 
-  val program: P[(List[Definition], QQFilter)] = P(
+  val program: P[(List[Definition], Filter)] = P(
     (definition.rep(sep = whitespace) ~ whitespace).?.map(_.getOrElse(Nil)) ~ filter
   )
 

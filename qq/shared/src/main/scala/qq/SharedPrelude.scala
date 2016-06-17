@@ -1,0 +1,5 @@
+package qq
+
+object SharedPrelude {
+
+}

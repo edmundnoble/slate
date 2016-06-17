@@ -4,30 +4,30 @@ import scalaz.{Applicative, Functor, Traverse, \/}
 import scalaz.syntax.traverse._
 import scalaz.std.list._
 
-sealed abstract class QQFilterComponent[A]
+sealed abstract class FilterComponent[A]
 
-object QQFilterComponent {
-  final case class IdFilter[A]() extends QQFilterComponent[A]
-  final case class FetchApi[A]() extends QQFilterComponent[A]
-  final case class ComposeFilters[A](first: A, second: A) extends QQFilterComponent[A]
-  final case class SilenceExceptions[A](f: A) extends QQFilterComponent[A]
-  final case class EnlistFilter[A](f: A) extends QQFilterComponent[A]
-  final case class CollectResults[A](f: A) extends QQFilterComponent[A]
-  final case class EnsequenceFilters[A](filters: List[A]) extends QQFilterComponent[A]
-  final case class EnjectFilters[A](obj: List[((String \/ A), A)]) extends QQFilterComponent[A]
+object FilterComponent {
+  final case class IdFilter[A]() extends FilterComponent[A]
+  final case class FetchApi[A]() extends FilterComponent[A]
+  final case class ComposeFilters[A](first: A, second: A) extends FilterComponent[A]
+  final case class SilenceExceptions[A](f: A) extends FilterComponent[A]
+  final case class EnlistFilter[A](f: A) extends FilterComponent[A]
+  final case class CollectResults[A](f: A) extends FilterComponent[A]
+  final case class EnsequenceFilters[A](filters: List[A]) extends FilterComponent[A]
+  final case class EnjectFilters[A](obj: List[((String \/ A), A)]) extends FilterComponent[A]
 
-  final case class CallFilter[A](name: String, params: List[A]) extends QQFilterComponent[A]
+  final case class CallFilter[A](name: String, params: List[A]) extends FilterComponent[A]
 
-  sealed abstract class PhantomComponent[A] extends QQFilterComponent[A] {
+  sealed abstract class PhantomComponent[A] extends FilterComponent[A] {
     @inline
     final def retag[B]: PhantomComponent[B] = this.asInstanceOf[PhantomComponent[B]]
   }
 
-  final case class AddFilters[A](first: A, second: A) extends QQFilterComponent[A]
-  final case class SubtractFilters[A](first: A, second: A) extends QQFilterComponent[A]
-  final case class MultiplyFilters[A](first: A, second: A) extends QQFilterComponent[A]
-  final case class DivideFilters[A](first: A, second: A) extends QQFilterComponent[A]
-  final case class ModuloFilters[A](first: A, second: A) extends QQFilterComponent[A]
+  final case class AddFilters[A](first: A, second: A) extends FilterComponent[A]
+  final case class SubtractFilters[A](first: A, second: A) extends FilterComponent[A]
+  final case class MultiplyFilters[A](first: A, second: A) extends FilterComponent[A]
+  final case class DivideFilters[A](first: A, second: A) extends FilterComponent[A]
+  final case class ModuloFilters[A](first: A, second: A) extends FilterComponent[A]
 
   final case class SelectKey[A](key: String) extends PhantomComponent[A]
   final case class SelectIndex[A](index: Int) extends PhantomComponent[A]
@@ -37,9 +37,9 @@ object QQFilterComponent {
   final case class ConstNumber[A](value: Double) extends ConstantComponent[A]
   final case class ConstString[A](value: String) extends ConstantComponent[A]
 
-  implicit def qqfiltercomponent = new Traverse[QQFilterComponent] {
+  implicit def qqfiltercomponent = new Traverse[FilterComponent] {
 
-    override def map[A, B](fa: QQFilterComponent[A])(f: (A) => B): QQFilterComponent[B] = fa match {
+    override def map[A, B](fa: FilterComponent[A])(f: (A) => B): FilterComponent[B] = fa match {
       case IdFilter() => IdFilter()
       case FetchApi() => FetchApi()
       case CallFilter(name, params) => CallFilter(name, params map f)
@@ -61,7 +61,7 @@ object QQFilterComponent {
       case EnjectFilters(obj) => EnjectFilters(obj.map { case (k, v) => k.map(f) -> f(v) })
     }
 
-    override def traverseImpl[G[_], A, B](fa: QQFilterComponent[A])(f: (A) => G[B])(implicit G: Applicative[G]): G[QQFilterComponent[B]] = {
+    override def traverseImpl[G[_], A, B](fa: FilterComponent[A])(f: (A) => G[B])(implicit G: Applicative[G]): G[FilterComponent[B]] = {
       fa match {
         case IdFilter() => G.point(IdFilter())
         case FetchApi() => G.point(FetchApi())

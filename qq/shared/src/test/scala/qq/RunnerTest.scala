@@ -2,20 +2,20 @@ package qq
 
 import upickle.Js
 
-case class QQRunnerTest(program: String, input: Js.Value, expectedOutput: List[Js.Value])
+case class RunnerTest(program: String, input: Js.Value, expectedOutput: List[Js.Value])
 
-object QQRunnerTest {
+object RunnerTest {
   val identityProgram = {
     val dict = Js.Obj("1" -> Js.Num(2), "3" -> Js.Num(4))
-    QQRunnerTest(".", dict, List(dict))
+    RunnerTest(".", dict, List(dict))
   }
-  val selectKeyProgram = QQRunnerTest(".lol",
+  val selectKeyProgram = RunnerTest(".lol",
     Js.Obj("lol" -> Js.Str("test")),
     List(Js.Str("test")))
-  val ensequencedFilters = QQRunnerTest(".lol, .wat", Js.Obj("lol" -> Js.Str("lol1"), "wat" -> Js.Str("wat1")), List(Js.Str("lol1"), Js.Str("wat1")))
-  val enlistedFilters = QQRunnerTest("[.lol, .wat]", Js.Obj("lol" -> Js.Str("lol1"), "wat" -> Js.Str("wat1")), List(Js.Arr(Js.Str("lol1"), Js.Str("wat1"))))
-  val collectResults = QQRunnerTest(".titles[]", Js.Obj("titles" -> Js.Arr(Js.Str("lol1"), Js.Str("wat1"))), List(Js.Str("lol1"), Js.Str("wat1")))
-  val enjectedFilters = QQRunnerTest(
+  val ensequencedFilters = RunnerTest(".lol, .wat", Js.Obj("lol" -> Js.Str("lol1"), "wat" -> Js.Str("wat1")), List(Js.Str("lol1"), Js.Str("wat1")))
+  val enlistedFilters = RunnerTest("[.lol, .wat]", Js.Obj("lol" -> Js.Str("lol1"), "wat" -> Js.Str("wat1")), List(Js.Arr(Js.Str("lol1"), Js.Str("wat1"))))
+  val collectResults = RunnerTest(".titles[]", Js.Obj("titles" -> Js.Arr(Js.Str("lol1"), Js.Str("wat1"))), List(Js.Str("lol1"), Js.Str("wat1")))
+  val enjectedFilters = RunnerTest(
     "{user, (.titleName[]): .titles[]}",
     Js.Obj(
       "user" -> Js.Str("stedolan"),
@@ -41,82 +41,94 @@ object QQRunnerTest {
       )
     ))
 
-  val pipes = QQRunnerTest(
+  val pipes = RunnerTest(
     ".[] | .name",
     Js.Arr(Js.Obj("name" -> Js.Str("JSON"), "good" -> Js.True), Js.Obj("name" -> Js.Str("XML"), "good" -> Js.False)),
     List(Js.Str("JSON"), Js.Str("XML"))
   )
 
-  val length = QQRunnerTest(
+  val length = RunnerTest(
     ".[] | length",
     Js.Arr(Js.Arr(Js.Num(1), Js.Num(2)), Js.Str("string"), Js.Obj("a" -> Js.Num(2)), Js.Null),
     List(Js.Num(2), Js.Num(6), Js.Num(1), Js.Num(0))
   )
 
-  val keys = QQRunnerTest(
+  val keys = RunnerTest(
     "keys",
     Js.Obj("abc" -> Js.Num(1), "abcd" -> Js.Num(2), "Foo" -> Js.Num(3)),
     List(Js.Arr(Js.Str("abc"), Js.Str("abcd"), Js.Str("Foo")))
   )
 
-  val numbers = QQRunnerTest(
+  val numbers = RunnerTest(
     ".[]|numbers",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.Num(1))
   )
 
-  val arrays = QQRunnerTest(
+  val arrays = RunnerTest(
     ".[]|arrays",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.Arr())
   )
 
-  val objects = QQRunnerTest(
+  val objects = RunnerTest(
     ".[]|objects",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.Obj())
   )
 
-  val iterables = QQRunnerTest(
+  val iterables = RunnerTest(
     ".[]|iterables",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.Arr(), Js.Obj())
   )
 
-  val booleans = QQRunnerTest(
+  val booleans = RunnerTest(
     ".[]|booleans",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.True, Js.False)
   )
 
-  val strings = QQRunnerTest(
+  val strings = RunnerTest(
     ".[]|strings",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.Str("foo"))
   )
 
-  val nulls = QQRunnerTest(
+  val nulls = RunnerTest(
     ".[]|nulls",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.Null)
   )
 
-  val values = QQRunnerTest(
+  val values = RunnerTest(
     ".[]|values",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.True, Js.False)
   )
 
-  val scalars = QQRunnerTest(
+  val scalars = RunnerTest(
     ".[]|scalars",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False)
   )
 
-  val add = QQRunnerTest(
+  val add = RunnerTest(
     "(2 + 2)",
-    Js.Num(2),
+    Js.Num(0),
     List(Js.Num(4))
+  )
+
+  val maths = RunnerTest(
+    ". % (. / 2)",
+    Js.Num(4),
+    List(Js.Num(0))
+  )
+
+  val bedmas = RunnerTest(
+    ". + . * .",
+    Js.Num(5),
+    List(Js.Num(30))
   )
 
 }

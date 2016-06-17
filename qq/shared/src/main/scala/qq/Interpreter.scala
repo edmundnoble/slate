@@ -1,6 +1,6 @@
 package qq
 
-import qq.QQUpickleCompiler._
+import qq.UpickleCompiler._
 import monix.eval.Task
 import upickle.{Js, json}
 
@@ -15,7 +15,7 @@ object Interpreter {
 
   def programInterpreter: Interpreter = taskSwitch orElse Interpreter ("program:", {
     case program: String =>
-      QQRunner.parseAndCompile(QQUpickleCompiler, program, optimize = true).fold(
+      Runner.parseAndCompile(UpickleCompiler, program, optimize = true).fold(
         (err: Exception) => Task(Console.err.println(s"Error: $err")) map (_ => ("", programInterpreter)),
         (compiledFilter: CompiledFilter) => Task.now(("", programInterpreterOf(program, compiledFilter)))
       )
@@ -39,7 +39,7 @@ object Interpreter {
 
   def inputInterpreterOf(source: String, input: Js.Value): Interpreter = taskSwitch orElse Interpreter (s"input ${source}, program: ", {
     case program: String =>
-      QQRunner.parseAndCompile(QQUpickleCompiler, program, optimize = true).fold(
+      Runner.parseAndCompile(UpickleCompiler, program, optimize = true).fold(
         (err: Exception) => Task(Console.err.println(s"Error: $err")) map (_ => ("", programInterpreter)),
         (compiledFilter: CompiledFilter) => compiledFilter(input).map { results => (results.mkString("(", ", ", "_"), inputInterpreterOf(source, input)) }
       )

@@ -2,7 +2,7 @@ package qq
 
 import upickle.Js
 import monix.eval.Task
-import qq.QQCompiler.QQRuntimeException
+import qq.Compiler.QQRuntimeException
 
 import scalaz.{-\/, NonEmptyList, \/, \/-}
 import scalaz.std.list._
@@ -16,7 +16,7 @@ import scalaz.std.map._
 
 import scala.collection.immutable.Nil
 
-object QQUpickleCompiler extends QQCompiler {
+object UpickleCompiler extends Compiler {
   override type AnyTy = Js.Value
 
   val taskOfListOfNull: Task[List[AnyTy]] = Task.now(List(Js.Null))
@@ -62,7 +62,7 @@ object QQUpickleCompiler extends QQCompiler {
     case (f: Js.Obj, s: Js.Obj) =>
       val firstMap = f.value.toMap.mapValues(Task.now)
       val secondMap = s.value.toMap.mapValues(Task.now)
-      firstMap.unionWith(secondMap) { (f, s) => (f |@| s)(addJsValues(_, _)).flatten[Js.Value] }.sequence.map(o => Js.Obj(o.toSeq: _*))
+      firstMap.unionWith(secondMap) { (f, s) => (f |@| s) (addJsValues(_, _)).flatten[Js.Value] }.sequence.map(o => Js.Obj(o.toSeq: _*))
     case (f, s) =>
       Task.raiseError(new QQRuntimeException(s"can't multiply $f and $s"))
   }
@@ -153,14 +153,12 @@ object QQUpickleCompiler extends QQCompiler {
             }
           } yield keyValuePairs
         case (-\/(filterName), filterValue) =>
-          for {
-            valueResults <- filterValue(jsv)
-          } yield valueResults.map(filterName -> _) :: Nil
+          filterValue(jsv).map(_.map(filterName -> _) :: Nil)
       }
       kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => l.foldLeft(h :: Nil)(prod) }
     } yield kvPairsProducts.map(Js.Obj(_: _*))
   }
 
-  def prelude = QQUpicklePrelude
+  def prelude = UpicklePrelude
 
 }

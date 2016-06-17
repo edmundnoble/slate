@@ -1,0 +1,40 @@
+package qq
+
+import scala.language.higherKinds
+import scalaz.\/
+import matryoshka._
+import qq.Compiler.QQCompilationException
+import shapeless._
+import shapeless.ops.nat.ToInt
+import scalaz.syntax.either._
+
+final case class Definition(name: String,
+                            params: List[String],
+                            body: Filter)
+
+object Filter {
+
+  import FilterComponent._
+
+  def id: Filter = Fix(IdFilter())
+  def fetch: Filter = Fix(FetchApi())
+  def compose(first: Filter, second: Filter): Filter = Fix(ComposeFilters(first, second))
+  def silence(f: Filter): Filter = Fix(SilenceExceptions(f))
+  def enlist(f: Filter): Filter = Fix(EnlistFilter(f))
+  def collectResults(f: Filter): Filter = Fix(CollectResults(f))
+  def ensequence(filters: List[Filter]): Filter = Fix(EnsequenceFilters(filters))
+  def enject(obj: List[((String \/ Filter), Filter)]): Filter = Fix(EnjectFilters(obj))
+  def call(name: String, params: List[Filter] = Nil): Filter = Fix(CallFilter(name, params))
+  def selectKey(key: String): Filter = Fix(SelectKey(key))
+  def selectIndex(index: Int): Filter = Fix(SelectIndex(index))
+  def selectRange(start: Int, end: Int): Filter = Fix(SelectRange(start, end))
+  def addFilters(first: Filter, second: Filter): Filter = Fix(AddFilters(first, second))
+  def subtractFilters(first: Filter, second: Filter): Filter = Fix(SubtractFilters(first, second))
+  def multiplyFilters(first: Filter, second: Filter): Filter = Fix(MultiplyFilters(first, second))
+  def divideFilters(first: Filter, second: Filter): Filter = Fix(DivideFilters(first, second))
+  def moduloFilters(first: Filter, second: Filter): Filter = Fix(ModuloFilters(first, second))
+  def constNumber(value: Double): Filter = Fix(ConstNumber(value))
+  def constString(value: String): Filter = Fix(ConstString(value))
+
+
+}

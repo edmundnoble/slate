@@ -6,15 +6,14 @@ import utest._
 
 import scala.concurrent.Future
 
-object QQUpickleRunnerTest extends utest.TestSuite {
+object UpickleRunnerTest extends utest.TestSuite {
   override val tests = TestSuite {
-    import QQRunnerTest._
-
-    def runTest(test: QQRunnerTest): Future[Unit] =
-      QQRunner
-        .run(QQUpickleCompiler, test.program)(List(test.input))
+    import RunnerTest._
+    def runTest(test: RunnerTest): Future[Unit] =
+      Runner
+        .run(UpickleCompiler, test.program)(List(test.input))
         .runFuture
-        .map(out => assert(out == test.expectedOutput))
+        .map { out => assert(out == test.expectedOutput) }
 
     "identity program" - runTest(identityProgram)
     "ensequenced filters program" - runTest(ensequencedFilters)
@@ -28,5 +27,7 @@ object QQUpickleRunnerTest extends utest.TestSuite {
     "classifier programs" -
       Future.traverse(List(arrays, strings, booleans, scalars, objects, iterables, nulls, numbers))(runTest)
     "add" - runTest(add)
+    "maths" - runTest(maths)
+    "bedmas" - runTest(bedmas)
   }
 }

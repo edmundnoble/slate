@@ -12,16 +12,16 @@ import matryoshka._
 import qq.Definition
 import shapeless.{Nat, Sized}
 
-object QQRunner {
+object Runner {
 
-  def parseAndCompile(compiler: QQCompiler, program: String, optimize: Boolean): \/[Exception, compiler.CompiledFilter] = {
-    val parsed = QQParser.program.parse(program)
+  def parseAndCompile(compiler: Compiler, program: String, optimize: Boolean): \/[Exception, compiler.CompiledFilter] = {
+    val parsed = Parser.program.parse(program)
     parsed match {
       case Parsed.Success((definitions, main), _) =>
         if (optimize) {
           compiler.compileProgram(
-            definitions.map(defn => defn.copy(name = defn.name, params = defn.params, body = QQOptimizer.optimize(defn.body))),
-            QQOptimizer.optimize(main)
+            definitions.map(defn => defn.copy(name = defn.name, params = defn.params, body = Optimizer.optimize(defn.body))),
+            Optimizer.optimize(main)
           )
         } else {
           compiler.compileProgram(definitions, main)
@@ -31,7 +31,7 @@ object QQRunner {
     }
   }
 
-  def run(compiler: QQCompiler, qqProgram: String)(input: List[compiler.AnyTy]): Task[List[compiler.AnyTy]] = {
+  def run(compiler: Compiler, qqProgram: String)(input: List[compiler.AnyTy]): Task[List[compiler.AnyTy]] = {
     parseAndCompile(compiler, qqProgram, optimize = true).fold(
       Task.raiseError,
       input.traverseM(_)

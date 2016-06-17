@@ -1,13 +1,13 @@
 package qq.jsc
 
 import monix.eval.Task
-import qq.QQCompiler.QQRuntimeException
-import qq.jsc.QQJSCompiler.CompiledDefinition
+import qq.Compiler.QQRuntimeException
+import qq.jsc.JSCompiler.CompiledDefinition
 import shapeless._0
 
 import scala.scalajs.js
 
-object QQJSPrelude extends QQJSCompiler.QQPrelude {
+object JSPrelude extends JSCompiler.PlatformPrelude {
   override def length: CompiledDefinition =
     noParamDefinition(
       "length",

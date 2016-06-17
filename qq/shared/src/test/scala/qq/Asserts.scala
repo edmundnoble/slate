@@ -3,7 +3,7 @@ package qq
 /**
   * Created by edmund on 2016-06-16.
   */
-trait QQAsserts {
+trait Asserts {
 
   /**
     * Provides a nice syntax for asserting things are equal, that is pretty

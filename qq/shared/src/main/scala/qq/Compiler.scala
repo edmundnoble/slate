@@ -1,28 +1,19 @@
 package qq
 
+import matryoshka.Recursive.ops._
+import monix.eval.Task
+import qq.Compiler.{NoSuchMethod, QQCompilationException, QQRuntimeException, WrongNumParams}
+import qq.FilterComponent._
 import qq.Util._
-import qq.QQCompiler.{NoSuchMethod, QQCompilationException, QQRuntimeException, WrongNumParams}
-import qq.Definition
-import qq.QQFilterComponent._
-import monix.eval.{Coeval, Task}
 
+import scalaz.\/
 import scalaz.std.list._
-import scalaz.{EitherT, \/}
-import matryoshka._
-import Recursive.ops._
-import Corecursive.ops._
-import TraverseT.ops._
-import monocle.macros.GenLens
-import shapeless._
-import shapeless.ops.nat.ToInt
-import shapeless.syntax.sized._
-
-import scalaz.syntax.either._
 import scalaz.syntax.apply._
+import scalaz.syntax.either._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 
-abstract class QQCompiler {
+abstract class Compiler {
 
   type AnyTy
   type CompiledFilter = AnyTy => Task[List[AnyTy]]
@@ -31,7 +22,7 @@ abstract class QQCompiler {
   final case class CompiledDefinition
   (name: String, numParams: Int, body: List[CompiledFilter] => QQCompilationException \/ CompiledFilter)
 
-  trait QQPrelude {
+  trait PlatformPrelude {
     def noParamDefinition(name: String, fun: CompiledFilter): CompiledDefinition = {
       CompiledDefinition(name, numParams = 0, (_: List[CompiledFilter]) => fun.right)
     }
@@ -76,13 +67,13 @@ abstract class QQCompiler {
     Task.sequence(functions.map(_ (jsv))).map(_.flatten)
   }
 
-  final def compileProgram(definitions: List[Definition], main: QQFilter): QQCompilationException \/ CompiledFilter = {
+  final def compileProgram(definitions: List[Definition], main: Filter): QQCompilationException \/ CompiledFilter = {
     val compiledDefinitions: QQCompilationException \/ List[CompiledDefinition] =
       definitions.foldLeft(nil[CompiledDefinition].right[QQCompilationException])(compileDefinitionStep)
     compiledDefinitions.flatMap(compile(_, main))
   }
 
-  final def compileStep(definitions: List[CompiledDefinition], filter: QQFilterComponent[CompiledFilter]): OrCompilationError[CompiledFilter] = filter match {
+  final def compileStep(definitions: List[CompiledDefinition], filter: FilterComponent[CompiledFilter]): OrCompilationError[CompiledFilter] = filter match {
     case IdFilter() => ((jsv: AnyTy) => Task.now(jsv :: Nil)).right
     case ComposeFilters(f, s) => composeCompiledFilters(f, s).right
     case EnlistFilter(f) => enlistFilter(f).right
@@ -116,7 +107,7 @@ abstract class QQCompiler {
   def compileDefinitionStep(soFar: QQCompilationException \/ List[CompiledDefinition], nextDefinition: Definition) = {
     soFar.map(definitionsSoFar =>
       CompiledDefinition(nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter]) => {
-        val paramsAsDefinitions = (params, params).zipped.map { (filterName, value) =>
+        val paramsAsDefinitions = (nextDefinition.params, params).zipped.map { (filterName, value) =>
           CompiledDefinition(nextDefinition.name, 0, (_: List[CompiledFilter]) => value.right[QQCompilationException])
         }
         compile(definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body)
@@ -124,11 +115,11 @@ abstract class QQCompiler {
     )
   }
 
-  final def compile(definitions: List[CompiledDefinition], filter: QQFilter): OrCompilationError[CompiledFilter] = {
+  final def compile(definitions: List[CompiledDefinition], filter: Filter): OrCompilationError[CompiledFilter] = {
     filter.cataM[OrCompilationError, CompiledFilter](compileStep(prelude.all ++ definitions, _))
   }
 
-  def prelude: QQPrelude
+  def prelude: PlatformPrelude
   def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter
   def enlistFilter(filter: CompiledFilter): CompiledFilter
   def selectKey(key: String): CompiledFilter
@@ -165,7 +156,7 @@ abstract class QQCompiler {
   def collectResults(f: CompiledFilter): CompiledFilter
 }
 
-object QQCompiler {
+object Compiler {
 
   class QQRuntimeException(message: String) extends RuntimeException(message)
   class QQCompilationException(message: String) extends RuntimeException(message)

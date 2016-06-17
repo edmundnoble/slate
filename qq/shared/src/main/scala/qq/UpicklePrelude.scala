@@ -1,14 +1,15 @@
 package qq
 
 import monix.eval.Task
-import qq.QQUpickleCompiler._
-import qq.QQCompiler.{QQCompilationException, QQRuntimeException}
+import qq.UpickleCompiler._
+import qq.Compiler.{QQCompilationException, QQRuntimeException}
 import shapeless.{Sized, _0}
 import upickle.Js
 import scalaz._
 import scalaz.syntax.either._
 
-object QQUpicklePrelude extends QQUpickleCompiler.QQPrelude {
+object UpicklePrelude extends UpickleCompiler.PlatformPrelude {
+
   override def length: CompiledDefinition =
     noParamDefinition(
       "length", {

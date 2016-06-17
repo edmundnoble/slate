@@ -1,19 +1,19 @@
 package qq
 
 import qq.Util._
-import qq.jsc.QQJSCompiler
+import qq.jsc.JSCompiler
 import monix.execution.Scheduler.Implicits.global
 import utest._
 
 import scala.concurrent.Future
 import scala.scalajs.js
 
-object QQJSRunnerTest extends utest.TestSuite {
+object JSRunnerTest extends utest.TestSuite {
   override val tests = TestSuite {
-    import QQRunnerTest._
-    def runTest(test: QQRunnerTest): Future[Unit] =
-      QQRunner
-        .run(QQJSCompiler, test.program)(List(upickle.json.writeJs(test.input).asInstanceOf[js.Any]))
+    import RunnerTest._
+    def runTest(test: RunnerTest): Future[Unit] =
+      Runner
+        .run(JSCompiler, test.program)(List(upickle.json.writeJs(test.input).asInstanceOf[js.Any]))
         .runFuture
         .map { out => val js = out.map(upickle.json.readJs); assert(js == test.expectedOutput) }
 
@@ -29,5 +29,7 @@ object QQJSRunnerTest extends utest.TestSuite {
     "classifier programs" -
       Future.traverse(List(arrays, strings, booleans, scalars, objects, iterables, nulls, numbers))(runTest)
     "add" - runTest(add)
+    "maths" - runTest(maths)
+    "bedmas" - runTest(bedmas)
   }
 }
