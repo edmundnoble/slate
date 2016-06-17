@@ -9,7 +9,7 @@ import scalaz._
 import scalaz.syntax.either._
 
 object QQUpicklePrelude extends QQUpickleCompiler.QQPrelude {
-  override def length: CompiledDefinition[_0] =
+  override def length: CompiledDefinition =
     noParamDefinition(
       "length", {
         case arr: Js.Arr => Task.now(Js.Num(arr.value.length) :: Nil)
@@ -21,7 +21,7 @@ object QQUpicklePrelude extends QQUpickleCompiler.QQPrelude {
     )
 
 
-  override def keys: CompiledDefinition[_0] =
+  override def keys: CompiledDefinition =
     noParamDefinition(
       "keys", {
         case obj: Js.Obj => Task.now(Js.Arr(obj.value.map(p => Js.Str(p._1)): _*) :: Nil)
@@ -29,7 +29,7 @@ object QQUpicklePrelude extends QQUpickleCompiler.QQPrelude {
       }
     )
 
-  override def arrays: CompiledDefinition[_0] =
+  override def arrays: CompiledDefinition =
     noParamDefinition(
       "arrays",
        {
@@ -37,7 +37,7 @@ object QQUpicklePrelude extends QQUpickleCompiler.QQPrelude {
         case k => Task.now(Nil)
       })
 
-  override def objects: CompiledDefinition[_0] =
+  override def objects: CompiledDefinition =
     noParamDefinition(
       "objects",
        {
@@ -45,7 +45,7 @@ object QQUpicklePrelude extends QQUpickleCompiler.QQPrelude {
         case k => Task.now(Nil)
       })
 
-  override def iterables: CompiledDefinition[_0] =
+  override def iterables: CompiledDefinition =
     noParamDefinition(
       "iterables",
        {
@@ -54,7 +54,7 @@ object QQUpicklePrelude extends QQUpickleCompiler.QQPrelude {
         case k => Task.now(Nil)
       })
 
-  override def booleans: CompiledDefinition[_0] =
+  override def booleans: CompiledDefinition =
     noParamDefinition(
       "booleans",
        {
@@ -62,7 +62,7 @@ object QQUpicklePrelude extends QQUpickleCompiler.QQPrelude {
         case k => Task.now(Nil)
       })
 
-  override def numbers: CompiledDefinition[_0] =
+  override def numbers: CompiledDefinition =
     noParamDefinition(
       "numbers",
        {
@@ -70,7 +70,7 @@ object QQUpicklePrelude extends QQUpickleCompiler.QQPrelude {
         case k => Task.now(Nil)
       })
 
-  override def strings: CompiledDefinition[_0] =
+  override def strings: CompiledDefinition =
     noParamDefinition(
       "strings",
        {
@@ -78,7 +78,7 @@ object QQUpicklePrelude extends QQUpickleCompiler.QQPrelude {
         case k => Task.now(Nil)
       })
 
-  override def nulls: CompiledDefinition[_0] =
+  override def nulls: CompiledDefinition =
     noParamDefinition(
       "nulls",
        {
@@ -86,7 +86,7 @@ object QQUpicklePrelude extends QQUpickleCompiler.QQPrelude {
         case k => Task.now(Nil)
       })
 
-  override def values: CompiledDefinition[_0] =
+  override def values: CompiledDefinition =
     noParamDefinition(
       "values",
        {
@@ -94,7 +94,7 @@ object QQUpicklePrelude extends QQUpickleCompiler.QQPrelude {
         case k => Task.now(k :: Nil)
       })
 
-  override def scalars: CompiledDefinition[_0] =
+  override def scalars: CompiledDefinition =
     noParamDefinition(
       "scalars",
        {

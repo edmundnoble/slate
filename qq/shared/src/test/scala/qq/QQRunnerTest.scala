@@ -113,5 +113,10 @@ object QQRunnerTest {
     List(Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False)
   )
 
+  val add = QQRunnerTest(
+    "(2 + 2)",
+    Js.Num(2),
+    List(Js.Num(4))
+  )
 
 }

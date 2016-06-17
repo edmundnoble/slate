@@ -7,7 +7,7 @@ import Util._
 
 import monix.execution.Scheduler.Implicits.global
 
-object QQJSCompilerTest extends utest.TestSuite {
+object QQJSCompilerTest extends utest.TestSuite with QQAsserts {
 
   val tests = this {
 
@@ -15,7 +15,7 @@ object QQJSCompilerTest extends utest.TestSuite {
 
     def testRun(qQDoubleCompilerTest: QQDoubleCompilerTest) = qQDoubleCompilerTest match {
       case QQDoubleCompilerTest(filter, input, result) =>
-        compile(Nil, filter).getOrElse(???).apply(upickle.json.writeJs(input).asInstanceOf[scalajs.js.Any]).runFuture map (_.map(upickle.json.readJs) ==> result)
+        compile(Nil, filter).getOrElse(???).apply(upickle.json.writeJs(input).asInstanceOf[scalajs.js.Any]).runFuture map (_.map(upickle.json.readJs) ===> result)
     }
 
     "select keys" - Future.traverse(QQDoubleCompilerTest.selectKeys)(testRun)

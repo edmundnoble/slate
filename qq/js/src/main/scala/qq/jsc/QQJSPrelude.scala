@@ -8,7 +8,7 @@ import shapeless._0
 import scala.scalajs.js
 
 object QQJSPrelude extends QQJSCompiler.QQPrelude {
-  override def length: CompiledDefinition[_0] =
+  override def length: CompiledDefinition =
     noParamDefinition(
       "length",
       {
@@ -20,7 +20,7 @@ object QQJSPrelude extends QQJSCompiler.QQPrelude {
       }
     )
 
-  override def keys: CompiledDefinition[_0] =
+  override def keys: CompiledDefinition =
     noParamDefinition(
       "keys",
       {
@@ -29,7 +29,7 @@ object QQJSPrelude extends QQJSCompiler.QQPrelude {
       }
     )
 
-  override def arrays: CompiledDefinition[_0] =
+  override def arrays: CompiledDefinition =
     noParamDefinition(
       "arrays",
       {
@@ -38,7 +38,7 @@ object QQJSPrelude extends QQJSCompiler.QQPrelude {
         case k => Task.now(Nil)
       })
 
-  override def objects: CompiledDefinition[_0] =
+  override def objects: CompiledDefinition =
     noParamDefinition(
       "objects",
       {
@@ -48,7 +48,7 @@ object QQJSPrelude extends QQJSCompiler.QQPrelude {
         case k => Task.now(Nil)
       })
 
-  override def iterables: CompiledDefinition[_0] =
+  override def iterables: CompiledDefinition =
     noParamDefinition(
       "iterables",
       {
@@ -58,7 +58,7 @@ object QQJSPrelude extends QQJSCompiler.QQPrelude {
         case k => Task.now(Nil)
       })
 
-  override def booleans: CompiledDefinition[_0] =
+  override def booleans: CompiledDefinition =
     noParamDefinition(
       "booleans",
       {
@@ -67,7 +67,7 @@ object QQJSPrelude extends QQJSCompiler.QQPrelude {
         case k => Task.now(Nil)
       })
 
-  override def numbers: CompiledDefinition[_0] =
+  override def numbers: CompiledDefinition =
     noParamDefinition(
       "numbers",
       {
@@ -76,7 +76,7 @@ object QQJSPrelude extends QQJSCompiler.QQPrelude {
         case k => Task.now(Nil)
       })
 
-  override def strings: CompiledDefinition[_0] =
+  override def strings: CompiledDefinition =
     noParamDefinition(
       "strings",
       {
@@ -85,7 +85,7 @@ object QQJSPrelude extends QQJSCompiler.QQPrelude {
         case k => Task.now(Nil)
       })
 
-  override def nulls: CompiledDefinition[_0] =
+  override def nulls: CompiledDefinition =
     noParamDefinition(
       "nulls",
       {
@@ -93,7 +93,7 @@ object QQJSPrelude extends QQJSCompiler.QQPrelude {
         case k => Task.now(Nil)
       })
 
-  override def values: CompiledDefinition[_0] =
+  override def values: CompiledDefinition =
     noParamDefinition(
       "values",
       {
@@ -101,7 +101,7 @@ object QQJSPrelude extends QQJSCompiler.QQPrelude {
         case k => Task.now(k :: Nil)
       })
 
-  override def scalars: CompiledDefinition[_0] =
+  override def scalars: CompiledDefinition =
     noParamDefinition(
       "scalars",
       {

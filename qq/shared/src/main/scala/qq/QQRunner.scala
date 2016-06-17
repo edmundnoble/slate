@@ -20,7 +20,7 @@ object QQRunner {
       case Parsed.Success((definitions, main), _) =>
         if (optimize) {
           compiler.compileProgram(
-            definitions.map(defn => defn.copy[Nat](name = defn.name, params = Sized.wrap[List[String], Nat](defn.params.unsized), body = QQOptimizer.optimize(defn.body))(defn.ev)),
+            definitions.map(defn => defn.copy(name = defn.name, params = defn.params, body = QQOptimizer.optimize(defn.body))),
             QQOptimizer.optimize(main)
           )
         } else {

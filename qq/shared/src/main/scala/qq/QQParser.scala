@@ -1,6 +1,6 @@
 package qq
 
-import fastparse.Implicits
+import fastparse.{Implicits, Logger}
 
 import scalaz.{-\/, Applicative, \/}
 import matryoshka._
@@ -8,6 +8,7 @@ import fastparse.parsers.Combinators
 import qq.Definition
 import qq.QQFilterComponent.MultiplyFilters
 import shapeless.ops.nat.ToInt
+import scalaz.syntax.monad._
 import shapeless.{Nat, Sized}
 
 object QQParser {
@@ -47,6 +48,11 @@ object QQParser {
   val whitespace: P0 = P(CharsWhile(_ == ' ').?)
 
   val numericLiteral: P[Int] = P(
+    CharsWhile(Character.isDigit).! map ((_: String).toInt)
+  )
+
+  val doubleLiteral: P[Double] = P(
+    // TODO: fix
     CharsWhile(Character.isDigit).! map ((_: String).toInt)
   )
 
@@ -127,27 +133,42 @@ object QQParser {
     "(" ~ filterIdentifier.rep(min = 1, sep = whitespace ~ "," ~ whitespace) ~ ")"
   )
 
-  val definition: P[Definition[Nat]] = P(
-    "def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~ whitespace ~ filter ~ ";" map {
-      case (identifier, args, body) =>
-        val size = args.size
-        Definition[Nat](identifier, Sized.wrap[List[String], Nat](args), body)(new ToInt[Nat] {
-          def apply() = size
-        })
+  val definition: P[Definition] = P(
+    ("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~ whitespace ~ filter ~ ";") map {
+      Definition.tupled
     }
   )
 
-  val addFilters = P((filter ~ whitespace ~ "+" ~ whitespace ~ filter) map (QQFilter.addFilters _).tupled)
-  val subtractFilters = P((filter ~ whitespace ~ "-" ~ whitespace ~ filter) map (QQFilter.subtractFilters _).tupled)
-  val multiplyFilters = P((filter ~ whitespace ~ "*" ~ whitespace ~ filter) map (QQFilter.multiplyFilters _).tupled)
-  val divideFilters = P((filter ~ whitespace ~ "/" ~ whitespace ~ filter) map (QQFilter.divideFilters _).tupled)
-  val moduloFilters= P((filter ~ whitespace ~ "%" ~ whitespace ~ filter) map (QQFilter.moduloFilters _).tupled)
+  val constInt: P[QQFilter] = P(numericLiteral map (d => QQFilter.constNumber(d)))
+  val constString: P[QQFilter] = P("\"" ~ (stringLiteral map QQFilter.constString) ~ "\"")
 
-  val filter: P[QQFilter] = P(
-    enlistedFilter | ensequencedFilters | enjectedFilter | addFilters | subtractFilters | multiplyFilters | divideFilters | moduloFilters
+  val basicFilter: P[QQFilter] = P(
+    enlistedFilter | ensequencedFilters | enjectedFilter | constInt | constString
   )
 
-  val program: P[(List[Definition[Nat]], QQFilter)] = P(
+  val expr: P[QQFilter] =
+    P((term ~ whitespace ~
+      (
+        ((wspStr("+") >| QQFilter.addFilters _) |
+          (wspStr("-") >| QQFilter.subtractFilters _)) ~ whitespace ~ term
+        )
+        .rep
+      ).map { l => l._2.foldLeft(l._1) { case (f, (combFun, nextF)) => combFun(f, nextF) } })
+  val term: P[QQFilter] =
+    P((factor ~ whitespace ~
+      (
+        ((wspStr("*") >| QQFilter.multiplyFilters _) |
+          (wspStr("/") >| QQFilter.divideFilters _) |
+          (wspStr("%") >| QQFilter.moduloFilters _)) ~ whitespace ~ factor)
+        .rep
+      ).map(l => l._2.foldLeft(l._1) { case (f, (combFun, nextF)) => combFun(f, nextF) }))
+  val factor: P[QQFilter] = P(("(" ~ expr ~ ")") | basicFilter)
+
+  val filter: P[QQFilter] = P(
+    expr
+  )
+
+  val program: P[(List[Definition], QQFilter)] = P(
     (definition.rep(sep = whitespace) ~ whitespace).?.map(_.getOrElse(Nil)) ~ filter
   )
 

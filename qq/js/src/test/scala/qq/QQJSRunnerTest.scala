@@ -28,5 +28,6 @@ object QQJSRunnerTest extends utest.TestSuite {
     "keys program" - runTest(keys)
     "classifier programs" -
       Future.traverse(List(arrays, strings, booleans, scalars, objects, iterables, nulls, numbers))(runTest)
+    "add" - runTest(add)
   }
 }

@@ -28,43 +28,37 @@ abstract class QQCompiler {
   type CompiledFilter = AnyTy => Task[List[AnyTy]]
   type OrCompilationError[T] = QQCompilationException \/ T
 
-  final case class CompiledDefinition[N <: Nat]
-  (name: String, body: Sized[List[CompiledFilter], N] => QQCompilationException \/ CompiledFilter)
-  (implicit val ev: ToInt[N]) {
-    @inline
-    def applyIfSized(args: List[CompiledFilter]): Option[QQCompilationException \/ CompiledFilter] = {
-      args.sized(ev).map(body(_))
-    }
-  }
+  final case class CompiledDefinition
+  (name: String, numParams: Int, body: List[CompiledFilter] => QQCompilationException \/ CompiledFilter)
 
   trait QQPrelude {
-    def noParamDefinition(name: String, fun: CompiledFilter): CompiledDefinition[_0] = {
-      CompiledDefinition[_0](name, (_: Sized[List[CompiledFilter], _0]) => fun.right)
+    def noParamDefinition(name: String, fun: CompiledFilter): CompiledDefinition = {
+      CompiledDefinition(name, numParams = 0, (_: List[CompiledFilter]) => fun.right)
     }
 
-    def length: CompiledDefinition[_0]
+    def length: CompiledDefinition
 
-    def keys: CompiledDefinition[_0]
+    def keys: CompiledDefinition
 
-    def arrays: CompiledDefinition[_0]
+    def arrays: CompiledDefinition
 
-    def objects: CompiledDefinition[_0]
+    def objects: CompiledDefinition
 
-    def iterables: CompiledDefinition[_0]
+    def iterables: CompiledDefinition
 
-    def booleans: CompiledDefinition[_0]
+    def booleans: CompiledDefinition
 
-    def numbers: CompiledDefinition[_0]
+    def numbers: CompiledDefinition
 
-    def strings: CompiledDefinition[_0]
+    def strings: CompiledDefinition
 
-    def nulls: CompiledDefinition[_0]
+    def nulls: CompiledDefinition
 
-    def values: CompiledDefinition[_0]
+    def values: CompiledDefinition
 
-    def scalars: CompiledDefinition[_0]
+    def scalars: CompiledDefinition
 
-    def all: List[CompiledDefinition[_ <: Nat]] =
+    def all: List[CompiledDefinition] =
       length :: keys :: arrays :: objects :: iterables :: booleans ::
         numbers :: strings :: nulls :: values :: scalars :: Nil
   }
@@ -82,13 +76,13 @@ abstract class QQCompiler {
     Task.sequence(functions.map(_ (jsv))).map(_.flatten)
   }
 
-  final def compileProgram(definitions: List[Definition[Nat]], main: QQFilter): QQCompilationException \/ CompiledFilter = {
-    val compiledDefinitions: QQCompilationException \/ List[CompiledDefinition[_]] =
-      definitions.foldLeft(nil[CompiledDefinition[_]].right[QQCompilationException])((x, y) => y.foldfun(this)(x))
+  final def compileProgram(definitions: List[Definition], main: QQFilter): QQCompilationException \/ CompiledFilter = {
+    val compiledDefinitions: QQCompilationException \/ List[CompiledDefinition] =
+      definitions.foldLeft(nil[CompiledDefinition].right[QQCompilationException])(compileDefinitionStep)
     compiledDefinitions.flatMap(compile(_, main))
   }
 
-  final def compileStep(definitions: List[CompiledDefinition[_]], filter: QQFilterComponent[CompiledFilter]): OrCompilationError[CompiledFilter] = filter match {
+  final def compileStep(definitions: List[CompiledDefinition], filter: QQFilterComponent[CompiledFilter]): OrCompilationError[CompiledFilter] = filter match {
     case IdFilter() => ((jsv: AnyTy) => Task.now(jsv :: Nil)).right
     case ComposeFilters(f, s) => composeCompiledFilters(f, s).right
     case EnlistFilter(f) => enlistFilter(f).right
@@ -108,14 +102,29 @@ abstract class QQCompiler {
     case ModuloFilters(first, second) => moduloFilters(first, second).right
     case CallFilter(filterIdentifier, params) =>
       definitions.find(_.name == filterIdentifier).cata(
-        { (defn: CompiledDefinition[_]) =>
-          defn.applyIfSized(params).getOrElse(WrongNumParams(filterIdentifier, defn.ev(), params.length).left[CompiledFilter])
+        { (defn: CompiledDefinition) =>
+          if (params.length == defn.numParams) {
+            defn.body(params)
+          } else {
+            WrongNumParams(filterIdentifier, defn.numParams, params.length).left[CompiledFilter]
+          }
         },
         NoSuchMethod(filterIdentifier).left
       )
   }
 
-  final def compile(definitions: List[CompiledDefinition[_]], filter: QQFilter): OrCompilationError[CompiledFilter] = {
+  def compileDefinitionStep(soFar: QQCompilationException \/ List[CompiledDefinition], nextDefinition: Definition) = {
+    soFar.map(definitionsSoFar =>
+      CompiledDefinition(nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter]) => {
+        val paramsAsDefinitions = (params, params).zipped.map { (filterName, value) =>
+          CompiledDefinition(nextDefinition.name, 0, (_: List[CompiledFilter]) => value.right[QQCompilationException])
+        }
+        compile(definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body)
+      }) :: definitionsSoFar
+    )
+  }
+
+  final def compile(definitions: List[CompiledDefinition], filter: QQFilter): OrCompilationError[CompiledFilter] = {
     filter.cataM[OrCompilationError, CompiledFilter](compileStep(prelude.all ++ definitions, _))
   }
 
