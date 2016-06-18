@@ -55,7 +55,7 @@ abstract class Compiler {
   }
 
   @inline
-  final def composeCompiledFilters(firstFilter: CompiledFilter, secondFilter: CompiledFilter): CompiledFilter = { jsv: AnyTy =>
+  private def composeCompiledFilters(firstFilter: CompiledFilter, secondFilter: CompiledFilter): CompiledFilter = { jsv: AnyTy =>
     for {
       firstResult <- firstFilter(jsv)
       secondResult <- firstResult.traverse(secondFilter)
@@ -63,16 +63,23 @@ abstract class Compiler {
   }
 
   @inline
-  final def ensequenceCompiledFilters(functions: List[CompiledFilter]): CompiledFilter = { jsv: AnyTy =>
+  private def ensequenceCompiledFilters(functions: List[CompiledFilter]): CompiledFilter = { jsv: AnyTy =>
     Task.sequence(functions.map(_ (jsv))).map(_.flatten)
   }
 
-  final def compileProgram(definitions: List[Definition], main: Filter): QQCompilationException \/ CompiledFilter = {
-    val compiledDefinitions: QQCompilationException \/ List[CompiledDefinition] =
-      definitions.foldLeft(nil[CompiledDefinition].right[QQCompilationException])(compileDefinitionStep)
-    compiledDefinitions.flatMap(compile(_, main))
+  @inline
+  private def zipFiltersWith(first: CompiledFilter, second: CompiledFilter, fun: (AnyTy, AnyTy) => Task[AnyTy]): CompiledFilter = { jsv: AnyTy =>
+    (first(jsv) |@| second(jsv)) { (f, s) => (f, s).zipped.map(fun) }.map(_.sequence).flatten
   }
 
+  final def compileDefinitions(definitions: List[Definition]): QQCompilationException \/ List[CompiledDefinition] =
+    definitions.foldLeft(nil[CompiledDefinition].right[QQCompilationException])(compileDefinitionStep)
+
+  final def compileProgram(definitions: List[Definition], main: Filter): QQCompilationException \/ CompiledFilter = {
+    compileDefinitions(definitions).flatMap(compile(_, main))
+  }
+
+  @inline
   final def compileStep(definitions: List[CompiledDefinition], filter: FilterComponent[CompiledFilter]): OrCompilationError[CompiledFilter] = filter match {
     case IdFilter() => ((jsv: AnyTy) => Task.now(jsv :: Nil)).right
     case ComposeFilters(f, s) => composeCompiledFilters(f, s).right
@@ -86,11 +93,11 @@ abstract class Compiler {
     case SelectIndex(i) => selectIndex(i).right
     case ConstNumber(d) => constNumber(d).right
     case ConstString(str) => constString(str).right
-    case AddFilters(first, second) => addFilters(first, second).right
-    case SubtractFilters(first, second) => subtractFilters(first, second).right
-    case MultiplyFilters(first, second) => multiplyFilters(first, second).right
-    case DivideFilters(first, second) => divideFilters(first, second).right
-    case ModuloFilters(first, second) => moduloFilters(first, second).right
+    case AddFilters(first, second) => zipFiltersWith(first, second, addJsValues).right
+    case SubtractFilters(first, second) => zipFiltersWith(first, second, subtractJsValues).right
+    case MultiplyFilters(first, second) => zipFiltersWith(first, second, multiplyJsValues).right
+    case DivideFilters(first, second) => zipFiltersWith(first, second, divideJsValues).right
+    case ModuloFilters(first, second) => zipFiltersWith(first, second, moduloJsValues).right
     case CallFilter(filterIdentifier, params) =>
       definitions.find(_.name == filterIdentifier).cata(
         { (defn: CompiledDefinition) =>
@@ -116,10 +123,14 @@ abstract class Compiler {
   }
 
   final def compile(definitions: List[CompiledDefinition], filter: Filter): OrCompilationError[CompiledFilter] = {
-    filter.cataM[OrCompilationError, CompiledFilter](compileStep(prelude.all ++ definitions, _))
+    compiledSharedPrelude.flatMap { sharedPrelude =>
+      val allDefinitions = sharedPrelude ++ platformPrelude.all ++ definitions
+      filter.cataM[OrCompilationError, CompiledFilter](compileStep(allDefinitions, _))
+    }
   }
 
-  def prelude: PlatformPrelude
+  def compiledSharedPrelude: QQCompilationException \/ List[CompiledDefinition] = compileDefinitions(SharedPrelude.all)
+  def platformPrelude: PlatformPrelude
   def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter
   def enlistFilter(filter: CompiledFilter): CompiledFilter
   def selectKey(key: String): CompiledFilter
@@ -132,26 +143,6 @@ abstract class Compiler {
   def multiplyJsValues(first: AnyTy, second: AnyTy): Task[AnyTy]
   def divideJsValues(first: AnyTy, second: AnyTy): Task[AnyTy]
   def moduloJsValues(first: AnyTy, second: AnyTy): Task[AnyTy]
-
-  def addFilters(first: CompiledFilter, second: CompiledFilter): CompiledFilter = { jsv: AnyTy =>
-    (first(jsv) |@| second(jsv)) { (f, s) => (f, s).zipped.map(addJsValues) }.map(_.sequence).flatten
-  }
-
-  def subtractFilters(first: CompiledFilter, second: CompiledFilter): CompiledFilter = { jsv: AnyTy =>
-    (first(jsv) |@| second(jsv)) { (f, s) => (f, s).zipped.map(subtractJsValues) }.map(_.sequence).flatten
-  }
-
-  def multiplyFilters(first: CompiledFilter, second: CompiledFilter): CompiledFilter = { jsv: AnyTy =>
-    (first(jsv) |@| second(jsv)) { (f, s) => (f, s).zipped.map(multiplyJsValues) }.map(_.sequence).flatten
-  }
-
-  def divideFilters(first: CompiledFilter, second: CompiledFilter): CompiledFilter = { jsv: AnyTy =>
-    (first(jsv) |@| second(jsv)) { (f, s) => (f, s).zipped.map(divideJsValues) }.map(_.sequence).flatten
-  }
-
-  def moduloFilters(first: CompiledFilter, second: CompiledFilter): CompiledFilter = { jsv: AnyTy =>
-    (first(jsv) |@| second(jsv)) { (f, s) => (f, s).zipped.map(moduloJsValues) }.map(_.sequence).flatten
-  }
 
   def collectResults(f: CompiledFilter): CompiledFilter
 }

@@ -88,11 +88,11 @@ object ParserTest extends utest.TestSuite with Asserts {
     }
 
     "parse math operators" - {
-      Parser.filter.parse(". + .").get.value ===> Filter.addFilters(Filter.id, Filter.id)
-      Parser.filter.parse(". - .").get.value ===> Filter.subtractFilters(Filter.id, Filter.id)
-      Parser.filter.parse(". * .").get.value ===> Filter.multiplyFilters(Filter.id, Filter.id)
-      Parser.filter.parse(". / .").get.value ===> Filter.divideFilters(Filter.id, Filter.id)
-      Parser.filter.parse(". % .").get.value ===> Filter.moduloFilters(Filter.id, Filter.id)
+      Parser.filter.parse(". + .").get.value ===> Filter.add(Filter.id, Filter.id)
+      Parser.filter.parse(". - .").get.value ===> Filter.subtract(Filter.id, Filter.id)
+      Parser.filter.parse(". * .").get.value ===> Filter.multiply(Filter.id, Filter.id)
+      Parser.filter.parse(". / .").get.value ===> Filter.divide(Filter.id, Filter.id)
+      Parser.filter.parse(". % .").get.value ===> Filter.modulo(Filter.id, Filter.id)
     }
 
     "parse enjected pairs" - {

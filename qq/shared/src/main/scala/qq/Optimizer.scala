@@ -24,9 +24,19 @@ object Optimizer {
     case Fix(CollectResults(Fix(EnlistFilter(f)))) => f
   }
 
-  val optimizations: NonEmptyList[Filter => Filter] =
-    NonEmptyList(idCompose, collectEnlist) map (f => repeatedly(f.lift))
-  val allOptimizationsƒ: Filter => Filter = optimizations.foldLeft1(_ >>> _)
+  object MathOptimizations {
+    def constReduce: Optimization = {
+      case Fix(AddFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f + s))
+      case Fix(SubtractFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f - s))
+      case Fix(MultiplyFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f * s))
+      case Fix(DivideFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f / s))
+      case Fix(ModuloFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f % s))
+    }
+  }
+
+  val optimizations: NonEmptyList[Optimization] =
+    NonEmptyList(idCompose, collectEnlist, MathOptimizations.constReduce)
+  val allOptimizationsƒ: Filter => Filter = repeatedly(optimizations.foldLeft1(_ orElse _).lift)
   def optimize(f: Filter): Filter = f.transCataT(allOptimizationsƒ)
 
 }

@@ -152,17 +152,17 @@ object Parser {
   val expr: P[Filter] =
     P((term ~ whitespace ~
       (
-        ((wspStr("+") >| Filter.addFilters _) |
-          (wspStr("-") >| Filter.subtractFilters _)) ~ whitespace ~ term
+        ((wspStr("+") >| Filter.add _) |
+          (wspStr("-") >| Filter.subtract _)) ~ whitespace ~ term
         )
         .rep
       ).map ((foldOperators _).tupled))
   val term: P[Filter] =
     P((factor ~ whitespace ~
       (
-        ((wspStr("*") >| Filter.multiplyFilters _) |
-          (wspStr("/") >| Filter.divideFilters _) |
-          (wspStr("%") >| Filter.moduloFilters _)) ~ whitespace ~ factor)
+        ((wspStr("*") >| Filter.multiply _) |
+          (wspStr("/") >| Filter.divide _) |
+          (wspStr("%") >| Filter.modulo _)) ~ whitespace ~ factor)
         .rep
       ).map ((foldOperators _).tupled))
   val factor: P[Filter] = P(("(" ~ expr ~ ")") | basicFilter)

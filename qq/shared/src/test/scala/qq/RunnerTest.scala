@@ -5,6 +5,7 @@ import upickle.Js
 case class RunnerTest(program: String, input: Js.Value, expectedOutput: List[Js.Value])
 
 object RunnerTest {
+
   val identityProgram = {
     val dict = Js.Obj("1" -> Js.Num(2), "3" -> Js.Num(4))
     RunnerTest(".", dict, List(dict))

@@ -160,7 +160,7 @@ object JSCompiler extends Compiler {
     } yield kvPairsProducts.map(js.Dictionary[js.Any](_: _*))
   }
 
-  override def prelude = JSPrelude
+  override def platformPrelude = JSPrelude
 
 }
 

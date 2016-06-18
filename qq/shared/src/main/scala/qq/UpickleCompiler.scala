@@ -159,6 +159,6 @@ object UpickleCompiler extends Compiler {
     } yield kvPairsProducts.map(Js.Obj(_: _*))
   }
 
-  def prelude = UpicklePrelude
+  def platformPrelude = UpicklePrelude
 
 }
