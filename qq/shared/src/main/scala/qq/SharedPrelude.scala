@@ -5,7 +5,7 @@ object SharedPrelude {
   val map: Definition = {
     Definition("map",
       params = List("x"),
-      body = Filter.compose(Filter.call("x"), Filter.collectResults(Filter.id))
+      body = Filter.compose(Filter.collectResults(Filter.id), Filter.call("x"))
     )
   }
 

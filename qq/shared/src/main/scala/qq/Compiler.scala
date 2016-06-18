@@ -115,7 +115,7 @@ abstract class Compiler {
     soFar.map(definitionsSoFar =>
       CompiledDefinition(nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter]) => {
         val paramsAsDefinitions = (nextDefinition.params, params).zipped.map { (filterName, value) =>
-          CompiledDefinition(nextDefinition.name, 0, (_: List[CompiledFilter]) => value.right[QQCompilationException])
+          CompiledDefinition(filterName, 0, (_: List[CompiledFilter]) => value.right[QQCompilationException])
         }
         compile(definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body)
       }) :: definitionsSoFar
@@ -123,13 +123,12 @@ abstract class Compiler {
   }
 
   final def compile(definitions: List[CompiledDefinition], filter: Filter): OrCompilationError[CompiledFilter] = {
-    compiledSharedPrelude.flatMap { sharedPrelude =>
+    compileDefinitions(SharedPrelude.all).flatMap { sharedPrelude =>
       val allDefinitions = sharedPrelude ++ platformPrelude.all ++ definitions
       filter.cataM[OrCompilationError, CompiledFilter](compileStep(allDefinitions, _))
     }
   }
 
-  def compiledSharedPrelude: QQCompilationException \/ List[CompiledDefinition] = compileDefinitions(SharedPrelude.all)
   def platformPrelude: PlatformPrelude
   def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter
   def enlistFilter(filter: CompiledFilter): CompiledFilter

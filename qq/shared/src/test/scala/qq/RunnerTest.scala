@@ -132,4 +132,10 @@ object RunnerTest {
     List(Js.Num(30))
   )
 
+  val map = RunnerTest(
+    "def f: . + 2; map(f)",
+    Js.Arr(Js.Num(1)),
+    List(Js.Num(3))
+  )
+
 }

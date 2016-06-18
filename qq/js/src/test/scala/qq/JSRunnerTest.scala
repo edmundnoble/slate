@@ -31,5 +31,6 @@ object JSRunnerTest extends utest.TestSuite {
     "add" - runTest(add)
     "maths" - runTest(maths)
     "bedmas" - runTest(bedmas)
+    "map" - runTest(map)
   }
 }

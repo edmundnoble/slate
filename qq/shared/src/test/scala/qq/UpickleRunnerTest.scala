@@ -29,5 +29,6 @@ object UpickleRunnerTest extends utest.TestSuite {
     "add" - runTest(add)
     "maths" - runTest(maths)
     "bedmas" - runTest(bedmas)
+    "map" - runTest(map)
   }
 }
