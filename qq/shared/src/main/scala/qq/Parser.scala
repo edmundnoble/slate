@@ -92,7 +92,10 @@ object Parser {
     } yield Filter.call(identifier, params)
   )
 
-  val smallFilter: P[Filter] = P(dottedFilter | callFilter)
+  val constInt: P[Filter] = P(numericLiteral map (d => Filter.constNumber(d)))
+  val constString: P[Filter] = P("\"" ~ (stringLiteral map Filter.constString) ~ "\"")
+
+  val smallFilter: P[Filter] = P(constInt | constString | dottedFilter | callFilter)
 
   val pipedFilter: P[Filter] = P(
     (smallFilter | ("(" ~/ filter ~ ")"))
@@ -112,7 +115,7 @@ object Parser {
   )
 
   val enjectPair: P[(String \/ Filter, Filter)] = P(
-    ((("(" ~/ smallFilter ~ ")").map(_.right[String]) |
+    ((("(" ~/ filter ~ ")").map(_.right[String]) |
       filterIdentifier.map(_.left[Filter])) ~ ":" ~ whitespace ~ filter) |
       filterIdentifier.map(id => -\/(id) -> Filter.selectKey(id))
   )
@@ -131,11 +134,8 @@ object Parser {
     }
   )
 
-  val constInt: P[Filter] = P(numericLiteral map (d => Filter.constNumber(d)))
-  val constString: P[Filter] = P("\"" ~ (stringLiteral map Filter.constString) ~ "\"")
-
   val basicFilter: P[Filter] = P(
-    enlistedFilter | ensequencedFilters | enjectedFilter | constInt | constString
+    enlistedFilter | ensequencedFilters | enjectedFilter
   )
 
   def foldOperators(begin: Filter, operators: List[((Filter, Filter) => Filter, Filter)]): Filter =
@@ -148,7 +148,7 @@ object Parser {
           (wspStr("-") >| Filter.subtract _)) ~ whitespace ~ term
         )
         .rep
-      ).map ((foldOperators _).tupled))
+      ).map((foldOperators _).tupled))
 
   val term: P[Filter] =
     P((factor ~ whitespace ~
@@ -157,7 +157,7 @@ object Parser {
           (wspStr("/") >| Filter.divide _) |
           (wspStr("%") >| Filter.modulo _)) ~ whitespace ~ factor)
         .rep
-      ).map ((foldOperators _).tupled))
+      ).map((foldOperators _).tupled))
 
   val factor: P[Filter] = P(("(" ~ expr ~ ")") | basicFilter)
 

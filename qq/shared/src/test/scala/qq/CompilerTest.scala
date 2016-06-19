@@ -16,12 +16,14 @@ object CompilerTest {
 
   val selectIndex: List[CompilerTest] = {
     val arr = Js.Arr(Js.Num(1), Js.Num(2))
-    List(CompilerTest(Filter.selectIndex(-3), arr, List(Js.Null)),
+    List(
+      CompilerTest(Filter.selectIndex(-3), arr, List(Js.Null)),
       CompilerTest(Filter.selectIndex(-2), arr, List(Js.Num(1))),
       CompilerTest(Filter.selectIndex(-1), arr, List(Js.Num(2))),
       CompilerTest(Filter.selectIndex(0), arr, List(Js.Num(1))),
       CompilerTest(Filter.selectIndex(1), arr, List(Js.Num(2))),
-      CompilerTest(Filter.selectIndex(2), arr, List(Js.Null)))
+      CompilerTest(Filter.selectIndex(2), arr, List(Js.Null))
+    )
   }
 
   val id: List[CompilerTest] = {
