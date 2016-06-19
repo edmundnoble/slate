@@ -34,19 +34,25 @@ object OptimizerTest extends utest.TestSuite with Asserts {
         Filter.id
     }
 
-    "optimize complicated math" - {
+    "optimize all math in constant expressions" - {
       Optimizer.optimize(
         Filter.add(
           Filter.multiply(
             Filter.constNumber(5.4),
             Filter.divide(
               Filter.constNumber(1),
-              Filter.constNumber(0.5)
+              Filter.subtract(
+                Filter.constNumber(1),
+                Filter.multiply(
+                  Filter.constNumber(0.25),
+                  Filter.constNumber(2)
+                )
+              )
             )
           ),
           Filter.constNumber(20))
       ) ===>
-        Filter.constNumber(20 + (5.4 * (1 / 0.5)))
+        Filter.constNumber(20 + (5.4 * (1 / (1 - (0.25 * 2)))))
     }
 
   }
