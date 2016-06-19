@@ -2,18 +2,10 @@ package dash
 
 import dash.models.{ExpandableContentModel, TitledContentModel}
 import dash.views.{ExpandableContentView, Styles}
-import japgolly.scalajs.react.Addons.ReactCssTransitionGroup
-import japgolly.scalajs.react.CompScope.DuringCallbackU
 import japgolly.scalajs.react._
-import japgolly.scalajs.react.vdom.ReactTagOf
-import monocle.Lens
-import monocle.macros.GenLens
-import org.scalajs.dom.html.Div
 import qq.Util._
 
-import scala.concurrent.duration._
 import scalacss.Defaults._
-import scalacss.{NonEmptyVector, StyleA}
 
 object DashboardPage {
 
@@ -84,6 +76,7 @@ object DashboardPage {
       .render(_ => htmlFrag)
       .build()
   }
+
 }
 
 object LinkStyles extends StyleSheet.Standalone {

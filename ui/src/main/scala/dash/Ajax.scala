@@ -8,6 +8,7 @@ import org.scalajs.dom
 import org.scalajs.dom.FormData
 import org.scalajs.dom.raw.Blob
 
+import scala.concurrent.duration._
 import scala.language.implicitConversions
 import scala.scalajs.js
 import scala.scalajs.js.typedarray.TypedArrayBufferOps._
@@ -31,6 +32,8 @@ object Ajax {
     */
   @js.native
   sealed trait InputData extends js.Any
+
+  case class Timeout(value: Duration)
 
   object InputData {
     implicit def str2ajax(s: String): InputData = s.asInstanceOf[InputData]
@@ -58,47 +61,42 @@ object Ajax {
 
   def get(url: String,
           data: InputData = null,
-          timeout: Int = 0,
           headers: Map[String, String] = Map.empty,
           withCredentials: Boolean = false,
-          responseType: String = "") = {
-    apply("GET", url, data, timeout, headers, withCredentials, responseType)
+          responseType: String = "")(implicit timeout: Timeout) = {
+    apply("GET", url, data, headers, withCredentials, responseType)
   }
 
   def post(url: String,
            data: InputData = null,
-           timeout: Int = 0,
            headers: Map[String, String] = Map.empty,
            withCredentials: Boolean = false,
-           responseType: String = "") = {
-    apply("POST", url, data, timeout, headers, withCredentials, responseType)
+           responseType: String = "")(implicit timeout: Timeout) = {
+    apply("POST", url, data, headers, withCredentials, responseType)
   }
 
   def put(url: String,
           data: InputData = null,
-          timeout: Int = 0,
           headers: Map[String, String] = Map.empty,
           withCredentials: Boolean = false,
-          responseType: String = "") = {
-    apply("PUT", url, data, timeout, headers, withCredentials, responseType)
+          responseType: String = "")(implicit timeout: Timeout) = {
+    apply("PUT", url, data, headers, withCredentials, responseType)
   }
 
   def delete(url: String,
              data: InputData = null,
-             timeout: Int = 0,
              headers: Map[String, String] = Map.empty,
              withCredentials: Boolean = false,
-             responseType: String = "") = {
-    apply("DELETE", url, data, timeout, headers, withCredentials, responseType)
+             responseType: String = "")(implicit timeout: Timeout) = {
+    apply("DELETE", url, data, headers, withCredentials, responseType)
   }
 
   def apply(method: String,
             url: String,
             data: InputData,
-            timeout: Int,
             headers: Map[String, String],
             withCredentials: Boolean,
-            responseType: String): Task[dom.XMLHttpRequest] = {
+            responseType: String)(implicit timeout: Timeout): Task[dom.XMLHttpRequest] = {
     Task.create[dom.XMLHttpRequest] { (_, callback) =>
       val req = new dom.XMLHttpRequest()
 
@@ -112,7 +110,7 @@ object Ajax {
       }
       req.open(method, url)
       req.responseType = responseType
-      req.timeout = timeout
+      req.timeout = if (timeout.value.isFinite()) timeout.value.toMillis else 0
       req.withCredentials = withCredentials
       headers.foreach(x => req.setRequestHeader(x._1, x._2))
       if (data == null)
