@@ -109,13 +109,11 @@ object ExpandableContentView {
                 )
               ),
               Styles.animationGroup(
-                if (state.expanded) {
-                  <.div(
-                    model.content.map(TitledContentView.Html)
-                  )
+                (if (state.expanded) {
+                  model.content.map(TitledContentView.Html)
                 } else {
-                  <.div()
-                }
+                  Vector.empty[ReactElement]
+                }): _*
               )
             )
           )
