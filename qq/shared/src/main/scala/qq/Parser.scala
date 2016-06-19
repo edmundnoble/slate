@@ -1,26 +1,18 @@
 package qq
 
-import fastparse.{Implicits, Logger}
+import fastparse.all._
+import fastparse.parsers
+import fastparse.Implicits
 
-import scalaz.{-\/, Applicative, \/}
-import matryoshka._
-import fastparse.parsers.Combinators
-import qq.Definition
-import qq.FilterComponent.MultiplyFilters
-import shapeless.ops.nat.ToInt
+import scalaz.{-\/, \/}
+import scalaz.Monad
+import scalaz.syntax.either._
 import scalaz.syntax.monad._
-import shapeless.{Nat, Sized}
+import scalaz.syntax.std.option._
+
+import scala.collection.mutable
 
 object Parser {
-
-  import fastparse.all._
-  import fastparse.parsers
-
-  import scalaz.Monad
-  import scala.collection.mutable
-  import scalaz.syntax.std.option._
-  import scalaz.syntax.either._
-  import scalaz.syntax.monad._
 
   implicit object ParserMonad extends Monad[Parser] {
     override def point[A](a: => A): Parser[A] =
@@ -157,6 +149,7 @@ object Parser {
         )
         .rep
       ).map ((foldOperators _).tupled))
+
   val term: P[Filter] =
     P((factor ~ whitespace ~
       (
@@ -165,6 +158,7 @@ object Parser {
           (wspStr("%") >| Filter.modulo _)) ~ whitespace ~ factor)
         .rep
       ).map ((foldOperators _).tupled))
+
   val factor: P[Filter] = P(("(" ~ expr ~ ")") | basicFilter)
 
   val filter: P[Filter] = P(

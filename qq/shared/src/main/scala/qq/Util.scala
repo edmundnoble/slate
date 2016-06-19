@@ -4,7 +4,7 @@ import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler
 
 import scala.concurrent.{Future, Promise}
-import scalaz.Monad
+import scalaz._
 
 object Util {
 
@@ -18,7 +18,7 @@ object Util {
     override def bind[A, B](fa: Coeval[A])(f: (A) => Coeval[B]): Coeval[B] = fa.flatMap(f)
   }
 
-  def prod[A](xss: List[List[A]], ys: List[A]): List[List[A]] = for { xs <- xss; y <- ys; r <- (y :: xs) :: Nil } yield r
+  def prod[A](xss: List[List[A]], ys: List[A]): List[List[A]] = for {xs <- xss; y <- ys; r <- (y :: xs) :: Nil} yield r
 
   implicit class TaskRunFuture[A](val task: Task[A]) {
     def runFuture(implicit s: Scheduler): Future[A] = {
@@ -28,5 +28,9 @@ object Util {
     }
   }
 
+  def single: Option ~> Seq = new (Option ~> Seq) {
+    def apply[A](op: Option[A]): Seq[A] =
+      op.fold(Vector.empty[A])(Vector.empty[A] :+ _)
+  }
 
 }

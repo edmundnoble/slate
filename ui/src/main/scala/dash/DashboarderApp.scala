@@ -7,7 +7,7 @@ import chrome.app.runtime.bindings.{LaunchData, Request}
 import chrome.app.window.bindings.{BoundsSpecification, CreateWindowOptions}
 import upickle.Js
 import upickle.json
-import dash.SearchPage.{Filter, Issue, SearchResult}
+import dash.DashboardPage.{Filter, Issue, SearchResult}
 import japgolly.scalajs.react.{Addons, ReactDOM}
 import monix.eval.{Callback, Coeval, Task}
 import org.scalajs.dom.raw.Element
@@ -72,7 +72,7 @@ object DashboarderApp extends scalajs.js.JSApp {
     val callback = new Callback[IndexedSeq[SearchResult]] {
       override def onSuccess(results: IndexedSeq[SearchResult]): Unit = {
         val searchPage =
-          SearchPage.makeSearchPage(results)
+          DashboardPage.makeSearchPage(results)
         println(s"Rendered ${results.length} filters!")
         val container: Element = org.scalajs.dom.document.body.children.namedItem("container")
         if (!js.isUndefined(Addons.Perf)) {
