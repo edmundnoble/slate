@@ -30,7 +30,7 @@ object ParserTest extends utest.TestSuite with Asserts {
     }
 
     "parse dottable filters" - {
-      Parser.dottableSimpleFilter.parse("[\"fuckeries \"]").get.value ===> Filter.selectKey("fuckeries ")
+      Parser.dottableSimpleFilter.parse("[\"filter \"]").get.value ===> Filter.selectKey("filter ")
     }
 
     "parse dotted filters" - {
@@ -113,6 +113,10 @@ object ParserTest extends utest.TestSuite with Asserts {
       Parser.program.parse("def id: .; id").get.value ===>
         ((List(Definition("id", emptySized, Filter.id)), Filter.call("id")))
       Parser.program.parse(".titles[]").get.value ===> ((Nil, Filter.compose(Filter.id, Filter.collectResults(Filter.selectKey("titles")))))
+    }
+
+    "parse strings" - {
+      Parser.basicFilter.parse(""""hello"""").get.value ===> Filter.constString("hello")
     }
 
   }
