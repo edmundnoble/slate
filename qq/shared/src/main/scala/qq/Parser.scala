@@ -114,9 +114,10 @@ object Parser {
     "[" ~/ ensequencedFilters.map(Filter.enlist) ~ "]"
   )
 
+  // The reason I avoid using basicFilter is to avoid a parsing ambiguity with ensequencedFilters
   val enjectPair: P[(String \/ Filter, Filter)] = P(
     ((("(" ~/ filter ~ ")").map(_.right[String]) |
-      filterIdentifier.map(_.left[Filter])) ~ ":" ~ whitespace ~ filter) |
+      filterIdentifier.map(_.left[Filter])) ~ ":" ~ whitespace ~ (pipedFilter | enlistedFilter | enjectedFilter)) |
       filterIdentifier.map(id => -\/(id) -> Filter.selectKey(id))
   )
 

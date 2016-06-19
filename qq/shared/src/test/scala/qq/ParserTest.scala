@@ -102,8 +102,9 @@ object ParserTest extends utest.TestSuite with Asserts {
     }
 
     "parse enjected filters" - {
-      Parser.enjectedFilter.parse("{ user, title: .titles[] }").get.value ===> Filter.enject(List(
-        -\/("user") -> Filter.selectKey("user"),
+      Parser.enjectedFilter.parse("{ sugar, user: \"user\", title: .titles[] }").get.value ===> Filter.enject(List(
+        -\/("sugar") -> Filter.selectKey("sugar"),
+        -\/("user") -> Filter.constString("user"),
         -\/("title") -> Filter.compose(Filter.id, Filter.collectResults(Filter.selectKey("titles")))
       ))
     }
