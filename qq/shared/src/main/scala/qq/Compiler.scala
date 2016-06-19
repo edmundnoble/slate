@@ -148,7 +148,7 @@ abstract class Compiler {
 
 object Compiler {
 
-  class QQRuntimeException(message: String) extends RuntimeException(message)
+  case class QQRuntimeException(message: String) extends RuntimeException(message)
   class QQCompilationException(message: String) extends RuntimeException(message)
   case class NoSuchMethod(name: String)
     extends QQCompilationException(message = s"No such method: $name")

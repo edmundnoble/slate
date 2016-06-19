@@ -5,8 +5,10 @@ import dash.views.{ExpandableContentView, Styles}
 import japgolly.scalajs.react.Addons.ReactCssTransitionGroup
 import japgolly.scalajs.react.CompScope.DuringCallbackU
 import japgolly.scalajs.react._
+import japgolly.scalajs.react.vdom.ReactTagOf
 import monocle.Lens
 import monocle.macros.GenLens
+import org.scalajs.dom.html.Div
 import qq.Util._
 
 import scala.concurrent.duration._
@@ -44,7 +46,7 @@ object DashboardPage {
     implicit val pkl = upickle.default.macroRW[SearchResult]
   }
 
-  def filterRowTemplate(firstResult: Option[SearchResult], secondResult: Option[SearchResult]) = {
+  def makeFilterRow(firstResult: Option[SearchResult], secondResult: Option[SearchResult]): ReactElement = {
     def toView(r: SearchResult) = ExpandableContentView.Html(r.toExpandableContentModel)
     <.div(Styles.filterContainer,
       <.div(Styles.innerFilterContainer,
@@ -56,7 +58,7 @@ object DashboardPage {
     )
   }
 
-  def makeSearchPage(searchResults: Seq[SearchResult]) = {
+  def makeSearchPage(searchResults: Seq[SearchResult]): ReactElement = {
     val htmlFrag =
       <.div(Styles.render[ReactElement],
         <.div(Styles.appBar,
@@ -70,7 +72,7 @@ object DashboardPage {
         <.div(
           <.div(Styles.container,
             if (searchResults.nonEmpty) {
-              searchResults.grouped(2).map(xs => filterRowTemplate(xs.headOption, xs.drop(1).headOption)).toSeq
+              searchResults.grouped(2).map(xs => makeFilterRow(xs.headOption, xs.drop(1).headOption)).toSeq
             } else {
               Vector.empty[ReactNode]
             }

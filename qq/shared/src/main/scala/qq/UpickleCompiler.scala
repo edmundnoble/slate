@@ -155,7 +155,7 @@ object UpickleCompiler extends Compiler {
         case (-\/(filterName), filterValue) =>
           filterValue(jsv).map(_.map(filterName -> _) :: Nil)
       }
-      kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => l.foldLeft(h :: Nil)(prod) }
+      kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => l.foldLeft(h :: Nil)(withPrefixes) }
     } yield kvPairsProducts.map(Js.Obj(_: _*))
   }
 

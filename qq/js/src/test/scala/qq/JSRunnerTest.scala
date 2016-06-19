@@ -8,14 +8,17 @@ import utest._
 import scala.concurrent.Future
 import scala.scalajs.js
 
-object JSRunnerTest extends utest.TestSuite {
+object JSRunnerTest extends utest.TestSuite with Asserts {
   override val tests = TestSuite {
     import RunnerTest._
     def runTest(test: RunnerTest): Future[Unit] =
       Runner
         .run(JSCompiler, test.program)(List(upickle.json.writeJs(test.input).asInstanceOf[js.Any]))
         .runFuture
-        .map { out => val js = out.map(upickle.json.readJs); assert(js == test.expectedOutput) }
+        .transform(
+          { out => val js = out.map(upickle.json.readJs); js ===> test.expectedOutput.getOrElse(???) }, { ex => ex ===> test.expectedOutput.swap.getOrElse(???); ex }
+        )
+        .fallbackTo(Future.successful(()))
 
     "identity program" - runTest(identityProgram)
     "ensequenced filters program" - runTest(ensequencedFilters)
@@ -32,5 +35,8 @@ object JSRunnerTest extends utest.TestSuite {
     "maths" - runTest(maths)
     "bedmas" - runTest(bedmas)
     "map" - runTest(map)
+    "multiply" - runTest(multiply)
+    "add null exception" - runTest(addNullException)
+    "silenced exception" - runTest(silencedException)
   }
 }
