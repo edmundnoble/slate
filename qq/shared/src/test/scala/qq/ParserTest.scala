@@ -109,10 +109,9 @@ object ParserTest extends utest.TestSuite with Asserts {
     }
 
     "parse full programs" - {
-      Parser.program.parse("id").get.value ===> ((Nil, Filter.call("id")))
-      Parser.program.parse("def id: .; id").get.value ===>
-        ((List(Definition("id", emptySized, Filter.id)), Filter.call("id")))
-      Parser.program.parse(".titles[]").get.value ===> ((Nil, Filter.compose(Filter.id, Filter.collectResults(Filter.selectKey("titles")))))
+      "with just a body" - (Parser.program.parse("id").get.value ===> ((Nil, Filter.call("id"))))
+      "with small definitions" - (Parser.program.parse("def id: .; id").get.value ===>
+        ((List(Definition("id", emptySized, Filter.id)), Filter.call("id"))))
     }
 
     "parse strings" - {

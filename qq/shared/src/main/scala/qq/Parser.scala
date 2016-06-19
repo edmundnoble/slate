@@ -95,7 +95,7 @@ object Parser {
   val constInt: P[Filter] = P(numericLiteral map (d => Filter.constNumber(d)))
   val constString: P[Filter] = P("\"" ~/ (stringLiteral map Filter.constString) ~ "\"")
 
-  val smallFilter: P[Filter] = P(constInt | constString.log() | dottedFilter | callFilter)
+  val smallFilter: P[Filter] = P(constInt | constString | dottedFilter | callFilter)
 
   val pipedFilter: P[Filter] = P(
     (smallFilter | ("(" ~/ filter ~ ")"))
