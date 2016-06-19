@@ -13,16 +13,16 @@ object UpickleCompilerTest extends utest.TestSuite with Asserts {
 
     import qq.UpickleCompiler._
 
-    def testRun(qQDoubleCompilerTest: DoubleCompilerTest) = qQDoubleCompilerTest match {
-      case DoubleCompilerTest(filter, input, result) =>
+    def testRun(qQDoubleCompilerTest: CompilerTest) = qQDoubleCompilerTest match {
+      case CompilerTest(filter, input, result) =>
         compile(Nil, filter).getOrElse(???).apply(input).runFuture map (_ ===> result)
     }
 
-    "select keys" - Future.traverse(DoubleCompilerTest.selectKeys)(testRun)
-    "select index" - Future.traverse(DoubleCompilerTest.selectIndex)(testRun)
-    "id" - Future.traverse(DoubleCompilerTest.id)(testRun)
-    "select range" - Future.traverse(DoubleCompilerTest.selectRange)(testRun)
-    "collect results" - Future.traverse(DoubleCompilerTest.collectResults)(testRun)
+    "select keys" - Future.traverse(CompilerTest.selectKeys)(testRun)
+    "select index" - Future.traverse(CompilerTest.selectIndex)(testRun)
+    "id" - Future.traverse(CompilerTest.id)(testRun)
+    "select range" - Future.traverse(CompilerTest.selectRange)(testRun)
+    "collect results" - Future.traverse(CompilerTest.collectResults)(testRun)
 
   }
 }
