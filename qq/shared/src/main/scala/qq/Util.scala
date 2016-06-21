@@ -4,7 +4,7 @@ import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler
 
 import scala.concurrent.{Future, Promise}
-import scalaz._
+import scalaz.{Monad, ~>}
 
 object Util {
 

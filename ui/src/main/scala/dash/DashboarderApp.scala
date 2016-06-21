@@ -6,6 +6,7 @@ import com.thoughtworks.each.Monadic._
 import dash.DashboardPage.{Filter, Issue, SearchResult}
 import japgolly.scalajs.react.{Addons, ReactDOM}
 import monix.eval.{Callback, Task}
+import org.scalajs.dom.XMLHttpRequest
 import org.scalajs.dom.raw.Element
 import qq.Util._
 import upickle.{Js, json}
@@ -14,6 +15,8 @@ import scala.concurrent.duration._
 import scala.scalajs.js.Date
 import scala.scalajs.js.annotation.JSExport
 import scala.util.Try
+import scalaz.syntax.traverse._
+import scalaz.std.list._
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
@@ -37,14 +40,16 @@ object DashboarderApp extends scalajs.js.JSApp {
       val favoriteFilterResponse = Ajax.get(url = "https://auviknetworks.atlassian.net/rest/api/2/filter/favourite", headers = Creds.authData).each
       logger.info(s"favoriteFilterResponse ${favoriteFilterResponse.status} ${favoriteFilterResponse.statusText}: ${favoriteFilterResponse.responseText}")
 
-      val favoriteFilters = json.read(favoriteFilterResponse.responseText).arr.map { r =>
+      val favoriteFilters: List[Filter] = json.read(favoriteFilterResponse.responseText).arr.map { r =>
         Filter(r.obj("self").str, r.obj("name").str, r.obj("owner").obj("name").str, r.obj("jql").str, r.obj("viewUrl").str)
-      }.toVector
-      val searchRequests = Task.sequence(favoriteFilters.map(filter => {
+      }(collection.breakOut)
+
+      val searchRequests = favoriteFilters.traverse[Task, XMLHttpRequest] { filter =>
         Ajax.post(url = s"https://auviknetworks.atlassian.net/rest/api/2/search/",
           data = json.write(Js.Obj("jql" -> Js.Str(filter.jql), "maxResults" -> Js.Num(10))),
           headers = Creds.authData ++ Map("Content-Type" -> "application/json"))
-      })).each
+      }.each
+
       val searchResults = searchRequests.map(r => json.read(r.responseText).obj("issues").arr.map { issueObj =>
         val fields = issueObj("fields").obj
         val url = issueObj("self").str
@@ -62,6 +67,7 @@ object DashboarderApp extends scalajs.js.JSApp {
           new Date(fields("updated").str).getTime()
         )
       })
+
       (favoriteFilters, searchResults).zipped.map(SearchResult(_, _))(collection.breakOut)
     }
 
@@ -84,6 +90,7 @@ object DashboarderApp extends scalajs.js.JSApp {
           logger.info(Addons.Perf.printWasted(Addons.Perf.getLastMeasurements()).toString)
         }
       }
+
       override def onError(error: Throwable): Unit = {
         error match {
           case ex: Exception =>
