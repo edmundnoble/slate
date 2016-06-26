@@ -50,7 +50,7 @@ object DashboardPage {
     )
   }
 
-  def makeSearchPage(searchResults: Seq[SearchResult]): ReactElement = {
+  def makeSearchPage(searchResults: IndexedSeq[SearchResult]): ReactElement = {
     val htmlFrag =
       <.div(Styles.render[ReactElement],
         <.div(Styles.appBar,
@@ -63,11 +63,7 @@ object DashboardPage {
         ),
         <.div(
           <.div(Styles.container,
-            if (searchResults.nonEmpty) {
-              searchResults.grouped(2).map(xs => makeFilterRow(xs.headOption, xs.drop(1).headOption)).toSeq
-            } else {
-              Vector.empty[ReactNode]
-            }
+            searchResults.grouped(2).map(xs => makeFilterRow(xs.headOption, xs.drop(1).headOption)).toSeq
           )
         )
       )
