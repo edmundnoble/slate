@@ -36,7 +36,6 @@ object DashboarderApp extends scalajs.js.JSApp {
       implicit val ajaxTimeout = Ajax.Timeout(4000.millis)
 
       val favoriteFilterResponse = Ajax.get(url = "https://auviknetworks.atlassian.net/rest/api/2/filter/favourite", headers = Creds.authData).each
-      logger.info(s"favoriteFilterResponse ${favoriteFilterResponse.status} ${favoriteFilterResponse.statusText}: ${favoriteFilterResponse.responseText}")
 
       val favoriteFilters: List[Filter] = json.read(favoriteFilterResponse.responseText).arr.map { r =>
         Filter(r.obj("self").str, r.obj("name").str, r.obj("owner").obj("name").str, r.obj("jql").str, r.obj("viewUrl").str)

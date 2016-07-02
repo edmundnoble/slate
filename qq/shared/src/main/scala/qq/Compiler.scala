@@ -43,7 +43,6 @@ abstract class Compiler {
     definitions.foldLeft(nil[CDefinition].right[QQCompilationException])(compileDefinitionStep)
 
   final def compileProgram(definitions: List[Definition], main: Filter): QQCompilationException \/ CompiledFilter = {
-    println(s"Compiling main: $main")
     compileDefinitions(definitions).flatMap(compile(_, main))
   }
 
