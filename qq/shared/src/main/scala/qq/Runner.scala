@@ -20,7 +20,7 @@ object Runner {
       case Parsed.Success((definitions, main), _) =>
         if (optimize) {
           compiler.compileProgram(
-            definitions.map(defn => defn.copy(name = defn.name, params = defn.params, body = Optimizer.optimize(defn.body))),
+            definitions.map(Definition.body.modify(Optimizer.optimize)),
             Optimizer.optimize(main)
           )
         } else {

@@ -3,14 +3,20 @@ package qq
 import scala.language.higherKinds
 import scalaz.\/
 import matryoshka._
+import monocle.macros.GenLens
 import qq.Compiler.QQCompilationException
 import shapeless._
 import shapeless.ops.nat.ToInt
+
 import scalaz.syntax.either._
 
 final case class Definition(name: String,
                             params: List[String],
                             body: Filter)
+
+object Definition {
+  val body = GenLens[Definition](_.body)
+}
 
 object Filter {
 

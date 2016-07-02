@@ -120,7 +120,7 @@ object Parser {
     def makeParser(text: String, function: (A, A) => A): P[(A, A) => A] = wspStr(text) >| function
     def foldOperators(begin: A, operators: List[((A, A) => A, A)]): A =
       operators.foldLeft(begin) { case (f, (combFun, nextF)) => combFun(f, nextF) }
-    val op = NonEmptyList(op1, ops: _*).map((makeParser _).tupled).foldLeft1 { _ | _ }
+    val op = NonEmptyList(op1, ops: _*).map((makeParser _).tupled).foldLeft1(_ | _)
     (rec ~ whitespace ~ (op ~ whitespace ~ rec).rep).map((foldOperators _).tupled)
   }
 
@@ -136,7 +136,8 @@ object Parser {
   val term: P[Filter] =
     P(operator[Filter](factor, "*" -> Filter.multiply _, "/" -> Filter.divide _, "%" -> Filter.modulo _))
 
-  val factor: P[Filter] = P(("(" ~ sequenced ~ ")") | smallFilter | enjectedFilter | enlistedFilter)
+  val factor: P[Filter] =
+    P(("(" ~ sequenced ~ ")") | smallFilter | enjectedFilter | enlistedFilter)
 
   val filter: P[Filter] = P(
     for {
@@ -150,9 +151,7 @@ object Parser {
   )
 
   val definition: P[Definition] = P(
-    ("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~ whitespace ~ filter ~ ";") map {
-      Definition.tupled
-    }
+    ("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~ whitespace ~ filter ~ ";") map (Definition.apply _).tupled
   )
 
   val program: P[(List[Definition], Filter)] = P(
