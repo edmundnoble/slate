@@ -80,7 +80,7 @@ object Parser {
 
   val dottedFilter: P[Filter] = P(
     dot ~
-      (wspStr("[]").map(_ => Filter.collectResults(Filter.id)) | dottableFilter)
+      (wspStr("[]") >| Filter.collectResults(Filter.id) | dottableFilter)
         .rep(sep = dot)
         .map(_.foldLeft[Filter](Filter.id)(Filter.compose))
   )
@@ -96,7 +96,7 @@ object Parser {
     } yield Filter.call(identifier, params)
   )
 
-  val constInt: P[Filter] = P(numericLiteral map (d => Filter.constNumber(d)))
+  val constInt: P[Filter] = P(numericLiteral map (Filter.constNumber(_)))
   val constString: P[Filter] = P(escapedStringLiteral map Filter.constString)
 
   val smallFilter: P[Filter] = P(constInt | constString | dottedFilter | callFilter)

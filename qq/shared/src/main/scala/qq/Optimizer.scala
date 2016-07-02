@@ -12,6 +12,14 @@ object Optimizer {
 
   import FilterComponent._
 
+  // like in Matryoshka but tail recursive
+  @annotation.tailrec
+  def repeatedly[A](f: A => Option[A])(expr: A): A =
+    f(expr) match {
+      case None => expr
+      case Some(e) => repeatedly(f)(e)
+    }
+
   type Optimization = PartialFunction[Filter, Filter]
 
   def idCompose: Optimization = {
