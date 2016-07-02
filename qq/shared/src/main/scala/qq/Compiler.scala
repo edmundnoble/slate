@@ -91,7 +91,7 @@ abstract class Compiler {
 
   final def compile(definitions: List[CompiledDefinition[this.type]], filter: Filter): OrCompilationError[CompiledFilter] =
     for {
-      sharedDefinitions <- SharedPreludes.apply[this.type].all(this)
+      sharedDefinitions <- SharedPreludes.apply[this.type].all(this: this.type)
       platformSpecificDefinitions <- platformPrelude.all(this: this.type)
       compiledProgram <- {
         val allDefinitions: List[CompiledDefinition[this.type]] = sharedDefinitions ++ platformSpecificDefinitions ++ definitions
