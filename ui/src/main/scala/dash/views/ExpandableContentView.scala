@@ -1,6 +1,7 @@
 package dash.views
 
 import dash.models.ExpandableContentModel
+import japgolly.scalajs.react.ReactComponentB.PSB
 import japgolly.scalajs.react._
 import monocle.macros.GenLens
 
@@ -78,47 +79,48 @@ object ExpandableContentView {
 
   }
 
-  object Html extends View[ExpandableContentModel, ReactComponentU[Unit, ExpandableState, Unit, TopNode]] {
-
+  def build: (ExpandableContentModel) => ReactComponentU[ExpandableContentModel, ExpandableState, Unit, TopNode] = {
     import japgolly.scalajs.react.vdom.prefix_<^._
     import scalacss.ScalaCssReact._
     import MonocleReact._
 
-    override def apply(model: ExpandableContentModel): ReactComponentU[Unit, ExpandableState, Unit, TopNode] = {
-      def buttonStyleForState(state: ExpandableState): Seq[TagMod] = {
-        val otherStyles = Vector[TagMod](Styles.filterButtonIcon, "expand_more")
-        if (state.expanded) otherStyles.:+[TagMod, Vector[TagMod]](Styles.filterButtonExpanded)
-        else otherStyles
-      }
-      ReactComponentB[Unit]("Expandable content view")
-        .initialState(ExpandableState(expanded = false))
-        .renderS { ($, state) =>
-          <.div(Styles.render[ReactElement],
-            <.div(Styles.base,
-              <.div(Styles.header,
-                <.div(Styles.headerLeft,
-                  <.div(Styles.number,
-                    <.a(model.content.length.toString(), ^.href := model.titleUrl)),
-                  <.div(Styles.title,
-                    <.a(model.title, ^.href := model.titleUrl)
-                  )
-                ),
-                <.button(Styles.filterButton,
-                  ^.onClick --> $.modStateL(ExpandableState.expanded)(!_),
-                  <.i(buttonStyleForState(state): _*)
+    def buttonStyleForState(state: ExpandableState): Seq[TagMod] = {
+      val otherStyles = Vector[TagMod](Styles.filterButtonIcon, "expand_more")
+      if (state.expanded) otherStyles.:+[TagMod, Vector[TagMod]](Styles.filterButtonExpanded)
+      else otherStyles
+    }
+
+    ReactComponentB[ExpandableContentModel]("Expandable content view")
+      .initialState(ExpandableState(expanded = false))
+      .noBackend
+      .renderPS { ($, model, state) =>
+        val titleLink = ^.href := model.titleUrl
+        <.div(Styles.render[ReactElement],
+          <.div(Styles.base,
+            <.div(Styles.header,
+              <.div(Styles.headerLeft,
+                <.div(Styles.number,
+                  <.a(model.content.length.toString(), titleLink)),
+                <.div(Styles.title,
+                  <.a(model.title, titleLink)
                 )
               ),
-              Styles.animationGroup(
-                (if (state.expanded) {
-                  model.content.map(TitledContentView.Html)
-                } else {
-                  Vector.empty[ReactElement]
-                }): _*
+              <.button(Styles.filterButton,
+                ^.onClick --> $.modStateL(ExpandableState.expanded)(!_),
+                <.i(buttonStyleForState(state): _*)
               )
+            ),
+            Styles.animationGroup(
+              (if (state.expanded) {
+                model.content.map(TitledContentView.build)
+              } else {
+                Vector.empty[ReactElement]
+              }): _*
             )
           )
-        }
-        .build()
-    }
+        )
+      }
+      .build(_)
+
   }
 }

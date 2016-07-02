@@ -12,7 +12,7 @@ import qq.Util._
 import upickle.{Js, json}
 
 import scala.concurrent.duration._
-import scala.scalajs.js.Date
+import scala.scalajs.js.{Date, JSON}
 import scala.scalajs.js.annotation.JSExport
 import scala.util.Try
 import scalaz.syntax.traverse._
@@ -31,8 +31,6 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   @JSExport
   def main(): Unit = {
-    val longRegex = Pattern.compile("\n+\\s*", Pattern.MULTILINE)
-
     val fetchSearchResults = monadic[Task] {
 
       implicit val ajaxTimeout = Ajax.Timeout(4000.millis)
@@ -50,23 +48,20 @@ object DashboarderApp extends scalajs.js.JSApp {
           headers = Creds.authData ++ Map("Content-Type" -> "application/json"))
       }.each
 
-      val searchResults = searchRequests.map(r => json.read(r.responseText).obj("issues").arr.map { issueObj =>
-        val fields = issueObj("fields").obj
-        val url = issueObj("self").str
-        val summary = fields("summary").str
-        val key = issueObj("key").str
-        val project = fields("project").obj("name").str
-        val status = fields("status").obj("name").str
-        val shortStatus = new String(status.split(" ").filter(_.nonEmpty).map(s => Character.toUpperCase(s.charAt(0))).toArray)
-        val assignee = Try(fields("assignee").obj("name").str).toOption
-        val reporter = Try(fields("reporter").obj("name").str).toOption
-        val description = longRegex.matcher(fields("description").str).replaceAll(" ↪ ")
-        Issue(
-          url, summary, key, project, assignee, reporter, shortStatus, description,
-          new Date(fields("created").str).getTime(),
-          new Date(fields("updated").str).getTime()
-        )
-      })
+      val compiledQQProgram = qq.Runner.parseAndCompile(qq.UpickleCompiler,
+        """.issues.[] | {
+            |  url: .self,
+            |  summary: .fields.summary,
+            |  key,
+            |  project: .fields.project.name,
+            |  description: (.fields.description | replaceAll("\n+\\s*"; " ↪ ")),
+            |  status: .fields.status.name
+            |}""".stripMargin
+      ).valueOr { throw _ }
+      val searchResults = searchRequests.traverse[Task, List[Issue]] { r =>
+        val result = compiledQQProgram(upickle.json.read(r.responseText))
+        result.map { _.flatMap(Issue.pkl.read.lift(_)) }
+      }.each
 
       (favoriteFilters, searchResults).zipped.map(SearchResult(_, _))(collection.breakOut)
     }
@@ -92,11 +87,7 @@ object DashboarderApp extends scalajs.js.JSApp {
       }
 
       override def onError(error: Throwable): Unit = {
-        error match {
-          case ex: Exception =>
-            logger.error("EXCEPTION INTERRUPTED MAIN:", ex)
-          case _ =>
-        }
+        logger.error(s"EXCEPTION INTERRUPTED MAIN:\n$error\n${error.getStackTrace.mkString("\n")}")
       }
     }
 

@@ -5,6 +5,7 @@ import dash.views.{ExpandableContentView, Styles}
 import japgolly.scalajs.react._
 import qq.Util._
 
+import scala.scalajs.js
 import scalacss.Defaults._
 
 object DashboardPage {
@@ -16,18 +17,18 @@ object DashboardPage {
 
   case class Filter(url: String, name: String, owner: String, jql: String, viewUrl: String)
   object Filter {
-    implicit val pkl = upickle.default.macroRW[Filter]
+    implicit val pkl = SnakeOptionPickle.macroRW[Filter]
   }
 
-  case class Issue(url: String, summary: String, key: String, project: String, assignee: Option[String], reporter: Option[String],
-                   status: String, description: String, created: Double, updated: Double) {
+  case class Issue(url: String, summary: String, key: String, project: String,
+                   status: String, description: String) {
     def toTitledContentModel: TitledContentModel =
       TitledContentModel(title = s"$status - $key - $summary",
         titleUrl = Some("https://auviknetworks.atlassian.net/browse/" + key),
         content = description)
   }
   object Issue {
-    implicit val pkl = upickle.default.macroRW[Issue]
+    implicit val pkl = SnakeOptionPickle.macroRW[Issue]
   }
 
   case class SearchResult(filter: Filter, issues: Seq[Issue]) {
@@ -39,7 +40,7 @@ object DashboardPage {
   }
 
   def makeFilterRow(firstResult: Option[SearchResult], secondResult: Option[SearchResult]): ReactElement = {
-    def toView(r: SearchResult) = ExpandableContentView.Html(r.toExpandableContentModel)
+    def toView(r: SearchResult) = ExpandableContentView.build(r.toExpandableContentModel)
     <.div(Styles.filterContainer,
       <.div(Styles.innerFilterContainer,
         single(firstResult.map(toView))

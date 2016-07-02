@@ -1,15 +1,15 @@
 package qq
 
 import fastparse.all._
-import fastparse.parsers
-import fastparse.Implicits
+import fastparse.parsers.Terminals
+import fastparse.{Implicits, Logger, parsers}
+import qq.FilterComponent.SilenceExceptions
 
 import scalaz.{-\/, \/}
 import scalaz.Monad
 import scalaz.syntax.either._
 import scalaz.syntax.monad._
 import scalaz.syntax.std.option._
-
 import scala.collection.mutable
 
 object Parser {
@@ -34,10 +34,14 @@ object Parser {
 
   def isStringLiteralChar(c: Char): Boolean = Character.isAlphabetic(c) || Character.isDigit(c)
   val stringLiteral: P[String] = P(CharsWhile(isStringLiteralChar).!)
+
   val escapedStringLiteral: P[String] = P(
-    quote ~/ CharsWhile(c => isStringLiteralChar(c) || c == ' ' || c == '\t').! ~ quote
+    quote ~/
+      ((wspStr("""\n""") >| "\n") | (wspStr("""\\""") >| "\\") | CharPred(ch => isStringLiteralChar(ch) || ch == '↪' || ch == ' ' || ch == '+' || ch == '*' || ch == '-' || ch == '\t').!).rep.map(_.mkString) ~
+      quote
   )
-  val whitespace: P0 = P(CharsWhile(_ == ' ').?)
+
+  val whitespace: P0 = P(CharsWhile(ch => ch == ' ' || ch == '\n' || ch == '\t').?)
 
   val numericLiteral: P[Int] = P(
     CharsWhile(Character.isDigit).! map ((_: String).toInt)
@@ -93,36 +97,52 @@ object Parser {
   )
 
   val constInt: P[Filter] = P(numericLiteral map (d => Filter.constNumber(d)))
-  val constString: P[Filter] = P("\"" ~/ (stringLiteral map Filter.constString) ~ "\"")
+  val constString: P[Filter] = P(escapedStringLiteral map Filter.constString)
 
   val smallFilter: P[Filter] = P(constInt | constString | dottedFilter | callFilter)
 
-  val pipedFilter: P[Filter] = P(
-    (smallFilter | ("(" ~/ filter ~ ")"))
-      .rep(sep = whitespace ~ "|" ~ whitespace, min = 1)
-      .map(_.reduceLeft(Filter.compose))
-  )
-
-  val ensequencedFilters: P[Filter] = P(
-    for {
-      first <- pipedFilter
-      f <- ("," ~ whitespace ~ pipedFilter.rep(min = 1, sep = P("," ~ whitespace))).?.map(fs => (f: Filter) => fs.fold(f)(l => Filter.ensequence(f :: l)))
-    } yield f(first)
-  )
-
   val enlistedFilter: P[Filter] = P(
-    "[" ~/ ensequencedFilters.map(Filter.enlist) ~ "]"
+    "[" ~/ filter.map(Filter.enlist) ~ "]"
   )
 
   // The reason I avoid using basicFilter is to avoid a parsing ambiguity with ensequencedFilters
   val enjectPair: P[(String \/ Filter, Filter)] = P(
     ((("(" ~/ filter ~ ")").map(_.right[String]) |
-      filterIdentifier.map(_.left[Filter])) ~ ":" ~ whitespace ~ (pipedFilter | enlistedFilter | enjectedFilter)) |
+      filterIdentifier.map(_.left[Filter])) ~ ":" ~ whitespace ~ piped) |
       filterIdentifier.map(id => -\/(id) -> Filter.selectKey(id))
   )
 
   val enjectedFilter: P[Filter] = P(
     "{" ~/ whitespace ~ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(Filter.enject) ~ whitespace ~ "}"
+  )
+
+  def foldOperators[A](begin: A, operators: List[((A, A) => A, A)]): A =
+    operators.foldLeft(begin) { case (f, (combFun, nextF)) => combFun(f, nextF) }
+
+  def operator[A](rec: P[A], op1: (String, (A, A) => A), ops: (String, (A, A) => A)*): P[A] = {
+    val op = ops.foldLeft(wspStr(op1._1) >| op1._2) { (sofar: P[(A, A) => A], nextOp) => sofar | wspStr(nextOp._1) >| nextOp._2 }
+    (rec ~ whitespace ~ (op ~ whitespace ~ rec).rep).map((foldOperators[A] _).tupled)
+  }
+
+  val sequenced: P[Filter] =
+    P(operator[Filter](piped, "," -> Filter.ensequence _))
+
+  val piped: P[Filter] =
+    P(operator[Filter](expr, "|" -> Filter.compose _))
+
+  val expr: P[Filter] =
+    P(operator[Filter](term, "+" -> Filter.add _, "-" -> Filter.subtract))
+
+  val term: P[Filter] =
+    P(operator[Filter](factor, "*" -> Filter.multiply _, "/" -> Filter.divide _, "%" -> Filter.modulo _))
+
+  val factor: P[Filter] = P(("(" ~ piped ~ ")") | smallFilter | enjectedFilter | enlistedFilter)
+
+  val filter: P[Filter] = P(
+    for {
+      f <- sequenced
+      fun <- "?".!.?.map(_.fold(identity[Filter] _)(_ => Filter.silence))
+    } yield fun(f)
   )
 
   val arguments: P[List[String]] = P(
@@ -135,39 +155,8 @@ object Parser {
     }
   )
 
-  val basicFilter: P[Filter] = P(
-    enlistedFilter | ensequencedFilters | enjectedFilter
-  )
-
-  def foldOperators[T](begin: T, operators: List[((T, T) => T, T)]): T =
-    operators.foldLeft(begin) { case (f, (combFun, nextF)) => combFun(f, nextF) }
-
-  val expr: P[Filter] =
-    P((term ~ whitespace ~
-      (
-        ((wspStr("+") >| Filter.add _) |
-          (wspStr("-") >| Filter.subtract _)) ~ whitespace ~ term
-        )
-        .rep
-      ).map((foldOperators[Filter] _).tupled))
-
-  val term: P[Filter] =
-    P((factor ~ whitespace ~
-      (
-        ((wspStr("*") >| Filter.multiply _) |
-          (wspStr("/") >| Filter.divide _) |
-          (wspStr("%") >| Filter.modulo _)) ~ whitespace ~ factor)
-        .rep
-      ).map((foldOperators[Filter] _).tupled))
-
-  val factor: P[Filter] = P(("(" ~ expr ~ ")") | basicFilter)
-
-  val filter: P[Filter] = P(
-    expr
-  )
-
   val program: P[(List[Definition], Filter)] = P(
-    (definition.rep(sep = whitespace) ~ whitespace).?.map(_.getOrElse(Nil)) ~ filter
+    (definition.rep(sep = whitespace) ~ whitespace).?.map(_.getOrElse(Nil)) ~ filter ~ Terminals.End
   )
 
 }

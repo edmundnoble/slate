@@ -142,7 +142,7 @@ object UpickleCompiler extends Compiler {
     for {
       kvPairs <- obj.traverse {
         case (\/-(filterKey), filterValue) =>
-          for {
+          val res = for {
             keyResults <- filterKey(jsv)
             valueResults <- filterValue(jsv)
             keyValuePairs <- keyResults.traverse {
@@ -152,6 +152,7 @@ object UpickleCompiler extends Compiler {
                 Task.raiseError(new QQRuntimeException(s"Tried to use $k as a key for an object but it's not a string"))
             }
           } yield keyValuePairs
+          res
         case (-\/(filterName), filterValue) =>
           filterValue(jsv).map(_.map(filterName -> _) :: Nil)
       }

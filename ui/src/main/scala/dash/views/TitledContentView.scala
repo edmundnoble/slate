@@ -2,6 +2,8 @@ package dash.views
 
 import dash.models.TitledContentModel
 import japgolly.scalajs.react.ReactComponentB
+import japgolly.scalajs.react.ReactComponentB.PSB
+
 import scalacss.Defaults._
 import japgolly.scalajs.react._
 
@@ -59,32 +61,30 @@ object TitledContentView {
     val searchResultContainer = new ScrollFadeContainer("searchResultContainer")
   }
 
-  object Html extends View[TitledContentModel, ReactComponentU[Unit, Unit, Unit, TopNode]] {
-
+  def build: (TitledContentModel) => ReactComponentU[TitledContentModel, Unit, Unit, TopNode] = {
     import japgolly.scalajs.react.vdom.prefix_<^._
     import scalacss.ScalaCssReact._
 
-    def apply(model: TitledContentModel): ReactComponentU[Unit, Unit, Unit, TopNode] =
-      ReactComponentB[Unit]("Issue")
-        .render($ =>
-          <.div(Styles.render[ReactElement],
-            ^.key := model.title + model.titleUrl,
-            <.div(Styles.base,
-              <.div(Styles.title,
-                <.a(
-                  model.title,
-                  ^.href := model.titleUrl
-                )
-              ),
-              <.div(Styles.content,
-                model.content
+    ReactComponentB[TitledContentModel]("Issue")
+      .stateless
+      .noBackend
+      .renderP { ($, model) =>
+        <.div(Styles.render[ReactElement],
+          ^.key := model.title + model.titleUrl,
+          <.div(Styles.base,
+            <.div(Styles.title,
+              <.a(
+                model.title,
+                ^.href := model.titleUrl
               )
+            ),
+            <.div(Styles.content,
+              model.content
             )
           )
         )
-        .build()
-
+      }
+      .build(_)
   }
-
 
 }

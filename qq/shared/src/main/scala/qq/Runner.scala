@@ -14,7 +14,7 @@ import shapeless.{Nat, Sized}
 
 object Runner {
 
-  def parseAndCompile(compiler: Compiler, program: String, optimize: Boolean): \/[Exception, compiler.CompiledFilter] = {
+  def parseAndCompile(compiler: Compiler, program: String, optimize: Boolean = true): \/[Exception, compiler.CompiledFilter] = {
     val parsed = Parser.program.parse(program)
     parsed match {
       case Parsed.Success((definitions, main), _) =>
@@ -31,8 +31,8 @@ object Runner {
     }
   }
 
-  def run(compiler: Compiler, qqProgram: String)(input: List[compiler.AnyTy]): Task[List[compiler.AnyTy]] = {
-    parseAndCompile(compiler, qqProgram, optimize = true).fold(
+  def run(compiler: Compiler, qqProgram: String, optimize: Boolean = true)(input: List[compiler.AnyTy]): Task[List[compiler.AnyTy]] = {
+    parseAndCompile(compiler, qqProgram, optimize).fold(
       Task.raiseError,
       input.traverseM(_)
     )

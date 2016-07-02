@@ -22,7 +22,7 @@ object Filter {
   def silence(f: Filter): Filter = Fix(SilenceExceptions(f))
   def enlist(f: Filter): Filter = Fix(EnlistFilter(f))
   def collectResults(f: Filter): Filter = Fix(CollectResults(f))
-  def ensequence(filters: List[Filter]): Filter = Fix(EnsequenceFilters(filters))
+  def ensequence(first: Filter, second: Filter): Filter = Fix(EnsequenceFilters(first, second))
   def enject(obj: List[((String \/ Filter), Filter)]): Filter = Fix(EnjectFilters(obj))
   def call(name: String, params: List[Filter] = Nil): Filter = Fix(CallFilter(name, params))
   def selectKey(key: String): Filter = Fix(SelectKey(key))

@@ -53,24 +53,24 @@ object ParserTest extends utest.TestSuite with Asserts {
     }
 
     "parse piped filters" - {
-      Parser.pipedFilter.parse(".key | .dang").get.value ===>
+      Parser.filter.parse(".key | .dang").get.value ===>
         Filter.compose(Filter.compose(Filter.id, Filter.selectKey("key")), Filter.compose(Filter.id, Filter.selectKey("dang")))
-      Parser.pipedFilter.parse("(.key) | (.dang)").get.value ===>
+      Parser.filter.parse("(.key) | (.dang)").get.value ===>
         Filter.compose(Filter.compose(Filter.id, Filter.selectKey("key")),
           Filter.compose(Filter.id, Filter.selectKey("dang")))
-      Parser.pipedFilter.parse("(.key) | (dang)").get.value ===>
+      Parser.filter.parse("(.key) | (dang)").get.value ===>
         Filter.compose(Filter.compose(Filter.id, Filter.selectKey("key")),
           Filter.call("dang"))
     }
 
     "parse ensequenced filters" - {
-      Parser.ensequencedFilters.parse(".key, .dang").get.value ===>
-        Filter.ensequence(List(Filter.compose(Filter.id, Filter.selectKey("key")), Filter.compose(Filter.id, Filter.selectKey("dang"))))
+      Parser.filter.parse(".key, .dang").get.value ===>
+        Filter.ensequence(Filter.compose(Filter.id, Filter.selectKey("key")), Filter.compose(Filter.id, Filter.selectKey("dang")))
     }
 
     "parse enlisted filters" - {
       Parser.enlistedFilter.parse("[.key, .dang]").get.value ===>
-        Filter.enlist(Filter.ensequence(List(Filter.compose(Filter.id, Filter.selectKey("key")), Filter.compose(Filter.id, Filter.selectKey("dang")))))
+        Filter.enlist(Filter.ensequence(Filter.compose(Filter.id, Filter.selectKey("key")), Filter.compose(Filter.id, Filter.selectKey("dang"))))
     }
 
     "parse definitions" - {
@@ -116,7 +116,8 @@ object ParserTest extends utest.TestSuite with Asserts {
     }
 
     "parse strings" - {
-      Parser.basicFilter.parse(""""hello"""").get.value ===> Filter.constString("hello")
+      Parser.filter.parse(""""hello"""").get.value ===> Filter.constString("hello")
+      Parser.filter.parse(""""\\"""").get.value ===> Filter.constString("\\")
     }
 
   }

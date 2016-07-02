@@ -13,7 +13,7 @@ object FilterComponent {
   final case class SilenceExceptions[A](f: A) extends FilterComponent[A]
   final case class EnlistFilter[A](f: A) extends FilterComponent[A]
   final case class CollectResults[A](f: A) extends FilterComponent[A]
-  final case class EnsequenceFilters[A](filters: List[A]) extends FilterComponent[A]
+  final case class EnsequenceFilters[A](first: A, second: A) extends FilterComponent[A]
   final case class EnjectFilters[A](obj: List[((String \/ A), A)]) extends FilterComponent[A]
 
   final case class CallFilter[A](name: String, params: List[A]) extends FilterComponent[A]
@@ -57,7 +57,7 @@ object FilterComponent {
       case SilenceExceptions(a) => SilenceExceptions(f(a))
       case EnlistFilter(a) => EnlistFilter(f(a))
       case CollectResults(a) => CollectResults(f(a))
-      case EnsequenceFilters(as) => EnsequenceFilters(as.map(f))
+      case EnsequenceFilters(first, second) => EnsequenceFilters(f(first), f(second))
       case EnjectFilters(obj) => EnjectFilters(obj.map { case (k, v) => k.map(f) -> f(v) })
     }
 
@@ -80,7 +80,7 @@ object FilterComponent {
         case SilenceExceptions(a) => G.map(f(a))(SilenceExceptions(_))
         case EnlistFilter(a) => G.map(f(a))(EnlistFilter(_))
         case CollectResults(a) => G.map(f(a))(CollectResults(_))
-        case EnsequenceFilters(as) => as.traverse(f).map(EnsequenceFilters(_))
+        case EnsequenceFilters(first, second) => G.apply2(f(first), f(second))(EnsequenceFilters(_, _))
         case EnjectFilters(obj) => obj.traverse { case (k, v) => G.tuple2(k.traverse(f), f(v)) }.map(EnjectFilters(_))
       }
     }

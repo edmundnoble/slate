@@ -6,6 +6,7 @@ import qq.Compiler.{NoSuchMethod, QQCompilationException, QQRuntimeException, Wr
 import qq.FilterComponent._
 import qq.Util._
 
+import scala.language.existentials
 import scalaz.\/
 import scalaz.std.list._
 import scalaz.syntax.apply._
@@ -18,41 +19,7 @@ abstract class Compiler {
   type AnyTy
   type CompiledFilter = AnyTy => Task[List[AnyTy]]
   type OrCompilationError[T] = QQCompilationException \/ T
-
-  final case class CompiledDefinition
-  (name: String, numParams: Int, body: List[CompiledFilter] => QQCompilationException \/ CompiledFilter)
-
-  trait PlatformPrelude {
-    def noParamDefinition(name: String, fun: CompiledFilter): CompiledDefinition = {
-      CompiledDefinition(name, numParams = 0, (_: List[CompiledFilter]) => fun.right)
-    }
-
-    def length: CompiledDefinition
-
-    def keys: CompiledDefinition
-
-    def arrays: CompiledDefinition
-
-    def objects: CompiledDefinition
-
-    def iterables: CompiledDefinition
-
-    def booleans: CompiledDefinition
-
-    def numbers: CompiledDefinition
-
-    def strings: CompiledDefinition
-
-    def nulls: CompiledDefinition
-
-    def values: CompiledDefinition
-
-    def scalars: CompiledDefinition
-
-    def all: List[CompiledDefinition] =
-      length :: keys :: arrays :: objects :: iterables :: booleans ::
-        numbers :: strings :: nulls :: values :: scalars :: Nil
-  }
+  type CDefinition = CompiledDefinition[this.type]
 
   @inline
   private def composeCompiledFilters(firstFilter: CompiledFilter, secondFilter: CompiledFilter): CompiledFilter = { jsv: AnyTy =>
@@ -63,8 +30,8 @@ abstract class Compiler {
   }
 
   @inline
-  private def ensequenceCompiledFilters(functions: List[CompiledFilter]): CompiledFilter = { jsv: AnyTy =>
-    Task.sequence(functions.map(_ (jsv))).map(_.flatten)
+  private def ensequenceCompiledFilters(first: CompiledFilter, second: CompiledFilter): CompiledFilter = { jsv: AnyTy =>
+    Task.mapBoth(first(jsv), second(jsv)) { (a, b) => a ++ b }
   }
 
   @inline
@@ -72,21 +39,22 @@ abstract class Compiler {
     (first(jsv) |@| second(jsv)) { (f, s) => (f, s).zipped.map(fun) }.map(_.sequence).flatten
   }
 
-  final def compileDefinitions(definitions: List[Definition]): QQCompilationException \/ List[CompiledDefinition] =
-    definitions.foldLeft(nil[CompiledDefinition].right[QQCompilationException])(compileDefinitionStep)
+  final def compileDefinitions(definitions: List[Definition]): QQCompilationException \/ List[CompiledDefinition[this.type]] =
+    definitions.foldLeft(nil[CDefinition].right[QQCompilationException])(compileDefinitionStep)
 
   final def compileProgram(definitions: List[Definition], main: Filter): QQCompilationException \/ CompiledFilter = {
+    println(s"Compiling main: $main")
     compileDefinitions(definitions).flatMap(compile(_, main))
   }
 
   @inline
-  final def compileStep(definitions: List[CompiledDefinition], filter: FilterComponent[CompiledFilter]): OrCompilationError[CompiledFilter] = filter match {
+  final def compileStep(definitions: List[CDefinition], filter: FilterComponent[CompiledFilter]): OrCompilationError[CompiledFilter] = filter match {
     case IdFilter() => ((jsv: AnyTy) => Task.now(jsv :: Nil)).right
     case ComposeFilters(f, s) => composeCompiledFilters(f, s).right
     case EnlistFilter(f) => enlistFilter(f).right
     case SilenceExceptions(f) => ((jsv: AnyTy) => f(jsv).onErrorRecover { case _: QQRuntimeException => Nil }).right
     case CollectResults(f) => collectResults(f).right
-    case EnsequenceFilters(filters) => ensequenceCompiledFilters(filters).right
+    case EnsequenceFilters(first, second) => ensequenceCompiledFilters(first, second).right
     case EnjectFilters(obj) => enjectFilter(obj).right
     case SelectKey(k) => selectKey(k).right
     case SelectRange(s, e) => selectRange(s, e).right
@@ -100,7 +68,7 @@ abstract class Compiler {
     case ModuloFilters(first, second) => zipFiltersWith(first, second, moduloJsValues).right
     case CallFilter(filterIdentifier, params) =>
       definitions.find(_.name == filterIdentifier).cata(
-        { (defn: CompiledDefinition) =>
+        { (defn: CompiledDefinition[this.type]) =>
           if (params.length == defn.numParams) {
             defn.body(params)
           } else {
@@ -111,25 +79,29 @@ abstract class Compiler {
       )
   }
 
-  def compileDefinitionStep(soFar: QQCompilationException \/ List[CompiledDefinition], nextDefinition: Definition) = {
-    soFar.map(definitionsSoFar =>
-      CompiledDefinition(nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter]) => {
+  def compileDefinitionStep(soFar: QQCompilationException \/ List[CDefinition], nextDefinition: Definition): QQCompilationException \/ List[CompiledDefinition[Compiler.this.type]] = {
+    soFar.map((definitionsSoFar: List[CDefinition]) => {
+      CompiledDefinition[this.type](nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter]) => {
         val paramsAsDefinitions = (nextDefinition.params, params).zipped.map { (filterName, value) =>
-          CompiledDefinition(filterName, 0, (_: List[CompiledFilter]) => value.right[QQCompilationException])
+          CompiledDefinition[this.type](filterName, 0, (_: List[CompiledFilter]) => value.right[QQCompilationException])
         }
         compile(definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body)
       }) :: definitionsSoFar
-    )
+    })
   }
 
-  final def compile(definitions: List[CompiledDefinition], filter: Filter): OrCompilationError[CompiledFilter] = {
-    compileDefinitions(SharedPrelude.all).flatMap { sharedPrelude =>
-      val allDefinitions = sharedPrelude ++ platformPrelude.all ++ definitions
-      filter.cataM[OrCompilationError, CompiledFilter](compileStep(allDefinitions, _))
-    }
-  }
+  final def compile(definitions: List[CompiledDefinition[this.type]], filter: Filter): OrCompilationError[CompiledFilter] =
+    for {
+      sharedDefinitions <- SharedPreludes.apply[this.type].all(this)
+      platformSpecificDefinitions <- platformPrelude.all(this: this.type)
+      compiledProgram <- {
+        val allDefinitions: List[CompiledDefinition[this.type]] = sharedDefinitions ++ platformSpecificDefinitions ++ definitions
+        filter.cataM[OrCompilationError, CompiledFilter](compileStep(allDefinitions, _))
+      }
+    } yield compiledProgram
 
-  def platformPrelude: PlatformPrelude
+  def platformPrelude: PlatformPrelude[this.type]
+
   def enjectFilter(obj: List[(\/[String, CompiledFilter], CompiledFilter)]): CompiledFilter
   def enlistFilter(filter: CompiledFilter): CompiledFilter
   def selectKey(key: String): CompiledFilter
