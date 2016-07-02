@@ -120,5 +120,10 @@ object ParserTest extends utest.TestSuite with Asserts {
       Parser.filter.parse(""""\\"""").get.value ===> Filter.constString("\\")
     }
 
+    "precedence" - {
+      Parser.filter.parse("""., . | . + . * .""").get.value ===> Filter.ensequence(Filter.id, Filter.compose(Filter.id, Filter.add(Filter.id, Filter.multiply(Filter.id, Filter.id))))
+      Parser.filter.parse(""". * . + . | ., .""").get.value ===> Filter.ensequence(Filter.compose(Filter.add(Filter.multiply(Filter.id, Filter.id), Filter.id), Filter.id), Filter.id)
+    }
+
   }
 }

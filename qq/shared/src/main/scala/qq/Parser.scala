@@ -5,10 +5,10 @@ import fastparse.parsers.Terminals
 import fastparse.{Implicits, Logger, parsers}
 import qq.FilterComponent.SilenceExceptions
 
-import scalaz.{-\/, \/}
-import scalaz.Monad
+import scalaz.{-\/, Monad, NonEmptyList, \/}
 import scalaz.syntax.either._
 import scalaz.syntax.monad._
+import scalaz.syntax.foldable1._
 import scalaz.syntax.std.option._
 import scala.collection.mutable
 
@@ -116,12 +116,12 @@ object Parser {
     "{" ~/ whitespace ~ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(Filter.enject) ~ whitespace ~ "}"
   )
 
-  def foldOperators[A](begin: A, operators: List[((A, A) => A, A)]): A =
-    operators.foldLeft(begin) { case (f, (combFun, nextF)) => combFun(f, nextF) }
-
   def operator[A](rec: P[A], op1: (String, (A, A) => A), ops: (String, (A, A) => A)*): P[A] = {
-    val op = ops.foldLeft(wspStr(op1._1) >| op1._2) { (sofar: P[(A, A) => A], nextOp) => sofar | wspStr(nextOp._1) >| nextOp._2 }
-    (rec ~ whitespace ~ (op ~ whitespace ~ rec).rep).map((foldOperators[A] _).tupled)
+    def makeParser(text: String, function: (A, A) => A): P[(A, A) => A] = wspStr(text) >| function
+    def foldOperators(begin: A, operators: List[((A, A) => A, A)]): A =
+      operators.foldLeft(begin) { case (f, (combFun, nextF)) => combFun(f, nextF) }
+    val op = NonEmptyList(op1, ops: _*).map((makeParser _).tupled).foldLeft1 { _ | _ }
+    (rec ~ whitespace ~ (op ~ whitespace ~ rec).rep).map((foldOperators _).tupled)
   }
 
   val sequenced: P[Filter] =
@@ -136,7 +136,7 @@ object Parser {
   val term: P[Filter] =
     P(operator[Filter](factor, "*" -> Filter.multiply _, "/" -> Filter.divide _, "%" -> Filter.modulo _))
 
-  val factor: P[Filter] = P(("(" ~ piped ~ ")") | smallFilter | enjectedFilter | enlistedFilter)
+  val factor: P[Filter] = P(("(" ~ sequenced ~ ")") | smallFilter | enjectedFilter | enlistedFilter)
 
   val filter: P[Filter] = P(
     for {
