@@ -7,8 +7,8 @@ import scalaz.std.list._
 sealed abstract class FilterComponent[A]
 
 object FilterComponent {
-  final case class IdFilter[A]() extends FilterComponent[A]
-  final case class FetchApi[A]() extends FilterComponent[A]
+  final case class IdFilter[A]() extends PhantomComponent[A]
+  final case class FetchApi[A]() extends PhantomComponent[A]
   final case class ComposeFilters[A](first: A, second: A) extends FilterComponent[A]
   final case class SilenceExceptions[A](f: A) extends FilterComponent[A]
   final case class EnlistFilter[A](f: A) extends FilterComponent[A]
@@ -18,6 +18,7 @@ object FilterComponent {
 
   final case class CallFilter[A](name: String, params: List[A]) extends FilterComponent[A]
 
+  // AST nodes with no child nodes
   sealed abstract class PhantomComponent[A] extends FilterComponent[A] {
     @inline
     final def retag[B]: PhantomComponent[B] = this.asInstanceOf[PhantomComponent[B]]
@@ -37,11 +38,11 @@ object FilterComponent {
   final case class ConstNumber[A](value: Double) extends ConstantComponent[A]
   final case class ConstString[A](value: String) extends ConstantComponent[A]
 
-  implicit def qqfiltercomponent = new Traverse[FilterComponent] {
+  implicit def qqFilterComponentTraverse = new Traverse[FilterComponent] {
 
     override def map[A, B](fa: FilterComponent[A])(f: (A) => B): FilterComponent[B] = fa match {
-      case IdFilter() => IdFilter()
-      case FetchApi() => FetchApi()
+      case i: IdFilter[_] => i.retag[B]
+      case f: FetchApi[_] => f.retag[B]
       case CallFilter(name, params) => CallFilter(name, params map f)
       case k: SelectKey[_] => k.retag[B]
       case i: SelectIndex[_] => i.retag[B]
@@ -63,8 +64,8 @@ object FilterComponent {
 
     override def traverseImpl[G[_], A, B](fa: FilterComponent[A])(f: (A) => G[B])(implicit G: Applicative[G]): G[FilterComponent[B]] = {
       fa match {
-        case IdFilter() => G.point(IdFilter())
-        case FetchApi() => G.point(FetchApi())
+        case i: IdFilter[_] => G.point(i.retag[B])
+        case f: FetchApi[_] => G.point(f.retag[B])
         case CallFilter(name, params) => params.traverse(f).map(CallFilter(name, _))
         case k: SelectKey[_] => G.point(k.retag[B])
         case i: SelectIndex[_] => G.point(i.retag[B])

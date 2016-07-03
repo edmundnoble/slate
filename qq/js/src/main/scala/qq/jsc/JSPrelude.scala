@@ -18,10 +18,10 @@ object JSPrelude extends PlatformPrelude[JSCompiler.type] {
   override def length: JSCompiler.CDefinition =
     noParamDefinition(
       "length", {
-        case arr: js.Array[js.Any@unchecked] => Task.now(arr.length :: Nil)
-        case str if str.isInstanceOf[String] => Task.now(str.asInstanceOf[String].length :: Nil)
-        case obj: js.Object => Task.now(obj.asInstanceOf[js.Dictionary[js.Any]].toArray.length :: Nil)
-        case null => Task.now(0 :: Nil)
+        case arr: js.Array[js.Any@unchecked] => Task.now(Int.box(arr.length) :: Nil)
+        case str: String => Task.now(Int.box(str.length) :: Nil)
+        case obj: js.Object => Task.now(Int.box(obj.asInstanceOf[js.Dictionary[js.Any]].toArray.length) :: Nil)
+        case null => Task.now(Int.box(0) :: Nil)
         case k => Task.raiseError(new QQRuntimeException(s"Tried to get length of $k"))
       }
     )
@@ -30,8 +30,9 @@ object JSPrelude extends PlatformPrelude[JSCompiler.type] {
     CompiledDefinition[JSCompiler.type](name = "replaceAll", numParams = 2,
       body = { (params: List[JSCompiler.CompiledFilter]) =>
         val (regex :: replacement :: Nil) = params
-        ((jsv: js.Any) =>
+        ((jsv: AnyRef) =>
           for {
+            // TODO: Make safe
             regexOut <- regex(jsv)
             replacementOut <- replacement(jsv)
             compiledRegex: Pattern = Pattern.compile(regexOut.head.asInstanceOf[String])
@@ -79,7 +80,7 @@ object JSPrelude extends PlatformPrelude[JSCompiler.type] {
     noParamDefinition(
       "booleans", {
         case null => Task.now(Nil)
-        case bool if bool.isInstanceOf[Boolean] => Task.now(bool :: Nil)
+        case bool: java.lang.Boolean => Task.now(bool :: Nil)
         case k => Task.now(Nil)
       })
 
@@ -87,7 +88,7 @@ object JSPrelude extends PlatformPrelude[JSCompiler.type] {
     noParamDefinition(
       "numbers", {
         case null => Task.now(Nil)
-        case num if num.isInstanceOf[Double] || num.isInstanceOf[Int] => Task.now(num :: Nil)
+        case num: java.lang.Double => Task.now(num :: Nil)
         case k => Task.now(Nil)
       })
 
@@ -95,7 +96,7 @@ object JSPrelude extends PlatformPrelude[JSCompiler.type] {
     noParamDefinition(
       "strings", {
         case null => Task.now(Nil)
-        case str if str.isInstanceOf[String] => Task.now(str :: Nil)
+        case str: String => Task.now(str :: Nil)
         case k => Task.now(Nil)
       })
 

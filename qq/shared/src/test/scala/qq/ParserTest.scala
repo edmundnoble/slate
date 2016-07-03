@@ -1,7 +1,6 @@
 package qq
 
 import fastparse.core.ParseError
-import qq.Definition
 import utest._
 
 import scalaz.{-\/, \/-}

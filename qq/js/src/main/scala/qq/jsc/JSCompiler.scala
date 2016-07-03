@@ -3,7 +3,7 @@ package qq.jsc
 import monix.eval.Task
 
 import scala.scalajs.js
-import scalaz.{-\/, Applicative, NonEmptyList, Traverse, \/, \/-}
+import scalaz.{-\/, Applicative, Monad, NonEmptyList, Traverse, \/, \/-}
 import scalaz.std.list._
 import scalaz.std.map._
 import scalaz.syntax.traverse._
@@ -18,71 +18,74 @@ import qq.Util._
 import scala.scalajs.js.{Any, Dictionary}
 
 object JSCompiler extends Compiler {
-  override type AnyTy = js.Any
+  override type AnyTy = AnyRef
 
   val taskOfListOfNull: Task[List[AnyTy]] = Task.now(List(null))
-  val emptyArray: js.Array[js.Any] = new js.Array[js.Any](0)
+  val emptyArray: js.Array[AnyRef] = new js.Array[AnyRef](0)
 
   override def constNumber(num: Double): CompiledFilter = {
-    _ => Task.now(num :: Nil)
+    _ => Task.now(Double.box(num) :: Nil)
   }
 
   override def constString(str: String): CompiledFilter = {
     _ => Task.now(str :: Nil)
   }
 
-  def addJsValues(first: js.Any, second: js.Any): Task[js.Any] = (first, second) match {
-    case (f, s) if f.isInstanceOf[Double] && s.isInstanceOf[Double] =>
-      Task.now(f.asInstanceOf[Double] + s.asInstanceOf[Double])
-    case (f, s) if f.isInstanceOf[String] && s.isInstanceOf[String] =>
-      Task.now(f.asInstanceOf[String] + s.asInstanceOf[String])
-    case (f: js.Array[js.Any@unchecked], s: js.Array[js.Any@unchecked]) =>
+  def addJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
+    case (f: java.lang.Double, s: java.lang.Double) =>
+      Task.now(Double.box(f.doubleValue() + s.doubleValue()))
+    case (f: String, s: String)  =>
+      Task.now(f + s)
+    case (f: js.Array[AnyRef@unchecked], s: js.Array[AnyRef@unchecked]) =>
       Task.now(f.concat(s))
     case (f: js.Object, s: js.Object) =>
-      val firstMap = f.asInstanceOf[js.Dictionary[js.Any]].toMap
-      val secondMap = s.asInstanceOf[Dictionary[Any]].toMap
+      val firstMap = f.asInstanceOf[js.Dictionary[AnyRef]].toMap
+      val secondMap = s.asInstanceOf[js.Dictionary[AnyRef]].toMap
       Task.now(js.Dictionary((firstMap ++ secondMap).toSeq: _*))
     case (f, s) =>
-      Task.raiseError(new QQRuntimeException(s"can't add $f and $s"))
+      Task.raiseError(QQRuntimeException(s"can't add $f and $s"))
   }
 
-  def subtractJsValues(first: js.Any, second: js.Any): Task[js.Any] = (first, second) match {
-    case (f, s) if f.isInstanceOf[Double] && s.isInstanceOf[Double] =>
-      Task.now(f.asInstanceOf[Double] - s.asInstanceOf[Double])
-    case (f: js.Array[js.Any@unchecked], s: js.Array[js.Any@unchecked]) =>
+  def subtractJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
+    case (f: java.lang.Double, s: java.lang.Double) =>
+      Task.now(Double.box(f.doubleValue() - s.doubleValue()))
+    case (f: js.Array[AnyRef@unchecked], s: js.Array[AnyRef@unchecked]) =>
       Task.now(f.filter(!s.contains(_)))
     case (f: js.Object, s: js.Object) =>
-      val contents: Seq[(String, Any)] = (f.asInstanceOf[Dictionary[Any]].toMap -- s.asInstanceOf[Dictionary[Any]].toMap.keySet).toSeq
+      val contents: Seq[(String, AnyRef)] = (f.asInstanceOf[Dictionary[AnyRef]].toMap -- s.asInstanceOf[Dictionary[AnyRef]].toMap.keySet).toSeq
       Task.now(js.Dictionary(contents: _*))
     case (f, s) =>
-      Task.raiseError(new QQRuntimeException(s"can't subtract $f and $s"))
+      Task.raiseError(QQRuntimeException(s"can't subtract $f and $s"))
   }
 
-  def multiplyJsValues(first: js.Any, second: js.Any): Task[js.Any] = (first, second) match {
-    case (f, s) if f.isInstanceOf[Double] && s.isInstanceOf[Double] => Task.now(f.asInstanceOf[Double] * s.asInstanceOf[Double])
-    case (f, s) if f.isInstanceOf[String] && s.isInstanceOf[Int] =>
-      Task.now(if (s.asInstanceOf[Int] == 0) null else f.asInstanceOf[String] * s.asInstanceOf[Int])
+  def multiplyJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
+    case (f: java.lang.Double, s: java.lang.Double) =>
+      Task.now(Double.box(f.doubleValue() * s.doubleValue()))
+    case (f: String, s: java.lang.Integer) =>
+      Task.now(if (s.intValue() == 0) null else f * s.intValue())
     case (f: js.Object, s: js.Object) =>
-      val firstMap = f.asInstanceOf[js.Dictionary[js.Any]].toMap.mapValues(Task.now)
-      val secondMap = s.asInstanceOf[Dictionary[Any]].toMap.mapValues(Task.now)
-      firstMap.unionWith(secondMap) { (f, s) => (f |@| s)(addJsValues(_, _)).flatten[js.Any] }.sequence.map(o => js.Dictionary(o.toSeq: _*))
+      val firstMap = f.asInstanceOf[js.Dictionary[AnyRef]].toMap.mapValues(Task.now)
+      val secondMap = s.asInstanceOf[Dictionary[AnyRef]].toMap.mapValues(Task.now)
+      firstMap.unionWith(secondMap) { (f, s) => Task.mapBoth(f, s)(addJsValues).flatten }.sequence.map(o => js.Dictionary(o.toSeq: _*))
     case (f, s) =>
-      Task.raiseError(new QQRuntimeException(s"can't multiply $f and $s"))
+      Task.raiseError(QQRuntimeException(s"can't multiply $f and $s"))
   }
 
-  def divideJsValues(first: js.Any, second: js.Any): Task[js.Any] = (first, second) match {
-    case (f, s) if f.isInstanceOf[Double] && s.isInstanceOf[Double] => Task.now(f.asInstanceOf[Double] / s.asInstanceOf[Double])
+  def divideJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
+    case (f: java.lang.Double, s: java.lang.Double) =>
+      Task.now(Double.box(f.doubleValue() / s.doubleValue()))
     case (f, s) =>
-      Task.raiseError(new QQRuntimeException(s"can't divide $f by $s"))
+      Task.raiseError(QQRuntimeException(s"can't divide $f by $s"))
   }
 
-  def moduloJsValues(first: js.Any, second: js.Any): Task[js.Any] = (first, second) match {
-    case (f, s) if f.isInstanceOf[Double] && s.isInstanceOf[Double] => Task.now(f.asInstanceOf[Double] % s.asInstanceOf[Double])
+  def moduloJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
+    case (f: java.lang.Double, s: java.lang.Double) =>
+      Task.now(Double.box(f.doubleValue() % s.doubleValue()))
     case (f, s) =>
-      Task.raiseError(new QQRuntimeException(s"can't modulo $f by $s"))
+      Task.raiseError(QQRuntimeException(s"can't modulo $f by $s"))
   }
 
-  override def enlistFilter(filter: CompiledFilter): CompiledFilter = { jsv: js.Any =>
+  override def enlistFilter(filter: CompiledFilter): CompiledFilter = { jsv: AnyRef =>
     for {
       results <- filter(jsv)
     } yield js.Array(results: _*) :: Nil
@@ -90,12 +93,12 @@ object JSCompiler extends Compiler {
 
   override def selectKey(key: String): CompiledFilter = {
     case f: js.Object =>
-      f.asInstanceOf[js.Dictionary[js.Object]].get(key) match {
+      f.asInstanceOf[js.Dictionary[AnyRef]].get(key) match {
         case None => taskOfListOfNull
         case Some(v) => Task.now(v :: Nil)
       }
     case v =>
-      Task.raiseError(new QQRuntimeException(s"Tried to select key $key in $v but it's not a dictionary"))
+      Task.raiseError(QQRuntimeException(s"Tried to select key $key in $v but it's not a dictionary"))
   }
 
   override def selectIndex(index: Int): CompiledFilter = {
@@ -112,7 +115,7 @@ object JSCompiler extends Compiler {
         taskOfListOfNull
       }
     case v =>
-      Task.raiseError(new QQRuntimeException(s"Tried to select index $index in $v but it's not an array"))
+      Task.raiseError(QQRuntimeException(s"Tried to select index $index in $v but it's not an array"))
   }
 
   override def selectRange(start: Int, end: Int): CompiledFilter = {
@@ -124,15 +127,15 @@ object JSCompiler extends Compiler {
       }
   }
 
-  override def collectResults(f: CompiledFilter): CompiledFilter = { jsv: js.Any =>
+  override def collectResults(f: CompiledFilter): CompiledFilter = { jsv: AnyRef =>
     f(jsv).flatMap {
       _.traverseM {
-        case arr: js.Array[js.Any@unchecked] =>
+        case arr: js.Array[AnyRef@unchecked] =>
           Task.now(arr.toList)
         case dict: js.Object =>
           Task.now(dict.asInstanceOf[js.Dictionary[js.Object]].map(_._2)(collection.breakOut))
         case v =>
-          Task.raiseError(new QQRuntimeException(s"Tried to flatten $v but it's not an array"))
+          Task.raiseError(QQRuntimeException(s"Tried to flatten $v but it's not an array"))
       }
     }
   }
@@ -145,10 +148,10 @@ object JSCompiler extends Compiler {
             keyResults <- filterKey(jsv)
             valueResults <- filterValue(jsv)
             keyValuePairs <- keyResults.traverse {
-              case keyString: js.Any if keyString.isInstanceOf[String] =>
-                Task.now(valueResults.map(keyString.asInstanceOf[String] -> _))
+              case keyString: String =>
+                Task.now(valueResults.map(keyString -> _))
               case k =>
-                Task.raiseError(new QQRuntimeException(s"Tried to use $k as a key for an object but it's not a string"))
+                Task.raiseError(QQRuntimeException(s"Tried to use $k as a key for an object but it's not a string"))
             }
           } yield keyValuePairs
         case (-\/(filterName), filterValue) =>
@@ -157,7 +160,7 @@ object JSCompiler extends Compiler {
           } yield valueResults.map(filterName -> _) :: Nil
       }
       kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => l.foldLeft(h :: Nil)(withPrefixes) }
-    } yield kvPairsProducts.map(js.Dictionary[js.Any](_: _*))
+    } yield kvPairsProducts.map(js.Dictionary[AnyRef](_: _*))
   }
 
   override def platformPrelude = JSPrelude

@@ -14,7 +14,7 @@ object UpickleRunnerTest extends utest.TestSuite with Asserts {
       Runner
         .run(UpickleCompiler, test.program)(List(test.input))
         .runFuture
-        .transform(_ ===> test.expectedOutput.getOrElse(???),
+        .transform(_ ===> test.expectedOutput.valueOr { throw _ },
           { ex => ex ===> test.expectedOutput.swap.getOrElse(???); ex})
         .fallbackTo(Future.successful(()))
 

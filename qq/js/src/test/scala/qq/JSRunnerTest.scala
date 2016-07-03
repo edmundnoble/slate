@@ -16,7 +16,8 @@ object JSRunnerTest extends utest.TestSuite with Asserts {
         .run(JSCompiler, test.program)(List(upickle.json.writeJs(test.input).asInstanceOf[js.Any]))
         .runFuture
         .transform(
-          { out => val js = out.map(upickle.json.readJs); js ===> test.expectedOutput.getOrElse(???) }, { ex => ex ===> test.expectedOutput.swap.getOrElse(???); ex }
+          { out => val js = out.map(upickle.json.readJs); js ===> test.expectedOutput.valueOr { throw _ } },
+          { ex => ex ===> test.expectedOutput.swap.getOrElse(???); ex }
         )
         .fallbackTo(Future.successful(()))
 

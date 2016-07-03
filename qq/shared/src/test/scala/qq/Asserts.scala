@@ -11,12 +11,11 @@ trait Asserts {
           case (lhs: Array[_], rhs: Array[_]) =>
             val lhsSeq = lhs.toSeq
             val rhsSeq = rhs.toSeq
-            Predef.assert(lhsSeq == rhsSeq, s"===> assertion failed: $lhsSeq != $rhsSeq")
-          case (lhs, rhs) =>
-            Predef.assert(lhs == rhs, s"===> assertion failed: $lhs != $rhs")
+            assert(lhsSeq == rhsSeq, s"===> assertion failed: $lhsSeq != $rhsSeq")
+          case _ =>
+            assert(lhs == rhs, s"===> assertion failed: $lhs != $rhs")
         }
     }
   }
-
 
 }

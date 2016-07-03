@@ -65,55 +65,55 @@ object RunnerTest {
   )
 
   val numbers = RunnerTest(
-    ".[]|numbers",
+    ".[] | numbers",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.Num(1)).right
   )
 
   val arrays = RunnerTest(
-    ".[]|arrays",
+    ".[] | arrays",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.Arr()).right
   )
 
   val objects = RunnerTest(
-    ".[]|objects",
+    ".[] | objects",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.Obj()).right
   )
 
   val iterables = RunnerTest(
-    ".[]|iterables",
+    ".[] | iterables",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.Arr(), Js.Obj()).right
   )
 
   val booleans = RunnerTest(
-    ".[]|booleans",
+    ".[] | booleans",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.True, Js.False).right
   )
 
   val strings = RunnerTest(
-    ".[]|strings",
+    ".[] | strings",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.Str("foo")).right
   )
 
   val nulls = RunnerTest(
-    ".[]|nulls",
+    ".[] | nulls",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.Null).right
   )
 
   val values = RunnerTest(
-    ".[]|values",
+    ".[] | values",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.True, Js.False).right
   )
 
   val scalars = RunnerTest(
-    ".[]|scalars",
+    ".[] | scalars",
     Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
     List(Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False).right
   )
@@ -151,7 +151,7 @@ object RunnerTest {
   val addNullException = RunnerTest(
     ".[0] + .[0]",
     Js.Arr(),
-    new QQRuntimeException("can't add null and null").left
+    QQRuntimeException("can't add null and null").left
   )
 
   val silencedException = RunnerTest(
