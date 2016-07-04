@@ -19,7 +19,7 @@ object Util {
   implicit class TaskRunFuture[A](val task: Task[A]) {
     def runFuture(implicit s: Scheduler): Future[A] = {
       val prom = Promise[A]()
-      task.runAsync { r => prom.complete(r); () }
+      task.runAsync { prom.complete(_) }
       prom.future
     }
   }

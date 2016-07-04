@@ -2,6 +2,7 @@ package qq
 
 import qq.UpickleCompiler._
 import monix.eval.Task
+import qq.Compiler.CompiledFilter
 import upickle.{Js, json}
 
 object Interpreter {
@@ -17,13 +18,13 @@ object Interpreter {
     case program: String =>
       Runner.parseAndCompile(UpickleCompiler, program, optimize = true).fold(
         (err: Exception) => Task(Console.err.println(s"Error: $err")) map (_ => ("", programInterpreter)),
-        (compiledFilter: CompiledFilter) => Task.now(("", programInterpreterOf(program, compiledFilter)))
+        (compiledFilter: CompiledFilter[UpickleCompiler.type]) => Task.now(("", programInterpreterOf(program, compiledFilter)))
       )
   })
 
-  def programInterpreterOf(source: String, program: CompiledFilter): Interpreter = taskSwitch orElse Interpreter (s"program ${source}, input: ", {
+  def programInterpreterOf(source: String, program: CompiledFilter[UpickleCompiler.type]): Interpreter = taskSwitch orElse Interpreter (s"program $source, input: ", {
     case input: String =>
-      val inputJson = json.read(input)
+      val inputJson = json read input
       val execute = program(inputJson)
       execute.map { results =>
         val result = results.mkString("(", ", ", "_")
@@ -33,15 +34,15 @@ object Interpreter {
 
   def inputInterpreter: Interpreter = taskSwitch orElse Interpreter ("input: ", {
     case input: String =>
-      val in = json.read(input)
+      val in = json read input
       Task.now(("", inputInterpreterOf(input, in)))
   })
 
-  def inputInterpreterOf(source: String, input: Js.Value): Interpreter = taskSwitch orElse Interpreter (s"input ${source}, program: ", {
+  def inputInterpreterOf(source: String, input: Js.Value): Interpreter = taskSwitch orElse Interpreter (s"input $source, program: ", {
     case program: String =>
       Runner.parseAndCompile(UpickleCompiler, program, optimize = true).fold(
         (err: Exception) => Task(Console.err.println(s"Error: $err")) map (_ => ("", programInterpreter)),
-        (compiledFilter: CompiledFilter) => compiledFilter(input).map { results => (results.mkString("(", ", ", "_"), inputInterpreterOf(source, input)) }
+        (compiledFilter: CompiledFilter[UpickleCompiler.type]) => compiledFilter(input).map { results => (results.mkString("(", ", ", "_"), inputInterpreterOf(source, input)) }
       )
   })
 

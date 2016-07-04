@@ -1,7 +1,7 @@
 package qq
 
 import monix.eval.Task
-import qq.Compiler.QQCompilationException
+import qq.Compiler.{CompiledFilter, QQCompilationException}
 
 import scalaz.\/
 import scalaz.syntax.either._
@@ -10,7 +10,7 @@ object SharedPreludes {
 
   object Compiled {
     def print[C <: Compiler with Singleton]: CompiledDefinition[C] = {
-      val body: C#CompiledFilter = { (jsv: C#AnyTy) => println(s"debug: $jsv"); Task.now(jsv :: Nil) }
+      val body: CompiledFilter[C] = { (jsv: C#AnyTy) => println(s"debug: $jsv"); Task.now(jsv :: Nil) }
       CompiledDefinition[C]("print", 0, body = { _ => body.right[QQCompilationException] })
     }
 

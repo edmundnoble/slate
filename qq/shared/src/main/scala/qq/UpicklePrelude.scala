@@ -15,7 +15,7 @@ import upickle.Js.{False, Value}
 import qq.Util._
 
 object UpicklePrelude extends PlatformPrelude[UpickleCompiler.type] {
-  override def length: UpickleCompiler.CDefinition =
+  override def length: CompiledDefinition[UpickleCompiler.type] =
     noParamDefinition(
       "length", {
         case arr: Js.Arr => Task.now(Js.Num(arr.value.length) :: Nil)
@@ -26,7 +26,7 @@ object UpicklePrelude extends PlatformPrelude[UpickleCompiler.type] {
       }
     )
 
-  override def keys: UpickleCompiler.CDefinition =
+  override def keys: CompiledDefinition[UpickleCompiler.type] =
     noParamDefinition(
       "keys", {
         case obj: Js.Obj => Task.now(Js.Arr(obj.value.map(p => Js.Str(p._1)): _*) :: Nil)
@@ -34,7 +34,7 @@ object UpicklePrelude extends PlatformPrelude[UpickleCompiler.type] {
       }
     )
 
-  override def replaceAll: UpickleCompiler.CDefinition =
+  override def replaceAll: CompiledDefinition[UpickleCompiler.type] =
     CompiledDefinition[UpickleCompiler.type](name = "replaceAll", numParams = 2,
       body = { params =>
         val (regex :: replacement :: Nil) = params
@@ -53,21 +53,21 @@ object UpicklePrelude extends PlatformPrelude[UpickleCompiler.type] {
       }
     )
 
-  override def arrays: UpickleCompiler.CDefinition =
+  override def arrays: CompiledDefinition[UpickleCompiler.type] =
     noParamDefinition(
       "arrays", {
         case arr: Js.Arr => Task.now(arr :: Nil)
         case k => Task.now(Nil)
       })
 
-  override def objects: UpickleCompiler.CDefinition =
+  override def objects: CompiledDefinition[UpickleCompiler.type] =
     noParamDefinition(
       "objects", {
         case obj: Js.Obj => Task.now(obj :: Nil)
         case k => Task.now(Nil)
       })
 
-  override def iterables: UpickleCompiler.CDefinition =
+  override def iterables: CompiledDefinition[UpickleCompiler.type] =
     noParamDefinition(
       "iterables", {
         case arr: Js.Arr => Task.now(arr :: Nil)
@@ -75,42 +75,42 @@ object UpicklePrelude extends PlatformPrelude[UpickleCompiler.type] {
         case k => Task.now(Nil)
       })
 
-  override def booleans: UpickleCompiler.CDefinition =
+  override def booleans: CompiledDefinition[UpickleCompiler.type] =
     noParamDefinition(
       "booleans", {
         case bool@(Js.True | Js.False) => Task.now(bool :: Nil)
         case k => Task.now(Nil)
       })
 
-  override def numbers: UpickleCompiler.CDefinition =
+  override def numbers: CompiledDefinition[UpickleCompiler.type] =
     noParamDefinition(
       "numbers", {
         case num: Js.Num => Task.now(num :: Nil)
         case k => Task.now(Nil)
       })
 
-  override def strings: UpickleCompiler.CDefinition =
+  override def strings: CompiledDefinition[UpickleCompiler.type] =
     noParamDefinition(
       "strings", {
         case str: Js.Str => Task.now(str :: Nil)
         case k => Task.now(Nil)
       })
 
-  override def nulls: UpickleCompiler.CDefinition =
+  override def nulls: CompiledDefinition[UpickleCompiler.type] =
     noParamDefinition(
       "nulls", {
         case Js.Null => Task.now(Js.Null :: Nil)
         case k => Task.now(Nil)
       })
 
-  override def values: UpickleCompiler.CDefinition =
+  override def values: CompiledDefinition[UpickleCompiler.type] =
     noParamDefinition(
       "values", {
         case null => Task.now(Nil)
         case k => Task.now(k :: Nil)
       })
 
-  override def scalars: UpickleCompiler.CDefinition =
+  override def scalars: CompiledDefinition[UpickleCompiler.type] =
     noParamDefinition(
       "scalars", {
         case arr: Js.Arr => Task.now(Nil)

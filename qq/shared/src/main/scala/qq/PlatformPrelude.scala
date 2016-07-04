@@ -1,6 +1,6 @@
 package qq
 
-import qq.Compiler.QQCompilationException
+import qq.Compiler.{CompiledFilter, QQCompilationException}
 
 import scalaz.\/
 import scalaz.syntax.either._
@@ -8,7 +8,7 @@ import scalaz.Liskov._
 
 trait PlatformPrelude[C <: Compiler with Singleton] extends Prelude[C] {
 
-  def noParamDefinition(name: String, fun: C#CompiledFilter): CompiledDefinition[C] = {
+  def noParamDefinition(name: String, fun: CompiledFilter[C]): CompiledDefinition[C] = {
     CompiledDefinition[C](
       name,
       numParams = 0,

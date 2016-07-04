@@ -15,7 +15,7 @@ object JSCompilerTest extends utest.TestSuite with Asserts {
 
     def testRun(qQDoubleCompilerTest: CompilerTest) = qQDoubleCompilerTest match {
       case CompilerTest(filter, input, result) =>
-        compile(Nil, filter).getOrElse(???).apply(upickle.json.writeJs(input).asInstanceOf[scalajs.js.Any]).runFuture map (_.map(upickle.json.readJs) ===> result)
+        compile(Nil, filter).getOrElse(???).apply(upickle.json.writeJs(input).asInstanceOf[AnyRef]).runFuture map (_.map(upickle.json.readJs) ===> result)
     }
 
     "select keys" - Future.traverse(CompilerTest.selectKeys)(testRun)

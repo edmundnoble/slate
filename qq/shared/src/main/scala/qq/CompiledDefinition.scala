@@ -1,9 +1,7 @@
 package qq
 
-import qq.Compiler.QQCompilationException
-
-import scalaz.\/
+import qq.Compiler.{CompiledFilter, OrCompilationError}
 
 final case class CompiledDefinition[C <: Compiler with Singleton]
-(name: String, numParams: Int, body: (List[C#CompiledFilter] => QQCompilationException \/ C#CompiledFilter))
+(name: String, numParams: Int, body: (List[CompiledFilter[C]] => OrCompilationError[CompiledFilter[C]]))
 

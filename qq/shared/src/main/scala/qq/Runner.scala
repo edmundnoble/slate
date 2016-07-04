@@ -9,11 +9,12 @@ import scalaz.syntax.traverse._
 import scalaz.syntax.either._
 import Util._
 import matryoshka._
+import qq.Compiler.CompiledFilter
 import shapeless.{Nat, Sized}
 
 object Runner {
 
-  def parseAndCompile(compiler: Compiler, program: String, optimize: Boolean = true): \/[Exception, compiler.CompiledFilter] = {
+  def parseAndCompile(compiler: Compiler, program: String, optimize: Boolean = true): \/[Exception, CompiledFilter[compiler.type]] = {
     val parsed = Parser.program.parse(program)
     parsed match {
       case Parsed.Success((definitions, main), _) =>

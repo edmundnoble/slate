@@ -56,10 +56,10 @@ object DashboarderApp extends scalajs.js.JSApp {
             |  description: (.fields.description | replaceAll("\n+\\s*"; " ↪ ")),
             |  status: .fields.status.name
             |}""".stripMargin
-      ).valueOr { throw _ }
+      ).fold(Task.raiseError, Task.now).each
       val searchResults = searchRequests.traverse[Task, List[Issue]] { r =>
-        val result = compiledQQProgram(upickle.json.read(r.responseText))
-        result.map { _.flatMap(Issue.pkl.read.lift(_)) }
+        val result = compiledQQProgram(upickle.json read r.responseText)
+        result map { _ flatMap(Issue.pkl.read.lift(_)) }
       }.each
 
       (favoriteFilters, searchResults).zipped.map(SearchResult(_, _))(collection.breakOut)
