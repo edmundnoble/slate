@@ -10,11 +10,16 @@ import upickle.Js
 import scalaz._
 import scalaz.Id._
 import scalaz.syntax.either._
+import scalaz.syntax.traverse._
+import scalaz.std.list._
 import com.thoughtworks.each.Monadic._
 import upickle.Js.{False, Value}
 import qq.Util._
 
 object UpicklePrelude extends PlatformPrelude[UpickleCompiler.type] {
+
+  import Compiler._
+
   override def length: CompiledDefinition[UpickleCompiler.type] =
     noParamDefinition(
       "length", {
@@ -22,7 +27,7 @@ object UpicklePrelude extends PlatformPrelude[UpickleCompiler.type] {
         case Js.Str(str) => Task.now(Js.Num(str.length) :: Nil)
         case obj: Js.Obj => Task.now(Js.Num(obj.value.length) :: Nil)
         case Js.Null => Task.now((Js.Num(0): Js.Value) :: Nil)
-        case k => Task.raiseError(new QQRuntimeException(s"Tried to get length of $k"))
+        case k => Task.raiseError(QQRuntimeException(s"Tried to get length of $k"))
       }
     )
 
@@ -30,26 +35,34 @@ object UpicklePrelude extends PlatformPrelude[UpickleCompiler.type] {
     noParamDefinition(
       "keys", {
         case obj: Js.Obj => Task.now(Js.Arr(obj.value.map(p => Js.Str(p._1)): _*) :: Nil)
-        case k => Task.raiseError(new QQRuntimeException(s"Tried to get keys of $k"))
+        case k => Task.raiseError(QQRuntimeException(s"Tried to get keys of $k"))
       }
     )
 
   override def replaceAll: CompiledDefinition[UpickleCompiler.type] =
     CompiledDefinition[UpickleCompiler.type](name = "replaceAll", numParams = 2,
-      body = { params =>
-        val (regex :: replacement :: Nil) = params
-        ((jsv: Js.Value) => {
-          val result = monadic[Task] {
-            val compiledRegex: Pattern = Pattern.compile(regex(jsv).each.head.str)
-            jsv match {
-              case Js.Str(string) =>
-                val replace: String = replacement(jsv).each.head.str
-                Js.Str(compiledRegex.matcher(string).replaceAll(replace)) :: Nil
-              case _ => ???
+      body = {
+        case (regexFilter :: replacementFilter :: Nil) => {
+          (jsv: Js.Value) =>
+            monadic[Task] {
+              val regexes: List[Pattern] = regexFilter(jsv).each.traverse[Task, Pattern] {
+                case Js.Str(string) => Task.now(Pattern.compile(string))
+                case j => Task.raiseError(NotARegex(j.toString))
+              }.each
+              val replacements: List[String] = replacementFilter(jsv).each.traverse[Task, String] {
+                case Js.Str(string) => Task.now(string)
+                case j => Task.raiseError(QQRuntimeException(s"can't replace with ${j.toString}"))
+              }.each
+              val valueRegexReplacementList = (regexes, replacements).zipped.map { case (regex, replacement) =>
+                jsv match {
+                  case Js.Str(string) =>
+                    Task.now(Js.Str(regex.matcher(string).replaceAll(replacement)): Js.Value)
+                  case j => Task.raiseError(QQRuntimeException(s"can't replace ${j.toString}"))
+                }
+              }.sequence[Task, Js.Value].each
+              valueRegexReplacementList
             }
-          }
-          result
-        }).right[QQCompilationException]
+        }.right[QQCompilationException]
       }
     )
 

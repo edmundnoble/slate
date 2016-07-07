@@ -1,6 +1,6 @@
 package qq
 
-import qq.Util._
+import qq.TestUtil._
 import qq.jsc.JSCompiler
 import monix.execution.Scheduler.Implicits.global
 import utest._

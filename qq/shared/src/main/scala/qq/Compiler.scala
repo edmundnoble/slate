@@ -2,14 +2,12 @@ package qq
 
 import matryoshka.Recursive.ops._
 import monix.eval.Task
-import qq.Compiler.{NoSuchMethod, QQCompilationException, QQRuntimeException, WrongNumParams}
 import qq.FilterComponent._
 import qq.Util._
 
 import scala.language.existentials
 import scalaz.\/
 import scalaz.std.list._
-import scalaz.syntax.apply._
 import scalaz.syntax.either._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
@@ -117,6 +115,7 @@ abstract class Compiler {
 object Compiler {
 
   case class QQRuntimeException(message: String) extends RuntimeException(message)
+  case class NotARegex(asStr: String) extends RuntimeException(s"tried to use this as a regex: $asStr")
   class QQCompilationException(message: String) extends RuntimeException(message)
   case class NoSuchMethod(name: String)
     extends QQCompilationException(message = s"No such method: $name")

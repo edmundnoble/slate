@@ -1,11 +1,10 @@
 package qq
 
-import qq.Util._
+import qq.TestUtil._
 import monix.execution.Scheduler.Implicits.global
 import utest._
 
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
 
 object UpickleRunnerTest extends utest.TestSuite with Asserts {
   override val tests = TestSuite {

@@ -14,12 +14,17 @@ object RunnerTest {
     val dict = Js.Obj("1" -> Js.Num(2), "3" -> Js.Num(4))
     RunnerTest(".", dict, List(dict).right)
   }
+
   val selectKeyProgram = RunnerTest(".lol",
     Js.Obj("lol" -> Js.Str("test")),
     List(Js.Str("test")).right)
+
   val ensequencedFilters = RunnerTest(".lol, .wat", Js.Obj("lol" -> Js.Str("lol1"), "wat" -> Js.Str("wat1")), List(Js.Str("lol1"), Js.Str("wat1")).right)
+
   val enlistedFilters = RunnerTest("[.lol, .wat]", Js.Obj("lol" -> Js.Str("lol1"), "wat" -> Js.Str("wat1")), List(Js.Arr(Js.Str("lol1"), Js.Str("wat1"))).right)
+
   val collectResults = RunnerTest(".titles[]", Js.Obj("titles" -> Js.Arr(Js.Str("lol1"), Js.Str("wat1"))), List(Js.Str("lol1"), Js.Str("wat1")).right)
+
   val enjectedFilters = RunnerTest(
     "{user, (.titleName[]): .titles[]}",
     Js.Obj(

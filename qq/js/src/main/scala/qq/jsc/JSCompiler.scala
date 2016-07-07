@@ -156,7 +156,7 @@ object JSCompiler extends Compiler {
             valueResults <- filterValue(jsv)
           } yield valueResults.map(filterName -> _) :: Nil
       }
-      kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => l.foldLeft(h :: Nil)(withPrefixes) }
+      kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => foldWithPrefixes(h, l.toList: _*) }
     } yield kvPairsProducts.map(js.Dictionary[AnyRef](_: _*))
   }
 

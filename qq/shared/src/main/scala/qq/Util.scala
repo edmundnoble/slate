@@ -1,9 +1,7 @@
 package qq
 
-import monix.eval.{Coeval, Task}
-import monix.execution.Scheduler
+import monix.eval.Task
 
-import scala.concurrent.{Future, Promise}
 import scalaz.{Monad, ~>}
 
 object Util {
@@ -14,15 +12,10 @@ object Util {
   }
 
   def withPrefixes[A](xss: List[List[A]], ys: List[A]): List[List[A]] =
-    for {xs <- xss; y <- ys; r <- (y :: xs) :: Nil} yield r
+    for {xs <- xss; y <- ys} yield y :: xs
 
-  implicit class TaskRunFuture[A](val task: Task[A]) {
-    def runFuture(implicit s: Scheduler): Future[A] = {
-      val prom = Promise[A]()
-      task.runAsync { prom.complete(_) }
-      prom.future
-    }
-  }
+  def foldWithPrefixes[A](firstPrefix: List[A], nextPrefices: List[A]*): List[List[A]] =
+    nextPrefices.foldLeft(firstPrefix :: Nil)(withPrefixes)
 
   def single: Option ~> Seq = new (Option ~> Seq) {
     def apply[A](op: Option[A]): Seq[A] =

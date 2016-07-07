@@ -3,7 +3,7 @@ package qq
 import utest._
 
 import scala.concurrent.Future
-import Util._
+import TestUtil._
 
 import monix.execution.Scheduler.Implicits.global
 

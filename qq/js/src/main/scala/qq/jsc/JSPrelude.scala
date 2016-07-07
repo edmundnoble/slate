@@ -5,15 +5,17 @@ import java.util.regex.Pattern
 import monix.eval.Task
 import qq.Compiler.{CompiledFilter, QQCompilationException, QQRuntimeException}
 
-import scalaz.std.option._
-import scalaz.syntax.std.option._
 import scalaz.syntax.either._
+import scalaz.syntax.traverse._
+import scalaz.std.list._
 import scala.scalajs.js
 import com.thoughtworks.each.Monadic._
 import qq.{CompiledDefinition, PlatformPrelude}
 import qq.Util._
 
 object JSPrelude extends PlatformPrelude[JSCompiler.type] {
+
+  import qq.Compiler._
 
   override def length: CompiledDefinition[JSCompiler.type] =
     noParamDefinition(
@@ -26,19 +28,31 @@ object JSPrelude extends PlatformPrelude[JSCompiler.type] {
       }
     )
 
+
   override def replaceAll: CompiledDefinition[JSCompiler.type] =
     CompiledDefinition[JSCompiler.type](name = "replaceAll", numParams = 2,
-      body = { (params: List[CompiledFilter[JSCompiler.type]]) =>
-        val (regex :: replacement :: Nil) = params
-        ((jsv: AnyRef) =>
-          for {
-            // TODO: Make safe
-            regexOut <- regex(jsv)
-            replacementOut <- replacement(jsv)
-            compiledRegex: Pattern = Pattern.compile(regexOut.head.asInstanceOf[String])
-            replace = replacementOut.head.asInstanceOf[String]
-          } yield js.Any.fromString(compiledRegex.matcher(jsv.asInstanceOf[String]).replaceAll(replace)) :: Nil
-          ).right[QQCompilationException]
+      body = {
+        case (regexFilter :: replacementFilter :: Nil) => {
+          (jsv: AnyRef) =>
+            monadic[Task] {
+              val regexes: List[Pattern] = regexFilter(jsv).each.traverse[Task, Pattern] {
+                case string: String => Task.now(Pattern.compile(string))
+                case j => Task.raiseError(NotARegex(j.toString))
+              }.each
+              val replacements: List[String] = replacementFilter(jsv).each.traverse[Task, String] {
+                case string: String => Task.now(string)
+                case j => Task.raiseError(QQRuntimeException(s"can't replace with ${j.toString}"))
+              }.each
+              val valueRegexReplacementList = (regexes, replacements).zipped.map { case (regex, replacement) =>
+                jsv match {
+                  case string: String =>
+                    Task.now(regex.matcher(string).replaceAll(replacement): AnyRef)
+                  case j => Task.raiseError(QQRuntimeException(s"can't replace ${j.toString}"))
+                }
+              }.sequence[Task, AnyRef].each
+              valueRegexReplacementList
+            }
+        }.right[QQCompilationException]
       }
     )
 

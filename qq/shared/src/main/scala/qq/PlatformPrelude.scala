@@ -42,9 +42,10 @@ trait PlatformPrelude[C <: Compiler with Singleton] extends Prelude[C] {
 
   override def all(compiler: C): QQCompilationException \/ List[CompiledDefinition[compiler.type]] = {
     // I wonder if this is a bug in Scala or a bug in my understanding of singleton types
-    (length :: keys :: replaceAll :: arrays :: objects :: iterables :: booleans ::
-      numbers :: strings :: nulls :: values :: scalars :: Nil).right[QQCompilationException]
-      .asInstanceOf[QQCompilationException \/ List[CompiledDefinition[compiler.type]]]
+    val result: QQCompilationException \/ List[CompiledDefinition[C]] =
+    (length +: keys +: replaceAll +: arrays +: objects +: iterables +: booleans +:
+      numbers +: strings +: nulls +: values +: scalars +: Nil).right[QQCompilationException]
+    result.asInstanceOf[QQCompilationException \/ List[CompiledDefinition[compiler.type]]]
   }
 
 }
