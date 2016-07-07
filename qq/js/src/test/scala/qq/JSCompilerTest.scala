@@ -15,8 +15,7 @@ object JSCompilerTest extends utest.TestSuite with Asserts {
       case CompilerTest(filter, input, result) =>
         QQCompiler
           .compile(JSRuntime, Nil, filter)
-          .getOrElse(???)
-          .apply(upickle.json.writeJs(input).asInstanceOf[AnyRef])
+          .getOrElse(???)(upickle.json.writeJs(input).asInstanceOf[AnyRef])
           .runFuture
           .map(_.map(upickle.json.readJs) ===> result)
     }

@@ -96,7 +96,7 @@ object QQCompiler {
 
   final def compile[AnyTy](runtime: QQRuntime[AnyTy], definitions: List[CompiledDefinition[AnyTy]], filter: Filter): OrCompilationError[CompiledFilter[AnyTy]] =
     for {
-      sharedDefinitions <- SharedPreludes.apply[AnyTy].all(runtime)
+      sharedDefinitions <- SharedPreludes[AnyTy].all(runtime)
       platformSpecificDefinitions <- runtime.platformPrelude.all(runtime)
       allDefinitions = sharedDefinitions ++ platformSpecificDefinitions ++ definitions
       compiledProgram <- filter.cataM[OrCompilationError, CompiledFilter[AnyTy]](compileStep(runtime, allDefinitions, _))

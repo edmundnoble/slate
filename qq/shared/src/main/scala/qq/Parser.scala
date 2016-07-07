@@ -151,7 +151,7 @@ object Parser {
   )
 
   val definition: P[Definition] = P(
-    ("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~ whitespace ~ filter ~ ";") map (Definition.apply _).tupled
+    ("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~ whitespace ~ filter ~ ";") map (Definition(_, _, _)).tupled
   )
 
   val program: P[(List[Definition], Filter)] = P(

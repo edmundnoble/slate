@@ -4,9 +4,7 @@ import qq.TestUtil._
 import qq.jsc.JSRuntime
 import monix.execution.Scheduler.Implicits.global
 import utest._
-
 import scala.concurrent.Future
-import scala.scalajs.js
 
 object JSRunnerTest extends utest.TestSuite with Asserts {
   override val tests = TestSuite {
