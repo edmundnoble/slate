@@ -1,7 +1,7 @@
 package qq
 
 import monix.eval.Task
-import qq.Compiler.CompiledFilter
+import qq.QQCompiler.CompiledFilter
 import upickle.{Js, json}
 
 object Interpreter {
@@ -24,16 +24,16 @@ object Interpreter {
 
   def programInterpreter: Interpreter = taskSwitch orElse Interpreter("program:", {
     case program =>
-      Runner.parseAndCompile(UpickleCompiler, program, optimize = true).fold(
+      Runner.parseAndCompile(UpickleRuntime, program, optimize = true).fold(
         (err: Exception) => Task.evalAlways {
           val () = Console.err.println(s"Error: $err")
           ("", programInterpreter)
         },
-        (compiledFilter: CompiledFilter[UpickleCompiler.type]) => Task.now(("", programInterpreterOf(program, compiledFilter)))
+        (compiledFilter: CompiledFilter[Js.Value]) => Task.now(("", programInterpreterOf(program, compiledFilter)))
       )
   })
 
-  def programInterpreterOf(source: String, program: CompiledFilter[UpickleCompiler.type]): Interpreter = taskSwitch orElse Interpreter(s"program $source, input: ", {
+  def programInterpreterOf(source: String, program: CompiledFilter[Js.Value]): Interpreter = taskSwitch orElse Interpreter(s"program $source, input: ", {
     case input =>
       val inputJs = json read input
       val outputTask = program(inputJs)
@@ -50,17 +50,17 @@ object Interpreter {
 
   def inputInterpreterOf(source: String, input: Js.Value): Interpreter = taskSwitch orElse Interpreter(s"input $source, program: ", {
     case program =>
-      Runner.parseAndCompile(UpickleCompiler, program, optimize = true).fold(
+      Runner.parseAndCompile(UpickleRuntime, program, optimize = true).fold(
         (err: Exception) => Task.evalAlways {
           val () = Console.err.println(s"Error: $err")
           ("", programInterpreter)
         },
-        (compiledFilter: CompiledFilter[UpickleCompiler.type]) => compiledFilter(input).map { outputs =>
+        (compiledFilter: CompiledFilter[Js.Value]) => compiledFilter(input).map { outputs =>
           (outputs.mkString("(", ", ", ")"), inputInterpreterOf(source, input))
         }
       )
   })
 
-  def run: Interpreter = taskSwitch
+  def mainMenu: Interpreter = taskSwitch
 
 }

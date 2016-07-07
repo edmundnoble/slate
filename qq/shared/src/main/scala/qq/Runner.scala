@@ -9,30 +9,31 @@ import scalaz.syntax.traverse._
 import scalaz.syntax.either._
 import Util._
 import matryoshka._
-import qq.Compiler.CompiledFilter
+import qq.QQCompiler.CompiledFilter
 import shapeless.{Nat, Sized}
 
 object Runner {
 
-  def parseAndCompile(compiler: Compiler, program: String, optimize: Boolean = true): \/[Exception, CompiledFilter[compiler.type]] = {
+  def parseAndCompile[AnyTy](runtime: QQRuntime[AnyTy], program: String, optimize: Boolean = true): \/[Exception, CompiledFilter[AnyTy]] = {
     val parsed = Parser.program.parse(program)
     parsed match {
       case Parsed.Success((definitions, main), _) =>
         if (optimize) {
-          compiler.compileProgram(
+          QQCompiler.compileProgram(
+            runtime,
             definitions.map(Definition.body.modify(Optimizer.optimize)),
             Optimizer.optimize(main)
           )
         } else {
-          compiler.compileProgram(definitions, main)
+          QQCompiler.compileProgram(runtime, definitions, main)
         }
       case f@Parsed.Failure(_, _, _) =>
         new ParseError(f).left
     }
   }
 
-  def run(compiler: Compiler, qqProgram: String, optimize: Boolean = true)(input: List[compiler.AnyTy]): Task[List[compiler.AnyTy]] = {
-    parseAndCompile(compiler, qqProgram, optimize).fold(
+  def run[AnyTy](runtime: QQRuntime[AnyTy], qqProgram: String, optimize: Boolean = true)(input: List[AnyTy]): Task[List[AnyTy]] = {
+    parseAndCompile(runtime, qqProgram, optimize).fold(
       Task.raiseError,
       input.traverseM(_)
     )

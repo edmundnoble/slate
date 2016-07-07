@@ -4,7 +4,7 @@ import scala.language.higherKinds
 import scalaz.\/
 import matryoshka._
 import monocle.macros.GenLens
-import qq.Compiler.QQCompilationException
+import qq.QQCompiler.QQCompilationException
 import shapeless._
 import shapeless.ops.nat.ToInt
 

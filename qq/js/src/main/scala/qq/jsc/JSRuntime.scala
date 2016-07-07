@@ -1,8 +1,8 @@
 package qq.jsc
 
 import monix.eval.Task
-import qq.Compiler
-import qq.Compiler.{CompiledFilter, QQRuntimeException}
+import qq.{QQCompiler, QQRuntime}
+import qq.QQCompiler.{CompiledFilter, QQRuntimeException}
 import qq.Util._
 
 import scala.scalajs.js
@@ -14,17 +14,17 @@ import scalaz.syntax.std.map._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, NonEmptyList, \/, \/-}
 
-object JSCompiler extends Compiler {
-  override type AnyTy = AnyRef
+// This is a QQ runtime which executes all operations in native Javascript
+object JSRuntime extends QQRuntime[AnyRef] {
 
-  val taskOfListOfNull: Task[List[AnyTy]] = Task.now(List(null))
+  val taskOfListOfNull: Task[List[AnyRef]] = Task.now(List(null))
   val emptyArray: js.Array[AnyRef] = new js.Array[AnyRef](0)
 
-  override def constNumber(num: Double): CompiledFilter[this.type] = {
+  override def constNumber(num: Double): CompiledFilter[AnyRef] = {
     _ => Task.now(Double.box(num) :: Nil)
   }
 
-  override def constString(str: String): CompiledFilter[this.type] = {
+  override def constString(str: String): CompiledFilter[AnyRef] = {
     _ => Task.now(str :: Nil)
   }
 
@@ -82,13 +82,13 @@ object JSCompiler extends Compiler {
       Task.raiseError(QQRuntimeException(s"can't modulo $f by $s"))
   }
 
-  override def enlistFilter(filter: CompiledFilter[this.type]): CompiledFilter[this.type] = { jsv: AnyRef =>
+  override def enlistFilter(filter: CompiledFilter[AnyRef]): CompiledFilter[AnyRef] = { jsv: AnyRef =>
     for {
       results <- filter(jsv)
     } yield js.Array(results: _*) :: Nil
   }
 
-  override def selectKey(key: String): CompiledFilter[this.type] = {
+  override def selectKey(key: String): CompiledFilter[AnyRef] = {
     case f: js.Object =>
       f.asInstanceOf[js.Dictionary[AnyRef]].get(key) match {
         case None => taskOfListOfNull
@@ -98,7 +98,7 @@ object JSCompiler extends Compiler {
       Task.raiseError(QQRuntimeException(s"Tried to select key $key in $v but it's not a dictionary"))
   }
 
-  override def selectIndex(index: Int): CompiledFilter[this.type] = {
+  override def selectIndex(index: Int): CompiledFilter[AnyRef] = {
     case f: js.Array[js.Object@unchecked] =>
       if (index >= -f.length) {
         if (index >= 0 && index < f.length) {
@@ -115,7 +115,7 @@ object JSCompiler extends Compiler {
       Task.raiseError(QQRuntimeException(s"Tried to select index $index in $v but it's not an array"))
   }
 
-  override def selectRange(start: Int, end: Int): CompiledFilter[this.type] = {
+  override def selectRange(start: Int, end: Int): CompiledFilter[AnyRef] = {
     case f: js.Array[js.Object@unchecked] =>
       if (start < end && start < f.length) {
         Task.now(f.jsSlice(start, end) :: Nil)
@@ -124,7 +124,7 @@ object JSCompiler extends Compiler {
       }
   }
 
-  override def collectResults(f: CompiledFilter[this.type]): CompiledFilter[this.type] = { jsv: AnyRef =>
+  override def collectResults(f: CompiledFilter[AnyRef]): CompiledFilter[AnyRef] = { jsv: AnyRef =>
     f(jsv).flatMap {
       _.traverseM {
         case arr: js.Array[AnyRef@unchecked] =>
@@ -137,7 +137,7 @@ object JSCompiler extends Compiler {
     }
   }
 
-  override def enjectFilter(obj: List[(\/[String, CompiledFilter[this.type]], CompiledFilter[this.type])]): CompiledFilter[this.type] = { jsv: AnyTy =>
+  override def enjectFilter(obj: List[(\/[String, CompiledFilter[AnyRef]], CompiledFilter[AnyRef])]): CompiledFilter[AnyRef] = { jsv: AnyRef =>
     for {
       kvPairs <- obj.traverse {
         case (\/-(filterKey), filterValue) =>

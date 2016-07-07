@@ -3,7 +3,7 @@ package qq.jsc
 import java.util.regex.Pattern
 
 import monix.eval.Task
-import qq.Compiler.{CompiledFilter, QQCompilationException, QQRuntimeException}
+import qq.QQCompiler.{CompiledFilter, QQCompilationException, QQRuntimeException}
 
 import scalaz.syntax.either._
 import scalaz.syntax.traverse._
@@ -13,11 +13,11 @@ import com.thoughtworks.each.Monadic._
 import qq.{CompiledDefinition, PlatformPrelude}
 import qq.Util._
 
-object JSPrelude extends PlatformPrelude[JSCompiler.type] {
+object JSPrelude extends PlatformPrelude[AnyRef] {
 
-  import qq.Compiler._
+  import qq.QQCompiler._
 
-  override def length: CompiledDefinition[JSCompiler.type] =
+  override def length: CompiledDefinition[AnyRef] =
     noParamDefinition(
       "length", {
         case arr: js.Array[js.Any@unchecked] => Task.now(Int.box(arr.length) :: Nil)
@@ -29,8 +29,8 @@ object JSPrelude extends PlatformPrelude[JSCompiler.type] {
     )
 
 
-  override def replaceAll: CompiledDefinition[JSCompiler.type] =
-    CompiledDefinition[JSCompiler.type](name = "replaceAll", numParams = 2,
+  override def replaceAll: CompiledDefinition[AnyRef] =
+    CompiledDefinition[AnyRef](name = "replaceAll", numParams = 2,
       body = {
         case (regexFilter :: replacementFilter :: Nil) => {
           (jsv: AnyRef) =>
@@ -56,7 +56,7 @@ object JSPrelude extends PlatformPrelude[JSCompiler.type] {
       }
     )
 
-  override def keys: CompiledDefinition[JSCompiler.type] =
+  override def keys: CompiledDefinition[AnyRef] =
     noParamDefinition(
       "keys", {
         case obj: js.Object => Task.now(js.Array(obj.asInstanceOf[js.Dictionary[js.Any]].keys.toSeq: _*) :: Nil)
@@ -64,7 +64,7 @@ object JSPrelude extends PlatformPrelude[JSCompiler.type] {
       }
     )
 
-  override def arrays: CompiledDefinition[JSCompiler.type] =
+  override def arrays: CompiledDefinition[AnyRef] =
     noParamDefinition(
       "arrays", {
         case null => Task.now(Nil)
@@ -72,7 +72,7 @@ object JSPrelude extends PlatformPrelude[JSCompiler.type] {
         case k => Task.now(Nil)
       })
 
-  override def objects: CompiledDefinition[JSCompiler.type] =
+  override def objects: CompiledDefinition[AnyRef] =
     noParamDefinition(
       "objects", {
         case null => Task.now(Nil)
@@ -81,7 +81,7 @@ object JSPrelude extends PlatformPrelude[JSCompiler.type] {
         case k => Task.now(Nil)
       })
 
-  override def iterables: CompiledDefinition[JSCompiler.type] =
+  override def iterables: CompiledDefinition[AnyRef] =
     noParamDefinition(
       "iterables", {
         case null => Task.now(Nil)
@@ -90,7 +90,7 @@ object JSPrelude extends PlatformPrelude[JSCompiler.type] {
         case k => Task.now(Nil)
       })
 
-  override def booleans: CompiledDefinition[JSCompiler.type] =
+  override def booleans: CompiledDefinition[AnyRef] =
     noParamDefinition(
       "booleans", {
         case null => Task.now(Nil)
@@ -98,7 +98,7 @@ object JSPrelude extends PlatformPrelude[JSCompiler.type] {
         case k => Task.now(Nil)
       })
 
-  override def numbers: CompiledDefinition[JSCompiler.type] =
+  override def numbers: CompiledDefinition[AnyRef] =
     noParamDefinition(
       "numbers", {
         case null => Task.now(Nil)
@@ -106,7 +106,7 @@ object JSPrelude extends PlatformPrelude[JSCompiler.type] {
         case k => Task.now(Nil)
       })
 
-  override def strings: CompiledDefinition[JSCompiler.type] =
+  override def strings: CompiledDefinition[AnyRef] =
     noParamDefinition(
       "strings", {
         case null => Task.now(Nil)
@@ -114,21 +114,21 @@ object JSPrelude extends PlatformPrelude[JSCompiler.type] {
         case k => Task.now(Nil)
       })
 
-  override def nulls: CompiledDefinition[JSCompiler.type] =
+  override def nulls: CompiledDefinition[AnyRef] =
     noParamDefinition(
       "nulls", {
         case null => Task.now(null :: Nil)
         case k => Task.now(Nil)
       })
 
-  override def values: CompiledDefinition[JSCompiler.type] =
+  override def values: CompiledDefinition[AnyRef] =
     noParamDefinition(
       "values", {
         case null => Task.now(Nil)
         case k => Task.now(k :: Nil)
       })
 
-  override def scalars: CompiledDefinition[JSCompiler.type] =
+  override def scalars: CompiledDefinition[AnyRef] =
     noParamDefinition(
       "scalars", {
         case arr: js.Array[_] => Task.now(Nil)

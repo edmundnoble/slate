@@ -3,8 +3,7 @@ package qq
 import java.util.regex.Pattern
 
 import monix.eval.Task
-import qq.UpickleCompiler._
-import qq.Compiler.{QQCompilationException, QQRuntimeException}
+import qq.QQCompiler.{QQCompilationException, QQRuntimeException}
 import upickle.Js
 
 import scalaz._
@@ -16,11 +15,11 @@ import com.thoughtworks.each.Monadic._
 import upickle.Js.{False, Value}
 import qq.Util._
 
-object UpicklePrelude extends PlatformPrelude[UpickleCompiler.type] {
+object UpicklePrelude extends PlatformPrelude[Js.Value] {
 
-  import Compiler._
+  import QQCompiler._
 
-  override def length: CompiledDefinition[UpickleCompiler.type] =
+  override def length: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "length", {
         case arr: Js.Arr => Task.now(Js.Num(arr.value.length) :: Nil)
@@ -31,7 +30,7 @@ object UpicklePrelude extends PlatformPrelude[UpickleCompiler.type] {
       }
     )
 
-  override def keys: CompiledDefinition[UpickleCompiler.type] =
+  override def keys: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "keys", {
         case obj: Js.Obj => Task.now(Js.Arr(obj.value.map(p => Js.Str(p._1)): _*) :: Nil)
@@ -39,8 +38,8 @@ object UpicklePrelude extends PlatformPrelude[UpickleCompiler.type] {
       }
     )
 
-  override def replaceAll: CompiledDefinition[UpickleCompiler.type] =
-    CompiledDefinition[UpickleCompiler.type](name = "replaceAll", numParams = 2,
+  override def replaceAll: CompiledDefinition[Js.Value] =
+    CompiledDefinition[Js.Value](name = "replaceAll", numParams = 2,
       body = {
         case (regexFilter :: replacementFilter :: Nil) => {
           (jsv: Js.Value) =>
@@ -66,21 +65,21 @@ object UpicklePrelude extends PlatformPrelude[UpickleCompiler.type] {
       }
     )
 
-  override def arrays: CompiledDefinition[UpickleCompiler.type] =
+  override def arrays: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "arrays", {
         case arr: Js.Arr => Task.now(arr :: Nil)
         case k => Task.now(Nil)
       })
 
-  override def objects: CompiledDefinition[UpickleCompiler.type] =
+  override def objects: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "objects", {
         case obj: Js.Obj => Task.now(obj :: Nil)
         case k => Task.now(Nil)
       })
 
-  override def iterables: CompiledDefinition[UpickleCompiler.type] =
+  override def iterables: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "iterables", {
         case arr: Js.Arr => Task.now(arr :: Nil)
@@ -88,42 +87,42 @@ object UpicklePrelude extends PlatformPrelude[UpickleCompiler.type] {
         case k => Task.now(Nil)
       })
 
-  override def booleans: CompiledDefinition[UpickleCompiler.type] =
+  override def booleans: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "booleans", {
         case bool@(Js.True | Js.False) => Task.now(bool :: Nil)
         case k => Task.now(Nil)
       })
 
-  override def numbers: CompiledDefinition[UpickleCompiler.type] =
+  override def numbers: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "numbers", {
         case num: Js.Num => Task.now(num :: Nil)
         case k => Task.now(Nil)
       })
 
-  override def strings: CompiledDefinition[UpickleCompiler.type] =
+  override def strings: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "strings", {
         case str: Js.Str => Task.now(str :: Nil)
         case k => Task.now(Nil)
       })
 
-  override def nulls: CompiledDefinition[UpickleCompiler.type] =
+  override def nulls: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "nulls", {
         case Js.Null => Task.now(Js.Null :: Nil)
         case k => Task.now(Nil)
       })
 
-  override def values: CompiledDefinition[UpickleCompiler.type] =
+  override def values: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "values", {
         case null => Task.now(Nil)
         case k => Task.now(k :: Nil)
       })
 
-  override def scalars: CompiledDefinition[UpickleCompiler.type] =
+  override def scalars: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "scalars", {
         case arr: Js.Arr => Task.now(Nil)

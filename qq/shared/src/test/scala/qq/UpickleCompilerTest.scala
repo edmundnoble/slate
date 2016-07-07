@@ -11,11 +11,9 @@ object UpickleCompilerTest extends utest.TestSuite with Asserts {
 
   val tests = this {
 
-    import qq.UpickleCompiler._
-
     def testRun(qQDoubleCompilerTest: CompilerTest) = qQDoubleCompilerTest match {
       case CompilerTest(filter, input, result) =>
-        compile(Nil, filter).getOrElse(???).apply(input).runFuture map (_ ===> result)
+        QQCompiler.compile(UpickleRuntime, Nil, filter).getOrElse(???).apply(input).runFuture map (_ ===> result)
     }
 
     "select keys" - Future.traverse(CompilerTest.selectKeys)(testRun)

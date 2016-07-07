@@ -1,51 +1,48 @@
 package qq
 
-import qq.Compiler.{CompiledFilter, QQCompilationException}
+import qq.QQCompiler.{CompiledFilter, QQCompilationException}
 
 import scalaz.\/
 import scalaz.syntax.either._
 import scalaz.Liskov._
 
-trait PlatformPrelude[C <: Compiler with Singleton] extends Prelude[C] {
+trait PlatformPrelude[AnyTy] extends Prelude[AnyTy] {
 
-  def noParamDefinition(name: String, fun: CompiledFilter[C]): CompiledDefinition[C] = {
-    CompiledDefinition[C](
+  def noParamDefinition(name: String, fun: CompiledFilter[AnyTy]): CompiledDefinition[AnyTy] = {
+    CompiledDefinition[AnyTy](
       name,
       numParams = 0,
       _ => fun.right[QQCompilationException]
     )
   }
 
-  def length: CompiledDefinition[C]
+  def length: CompiledDefinition[AnyTy]
 
-  def keys: CompiledDefinition[C]
+  def keys: CompiledDefinition[AnyTy]
 
-  def replaceAll: CompiledDefinition[C]
+  def replaceAll: CompiledDefinition[AnyTy]
 
-  def arrays: CompiledDefinition[C]
+  def arrays: CompiledDefinition[AnyTy]
 
-  def objects: CompiledDefinition[C]
+  def objects: CompiledDefinition[AnyTy]
 
-  def iterables: CompiledDefinition[C]
+  def iterables: CompiledDefinition[AnyTy]
 
-  def booleans: CompiledDefinition[C]
+  def booleans: CompiledDefinition[AnyTy]
 
-  def numbers: CompiledDefinition[C]
+  def numbers: CompiledDefinition[AnyTy]
 
-  def strings: CompiledDefinition[C]
+  def strings: CompiledDefinition[AnyTy]
 
-  def nulls: CompiledDefinition[C]
+  def nulls: CompiledDefinition[AnyTy]
 
-  def values: CompiledDefinition[C]
+  def values: CompiledDefinition[AnyTy]
 
-  def scalars: CompiledDefinition[C]
+  def scalars: CompiledDefinition[AnyTy]
 
-  override def all(compiler: C): QQCompilationException \/ List[CompiledDefinition[compiler.type]] = {
-    // I wonder if this is a bug in Scala or a bug in my understanding of singleton types
-    val result: QQCompilationException \/ List[CompiledDefinition[C]] =
+  override def all(runtime: QQRuntime[AnyTy]): QQCompilationException \/ List[CompiledDefinition[AnyTy]] = {
     (length +: keys +: replaceAll +: arrays +: objects +: iterables +: booleans +:
       numbers +: strings +: nulls +: values +: scalars +: Nil).right[QQCompilationException]
-    result.asInstanceOf[QQCompilationException \/ List[CompiledDefinition[compiler.type]]]
   }
 
 }

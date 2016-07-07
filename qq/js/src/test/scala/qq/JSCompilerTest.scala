@@ -4,18 +4,21 @@ import utest._
 
 import scala.concurrent.Future
 import TestUtil._
-
 import monix.execution.Scheduler.Implicits.global
+import qq.jsc.JSRuntime
 
 object JSCompilerTest extends utest.TestSuite with Asserts {
 
   val tests = this {
 
-    import qq.jsc.JSCompiler._
-
     def testRun(qQDoubleCompilerTest: CompilerTest) = qQDoubleCompilerTest match {
       case CompilerTest(filter, input, result) =>
-        compile(Nil, filter).getOrElse(???).apply(upickle.json.writeJs(input).asInstanceOf[AnyRef]).runFuture map (_.map(upickle.json.readJs) ===> result)
+        QQCompiler
+          .compile(JSRuntime, Nil, filter)
+          .getOrElse(???)
+          .apply(upickle.json.writeJs(input).asInstanceOf[AnyRef])
+          .runFuture
+          .map(_.map(upickle.json.readJs) ===> result)
     }
 
     "select keys" - Future.traverse(CompilerTest.selectKeys)(testRun)

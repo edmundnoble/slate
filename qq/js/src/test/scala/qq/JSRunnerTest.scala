@@ -1,7 +1,7 @@
 package qq
 
 import qq.TestUtil._
-import qq.jsc.JSCompiler
+import qq.jsc.JSRuntime
 import monix.execution.Scheduler.Implicits.global
 import utest._
 
@@ -13,7 +13,7 @@ object JSRunnerTest extends utest.TestSuite with Asserts {
     import RunnerTest._
     def runTest(test: RunnerTest): Future[Unit] =
       Runner
-        .run(JSCompiler, test.program)(List(upickle.json.writeJs(test.input).asInstanceOf[AnyRef]))
+        .run(JSRuntime, test.program)(List(upickle.json.writeJs(test.input).asInstanceOf[AnyRef]))
         .runFuture
         .transform(
           { out => val js = out.map(upickle.json.readJs); js ===> test.expectedOutput.valueOr { throw _ } },

@@ -1,7 +1,7 @@
 package qq
 
-import qq.Compiler.{CompiledFilter, OrCompilationError}
+import qq.QQCompiler.{CompiledFilter, OrCompilationError}
 
-final case class CompiledDefinition[C <: Compiler with Singleton]
-(name: String, numParams: Int, body: (List[CompiledFilter[C]] => OrCompilationError[CompiledFilter[C]]))
+final case class CompiledDefinition[AnyTy]
+(name: String, numParams: Int, body: (List[CompiledFilter[AnyTy]] => OrCompilationError[CompiledFilter[AnyTy]]))
 

@@ -1,7 +1,7 @@
 package qq
 
 import monix.eval.Task
-import qq.Compiler.{CompiledFilter, QQCompilationException}
+import qq.QQCompiler.{CompiledFilter, QQCompilationException}
 
 import scalaz.\/
 import scalaz.syntax.either._
@@ -9,14 +9,14 @@ import scalaz.syntax.either._
 object SharedPreludes {
 
   object Compiled {
-    def print[C <: Compiler with Singleton]: CompiledDefinition[C] = {
-      val body: CompiledFilter[C] = { (jsv: C#AnyTy) => println(s"debug: $jsv"); Task.now(jsv :: Nil) }
-      CompiledDefinition[C]("print", 0, body = { _ => body.right[QQCompilationException] })
+    def print[AnyTy]: CompiledDefinition[AnyTy] = {
+      val body: CompiledFilter[AnyTy] = { (jsv: AnyTy) => println(s"debug: $jsv"); Task.now(jsv :: Nil) }
+      CompiledDefinition[AnyTy]("print", 0, body = { _ => body.right[QQCompilationException] })
     }
 
-    def apply[C <: Compiler with Singleton]: Prelude[C] = new Prelude[C] {
-      override def all(compiler: C): QQCompilationException \/ List[CompiledDefinition[compiler.type]] =
-        (print[compiler.type] :: Nil).right.map(identity)
+    def apply[AnyTy]: Prelude[AnyTy] = new Prelude[AnyTy] {
+      override def all(runtime: QQRuntime[AnyTy]): QQCompilationException \/ List[CompiledDefinition[AnyTy]] =
+        (print[AnyTy] :: Nil).right.map(identity)
     }
   }
 
@@ -29,17 +29,17 @@ object SharedPreludes {
     }
 
 
-    def apply[C <: Compiler]: Prelude[Compiler] = new Prelude[Compiler] {
-      override def all(compiler: Compiler): QQCompilationException \/ List[CompiledDefinition[compiler.type]] =
-        compiler.compileDefinitions(map :: Nil)
+    def apply[AnyTy]: Prelude[AnyTy] = new Prelude[AnyTy] {
+      override def all(runtime: QQRuntime[AnyTy]): QQCompilationException \/ List[CompiledDefinition[AnyTy]] =
+        QQCompiler.compileDefinitions(runtime, map :: Nil)
     }
   }
 
-  def apply[C <: Compiler]: Prelude[Compiler] = new Prelude[Compiler] {
-    override def all(compiler: Compiler): QQCompilationException \/ List[CompiledDefinition[compiler.type]] =
+  def apply[AnyTy]: Prelude[AnyTy] = new Prelude[AnyTy] {
+    override def all(runtime: QQRuntime[AnyTy]): QQCompilationException \/ List[CompiledDefinition[AnyTy]] =
       for {
-        raw <- Raw[compiler.type].all(compiler)
-        compiled <- Compiled[compiler.type].all(compiler)
+        raw <- Raw[AnyTy].all(runtime)
+        compiled <- Compiled[AnyTy].all(runtime)
       } yield raw ++ compiled
   }
 

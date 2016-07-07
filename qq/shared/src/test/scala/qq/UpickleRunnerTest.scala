@@ -11,7 +11,7 @@ object UpickleRunnerTest extends utest.TestSuite with Asserts {
     import RunnerTest._
     def runTest(test: RunnerTest): Future[Unit] =
       Runner
-        .run(UpickleCompiler, test.program)(List(test.input))
+        .run(UpickleRuntime, test.program)(List(test.input))
         .runFuture
         .transform(_ ===> test.expectedOutput.valueOr { throw _ },
           { ex => ex ===> test.expectedOutput.swap.getOrElse(???); ex})

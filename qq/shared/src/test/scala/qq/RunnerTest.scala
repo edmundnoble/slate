@@ -1,6 +1,6 @@
 package qq
 
-import qq.Compiler.QQRuntimeException
+import qq.QQCompiler.QQRuntimeException
 import upickle.Js
 
 import scalaz.\/

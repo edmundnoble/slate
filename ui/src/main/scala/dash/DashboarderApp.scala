@@ -47,19 +47,19 @@ object DashboarderApp extends scalajs.js.JSApp {
           headers = Creds.authData ++ Map("Content-Type" -> "application/json"))
       }.each
 
-      val compiledQQProgram = qq.Runner.parseAndCompile(qq.UpickleCompiler,
+      val compiledQQProgram = qq.Runner.parseAndCompile(qq.UpickleRuntime,
         """.issues.[] | {
-            |  url: .self,
-            |  summary: .fields.summary,
-            |  key,
-            |  project: .fields.project.name,
-            |  description: (.fields.description | replaceAll("\n+\\s*"; " ↪ ")),
-            |  status: .fields.status.name
-            |}""".stripMargin
+          |  url: .self,
+          |  summary: .fields.summary,
+          |  key,
+          |  project: .fields.project.name,
+          |  description: (.fields.description | replaceAll("\n+\\s*"; " ↪ ")),
+          |  status: .fields.status.name
+          |}""".stripMargin
       ).fold(Task.raiseError, Task.now).each
       val searchResults = searchRequests.traverse[Task, List[Issue]] { r =>
         val result = compiledQQProgram(upickle.json read r.responseText)
-        result map { _ flatMap(Issue.pkl.read.lift(_)) }
+        result map (_ flatMap (Issue.pkl.read.lift(_)))
       }.each
 
       (favoriteFilters, searchResults).zipped.map(SearchResult(_, _))(collection.breakOut)

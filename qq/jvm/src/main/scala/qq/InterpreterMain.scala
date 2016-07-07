@@ -22,7 +22,7 @@ object InterpreterMain extends App {
       })
   }
 
-  val interpreterFinished: CancelableFuture[Unit] = runInterpreter(Interpreter.run).runAsync
+  val interpreterFinished: CancelableFuture[Unit] = runInterpreter(Interpreter.mainMenu).runAsync
   try {
     val () = Await.result(interpreterFinished, Duration.Inf)
   } catch {

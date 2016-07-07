@@ -1,10 +1,10 @@
 package qq
 
-import qq.Compiler.QQCompilationException
+import qq.QQCompiler.QQCompilationException
 
 import scalaz.\/
 
-trait Prelude[C <: Compiler] {
-  def all(compiler: C): QQCompilationException \/ List[CompiledDefinition[compiler.type]]
+trait Prelude[AnyTy] {
+  def all(runtime: QQRuntime[AnyTy]): QQCompilationException \/ List[CompiledDefinition[AnyTy]]
 }
 

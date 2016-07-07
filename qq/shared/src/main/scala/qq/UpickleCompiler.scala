@@ -2,7 +2,7 @@ package qq
 
 import upickle.Js
 import monix.eval.Task
-import qq.Compiler.{CompiledFilter, QQRuntimeException}
+import qq.QQCompiler.{CompiledFilter, QQRuntimeException}
 
 import scalaz.{-\/, NonEmptyList, \/, \/-}
 import scalaz.std.list._
@@ -16,17 +16,16 @@ import scalaz.syntax.std.map._
 import scalaz.std.map._
 import scala.collection.immutable.Nil
 
-object UpickleCompiler extends Compiler {
-  override type AnyTy = Js.Value
+object UpickleRuntime extends QQRuntime[Js.Value] {
 
-  val taskOfListOfNull: Task[List[AnyTy]] = Task.now(List(Js.Null))
+  val taskOfListOfNull: Task[List[Js.Value]] = Task.now(List(Js.Null))
   val emptyArray: Js.Arr = Js.Arr()
 
-  override def constNumber(num: Double): CompiledFilter[this.type] = {
+  override def constNumber(num: Double): CompiledFilter[Js.Value] = {
     _ => Task.now(Js.Num(num) :: Nil)
   }
 
-  override def constString(str: String): CompiledFilter[this.type] = {
+  override def constString(str: String): CompiledFilter[Js.Value] = {
     _ => Task.now(Js.Str(str) :: Nil)
   }
 
@@ -79,13 +78,13 @@ object UpickleCompiler extends Compiler {
       Task.raiseError(QQRuntimeException(s"can't modulo $f by $s"))
   }
 
-  def enlistFilter(filter: CompiledFilter[this.type]): CompiledFilter[this.type] = { jsv: Js.Value =>
+  def enlistFilter(filter: CompiledFilter[Js.Value]): CompiledFilter[Js.Value] = { jsv: Js.Value =>
     for {
       results <- filter(jsv)
     } yield Js.Arr(results: _*) :: Nil
   }
 
-  def selectKey(key: String): CompiledFilter[this.type] = {
+  def selectKey(key: String): CompiledFilter[Js.Value] = {
     case f: Js.Obj =>
       f.value.find(_._1 == key) match {
         case None => taskOfListOfNull
@@ -95,7 +94,7 @@ object UpickleCompiler extends Compiler {
       Task.raiseError(QQRuntimeException(s"Tried to select key $key in $v but it's not a dictionary"))
   }
 
-  def selectIndex(index: Int): CompiledFilter[this.type] = {
+  def selectIndex(index: Int): CompiledFilter[Js.Value] = {
     case f: Js.Arr =>
       val seq = f.value
       if (index >= -seq.length) {
@@ -113,7 +112,7 @@ object UpickleCompiler extends Compiler {
       Task.raiseError(QQRuntimeException(s"Tried to select index $index in $v but it's not an array"))
   }
 
-  def selectRange(start: Int, end: Int): CompiledFilter[this.type] = {
+  def selectRange(start: Int, end: Int): CompiledFilter[Js.Value] = {
     case f: Js.Arr =>
       val seq = f.value
       if (start < end && start < seq.length) {
@@ -125,7 +124,7 @@ object UpickleCompiler extends Compiler {
       Task.raiseError(QQRuntimeException(s"Tried to select range $start:$end in $v but it's not an array"))
   }
 
-  def collectResults(f: CompiledFilter[this.type]): CompiledFilter[this.type] = { jsv: Js.Value =>
+  def collectResults(f: CompiledFilter[Js.Value]): CompiledFilter[Js.Value] = { jsv: Js.Value =>
     f(jsv).flatMap {
       _.traverseM {
         case arr: Js.Arr =>
@@ -138,7 +137,7 @@ object UpickleCompiler extends Compiler {
     }
   }
 
-  override def enjectFilter(obj: List[(\/[String, CompiledFilter[this.type]], CompiledFilter[this.type])]): CompiledFilter[this.type] = { jsv: AnyTy =>
+  override def enjectFilter(obj: List[(\/[String, CompiledFilter[Js.Value]], CompiledFilter[Js.Value])]): CompiledFilter[Js.Value] = { jsv: Js.Value =>
     for {
       kvPairs <- obj.traverse {
         case (\/-(filterKey), filterValue) =>
