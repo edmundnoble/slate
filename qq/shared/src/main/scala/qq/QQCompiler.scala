@@ -5,7 +5,6 @@ import monix.eval.Task
 import qq.FilterComponent._
 import qq.Util._
 
-import scala.language.existentials
 import scalaz.\/
 import scalaz.std.list._
 import scalaz.syntax.either._

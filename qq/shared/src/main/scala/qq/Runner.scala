@@ -8,9 +8,7 @@ import scalaz.std.list._
 import scalaz.syntax.traverse._
 import scalaz.syntax.either._
 import Util._
-import matryoshka._
 import qq.QQCompiler.CompiledFilter
-import shapeless.{Nat, Sized}
 
 object Runner {
 

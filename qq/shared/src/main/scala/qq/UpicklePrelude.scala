@@ -3,16 +3,12 @@ package qq
 import java.util.regex.Pattern
 
 import monix.eval.Task
-import qq.QQCompiler.{QQCompilationException, QQRuntimeException}
 import upickle.Js
 
-import scalaz._
-import scalaz.Id._
 import scalaz.syntax.either._
 import scalaz.syntax.traverse._
 import scalaz.std.list._
 import com.thoughtworks.each.Monadic._
-import upickle.Js.{False, Value}
 import qq.Util._
 
 object UpicklePrelude extends PlatformPrelude[Js.Value] {
