@@ -1,16 +1,14 @@
 package qq
 
-import upickle.Js
 import monix.eval.Task
-import qq.QQCompiler.{CompiledFilter, QQRuntimeException}
+import upickle.Js
+import qq.QQCompiler.CompiledFilter
 
 import scalaz.{-\/, NonEmptyList, \/, \/-}
 import scalaz.std.list._
 import scalaz.syntax.std.list._
 import scalaz.syntax.traverse._
-import scalaz.syntax.applicative._
 import qq.Util._
-import com.thoughtworks.each.Monadic._
 
 import scalaz.syntax.std.map._
 import scalaz.std.map._
@@ -139,12 +137,12 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
 
   override def enjectFilter(obj: List[(\/[String, CompiledFilter[Js.Value]], CompiledFilter[Js.Value])]): CompiledFilter[Js.Value] = { jsv: Js.Value =>
     for {
-      kvPairs <- obj.traverse {
+      kvPairs <- obj.traverse[Task, List[List[(String, Js.Value)]]] {
         case (\/-(filterKey), filterValue) =>
           for {
             keyResults <- filterKey(jsv)
             valueResults <- filterValue(jsv)
-            keyValuePairs <- keyResults.traverse {
+            keyValuePairs <- keyResults.traverse[Task, List[(String, Js.Value)]] {
               case Js.Str(keyString) =>
                 Task.now(valueResults.map(keyString -> _))
               case k =>

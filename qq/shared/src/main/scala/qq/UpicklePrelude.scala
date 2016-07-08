@@ -13,8 +13,6 @@ import qq.Util._
 
 object UpicklePrelude extends PlatformPrelude[Js.Value] {
 
-  import QQCompiler._
-
   override def length: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "length", {

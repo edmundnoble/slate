@@ -1,8 +1,8 @@
 package qq.jsc
 
 import monix.eval.Task
-import qq.{QQCompiler, QQRuntime}
-import qq.QQCompiler.{CompiledFilter, QQRuntimeException}
+import qq.{QQRuntime, QQRuntimeException}
+import qq.QQCompiler.CompiledFilter
 import qq.Util._
 
 import scala.scalajs.js
@@ -139,12 +139,12 @@ object JSRuntime extends QQRuntime[AnyRef] {
 
   override def enjectFilter(obj: List[(\/[String, CompiledFilter[AnyRef]], CompiledFilter[AnyRef])]): CompiledFilter[AnyRef] = { jsv: AnyRef =>
     for {
-      kvPairs <- obj.traverse {
+      kvPairs <- obj.traverse[Task, List[List[(String, AnyRef)]]] {
         case (\/-(filterKey), filterValue) =>
           for {
             keyResults <- filterKey(jsv)
             valueResults <- filterValue(jsv)
-            keyValuePairs <- keyResults.traverse {
+            keyValuePairs <- keyResults.traverse[Task, List[(String, AnyRef)]] {
               case keyString: String =>
                 Task.now(valueResults.map(keyString -> _))
               case k =>

@@ -104,8 +104,6 @@ object Log4JavaScript extends js.GlobalScope {
 
 class L4JSLogger(jsLogger: JSLogger) extends Logger {
 
-  private var ajaxAppender: AjaxAppender = null
-
   private def undefOrError(e: Exception): js.UndefOr[js.Error] = {
     if (e == null)
       js.undefined
@@ -123,22 +121,5 @@ class L4JSLogger(jsLogger: JSLogger) extends Logger {
   override def error(msg: String): Unit = jsLogger.error(msg)
   override def fatal(msg: String, e: Exception): Unit = jsLogger.fatal(msg, undefOrError(e))
   override def fatal(msg: String): Unit = jsLogger.fatal(msg)
-
-  override def enableServerLogging(url: String): Unit = {
-    if (ajaxAppender == null) {
-      ajaxAppender = new AjaxAppender(url)
-      ajaxAppender.addHeader("Content-Type", "application/json")
-      ajaxAppender.setLayout(new JsonLayout)
-      jsLogger.addAppender(ajaxAppender)
-
-    }
-  }
-
-  override def disableServerLogging(): Unit = {
-    if (ajaxAppender != null) {
-      jsLogger.removeAppender(ajaxAppender)
-      ajaxAppender = null
-    }
-  }
 }
 

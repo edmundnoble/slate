@@ -11,21 +11,21 @@ import scalaz.syntax.either._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 
-object QQCompiler {
+case class QQRuntimeException(message: String) extends RuntimeException(message)
+case class NotARegex(asStr: String) extends RuntimeException(s"tried to use this as a regex: $asStr")
+class QQCompilationException(message: String) extends RuntimeException(message)
+case class NoSuchMethod(name: String)
+  extends QQCompilationException(message = s"No such method: $name")
+case class WrongNumParams(name: String, correct: Int, you: Int)
+  extends QQCompilationException(message = s"Wrong number of params for filter $name: passed $you, wanted $correct")
 
-  case class QQRuntimeException(message: String) extends RuntimeException(message)
-  case class NotARegex(asStr: String) extends RuntimeException(s"tried to use this as a regex: $asStr")
-  class QQCompilationException(message: String) extends RuntimeException(message)
-  case class NoSuchMethod(name: String)
-    extends QQCompilationException(message = s"No such method: $name")
-  case class WrongNumParams(name: String, correct: Int, you: Int)
-    extends QQCompilationException(message = s"Wrong number of params for filter $name: passed $you, wanted $correct")
+object QQCompiler {
 
   type CompiledFilter[AnyTy] = AnyTy => Task[List[AnyTy]]
   type OrCompilationError[T] = QQCompilationException \/ T
 
   @inline
-  private def composeCompiledFilters[AnyTy](firstFilter: CompiledFilter[AnyTy], secondFilter: CompiledFilter[AnyTy]): CompiledFilter[AnyTy] = { jsv: AnyTy =>
+  def composeCompiledFilters[AnyTy](firstFilter: CompiledFilter[AnyTy], secondFilter: CompiledFilter[AnyTy]): CompiledFilter[AnyTy] = { jsv: AnyTy =>
     for {
       firstResult <- firstFilter(jsv)
       secondResult <- firstResult.traverse(secondFilter)
@@ -33,24 +33,31 @@ object QQCompiler {
   }
 
   @inline
-  private def ensequenceCompiledFilters[AnyTy](first: CompiledFilter[AnyTy], second: CompiledFilter[AnyTy]): CompiledFilter[AnyTy] = { jsv: AnyTy =>
+  def ensequenceCompiledFilters[AnyTy](first: CompiledFilter[AnyTy], second: CompiledFilter[AnyTy]): CompiledFilter[AnyTy] = { jsv: AnyTy =>
     Task.mapBoth(first(jsv), second(jsv)) { (a, b) => a ++ b }
   }
 
   @inline
-  private def zipFiltersWith[AnyTy](first: CompiledFilter[AnyTy], second: CompiledFilter[AnyTy], fun: (AnyTy, AnyTy) => Task[AnyTy]): CompiledFilter[AnyTy] = { jsv: AnyTy =>
+  def zipFiltersWith[AnyTy](first: CompiledFilter[AnyTy], second: CompiledFilter[AnyTy], fun: (AnyTy, AnyTy) => Task[AnyTy]): CompiledFilter[AnyTy] = { jsv: AnyTy =>
     Task.mapBoth(first(jsv), second(jsv)) { (f, s) => (f, s).zipped.map(fun) }.map(_.sequence).flatten
   }
 
-  final def compileDefinitions[AnyTy](runtime: QQRuntime[AnyTy], definitions: List[Definition]): QQCompilationException \/ List[CompiledDefinition[AnyTy]] =
+  @inline
+  def compileDefinitions[AnyTy](runtime: QQRuntime[AnyTy],
+                                definitions: List[Definition]): OrCompilationError[List[CompiledDefinition[AnyTy]]] =
     definitions.foldLeft(nil[CompiledDefinition[AnyTy]].right[QQCompilationException])(compileDefinitionStep(runtime))
 
-  final def compileProgram[AnyTy](runtime: QQRuntime[AnyTy], definitions: List[Definition], main: Filter): QQCompilationException \/ CompiledFilter[AnyTy] = {
+  @inline
+  def compileProgram[AnyTy](runtime: QQRuntime[AnyTy],
+                            definitions: List[Definition],
+                            main: Filter): OrCompilationError[CompiledFilter[AnyTy]] = {
     compileDefinitions(runtime, definitions).flatMap(compile(runtime, _, main))
   }
 
   @inline
-  final def compileStep[AnyTy](runtime: QQRuntime[AnyTy], definitions: List[CompiledDefinition[AnyTy]], filter: FilterComponent[CompiledFilter[AnyTy]]): OrCompilationError[CompiledFilter[AnyTy]] = filter match {
+  def compileStep[AnyTy](runtime: QQRuntime[AnyTy],
+                         definitions: List[CompiledDefinition[AnyTy]],
+                         filter: FilterComponent[CompiledFilter[AnyTy]]): OrCompilationError[CompiledFilter[AnyTy]] = filter match {
     case IdFilter() => ((jsv: AnyTy) => Task.now(jsv :: Nil)).right
     case ComposeFilters(f, s) => composeCompiledFilters(f, s).right
     case EnlistFilter(f) => runtime.enlistFilter(f).right
@@ -82,7 +89,8 @@ object QQCompiler {
   }
 
   def compileDefinitionStep[AnyTy](runtime: QQRuntime[AnyTy])
-                                  (soFar: QQCompilationException \/ List[CompiledDefinition[AnyTy]], nextDefinition: Definition): QQCompilationException \/ List[CompiledDefinition[AnyTy]] = {
+                                  (soFar: OrCompilationError[List[CompiledDefinition[AnyTy]]],
+                                   nextDefinition: Definition): OrCompilationError[List[CompiledDefinition[AnyTy]]] = {
     soFar.map((definitionsSoFar: List[CompiledDefinition[AnyTy]]) => {
       CompiledDefinition[AnyTy](nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter[AnyTy]]) => {
         val paramsAsDefinitions = (nextDefinition.params, params).zipped.map { (filterName, value) =>
@@ -93,7 +101,10 @@ object QQCompiler {
     })
   }
 
-  final def compile[AnyTy](runtime: QQRuntime[AnyTy], definitions: List[CompiledDefinition[AnyTy]], filter: Filter): OrCompilationError[CompiledFilter[AnyTy]] =
+  @inline
+  def compile[AnyTy](runtime: QQRuntime[AnyTy],
+                     definitions: List[CompiledDefinition[AnyTy]],
+                     filter: Filter): OrCompilationError[CompiledFilter[AnyTy]] =
     for {
       sharedDefinitions <- SharedPreludes[AnyTy].all(runtime)
       platformSpecificDefinitions <- runtime.platformPrelude.all(runtime)

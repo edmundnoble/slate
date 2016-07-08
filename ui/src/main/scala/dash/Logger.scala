@@ -16,9 +16,6 @@ trait Logger {
   @elidable(SEVERE) def error(msg: String): Unit
   @elidable(SEVERE) def fatal(msg: String, e: Exception): Unit
   @elidable(SEVERE) def fatal(msg: String): Unit
-
-  def enableServerLogging(url: String): Unit
-  def disableServerLogging(): Unit
 }
 
 object LoggerFactory {

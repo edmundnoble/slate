@@ -1,10 +1,9 @@
 package qq
 
-import qq.QQCompiler.{CompiledFilter, QQCompilationException}
+import qq.QQCompiler.CompiledFilter
 
 import scalaz.\/
 import scalaz.syntax.either._
-import scalaz.Liskov._
 
 trait PlatformPrelude[AnyTy] extends Prelude[AnyTy] {
 

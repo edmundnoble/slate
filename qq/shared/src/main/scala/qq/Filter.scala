@@ -3,20 +3,6 @@ package qq
 import scala.language.higherKinds
 import scalaz.\/
 import matryoshka._
-import monocle.macros.GenLens
-import qq.QQCompiler.QQCompilationException
-import shapeless._
-import shapeless.ops.nat.ToInt
-
-import scalaz.syntax.either._
-
-final case class Definition(name: String,
-                            params: List[String],
-                            body: Filter)
-
-object Definition {
-  val body = GenLens[Definition](_.body)
-}
 
 object Filter {
 
@@ -41,6 +27,5 @@ object Filter {
   def modulo(first: Filter, second: Filter): Filter = Fix(ModuloFilters(first, second))
   def constNumber(value: Double): Filter = Fix(ConstNumber(value))
   def constString(value: String): Filter = Fix(ConstString(value))
-
 
 }

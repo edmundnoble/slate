@@ -1,9 +1,8 @@
 package qq
 
 import monix.eval.Task
-import qq.QQCompiler.{CompiledFilter, QQCompilationException}
+import qq.QQCompiler.{CompiledFilter, OrCompilationError}
 
-import scalaz.\/
 import scalaz.syntax.either._
 
 object SharedPreludes {
@@ -15,7 +14,7 @@ object SharedPreludes {
     }
 
     def apply[AnyTy]: Prelude[AnyTy] = new Prelude[AnyTy] {
-      override def all(runtime: QQRuntime[AnyTy]): QQCompilationException \/ List[CompiledDefinition[AnyTy]] =
+      override def all(runtime: QQRuntime[AnyTy]): OrCompilationError[List[CompiledDefinition[AnyTy]]] =
         (print[AnyTy] :: Nil).right.map(identity)
     }
   }
@@ -30,13 +29,13 @@ object SharedPreludes {
 
 
     def apply[AnyTy]: Prelude[AnyTy] = new Prelude[AnyTy] {
-      override def all(runtime: QQRuntime[AnyTy]): QQCompilationException \/ List[CompiledDefinition[AnyTy]] =
+      override def all(runtime: QQRuntime[AnyTy]): OrCompilationError[List[CompiledDefinition[AnyTy]]] =
         QQCompiler.compileDefinitions(runtime, map :: Nil)
     }
   }
 
   def apply[AnyTy]: Prelude[AnyTy] = new Prelude[AnyTy] {
-    override def all(runtime: QQRuntime[AnyTy]): QQCompilationException \/ List[CompiledDefinition[AnyTy]] =
+    override def all(runtime: QQRuntime[AnyTy]): OrCompilationError[List[CompiledDefinition[AnyTy]]] =
       for {
         raw <- Raw[AnyTy].all(runtime)
         compiled <- Compiled[AnyTy].all(runtime)
