@@ -1,7 +1,6 @@
 package qq
 
 import monix.eval.Task
-
 import scalaz.\/
 
 trait QQRuntime[AnyTy] {

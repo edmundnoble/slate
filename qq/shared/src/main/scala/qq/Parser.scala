@@ -2,8 +2,7 @@ package qq
 
 import fastparse.all._
 import fastparse.parsers.Terminals
-import fastparse.{Implicits, Logger, parsers}
-import qq.FilterComponent.SilenceExceptions
+import fastparse.{Implicits, parsers}
 
 import scalaz.{-\/, Monad, NonEmptyList, \/}
 import scalaz.syntax.either._

@@ -3,19 +3,16 @@ package qq.jsc
 import java.util.regex.Pattern
 
 import monix.eval.Task
-import qq.QQCompiler.{CompiledFilter, QQCompilationException, QQRuntimeException}
 
 import scalaz.syntax.either._
 import scalaz.syntax.traverse._
 import scalaz.std.list._
 import scala.scalajs.js
 import com.thoughtworks.each.Monadic._
-import qq.{CompiledDefinition, PlatformPrelude}
+import qq._
 import qq.Util._
 
 object JSPrelude extends PlatformPrelude[AnyRef] {
-
-  import qq.QQCompiler._
 
   override def length: CompiledDefinition[AnyRef] =
     noParamDefinition(

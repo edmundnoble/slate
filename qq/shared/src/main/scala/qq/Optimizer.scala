@@ -5,8 +5,6 @@ import FunctorT.ops._
 
 import scalaz.NonEmptyList
 import scalaz.syntax.foldable1._
-import scalaz.syntax.arrow._
-import scalaz.std.function._
 
 object Optimizer {
 
