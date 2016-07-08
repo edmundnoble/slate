@@ -20,18 +20,14 @@ object JSRuntime extends QQRuntime[AnyRef] {
   val taskOfListOfNull: Task[List[AnyRef]] = Task.now(List(null))
   val emptyArray: js.Array[AnyRef] = new js.Array[AnyRef](0)
 
-  override def constNumber(num: Double): CompiledFilter[AnyRef] = {
-    _ => Task.now(Double.box(num) :: Nil)
-  }
+  override def constNumber(num: Double): CompiledFilter[AnyRef] = _ => Task.now(Double.box(num) :: Nil)
 
-  override def constString(str: String): CompiledFilter[AnyRef] = {
-    _ => Task.now(str :: Nil)
-  }
+  override def constString(str: String): CompiledFilter[AnyRef] = _ => Task.now(str :: Nil)
 
   def addJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
     case (f: java.lang.Double, s: java.lang.Double) =>
       Task.now(Double.box(f.doubleValue() + s.doubleValue()))
-    case (f: String, s: String)  =>
+    case (f: String, s: String) =>
       Task.now(f + s)
     case (f: js.Array[AnyRef@unchecked], s: js.Array[AnyRef@unchecked]) =>
       Task.now(f.concat(s))
