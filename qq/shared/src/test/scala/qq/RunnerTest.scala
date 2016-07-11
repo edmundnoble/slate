@@ -56,7 +56,7 @@ object RunnerTest {
     List(Js.Str("JSON"), Js.Str("XML")).right
   )
 
-  val length = RunnerTest(
+  val lengthTest = RunnerTest(
     ".[] | length",
     Js.Arr(Js.Arr(Js.Num(1), Js.Num(2)), Js.Str("string"), Js.Obj("a" -> Js.Num(2)), Js.Null),
     List(Js.Num(2), Js.Num(6), Js.Num(1), Js.Num(0)).right

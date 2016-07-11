@@ -23,9 +23,9 @@ object ChromeManifest {
     name = "Dashboarder",
     version = "0.0.1",
     manifestVersion = 2,
-    background = new Background(List("deps.js", "main.js", "launcher.js")),
+    background = Background(List("deps.js", "main.js", "launcher.js")),
     offlineEnabled = true,
-    permissions = Set("https://auviknetworks.atlassian.net/*"),
+    permissions = Set("<all_urls>"),
     chromeUrlOverrides = Overrides(newtab = "index-dev.html")
   )
 }

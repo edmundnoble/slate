@@ -2,38 +2,37 @@ package qq
 
 import qq.TestUtil._
 import monix.execution.Scheduler.Implicits.global
-import utest._
 
 import scala.concurrent.Future
 
-object UpickleRunnerTest extends utest.TestSuite with Asserts {
-  override val tests = TestSuite {
-    import RunnerTest._
-    def runTest(test: RunnerTest): Future[Unit] =
-      Runner
-        .run(UpickleRuntime, test.program)(List(test.input))
-        .runFuture
-        .transform(_ ===> test.expectedOutput.valueOr { throw _ },
-          { ex => ex ===> test.expectedOutput.swap.getOrElse(???); ex})
-        .fallbackTo(Future.successful(()))
+class UpickleRunnerTest extends QQTestSuite {
 
-    "identity" - runTest(identityProgram)
-    "ensequenced filters" - runTest(ensequencedFilters)
-    "enlisted filter" - runTest(enlistedFilters)
-    "select key" - runTest(selectKeyProgram)
-    "collect results" - runTest(collectResults)
-    "enject filter" - runTest(enjectedFilters)
-    "pipes" - runTest(pipes)
-    "length" - runTest(length)
-    "keys" - runTest(keys)
-    "classifiers" -
-      Future.traverse(List(arrays, strings, booleans, scalars, objects, iterables, nulls, numbers))(runTest)
-    "add" - runTest(add)
-    "maths" - runTest(maths)
-    "bedmas" - runTest(bedmas)
-    "map" - runTest(map)
-    "multiply" - runTest(multiply)
-    "add null exception" - runTest(addNullException)
-    "silenced exception" - runTest(silencedException)
-  }
+  import RunnerTest._
+
+  def runTest(test: RunnerTest): Future[Any] =
+    Runner
+      .run(UpickleRuntime, test.program)(List(test.input))
+      .runFuture
+      .transform(_ should equal(test.expectedOutput.valueOr(ex => throw ex)), { ex =>
+        ex should equal(test.expectedOutput.swap.getOrElse(???)); ex
+      })
+
+  "identity" in runTest(identityProgram)
+  "ensequenced filters" in runTest(ensequencedFilters)
+  "enlisted filter" in runTest(enlistedFilters)
+  "select key" in runTest(selectKeyProgram)
+  "collect results" in runTest(collectResults)
+  "enject filter" in runTest(enjectedFilters)
+  "pipes" in runTest(pipes)
+  "length" in runTest(lengthTest)
+  "keys" in runTest(keys)
+  "classifiers" in
+    Future.traverse(List(arrays, strings, booleans, scalars, objects, iterables, nulls, numbers))(runTest)
+  "add" in runTest(add)
+  "maths" in runTest(maths)
+  "bedmas" in runTest(bedmas)
+  "map" in runTest(map)
+  "multiply" in runTest(multiply)
+  "add null exception" in runTest(addNullException)
+  "silenced exception" in runTest(silencedException)
 }

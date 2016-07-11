@@ -23,7 +23,9 @@ object Parser {
   implicit def listRepeater[T]: Implicits.Repeater[T, List[T]] = new Implicits.Repeater[T, List[T]] {
     type Acc = mutable.ListBuffer[T]
     def initial: Acc = new mutable.ListBuffer[T]()
-    def accumulate(t: T, acc: Acc): Unit = acc += t
+    def accumulate(t: T, acc: Acc): Unit = {
+      val _ = acc += t
+    }
     def result(acc: Acc): List[T] = acc.result()
   }
 
@@ -115,7 +117,7 @@ object Parser {
     "{" ~/ whitespace ~ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(Filter.enject) ~ whitespace ~ "}"
   )
 
-  def operator[A](rec: P[A], op1: (String, (A, A) => A), ops: (String, (A, A) => A)*): P[A] = {
+  def binaryOperators[A](rec: P[A], op1: (String, (A, A) => A), ops: (String, (A, A) => A)*): P[A] = {
     def makeParser(text: String, function: (A, A) => A): P[(A, A) => A] = wspStr(text) >| function
     def foldOperators(begin: A, operators: List[((A, A) => A, A)]): A =
       operators.foldLeft(begin) { case (f, (combFun, nextF)) => combFun(f, nextF) }
@@ -124,16 +126,16 @@ object Parser {
   }
 
   val sequenced: P[Filter] =
-    P(operator[Filter](piped, "," -> Filter.ensequence _))
+    P(binaryOperators[Filter](piped, "," -> Filter.ensequence _))
 
   val piped: P[Filter] =
-    P(operator[Filter](expr, "|" -> Filter.compose _))
+    P(binaryOperators[Filter](expr, "|" -> Filter.compose _))
 
   val expr: P[Filter] =
-    P(operator[Filter](term, "+" -> Filter.add _, "-" -> Filter.subtract))
+    P(binaryOperators[Filter](term, "+" -> Filter.add _, "-" -> Filter.subtract))
 
   val term: P[Filter] =
-    P(operator[Filter](factor, "*" -> Filter.multiply _, "/" -> Filter.divide _, "%" -> Filter.modulo _))
+    P(binaryOperators[Filter](factor, "*" -> Filter.multiply _, "/" -> Filter.divide _, "%" -> Filter.modulo _))
 
   val factor: P[Filter] =
     P(("(" ~ sequenced ~ ")") | smallFilter | enjectedFilter | enlistedFilter)

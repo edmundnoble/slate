@@ -9,7 +9,7 @@ import upickle.Js
 object DashboarderBuild extends Build {
 
   val commonDeps = Seq(libraryDependencies ++= Seq(
-    "com.lihaoyi" %%% "utest" % "0.4.3" % "test",
+    "org.scalatest" %% "scalatest" % "3.0.0-RC4" % "test",
     "com.lihaoyi" %%% "upickle" % "0.4.0",
     "com.lihaoyi" %%% "pprint" % "0.4.0",
     "com.lihaoyi" %%% "fastparse" % "0.3.7",
@@ -170,15 +170,11 @@ object DashboarderBuild extends Build {
   val otherSettings: Seq[sbt.Def.Setting[_]] = Seq(
     version := "0.0.1",
     scalaVersion := "2.11.8",
-    scalacOptions += "-Xexperimental",
+    scalacOptions += "-Ywarn-value-discard",
     persistLauncher in Compile := true,
     persistLauncher in Test := false,
     addCompilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full),
     addCompilerPlugin("org.spire-math" % "kind-projector" % "0.8.0" cross CrossVersion.binary)
-  )
-
-  val testSettings: Seq[sbt.Def.Setting[_]] = Seq(
-    testFrameworks += new TestFramework("utest.runner.Framework")
   )
 
   val jsSettings: Seq[sbt.Def.Setting[_]] = Seq(
@@ -190,7 +186,6 @@ object DashboarderBuild extends Build {
     .settings(otherSettings: _*)
     .settings(commonDeps: _*)
     .settings(replMain: _*)
-    .settings(testSettings: _*)
     .jsSettings(scalaJSUseRhino in Global := false)
     .jsSettings(ScalaJSPlugin.projectSettings: _*)
     .jsSettings(requiresDOM in Test := false)
@@ -206,7 +201,6 @@ object DashboarderBuild extends Build {
     .settings(chromeTasks)
     .settings(jsSettings)
     .settings(commonDeps)
-    .settings(testSettings)
     .settings(uiDeps)
 
   def dependOnChrome[T](taskKey: TaskKey[T]): Def.Setting[Task[T]] =
@@ -217,7 +211,6 @@ object DashboarderBuild extends Build {
     .settings(libraryDependencies += "org.seleniumhq.selenium" % "selenium-java" % "2.35.0" % "test")
     .settings(otherSettings)
     .settings(commonDeps)
-    .settings(testFrameworks += new TestFramework("dash.test.WebDriverFramework"))
     .settings(dependOnChrome(testOptions in Test))
     .settings((testQuick in Test) := { throw new IllegalStateException("testQuick does not work") } )
 

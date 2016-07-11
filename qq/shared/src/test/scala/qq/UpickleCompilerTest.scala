@@ -1,26 +1,21 @@
 package qq
 
-import utest._
-
 import scala.concurrent.Future
 import TestUtil._
 
 import monix.execution.Scheduler.Implicits.global
 
-object UpickleCompilerTest extends utest.TestSuite with Asserts {
+class UpickleCompilerTest extends QQTestSuite {
 
-  val tests = this {
-
-    def testRun(qQDoubleCompilerTest: CompilerTest) = qQDoubleCompilerTest match {
-      case CompilerTest(filter, input, result) =>
-        QQCompiler.compile(UpickleRuntime, Nil, filter).getOrElse(???).apply(input).runFuture map (_ ===> result)
-    }
-
-    "select keys" - Future.traverse(CompilerTest.selectKeys)(testRun)
-    "select index" - Future.traverse(CompilerTest.selectIndex)(testRun)
-    "id" - Future.traverse(CompilerTest.id)(testRun)
-    "select range" - Future.traverse(CompilerTest.selectRange)(testRun)
-    "collect results" - Future.traverse(CompilerTest.collectResults)(testRun)
-
+  def testRun(qQDoubleCompilerTest: CompilerTest) = qQDoubleCompilerTest match {
+    case CompilerTest(filter, input, result) =>
+      QQCompiler.compile(UpickleRuntime, Nil, filter).getOrElse(???).apply(input).runFuture map (_ should equal(result))
   }
+
+  "select keys" in Future.traverse(CompilerTest.selectKeys)(testRun)
+  "select index" in Future.traverse(CompilerTest.selectIndex)(testRun)
+  "id" in Future.traverse(CompilerTest.id)(testRun)
+  "select range" in Future.traverse(CompilerTest.selectRange)(testRun)
+  "collect results" in Future.traverse(CompilerTest.collectResults)(testRun)
+
 }

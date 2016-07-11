@@ -92,7 +92,7 @@ object DashboarderApp extends scalajs.js.JSApp {
 
     {
       import monix.execution.Scheduler.Implicits.global
-      fetchSearchResults.runAsync(callback)
+      val _ = fetchSearchResults.runAsync(callback)
     }
   }
 
