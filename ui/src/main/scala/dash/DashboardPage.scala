@@ -5,6 +5,7 @@ import dash.views.{ExpandableContentView, Styles}
 import japgolly.scalajs.react._
 import qq.Util._
 
+import scala.collection.mutable
 import scala.scalajs.js
 import scalacss.Defaults._
 
@@ -70,6 +71,8 @@ object DashboardPage {
       )
 
     ReactComponentB[Unit]("JIRA search page")
+      .stateless
+      .noBackend
       .render(_ => htmlFrag)
       .build()
   }

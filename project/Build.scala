@@ -101,7 +101,11 @@ object DashboarderBuild extends Build {
     file.listFiles().foreach { resourceFile =>
       val target = unpacked / resourceFile.getName
       if (!target.exists() || resourceFile.lastModified() > target.lastModified()) {
-        IO.copyFile(resourceFile, target)
+        if (resourceFile.isFile) {
+          IO.copyFile(resourceFile, target)
+        } else {
+          IO.copyDirectory(resourceFile, target)
+        }
       }
     }
     unpacked
@@ -154,6 +158,7 @@ object DashboarderBuild extends Build {
       IO.zip(allSubpaths(chromeAppDir), zipFile)
       zipFile
     },
+
     chromeGenerateManifest := {
       generateManifest(target.value / "chrome" / "generated_manifest.json")(ChromeManifest.mySettings)
     }
@@ -204,8 +209,20 @@ object DashboarderBuild extends Build {
     .settings(testSettings)
     .settings(uiDeps)
 
+  def dependOnChrome[T](taskKey: TaskKey[T]): Def.Setting[Task[T]] =
+    taskKey <<= taskKey.dependsOn(chromeBuildFast in ui)
+
+  lazy val uitests = Project(id = "uitests", base = file("uitests"))
+    .dependsOn(ui)
+    .settings(libraryDependencies += "org.seleniumhq.selenium" % "selenium-java" % "2.35.0" % "test")
+    .settings(otherSettings)
+    .settings(commonDeps)
+    .settings(testFrameworks += new TestFramework("dash.test.WebDriverFramework"))
+    .settings(dependOnChrome(testOptions in Test))
+    .settings((testQuick in Test) := { throw new IllegalStateException("testQuick does not work") } )
+
   lazy val root: Project = Project(id = "root", base = file("."))
-    .aggregate(ui, qqjvm, qqjs)
+    .aggregate(ui, uitests, qqjvm, qqjs)
     .settings(Defaults.projectCore)
     .settings(otherSettings)
     .settings(ScalaJSPlugin.globalSettings)

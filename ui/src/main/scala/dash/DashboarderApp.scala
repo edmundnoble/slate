@@ -41,11 +41,11 @@ object DashboarderApp extends scalajs.js.JSApp {
         Filter(r.obj("self").str, r.obj("name").str, r.obj("owner").obj("name").str, r.obj("jql").str, r.obj("viewUrl").str)
       }(collection.breakOut)
 
-      val searchRequests = favoriteFilters.traverse[Task, XMLHttpRequest] { filter =>
+      val searchRequests = Task.sequence(favoriteFilters.map { filter =>
         Ajax.post(url = s"https://auviknetworks.atlassian.net/rest/api/2/search/",
           data = json.write(Js.Obj("jql" -> Js.Str(filter.jql), "maxResults" -> Js.Num(10))),
           headers = Creds.authData ++ Map("Content-Type" -> "application/json"))
-      }.each
+      }).each
 
       val compiledQQProgram = qq.Runner.parseAndCompile(qq.UpickleRuntime,
         """.issues.[] | {

@@ -7,3 +7,4 @@ target/
 *Scratch.sc
 *Creds.scala
 *.iml
+.DS_Store
