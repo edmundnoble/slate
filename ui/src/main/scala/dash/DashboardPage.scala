@@ -53,28 +53,21 @@ object DashboardPage {
   }
 
   def makeSearchPage(searchResults: IndexedSeq[SearchResult]): ReactElement = {
-    val htmlFrag =
-      <.div(Styles.render[ReactElement],
-        <.div(Styles.appBar,
-          <.table(
-            <.tr(Styles.appBarRow,
-              <.td(Styles.appBarText,
-                "Dashboarder")
-            )
-          )
-        ),
-        <.div(
-          <.div(Styles.container,
-            searchResults.grouped(2).map(xs => makeFilterRow(xs.headOption, xs.drop(1).headOption)).toSeq
+    <.div(Styles.render[ReactElement],
+      <.div(Styles.appBar,
+        <.table(
+          <.tr(Styles.appBarRow,
+            <.td(Styles.appBarText,
+              "Dashboarder")
           )
         )
+      ),
+      <.div(
+        <.div(Styles.container,
+          searchResults.grouped(2).map(xs => makeFilterRow(xs.headOption, xs.drop(1).headOption)).toSeq
+        )
       )
-
-    ReactComponentB[Unit]("JIRA search page")
-      .stateless
-      .noBackend
-      .render(_ => htmlFrag)
-      .build()
+    )
   }
 
 }
