@@ -3,20 +3,20 @@ package dash.views
 import japgolly.scalajs.react.Addons.ReactCssTransitionGroup
 import japgolly.scalajs.react.{ReactComponentU_, ReactNode}
 
-import scalacss.Defaults._
-import scalacss.{ClassName, Css, NonEmptyVector, Pseudo, Renderer, StyleA, StyleS}
-
 import scala.concurrent.duration._
+import scalacss.Defaults._
+import scalacss.{FontFace, NonEmptyVector, StyleA}
 
 object Styles extends StyleSheet.Inline {
 
   import dsl._
+
   import scala.language.postfixOps
 
-  val roboto = scalacss.FontFace("Roboto", src = NonEmptyVector("https://fonts.googleapis.com/css?family=Roboto"))
-  val robotoLight = scalacss.FontFace("Roboto", src = NonEmptyVector("https://fonts.googleapis.com/css?family=Roboto:300"))
-  val robotoMedium = scalacss.FontFace("Roboto", src = NonEmptyVector("https://fonts.googleapis.com/css?family=Roboto:700"))
-  val robotoHeavy = scalacss.FontFace("Roboto", src = NonEmptyVector("https://fonts.googleapis.com/css?family=Roboto:900"))
+  val roboto = FontFace("Roboto", src = NonEmptyVector("fonts/roboto-v15-latin-ext_latin-300.woff2"))
+  val robotoLight = FontFace("Roboto", src = NonEmptyVector("fonts/roboto-v15-latin-ext_latin-500.woff2"))
+  val robotoMedium = FontFace("Roboto", src = NonEmptyVector("fonts/roboto-v15-latin-ext_latin-700.woff2"))
+  val robotoHeavy = FontFace("Roboto", src = NonEmptyVector("fonts/roboto-v15-latin-ext_latin-900.woff2"))
 
   val materialBlue = c"#2196F3"
   val materialGrey = c"#757575"

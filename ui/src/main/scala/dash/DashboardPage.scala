@@ -1,12 +1,16 @@
 package dash
 
 import dash.models.{ExpandableContentModel, TitledContentModel}
+import dash.views.ReactiveReact.ReactiveState
 import dash.views.{ExpandableContentView, Styles}
 import japgolly.scalajs.react._
+import monix.execution.Scheduler
+import monix.reactive.Observable
 import qq.Util._
 
 import scala.collection.mutable
 import scala.scalajs.js
+import scalaz.std.list._
 import scalacss.Defaults._
 
 object DashboardPage {
@@ -52,22 +56,37 @@ object DashboardPage {
     )
   }
 
-  def makeSearchPage(searchResults: IndexedSeq[SearchResult]): ReactElement = {
-    <.div(Styles.render[ReactElement],
-      <.div(Styles.appBar,
-        <.table(
-          <.tr(Styles.appBarRow,
-            <.td(Styles.appBarText,
-              "Dashboarder")
+  case class SearchPageState(searchResults: IndexedSeq[SearchResult])
+    extends ReactiveState[SearchPageState, IndexedSeq[SearchResult], Unit](searchResults, ()) {
+    override def setReactive(r: IndexedSeq[SearchResult]): SearchPageState = copy(searchResults = r)
+  }
+
+  def makeSearchPage(searchResultStream: Observable[IndexedSeq[SearchResult]])(implicit sch: Scheduler): ReactElement = {
+    import views.ReactiveReact._
+    reactiveBackendReplace(
+      ReactComponentB[Observable[IndexedSeq[SearchResult]]]("Main search page")
+        .initialState(SearchPageState(IndexedSeq.empty))
+        .noBackend
+        .renderS { ($, state) =>
+          <.div(Styles.render[ReactElement],
+            <.div(Styles.appBar,
+              <.table(
+                <.tr(Styles.appBarRow,
+                  <.td(Styles.appBarText,
+                    "Dashboarder")
+                )
+              )
+            ),
+            <.div(
+              <.div(Styles.container,
+                state.searchResults.grouped(2).map(xs => makeFilterRow(xs.headOption, xs.drop(1).headOption)).toSeq
+              )
+            )
           )
-        )
-      ),
-      <.div(
-        <.div(Styles.container,
-          searchResults.grouped(2).map(xs => makeFilterRow(xs.headOption, xs.drop(1).headOption)).toSeq
-        )
-      )
+        }
+        .domType[TopNode]
     )
+      .build(searchResultStream)
   }
 
 }

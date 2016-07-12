@@ -1,15 +1,17 @@
 package dash.views
 
 import dash.models.ExpandableContentModel
-import japgolly.scalajs.react.ReactComponentB.PSB
+import dash.views.ReactiveReact.ReactiveState
 import japgolly.scalajs.react._
+import monix.execution.Scheduler
+import monix.reactive.Observable
 import monocle.macros.GenLens
 
 import scalacss.Defaults._
 
-
 object ExpandableContentView {
   case class ExpandableState(expanded: Boolean)
+
   object ExpandableState {
     def expanded = GenLens[ExpandableState](_.expanded)
   }
@@ -17,8 +19,9 @@ object ExpandableContentView {
   object Styles extends StyleSheet.Inline {
 
     import dsl._
-    import scala.language.postfixOps
     import dash.views.Styles._
+
+    import scala.language.postfixOps
 
     val filterButtonIcon = style(
       addClassName("material-icons"),
@@ -79,10 +82,11 @@ object ExpandableContentView {
 
   }
 
-  def build: (ExpandableContentModel) => ReactComponentU[ExpandableContentModel, ExpandableState, Unit, TopNode] = {
-    import japgolly.scalajs.react.vdom.prefix_<^._
-    import scalacss.ScalaCssReact._
+  def build(props: ExpandableContentModel): ReactComponentU[ExpandableContentModel, ExpandableState, Unit, TopNode] = {
     import MonocleReact._
+    import japgolly.scalajs.react.vdom.prefix_<^._
+
+    import scalacss.ScalaCssReact._
 
     def buttonStyleForState(state: ExpandableState): Seq[TagMod] = {
       val otherStyles = Vector[TagMod](Styles.filterButtonIcon, "expand_more")
@@ -92,7 +96,6 @@ object ExpandableContentView {
 
     ReactComponentB[ExpandableContentModel]("Expandable content view")
       .initialState(ExpandableState(expanded = false))
-      .noBackend
       .renderPS { ($, model, state) =>
         val titleLink = ^.href := model.titleUrl
         <.div(Styles.render[ReactElement],
@@ -120,7 +123,8 @@ object ExpandableContentView {
           )
         )
       }
-      .build(_)
-
+      .domType[TopNode]
+      .build(props)
   }
+
 }
