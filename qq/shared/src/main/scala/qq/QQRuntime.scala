@@ -1,6 +1,8 @@
 package qq
 
 import monix.eval.Task
+import qq.FilterComponent._
+
 import scalaz.\/
 
 trait QQRuntime[AnyTy] {
@@ -12,6 +14,15 @@ trait QQRuntime[AnyTy] {
   def enjectFilter(obj: List[(\/[String, CompiledFilter[AnyTy]], CompiledFilter[AnyTy])]): CompiledFilter[AnyTy]
 
   def enlistFilter(filter: CompiledFilter[AnyTy]): CompiledFilter[AnyTy]
+
+  @inline final def evaluateLeaf(component: LeafComponent[AnyTy]): CompiledFilter[AnyTy] = component match {
+    case IdFilter() => (jsv: AnyTy) => Task.now(jsv :: Nil)
+    case ConstNumber(num) => constNumber(num)
+    case ConstString(str) => constString(str)
+    case SelectKey(key) => selectKey(key)
+    case SelectIndex(index) => selectIndex(index)
+    case SelectRange(start, end) => selectRange(start, end)
+  }
 
   def selectKey(key: String): CompiledFilter[AnyTy]
 

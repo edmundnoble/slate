@@ -37,19 +37,21 @@ object DashboarderApp extends scalajs.js.JSApp {
 
       implicit val ajaxTimeout = Ajax.Timeout(4000.millis)
 
-      val favoriteFilterResponse = Ajax.get(url = "https://jira.atlassian.net/rest/api/2/filter/favourite", headers = Creds.authData).each
-
-      val favoriteFilters: List[Filter] = json.read(favoriteFilterResponse.responseText).arr.map { r =>
-        Filter(r.obj("self").str, r.obj("name").str, r.obj("owner").obj("name").str, r.obj("jql").str, r.obj("viewUrl").str)
-      }(collection.breakOut)
-
-      val searchRequests = favoriteFilters.traverse[Observable, XMLHttpRequest] { filter =>
-        Observable.fromTask(
-          Ajax.post(url = s"https://jira.atlassian.net/rest/api/2/search/",
-            data = json.write(Js.Obj("jql" -> Js.Str(filter.jql), "maxResults" -> Js.Num(10))),
-            headers = Creds.authData ++ Map("Content-Type" -> "application/json"))
+      val searchRequests = for {
+        favoriteFilterResponse <- Observable.fromTask(
+          Ajax.get(url = "https://jira.atlassian.net/rest/api/2/filter/favourite", headers = Creds.authData)
         )
-      }
+        favoriteFilters: List[Filter] = json.read(favoriteFilterResponse.responseText).arr.map { r =>
+          Filter(r.obj("self").str, r.obj("name").str, r.obj("owner").obj("name").str, r.obj("jql").str, r.obj("viewUrl").str)
+        }(collection.breakOut)
+        filterRequests <- (favoriteFilters: List[Filter]).traverse[Observable, XMLHttpRequest] { filter =>
+          Observable.fromTask(
+            Ajax.post(url = s"https://jira.atlassian.net/rest/api/2/search/",
+              data = json.write(Js.Obj("jql" -> Js.Str(filter.jql), "maxResults" -> Js.Num(10))),
+              headers = Creds.authData ++ Map("Content-Type" -> "application/json"))
+          )
+        }
+      } yield (favoriteFilters, filterRequests)
 
       val compiledQQProgram = qq.Runner.parseAndCompile(qq.UpickleRuntime,
         """.issues.[] | {
@@ -62,14 +64,15 @@ object DashboarderApp extends scalajs.js.JSApp {
           |}""".stripMargin
       ).fold(Task.raiseError, Task.now).each
       val searchResultStream = searchRequests.flatMap {
-        _.traverse { r =>
-          val results = compiledQQProgram(upickle.json read r.responseText)
-          Observable.fromTask(results map (_ flatMap (Issue.pkl.read.lift(_))))
-        }
+        case (filter, responses) =>
+          responses.traverse[Observable, List[Issue]] { r =>
+            val results = compiledQQProgram(upickle.json read r.responseText)
+            Observable.fromTask(results map (_ flatMap (Issue.pkl.read.lift(_))))
+          }.strengthL(filter)
       }
 
       searchResultStream.map { searchResults =>
-        (favoriteFilters, searchResults).zipped.map(SearchResult(_, _))(collection.breakOut)
+        searchResults.zipped.map(SearchResult(_, _))(collection.breakOut)
       }
     }
 

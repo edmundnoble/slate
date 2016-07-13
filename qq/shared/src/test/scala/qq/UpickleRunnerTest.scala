@@ -26,8 +26,16 @@ class UpickleRunnerTest extends QQTestSuite {
   "pipes" in runTest(pipes)
   "length" in runTest(lengthTest)
   "keys" in runTest(keys)
-  "classifiers" in
-    Future.traverse(List(arrays, strings, booleans, scalars, objects, iterables, nulls, numbers))(runTest)
+  "classifiers" - {
+    "arrays" in runTest(arrays)
+    "strings" in runTest(strings)
+    "booleans" in runTest(booleans)
+    "scalars" in runTest(scalars)
+    "objects" in runTest(objects)
+    "iterables" in runTest(iterables)
+    "nulls" in runTest(nulls)
+    "numbers" in runTest(numbers)
+  }
   "add" in runTest(add)
   "maths" in runTest(maths)
   "bedmas" in runTest(bedmas)

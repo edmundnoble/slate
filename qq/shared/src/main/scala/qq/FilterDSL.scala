@@ -4,7 +4,7 @@ import scala.language.higherKinds
 import scalaz.\/
 import matryoshka._
 
-object Filter {
+object FilterDSL {
 
   import FilterComponent._
 

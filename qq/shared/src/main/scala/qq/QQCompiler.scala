@@ -58,18 +58,13 @@ object QQCompiler {
   def compileStep[AnyTy](runtime: QQRuntime[AnyTy],
                          definitions: List[CompiledDefinition[AnyTy]],
                          filter: FilterComponent[CompiledFilter[AnyTy]]): OrCompilationError[CompiledFilter[AnyTy]] = filter match {
-    case IdFilter() => ((jsv: AnyTy) => Task.now(jsv :: Nil)).right
+    case leaf: LeafComponent[AnyTy@unchecked] => runtime.evaluateLeaf(leaf).right
     case ComposeFilters(f, s) => composeCompiledFilters(f, s).right
     case EnlistFilter(f) => runtime.enlistFilter(f).right
     case SilenceExceptions(f) => ((jsv: AnyTy) => f(jsv).onErrorRecover { case _: QQRuntimeException => Nil }).right
     case CollectResults(f) => runtime.collectResults(f).right
     case EnsequenceFilters(first, second) => ensequenceCompiledFilters(first, second).right
     case EnjectFilters(obj) => runtime.enjectFilter(obj).right
-    case SelectKey(k) => runtime.selectKey(k).right
-    case SelectRange(s, e) => runtime.selectRange(s, e).right
-    case SelectIndex(i) => runtime.selectIndex(i).right
-    case ConstNumber(d) => runtime.constNumber(d).right
-    case ConstString(str) => runtime.constString(str).right
     case AddFilters(first, second) => zipFiltersWith(first, second, runtime.addJsValues).right
     case SubtractFilters(first, second) => zipFiltersWith(first, second, runtime.subtractJsValues).right
     case MultiplyFilters(first, second) => zipFiltersWith(first, second, runtime.multiplyJsValues).right

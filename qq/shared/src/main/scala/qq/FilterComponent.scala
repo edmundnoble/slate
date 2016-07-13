@@ -1,5 +1,6 @@
 package qq
 
+import scala.language.higherKinds
 import scalaz.{Applicative, Functor, Traverse, \/}
 import scalaz.syntax.traverse._
 import scalaz.std.list._
@@ -7,8 +8,8 @@ import scalaz.std.list._
 sealed abstract class FilterComponent[A]
 
 object FilterComponent {
-  final case class IdFilter[A]() extends PhantomComponent[A]
-  final case class FetchApi[A]() extends PhantomComponent[A]
+  final case class IdFilter[A]() extends LeafComponent[A]
+  final case class FetchApi[A]() extends LeafComponent[A]
   final case class ComposeFilters[A](first: A, second: A) extends FilterComponent[A]
   final case class SilenceExceptions[A](f: A) extends FilterComponent[A]
   final case class EnlistFilter[A](f: A) extends FilterComponent[A]
@@ -19,9 +20,9 @@ object FilterComponent {
   final case class CallFilter[A](name: String, params: List[A]) extends FilterComponent[A]
 
   // AST nodes with no child nodes
-  sealed abstract class PhantomComponent[A] extends FilterComponent[A] {
+  sealed abstract class LeafComponent[A] extends FilterComponent[A] {
     @inline
-    final def retag[B]: PhantomComponent[B] = this.asInstanceOf[PhantomComponent[B]]
+    final def retag[B]: LeafComponent[B] = this.asInstanceOf[LeafComponent[B]]
   }
 
   final case class AddFilters[A](first: A, second: A) extends FilterComponent[A]
@@ -30,11 +31,11 @@ object FilterComponent {
   final case class DivideFilters[A](first: A, second: A) extends FilterComponent[A]
   final case class ModuloFilters[A](first: A, second: A) extends FilterComponent[A]
 
-  final case class SelectKey[A](key: String) extends PhantomComponent[A]
-  final case class SelectIndex[A](index: Int) extends PhantomComponent[A]
-  final case class SelectRange[A](start: Int, end: Int) extends PhantomComponent[A]
+  final case class SelectKey[A](key: String) extends LeafComponent[A]
+  final case class SelectIndex[A](index: Int) extends LeafComponent[A]
+  final case class SelectRange[A](start: Int, end: Int) extends LeafComponent[A]
 
-  sealed abstract class ConstantComponent[A] extends PhantomComponent[A]
+  sealed abstract class ConstantComponent[A] extends LeafComponent[A]
   final case class ConstNumber[A](value: Double) extends ConstantComponent[A]
   final case class ConstString[A](value: String) extends ConstantComponent[A]
 

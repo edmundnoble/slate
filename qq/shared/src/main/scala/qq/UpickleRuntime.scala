@@ -1,6 +1,7 @@
 package qq
 
 import monix.eval.Task
+import qq.FilterComponent._
 import upickle.Js
 import qq.QQCompiler.CompiledFilter
 
@@ -23,7 +24,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
 
   override def constString(str: String): CompiledFilter[Js.Value] = _ => Task.now(Js.Str(str) :: Nil)
 
-  def addJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
+  override def addJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
     case (Js.Num(f), Js.Num(s)) =>
       Task.now(Js.Num(f + s))
     case (Js.Str(f), Js.Str(s)) =>
@@ -36,7 +37,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
       Task.raiseError(QQRuntimeException(s"can't add $f and $s"))
   }
 
-  def subtractJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
+  override def subtractJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
     case (Js.Num(f), Js.Num(s)) =>
       Task.now(Js.Num(f - s))
     case (f: Js.Arr, s: Js.Arr) =>
@@ -48,7 +49,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
       Task.raiseError(QQRuntimeException(s"can't subtract $f and $s"))
   }
 
-  def multiplyJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
+  override def multiplyJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
     case (Js.Num(f), Js.Num(s)) => Task.now(f * s)
       Task.now(if (s == 0) Js.Null else Js.Num(f * s))
     case (Js.Str(f), Js.Num(s)) => Task.now(Js.Str(f + s))
@@ -60,25 +61,25 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
       Task.raiseError(QQRuntimeException(s"can't multiply $f and $s"))
   }
 
-  def divideJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
+  override def divideJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
     case (Js.Num(f), Js.Num(s)) => Task.now(Js.Num(f / s))
     case (f, s) =>
       Task.raiseError(QQRuntimeException(s"can't divide $f by $s"))
   }
 
-  def moduloJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
+  override def moduloJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
     case (Js.Num(f), Js.Num(s)) => Task.now(Js.Num(f % s))
     case (f, s) =>
       Task.raiseError(QQRuntimeException(s"can't modulo $f by $s"))
   }
 
-  def enlistFilter(filter: CompiledFilter[Js.Value]): CompiledFilter[Js.Value] = { jsv: Js.Value =>
+  override def enlistFilter(filter: CompiledFilter[Js.Value]): CompiledFilter[Js.Value] = { jsv: Js.Value =>
     for {
       results <- filter(jsv)
     } yield Js.Arr(results: _*) :: Nil
   }
 
-  def selectKey(key: String): CompiledFilter[Js.Value] = {
+  override def selectKey(key: String): CompiledFilter[Js.Value] = {
     case f: Js.Obj =>
       f.value.find(_._1 == key) match {
         case None => taskOfListOfNull
@@ -88,7 +89,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
       Task.raiseError(QQRuntimeException(s"Tried to select key $key in $v but it's not a dictionary"))
   }
 
-  def selectIndex(index: Int): CompiledFilter[Js.Value] = {
+  override def selectIndex(index: Int): CompiledFilter[Js.Value] = {
     case f: Js.Arr =>
       val seq = f.value
       if (index >= -seq.length) {
@@ -106,7 +107,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
       Task.raiseError(QQRuntimeException(s"Tried to select index $index in $v but it's not an array"))
   }
 
-  def selectRange(start: Int, end: Int): CompiledFilter[Js.Value] = {
+  override def selectRange(start: Int, end: Int): CompiledFilter[Js.Value] = {
     case f: Js.Arr =>
       val seq = f.value
       if (start < end && start < seq.length) {
@@ -118,7 +119,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
       Task.raiseError(QQRuntimeException(s"Tried to select range $start:$end in $v but it's not an array"))
   }
 
-  def collectResults(f: CompiledFilter[Js.Value]): CompiledFilter[Js.Value] = { jsv: Js.Value =>
+  override def collectResults(f: CompiledFilter[Js.Value]): CompiledFilter[Js.Value] = { jsv: Js.Value =>
     f(jsv).flatMap {
       _.traverseM {
         case arr: Js.Arr =>
@@ -152,6 +153,6 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
     } yield kvPairsProducts.map(Js.Obj(_: _*))
   }
 
-  def platformPrelude = UpicklePrelude
+  override def platformPrelude = UpicklePrelude
 
 }

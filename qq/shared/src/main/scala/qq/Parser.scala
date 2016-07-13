@@ -30,7 +30,7 @@ object Parser {
   }
 
   val dot: P0 = P(".")
-  val fetch: P[Filter] = P("fetch") map (_ => Filter.fetch)
+  val fetch: P[Filter] = P("fetch") map (_ => FilterDSL.fetch)
   val quote: P0 = P("\"")
 
   def isStringLiteralChar(c: Char): Boolean = Character.isAlphabetic(c) || Character.isDigit(c)
@@ -54,36 +54,36 @@ object Parser {
   )
 
   val selectKey: P[Filter] = P(
-    (escapedStringLiteral | stringLiteral) map Filter.selectKey
+    (escapedStringLiteral | stringLiteral) map FilterDSL.selectKey
   )
 
   val selectIndex: P[Filter] = P(
     for {
       fun <- wspStr("-").!.? map (_.cata(_ => (i: Int) => -i, identity[Int] _))
       number <- numericLiteral
-    } yield Filter.selectIndex(fun(number))
+    } yield FilterDSL.selectIndex(fun(number))
   )
 
   val selectRange: P[Filter] = P(
-    (numericLiteral ~ ":" ~/ numericLiteral) map (Filter.selectRange _).tupled
+    (numericLiteral ~ ":" ~/ numericLiteral) map (FilterDSL.selectRange _).tupled
   )
 
   val dottableSimpleFilter: P[Filter] = P(
-    ("[" ~/ ((escapedStringLiteral map Filter.selectKey) | selectRange | selectIndex) ~ "]") | selectKey | selectIndex
+    ("[" ~/ ((escapedStringLiteral map FilterDSL.selectKey) | selectRange | selectIndex) ~ "]") | selectKey | selectIndex
   )
 
   val dottableFilter: P[Filter] = P(
     for {
       s <- dottableSimpleFilter
-      f <- "[]".!.?.map(_.cata(_ => Filter.collectResults _, identity[Filter] _))
+      f <- "[]".!.?.map(_.cata(_ => FilterDSL.collectResults _, identity[Filter] _))
     } yield f(s)
   )
 
   val dottedFilter: P[Filter] = P(
     dot ~
-      (wspStr("[]") >| Filter.collectResults(Filter.id) | dottableFilter)
+      (wspStr("[]") >| FilterDSL.collectResults(FilterDSL.id) | dottableFilter)
         .rep(sep = dot)
-        .map(_.foldLeft[Filter](Filter.id)(Filter.compose))
+        .map(_.foldLeft[Filter](FilterDSL.id)(FilterDSL.compose))
   )
 
   private val filterIdentifier: P[String] = P(
@@ -94,27 +94,27 @@ object Parser {
     for {
       identifier <- filterIdentifier
       params <- ("(" ~/ whitespace ~ filter.rep(min = 1, sep = whitespace ~ ";" ~ whitespace) ~ whitespace ~ ")").?.map(_.getOrElse(Nil))
-    } yield Filter.call(identifier, params)
+    } yield FilterDSL.call(identifier, params)
   )
 
-  val constInt: P[Filter] = P(numericLiteral map (Filter.constNumber(_)))
-  val constString: P[Filter] = P(escapedStringLiteral map Filter.constString)
+  val constInt: P[Filter] = P(numericLiteral map (FilterDSL.constNumber(_)))
+  val constString: P[Filter] = P(escapedStringLiteral map FilterDSL.constString)
 
   val smallFilter: P[Filter] = P(constInt | constString | dottedFilter | callFilter)
 
   val enlistedFilter: P[Filter] = P(
-    "[" ~/ filter.map(Filter.enlist) ~ "]"
+    "[" ~/ filter.map(FilterDSL.enlist) ~ "]"
   )
 
   // The reason I avoid using basicFilter is to avoid a parsing ambiguity with ensequencedFilters
   val enjectPair: P[(String \/ Filter, Filter)] = P(
     ((("(" ~/ filter ~ ")").map(_.right[String]) |
       filterIdentifier.map(_.left[Filter])) ~ ":" ~ whitespace ~ piped) |
-      filterIdentifier.map(id => -\/(id) -> Filter.selectKey(id))
+      filterIdentifier.map(id => -\/(id) -> FilterDSL.selectKey(id))
   )
 
   val enjectedFilter: P[Filter] = P(
-    "{" ~/ whitespace ~ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(Filter.enject) ~ whitespace ~ "}"
+    "{" ~/ whitespace ~ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(FilterDSL.enject) ~ whitespace ~ "}"
   )
 
   def binaryOperators[A](rec: P[A], op1: (String, (A, A) => A), ops: (String, (A, A) => A)*): P[A] = {
@@ -126,16 +126,16 @@ object Parser {
   }
 
   val sequenced: P[Filter] =
-    P(binaryOperators[Filter](piped, "," -> Filter.ensequence _))
+    P(binaryOperators[Filter](piped, "," -> FilterDSL.ensequence _))
 
   val piped: P[Filter] =
-    P(binaryOperators[Filter](expr, "|" -> Filter.compose _))
+    P(binaryOperators[Filter](expr, "|" -> FilterDSL.compose _))
 
   val expr: P[Filter] =
-    P(binaryOperators[Filter](term, "+" -> Filter.add _, "-" -> Filter.subtract))
+    P(binaryOperators[Filter](term, "+" -> FilterDSL.add _, "-" -> FilterDSL.subtract))
 
   val term: P[Filter] =
-    P(binaryOperators[Filter](factor, "*" -> Filter.multiply _, "/" -> Filter.divide _, "%" -> Filter.modulo _))
+    P(binaryOperators[Filter](factor, "*" -> FilterDSL.multiply _, "/" -> FilterDSL.divide _, "%" -> FilterDSL.modulo _))
 
   val factor: P[Filter] =
     P(("(" ~ sequenced ~ ")") | smallFilter | enjectedFilter | enlistedFilter)
@@ -143,7 +143,7 @@ object Parser {
   val filter: P[Filter] = P(
     for {
       f <- sequenced
-      fun <- "?".!.?.map(_.fold(identity[Filter] _)(_ => Filter.silence))
+      fun <- "?".!.?.map(_.fold(identity[Filter] _)(_ => FilterDSL.silence))
     } yield fun(f)
   )
 

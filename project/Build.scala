@@ -9,7 +9,7 @@ import upickle.Js
 object DashboarderBuild extends Build {
 
   val commonDeps = Seq(libraryDependencies ++= Seq(
-    "org.scalatest" %% "scalatest" % "3.0.0-RC4" % "test",
+    "org.scalatest" %%% "scalatest" % "3.0.0-RC4" % "test",
     "com.lihaoyi" %%% "upickle" % "0.4.0",
     "com.lihaoyi" %%% "pprint" % "0.4.0",
     "com.lihaoyi" %%% "fastparse" % "0.3.7",

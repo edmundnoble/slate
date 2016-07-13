@@ -1,28 +1,30 @@
 package qq
 
 import matryoshka._
-import qq.Filter._
+import qq.FilterDSL._
 
 class OptimizerTest extends QQTestSuite {
 
+  import Optimizer.optimize
+
   "optimize simple compositions" in {
-    Optimizer.optimize(compose(id, selectKey("key"))) should equal(selectKey("key"))
-    Optimizer.optimize(compose(id, compose(selectKey("key"), id))) should equal(selectKey("key"))
+    optimize(compose(id, selectKey("key"))) should equal(selectKey("key"))
+    optimize(compose(id, compose(selectKey("key"), id))) should equal(selectKey("key"))
   }
 
   "optimize collectresults and enlist duality" in {
-    Optimizer.optimize(collectResults(enlist(id))) should equal(id)
-    Optimizer.optimize(enlist(collectResults(id))) should equal(id)
+    optimize(collectResults(enlist(id))) should equal(id)
+    optimize(enlist(collectResults(id))) should equal(id)
   }
 
   "do nested optimizations" in {
-    Optimizer.optimize(
+    optimize(
       collectResults(compose(id, compose(id, enlist(id))))
     ) should equal(id)
   }
 
   "optimize all math in constant expressions" in {
-    Optimizer.optimize(
+    optimize(
       add(
         multiply(
           constNumber(5.4),

@@ -24,7 +24,7 @@ object JSRuntime extends QQRuntime[AnyRef] {
 
   override def constString(str: String): CompiledFilter[AnyRef] = _ => Task.now(str :: Nil)
 
-  def addJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
+  override def addJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
     case (f: java.lang.Double, s: java.lang.Double) =>
       Task.now(Double.box(f.doubleValue() + s.doubleValue()))
     case (f: String, s: String) =>
@@ -39,7 +39,7 @@ object JSRuntime extends QQRuntime[AnyRef] {
       Task.raiseError(QQRuntimeException(s"can't add $f and $s"))
   }
 
-  def subtractJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
+  override def subtractJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
     case (f: java.lang.Double, s: java.lang.Double) =>
       Task.now(Double.box(f.doubleValue() - s.doubleValue()))
     case (f: js.Array[AnyRef@unchecked], s: js.Array[AnyRef@unchecked]) =>
@@ -51,7 +51,7 @@ object JSRuntime extends QQRuntime[AnyRef] {
       Task.raiseError(QQRuntimeException(s"can't subtract $f and $s"))
   }
 
-  def multiplyJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
+  override def multiplyJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
     case (f: java.lang.Double, s: java.lang.Double) =>
       Task.now(Double.box(f.doubleValue() * s.doubleValue()))
     case (f: String, s: java.lang.Integer) =>
@@ -64,14 +64,14 @@ object JSRuntime extends QQRuntime[AnyRef] {
       Task.raiseError(QQRuntimeException(s"can't multiply $f and $s"))
   }
 
-  def divideJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
+  override def divideJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
     case (f: java.lang.Double, s: java.lang.Double) =>
       Task.now(Double.box(f.doubleValue() / s.doubleValue()))
     case (f, s) =>
       Task.raiseError(QQRuntimeException(s"can't divide $f by $s"))
   }
 
-  def moduloJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
+  override def moduloJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
     case (f: java.lang.Double, s: java.lang.Double) =>
       Task.now(Double.box(f.doubleValue() % s.doubleValue()))
     case (f, s) =>
