@@ -170,7 +170,14 @@ object DashboarderBuild extends Build {
   val otherSettings: Seq[sbt.Def.Setting[_]] = Seq(
     version := "0.0.1",
     scalaVersion := "2.11.8",
-    scalacOptions += "-Ywarn-value-discard",
+    scalacOptions ++= Seq(
+      "-Ywarn-value-discard",
+      "-Ywarn-adapted-args",
+      "-Ywarn-adapted-args",
+      "-Ywarn-inaccessible",
+      "-Ywarn-infer-any",
+      "-Ywarn-nullary-override",
+      "-Ywarn-nullary-unit"),
     persistLauncher in Compile := true,
     persistLauncher in Test := false,
     addCompilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full),
@@ -193,6 +200,12 @@ object DashboarderBuild extends Build {
   lazy val qqjvm = qq.jvm
   lazy val qqjs = qq.js
 
+  private val disableTests: Seq[Def.Setting[_]] = Seq(
+    test in Test := {},
+    testQuick in Test := {},
+    testOnly in Test := {}
+  )
+
   lazy val ui = Project(id = "ui", base = file("ui"))
     .dependsOn(qqjs)
     .settings(ScalaJSPlugin.projectSettings)
@@ -202,6 +215,7 @@ object DashboarderBuild extends Build {
     .settings(jsSettings)
     .settings(commonDeps)
     .settings(uiDeps)
+    .settings(disableTests)
 
   def dependOnChrome[T](taskKey: TaskKey[T]): Def.Setting[Task[T]] =
     taskKey <<= taskKey.dependsOn(chromeBuildFast in ui)
@@ -212,7 +226,7 @@ object DashboarderBuild extends Build {
     .settings(otherSettings)
     .settings(commonDeps)
     .settings(dependOnChrome(testOptions in Test))
-    .settings((testQuick in Test) := { throw new IllegalStateException("testQuick does not work") } )
+    .settings((testQuick in Test) := (test in Test).value)
 
   lazy val root: Project = Project(id = "root", base = file("."))
     .aggregate(ui, uitests, qqjvm, qqjs)

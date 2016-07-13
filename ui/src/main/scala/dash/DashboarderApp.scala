@@ -1,7 +1,5 @@
 package dash
 
-import java.util.regex.Pattern
-
 import com.thoughtworks.each.Monadic._
 import dash.DashboardPage.{Filter, Issue, SearchResult}
 import japgolly.scalajs.react.{Addons, ReactDOM}
@@ -13,17 +11,13 @@ import qq.Util._
 import upickle.{Js, json}
 
 import scala.concurrent.duration._
-import scala.scalajs.js.{Date, JSON}
 import scala.scalajs.js.annotation.JSExport
-import scala.util.Try
 import scalaz.syntax.traverse._
 import scalaz.std.list._
-import scalaz.std.vector._
+import scala.scalajs.js
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
-
-  import scala.scalajs.js
 
   private[this] val logger = LoggerFactory.getLogger("DashboarderApp")
 
@@ -34,7 +28,6 @@ object DashboarderApp extends scalajs.js.JSApp {
   @JSExport
   def main(): Unit = {
     val fetchSearchResults = monadic[Task] {
-
       implicit val ajaxTimeout = Ajax.Timeout(4000.millis)
 
       val searchRequests = for {
@@ -63,15 +56,13 @@ object DashboarderApp extends scalajs.js.JSApp {
           |  status: .fields.status.name
           |}""".stripMargin
       ).fold(Task.raiseError, Task.now).each
-      val searchResultStream = searchRequests.flatMap {
+      searchRequests.flatMap {
         case (filter, responses) =>
           responses.traverse[Observable, List[Issue]] { r =>
             val results = compiledQQProgram(upickle.json read r.responseText)
             Observable.fromTask(results map (_ flatMap (Issue.pkl.read.lift(_))))
           }.strengthL(filter)
-      }
-
-      searchResultStream.map { searchResults =>
+      }.map { searchResults =>
         searchResults.zipped.map(SearchResult(_, _))(collection.breakOut)
       }
     }

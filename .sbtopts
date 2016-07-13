@@ -1,0 +1,4 @@
+-J-Xms4G
+-J-Xmx4G
+-J-XX:+CMSClassUnloadingEnabled
+-J-XX:MaxPermSize=1G
