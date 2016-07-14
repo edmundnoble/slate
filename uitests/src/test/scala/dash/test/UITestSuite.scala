@@ -7,8 +7,9 @@ import org.openqa.selenium.chrome.{ChromeDriverService, ChromeOptions}
 import org.openqa.selenium.remote.{DesiredCapabilities, RemoteWebDriver}
 import org.scalatest._
 import org.scalatest.selenium.{Page, WebBrowser}
+import org.scalatest.time.{Seconds, Span}
 
-class UITestSuite extends FreeSpec with Matchers with WebBrowser with BeforeAndAfterAll {
+class UITestSuite extends FreeSpec with Matchers with WebBrowser with BeforeAndAfterAll with OptionValues {
   val chromeDriverService =
     new ChromeDriverService.Builder()
       .usingDriverExecutable(new File("/usr/local/sbin/chromedriver"))
@@ -22,6 +23,8 @@ class UITestSuite extends FreeSpec with Matchers with WebBrowser with BeforeAndA
   capabilities.setCapability(ChromeOptions.CAPABILITY, options)
 
   object Newtab extends Page {
+    val reactRoot = "react-root"
+    val container = "container"
     override val url: String = "chrome://newtab"
   }
 
@@ -32,6 +35,7 @@ class UITestSuite extends FreeSpec with Matchers with WebBrowser with BeforeAndA
 
   override def withFixture(test: NoArgTest): Outcome = {
     webDriver = makeChromeDriver()
+    implicitlyWait(Span(10, Seconds))
     go to Newtab
     val outcome = super.withFixture(test)
     close()

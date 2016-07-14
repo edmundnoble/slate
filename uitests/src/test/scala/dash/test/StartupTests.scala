@@ -1,17 +1,10 @@
 package dash.test
 
-import java.io.File
-
-import org.openqa.selenium.chrome.ChromeOptions
-import org.openqa.selenium.remote.{DesiredCapabilities, RemoteWebDriver}
-import org.scalatest.selenium.Page
-import org.scalatest.time.{Seconds, Span}
-
 class StartupTests extends UITestSuite {
 
-  "testy test" in {
-    implicitlyWait(Span(4, Seconds))
-    println(pageSource)
+  "roots should show up" in {
+    find(Newtab.container).value should be('displayed)
+    find(Newtab.reactRoot).value should be('displayed)
   }
 
 }

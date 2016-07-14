@@ -69,6 +69,7 @@ object DashboardPage {
         .noBackend
         .renderS { ($, state) =>
           <.div(Styles.render[ReactElement],
+            ^.id := "react-root",
             <.div(Styles.appBar,
               <.table(
                 <.tr(Styles.appBarRow,
