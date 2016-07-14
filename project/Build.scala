@@ -167,10 +167,11 @@ object DashboarderBuild extends Build {
   lazy val replMain =
     mainClass in(Compile, run) := Some("qq.InterpreterMain")
 
-  val otherSettings: Seq[sbt.Def.Setting[_]] = Seq(
+  val baseSettings: Seq[sbt.Def.Setting[_]] = Seq(
     version := "0.0.1",
     scalaVersion := "2.11.8",
     scalacOptions ++= Seq(
+      "-Xlint",
       "-Ywarn-value-discard",
       "-Ywarn-adapted-args",
       "-Ywarn-adapted-args",
@@ -190,7 +191,7 @@ object DashboarderBuild extends Build {
   )
 
   lazy val qq: CrossProject = crossProject.in(file("qq"))
-    .settings(otherSettings: _*)
+    .settings(baseSettings: _*)
     .settings(commonDeps: _*)
     .settings(replMain: _*)
     .jsSettings(scalaJSUseRhino in Global := false)
@@ -210,7 +211,7 @@ object DashboarderBuild extends Build {
     .dependsOn(qqjs)
     .settings(ScalaJSPlugin.projectSettings)
     .enablePlugins(ScalaJSPlugin)
-    .settings(otherSettings)
+    .settings(baseSettings)
     .settings(chromeTasks)
     .settings(jsSettings)
     .settings(commonDeps)
@@ -223,7 +224,7 @@ object DashboarderBuild extends Build {
   lazy val uitests = Project(id = "uitests", base = file("uitests"))
     .dependsOn(ui)
     .settings(libraryDependencies += "org.seleniumhq.selenium" % "selenium-java" % "2.35.0" % "test")
-    .settings(otherSettings)
+    .settings(baseSettings)
     .settings(commonDeps)
     .settings(dependOnChrome(testOptions in Test))
     .settings((testQuick in Test) := (test in Test).value)
@@ -231,7 +232,7 @@ object DashboarderBuild extends Build {
   lazy val root: Project = Project(id = "root", base = file("."))
     .aggregate(ui, uitests, qqjvm, qqjs)
     .settings(Defaults.projectCore)
-    .settings(otherSettings)
+    .settings(baseSettings)
     .settings(ScalaJSPlugin.globalSettings)
 
 }
