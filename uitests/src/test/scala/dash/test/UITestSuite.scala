@@ -10,7 +10,7 @@ import org.scalatest.matchers.{BeMatcher, MatchResult}
 import org.scalatest.selenium.{Page, WebBrowser}
 import org.scalatest.time.{Seconds, Span}
 
-class UITestSuite extends FreeSpec with Matchers with WebBrowser with BeforeAndAfterAll with OptionValues {
+abstract class UITestSuite extends FreeSpec with Matchers with WebBrowser with BeforeAndAfterAll with OptionValues {
   val displayed = new BeMatcher[Element] {
     override def apply(left: Element): MatchResult =
       MatchResult(
@@ -49,6 +49,7 @@ class UITestSuite extends FreeSpec with Matchers with WebBrowser with BeforeAndA
     go to "chrome://newtab"
     val outcome = super.withFixture(test)
     close()
+    webDriver = null
     outcome
   }
 

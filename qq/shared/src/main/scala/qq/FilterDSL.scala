@@ -2,7 +2,7 @@ package qq
 
 import scala.language.higherKinds
 import scalaz.\/
-import matryoshka._
+import matryoshka.Fix
 
 object FilterDSL {
 

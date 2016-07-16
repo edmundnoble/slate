@@ -3,8 +3,10 @@ package qq
 import matryoshka._
 import FunctorT.ops._
 
-import scalaz.NonEmptyList
+import scala.util.control.TailCalls.TailRec
 import scalaz.syntax.foldable1._
+import scalaz.syntax.functor._
+import scalaz.{Functor, NonEmptyList}
 
 object Optimizer {
 
@@ -43,6 +45,6 @@ object Optimizer {
   val optimizations: NonEmptyList[Optimization] =
     NonEmptyList(idCompose, collectEnlist, MathOptimizations.constReduce)
   val allOptimizationsƒ: Filter => Filter = repeatedly(optimizations.foldLeft1(_ orElse _).lift)
-  def optimize(f: Filter): Filter = f.transCataT(allOptimizationsƒ)
+  def optimize(f: Filter): Filter = SafeRec.transCataT(f)(allOptimizationsƒ).result
 
 }

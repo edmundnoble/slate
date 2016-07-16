@@ -1,5 +1,6 @@
 package qq
 
+import matryoshka.Fix
 import matryoshka.Recursive.ops._
 import monix.eval.Task
 import qq.FilterComponent._
@@ -25,7 +26,8 @@ object QQCompiler {
   type OrCompilationError[T] = QQCompilationException \/ T
 
   @inline
-  def composeCompiledFilters[AnyTy](firstFilter: CompiledFilter[AnyTy], secondFilter: CompiledFilter[AnyTy]): CompiledFilter[AnyTy] = { jsv: AnyTy =>
+  def composeCompiledFilters[AnyTy]
+  (firstFilter: CompiledFilter[AnyTy], secondFilter: CompiledFilter[AnyTy]): CompiledFilter[AnyTy] = { jsv: AnyTy =>
     for {
       firstResult <- firstFilter(jsv)
       secondResult <- firstResult.traverse(secondFilter)
@@ -33,12 +35,14 @@ object QQCompiler {
   }
 
   @inline
-  def ensequenceCompiledFilters[AnyTy](first: CompiledFilter[AnyTy], second: CompiledFilter[AnyTy]): CompiledFilter[AnyTy] = { jsv: AnyTy =>
+  def ensequenceCompiledFilters[AnyTy]
+  (first: CompiledFilter[AnyTy], second: CompiledFilter[AnyTy]): CompiledFilter[AnyTy] = { jsv: AnyTy =>
     Task.mapBoth(first(jsv), second(jsv)) { (a, b) => a ++ b }
   }
 
   @inline
-  def zipFiltersWith[AnyTy](first: CompiledFilter[AnyTy], second: CompiledFilter[AnyTy], fun: (AnyTy, AnyTy) => Task[AnyTy]): CompiledFilter[AnyTy] = { jsv: AnyTy =>
+  def zipFiltersWith[AnyTy]
+  (first: CompiledFilter[AnyTy], second: CompiledFilter[AnyTy], fun: (AnyTy, AnyTy) => Task[AnyTy]): CompiledFilter[AnyTy] = { jsv: AnyTy =>
     Task.mapBoth(first(jsv), second(jsv)) { (f, s) => (f, s).zipped.map(fun) }.map(_.sequence).flatten
   }
 
@@ -104,7 +108,8 @@ object QQCompiler {
       sharedDefinitions <- SharedPreludes[AnyTy].all(runtime)
       platformSpecificDefinitions <- runtime.platformPrelude.all(runtime)
       allDefinitions = sharedDefinitions ++ platformSpecificDefinitions ++ definitions
-      compiledProgram <- filter.cataM[OrCompilationError, CompiledFilter[AnyTy]](compileStep(runtime, allDefinitions, _))
+      compiledProgram <-
+      SafeRec.cataM[Fix, FilterComponent, OrCompilationError, CompiledFilter[AnyTy]](filter)(compileStep(runtime, allDefinitions, _)).result
     } yield compiledProgram
 
 }

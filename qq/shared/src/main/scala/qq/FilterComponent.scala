@@ -8,6 +8,13 @@ import scalaz.std.list._
 sealed abstract class FilterComponent[A]
 
 object FilterComponent {
+
+  // AST nodes with no child nodes
+  sealed abstract class LeafComponent[A] extends FilterComponent[A] {
+    @inline
+    final def retag[B]: LeafComponent[B] = this.asInstanceOf[LeafComponent[B]]
+  }
+
   final case class IdFilter[A]() extends LeafComponent[A]
   final case class FetchApi[A]() extends LeafComponent[A]
   final case class ComposeFilters[A](first: A, second: A) extends FilterComponent[A]
@@ -18,12 +25,6 @@ object FilterComponent {
   final case class EnjectFilters[A](obj: List[((String \/ A), A)]) extends FilterComponent[A]
 
   final case class CallFilter[A](name: String, params: List[A]) extends FilterComponent[A]
-
-  // AST nodes with no child nodes
-  sealed abstract class LeafComponent[A] extends FilterComponent[A] {
-    @inline
-    final def retag[B]: LeafComponent[B] = this.asInstanceOf[LeafComponent[B]]
-  }
 
   final case class AddFilters[A](first: A, second: A) extends FilterComponent[A]
   final case class SubtractFilters[A](first: A, second: A) extends FilterComponent[A]

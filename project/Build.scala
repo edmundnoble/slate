@@ -234,5 +234,6 @@ object DashboarderBuild extends Build {
     .settings(Defaults.projectCore)
     .settings(baseSettings)
     .settings(ScalaJSPlugin.globalSettings)
+    .settings(disableTests)
 
 }

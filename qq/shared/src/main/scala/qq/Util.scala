@@ -3,6 +3,8 @@ package qq
 import monix.eval.Task
 import monix.reactive.Observable
 
+import scala.util.control.TailCalls
+import scala.util.control.TailCalls.TailRec
 import scalaz.{Monad, ~>}
 
 object Util {
@@ -17,6 +19,10 @@ object Util {
     override def bind[A, B](fa: Observable[A])(f: (A) => Observable[B]): Observable[B] = fa.flatMap(f)
   }
 
+  implicit val TailRecMonad = new Monad[TailRec] {
+    override def point[A](a: => A): TailRec[A] = TailCalls.done(a)
+    override def bind[A, B](fa: TailRec[A])(f: (A) => TailRec[B]): TailRec[B] = fa.flatMap(f)
+  }
 
   def withPrefixes[A](xss: List[List[A]], ys: List[A]): List[List[A]] =
     for {xs <- xss; y <- ys} yield y :: xs

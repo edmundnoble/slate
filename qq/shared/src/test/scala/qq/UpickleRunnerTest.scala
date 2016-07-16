@@ -4,6 +4,8 @@ import qq.TestUtil._
 import monix.execution.Scheduler.Implicits.global
 
 import scala.concurrent.Future
+import scalaz.{\/, \/-}
+import scalaz.syntax.std.`try`._
 
 class UpickleRunnerTest extends QQTestSuite {
 
@@ -12,10 +14,9 @@ class UpickleRunnerTest extends QQTestSuite {
   def runTest(test: RunnerTest): Future[Any] =
     Runner
       .run(UpickleRuntime, test.program)(List(test.input))
+      .materialize
+      .map { outputOrExceptionTry => outputOrExceptionTry.toDisjunction shouldBe test.expectedOutputOrException }
       .runFuture
-      .transform(_ should equal(test.expectedOutput.valueOr(ex => throw ex)), { ex =>
-        ex should equal(test.expectedOutput.swap.getOrElse(???)); ex
-      })
 
   "identity" in runTest(identityProgram)
   "ensequenced filters" in runTest(ensequencedFilters)

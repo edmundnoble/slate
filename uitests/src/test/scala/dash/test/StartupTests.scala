@@ -2,14 +2,16 @@ package dash.test
 
 class StartupTests extends UITestSuite {
 
+  import Elements._
+
   "roots should be displayed" in {
-    Elements.container should be(displayed)
-    Elements.reactRoot should be(displayed)
+    container shouldBe displayed
+    reactRoot shouldBe displayed
   }
 
   "appbar should be displayed with text" in {
-    Elements.appbar should be(displayed)
-    Elements.appbar.text should be("Dashboarder")
+    appbar shouldBe displayed
+    appbar.text shouldBe "Dashboarder"
   }
 
 }

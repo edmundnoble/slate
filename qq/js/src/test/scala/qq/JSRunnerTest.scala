@@ -4,6 +4,7 @@ import qq.TestUtil._
 import qq.jsc.JSRuntime
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.Future
+import scalaz.syntax.std.`try`._
 
 class JSRunnerTest extends QQTestSuite {
 
@@ -12,15 +13,12 @@ class JSRunnerTest extends QQTestSuite {
   def runTest(test: RunnerTest): Future[Any] =
     Runner
       .run(JSRuntime, test.program)(List(upickle.json.writeJs(test.input).asInstanceOf[AnyRef]))
+      .materialize
+      .map { outputOrExceptionTry =>
+        val outputUpickleOrExceptionTry = outputOrExceptionTry.map(upickle.json.readJs)
+        outputUpickleOrExceptionTry.toDisjunction shouldBe test.expectedOutputOrException
+      }
       .runFuture
-      .transform(
-        { out =>
-          val js = out.map(upickle.json.readJs)
-          js should equal(test.expectedOutput.valueOr(ex => throw ex))
-        }, { ex =>
-          ex should equal(test.expectedOutput.swap.getOrElse(???)); ex
-        }
-      )
 
   "identity" in runTest(identityProgram)
   "ensequenced filters" in runTest(ensequencedFilters)

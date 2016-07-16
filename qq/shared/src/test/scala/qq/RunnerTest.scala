@@ -5,7 +5,7 @@ import upickle.Js
 import scalaz.\/
 import scalaz.syntax.either._
 
-case class RunnerTest(program: String, input: Js.Value, expectedOutput: Exception \/ List[Js.Value])
+case class RunnerTest(program: String, input: Js.Value, expectedOutputOrException: Exception \/ List[Js.Value])
 
 object RunnerTest {
 

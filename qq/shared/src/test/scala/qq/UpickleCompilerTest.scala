@@ -2,7 +2,7 @@ package qq
 
 import scala.concurrent.Future
 import TestUtil._
-
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 
 class UpickleCompilerTest extends QQTestSuite {
@@ -10,12 +10,13 @@ class UpickleCompilerTest extends QQTestSuite {
   import CompilerTest._
 
   def testRun(qQDoubleCompilerTest: CompilerTest) = qQDoubleCompilerTest match {
-    case CompilerTest(filter, input, result) =>
+    case CompilerTest(filter, input, expectedOutput) =>
       QQCompiler
         .compile(UpickleRuntime, Nil, filter)
-        .getOrElse(???)(input)
+        .fold[Task[Unit]](
+        err => Task.raiseError(err),
+        program => program(input).map { output => output shouldBe expectedOutput })
         .runFuture
-        .map (_ should equal(result))
   }
 
   "select keys" in Future.traverse(selectKeyTest)(testRun)
@@ -23,5 +24,6 @@ class UpickleCompilerTest extends QQTestSuite {
   "id" in Future.traverse(idTest)(testRun)
   "select range" in Future.traverse(selectRangeTest)(testRun)
   "collect results" in Future.traverse(collectResultsTest)(testRun)
+  "fat stack" in testRun(fatStackTest)
 
 }

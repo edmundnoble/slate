@@ -12,25 +12,25 @@ import com.thoughtworks.each.Monadic._
 import qq._
 import qq.Util._
 
-object JSPrelude extends PlatformPrelude[AnyRef] {
+object JSPrelude extends PlatformPrelude[Any] {
 
-  override def length: CompiledDefinition[AnyRef] =
+  override def length: CompiledDefinition[Any] =
     noParamDefinition(
       "length", {
-        case arr: js.Array[js.Any@unchecked] => Task.now(Int.box(arr.length) :: Nil)
-        case str: String => Task.now(Int.box(str.length) :: Nil)
-        case obj: js.Object => Task.now(Int.box(obj.asInstanceOf[js.Dictionary[js.Any]].toArray.length) :: Nil)
-        case null => Task.now(Int.box(0) :: Nil)
+        case arr: js.Array[js.Any@unchecked] => Task.now(arr.length :: Nil)
+        case str: String => Task.now(str.length :: Nil)
+        case obj: js.Object => Task.now(obj.asInstanceOf[js.Dictionary[js.Any]].toArray.length :: Nil)
+        case null => Task.now(0 :: Nil)
         case k => Task.raiseError(QQRuntimeException(s"Tried to get length of $k"))
       }
     )
 
 
-  override def replaceAll: CompiledDefinition[AnyRef] =
-    CompiledDefinition[AnyRef](name = "replaceAll", numParams = 2,
+  override def replaceAll: CompiledDefinition[Any] =
+    CompiledDefinition[Any](name = "replaceAll", numParams = 2,
       body = {
         case (regexFilter :: replacementFilter :: Nil) => {
-          (jsv: AnyRef) =>
+          (jsv: Any) =>
             monadic[Task] {
               val regexes: List[Pattern] = regexFilter(jsv).each.traverse[Task, Pattern] {
                 case string: String => Task.now(Pattern.compile(string))
@@ -43,17 +43,17 @@ object JSPrelude extends PlatformPrelude[AnyRef] {
               val valueRegexReplacementList = (regexes, replacements).zipped.map { case (regex, replacement) =>
                 jsv match {
                   case string: String =>
-                    Task.now(regex.matcher(string).replaceAll(replacement): AnyRef)
+                    Task.now(regex.matcher(string).replaceAll(replacement): Any)
                   case j => Task.raiseError(QQRuntimeException(s"can't replace ${j.toString}"))
                 }
-              }.sequence[Task, AnyRef].each
+              }.sequence[Task, Any].each
               valueRegexReplacementList
             }
         }.right[QQCompilationException]
       }
     )
 
-  override def keys: CompiledDefinition[AnyRef] =
+  override def keys: CompiledDefinition[Any] =
     noParamDefinition(
       "keys", {
         case obj: js.Object => Task.now(js.Array(obj.asInstanceOf[js.Dictionary[js.Any]].keys.toSeq: _*) :: Nil)
@@ -61,7 +61,7 @@ object JSPrelude extends PlatformPrelude[AnyRef] {
       }
     )
 
-  override def arrays: CompiledDefinition[AnyRef] =
+  override def arrays: CompiledDefinition[Any] =
     noParamDefinition(
       "arrays", {
         case null => Task.now(Nil)
@@ -69,7 +69,7 @@ object JSPrelude extends PlatformPrelude[AnyRef] {
         case k => Task.now(Nil)
       })
 
-  override def objects: CompiledDefinition[AnyRef] =
+  override def objects: CompiledDefinition[Any] =
     noParamDefinition(
       "objects", {
         case null => Task.now(Nil)
@@ -78,7 +78,7 @@ object JSPrelude extends PlatformPrelude[AnyRef] {
         case k => Task.now(Nil)
       })
 
-  override def iterables: CompiledDefinition[AnyRef] =
+  override def iterables: CompiledDefinition[Any] =
     noParamDefinition(
       "iterables", {
         case null => Task.now(Nil)
@@ -87,7 +87,7 @@ object JSPrelude extends PlatformPrelude[AnyRef] {
         case k => Task.now(Nil)
       })
 
-  override def booleans: CompiledDefinition[AnyRef] =
+  override def booleans: CompiledDefinition[Any] =
     noParamDefinition(
       "booleans", {
         case null => Task.now(Nil)
@@ -95,7 +95,7 @@ object JSPrelude extends PlatformPrelude[AnyRef] {
         case k => Task.now(Nil)
       })
 
-  override def numbers: CompiledDefinition[AnyRef] =
+  override def numbers: CompiledDefinition[Any] =
     noParamDefinition(
       "numbers", {
         case null => Task.now(Nil)
@@ -103,7 +103,7 @@ object JSPrelude extends PlatformPrelude[AnyRef] {
         case k => Task.now(Nil)
       })
 
-  override def strings: CompiledDefinition[AnyRef] =
+  override def strings: CompiledDefinition[Any] =
     noParamDefinition(
       "strings", {
         case null => Task.now(Nil)
@@ -111,21 +111,21 @@ object JSPrelude extends PlatformPrelude[AnyRef] {
         case k => Task.now(Nil)
       })
 
-  override def nulls: CompiledDefinition[AnyRef] =
+  override def nulls: CompiledDefinition[Any] =
     noParamDefinition(
       "nulls", {
         case null => Task.now(null :: Nil)
         case k => Task.now(Nil)
       })
 
-  override def values: CompiledDefinition[AnyRef] =
+  override def values: CompiledDefinition[Any] =
     noParamDefinition(
       "values", {
         case null => Task.now(Nil)
         case k => Task.now(k :: Nil)
       })
 
-  override def scalars: CompiledDefinition[AnyRef] =
+  override def scalars: CompiledDefinition[Any] =
     noParamDefinition(
       "scalars", {
         case arr: js.Array[_] => Task.now(Nil)

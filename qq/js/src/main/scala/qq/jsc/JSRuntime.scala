@@ -15,78 +15,78 @@ import scalaz.syntax.traverse._
 import scalaz.{-\/, NonEmptyList, \/, \/-}
 
 // This is a QQ runtime which executes all operations in native Javascript
-object JSRuntime extends QQRuntime[AnyRef] {
+object JSRuntime extends QQRuntime[Any] {
 
-  val taskOfListOfNull: Task[List[AnyRef]] = Task.now(List(null))
-  val emptyArray: js.Array[AnyRef] = new js.Array[AnyRef](0)
+  val taskOfListOfNull: Task[List[Any]] = Task.now(List(null))
+  val emptyArray: js.Array[Any] = new js.Array[Any](0)
 
-  override def constNumber(num: Double): CompiledFilter[AnyRef] = _ => Task.now(Double.box(num) :: Nil)
+  override def constNumber(num: Double): CompiledFilter[Any] = _ => Task.now((num) :: Nil)
 
-  override def constString(str: String): CompiledFilter[AnyRef] = _ => Task.now(str :: Nil)
+  override def constString(str: String): CompiledFilter[Any] = _ => Task.now(str :: Nil)
 
-  override def addJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
-    case (f: java.lang.Double, s: java.lang.Double) =>
-      Task.now(Double.box(f.doubleValue() + s.doubleValue()))
+  override def addJsValues(first: Any, second: Any): Task[Any] = (first, second) match {
+    case (f: Double, s: Double) =>
+      Task.now(f + s)
     case (f: String, s: String) =>
       Task.now(f + s)
-    case (f: js.Array[AnyRef@unchecked], s: js.Array[AnyRef@unchecked]) =>
+    case (f: js.Array[Any@unchecked], s: js.Array[Any@unchecked]) =>
       Task.now(f.concat(s))
     case (f: js.Object, s: js.Object) =>
-      val firstMap = f.asInstanceOf[js.Dictionary[AnyRef]].toMap
-      val secondMap = s.asInstanceOf[js.Dictionary[AnyRef]].toMap
+      val firstMap = f.asInstanceOf[js.Dictionary[Any]].toMap
+      val secondMap = s.asInstanceOf[js.Dictionary[Any]].toMap
       Task.now(js.Dictionary((firstMap ++ secondMap).toSeq: _*))
     case (f, s) =>
       Task.raiseError(QQRuntimeException(s"can't add $f and $s"))
   }
 
-  override def subtractJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
-    case (f: java.lang.Double, s: java.lang.Double) =>
-      Task.now(Double.box(f.doubleValue() - s.doubleValue()))
-    case (f: js.Array[AnyRef@unchecked], s: js.Array[AnyRef@unchecked]) =>
+  override def subtractJsValues(first: Any, second: Any): Task[Any] = (first, second) match {
+    case (f: Double, s: Double) =>
+      Task.now(f - s)
+    case (f: js.Array[Any@unchecked], s: js.Array[Any@unchecked]) =>
       Task.now(f.filter(!s.contains(_)))
     case (f: js.Object, s: js.Object) =>
-      val contents: Seq[(String, AnyRef)] = (f.asInstanceOf[Dictionary[AnyRef]].toMap -- s.asInstanceOf[Dictionary[AnyRef]].toMap.keySet).toSeq
+      val contents: Seq[(String, Any)] = (f.asInstanceOf[Dictionary[Any]].toMap -- s.asInstanceOf[Dictionary[Any]].toMap.keySet).toSeq
       Task.now(js.Dictionary(contents: _*))
     case (f, s) =>
       Task.raiseError(QQRuntimeException(s"can't subtract $f and $s"))
   }
 
-  override def multiplyJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
-    case (f: java.lang.Double, s: java.lang.Double) =>
-      Task.now(Double.box(f.doubleValue() * s.doubleValue()))
-    case (f: String, s: java.lang.Integer) =>
-      Task.now(if (s.intValue() == 0) null else f * s.intValue())
+  override def multiplyJsValues(first: Any, second: Any): Task[Any] = (first, second) match {
+    case (f: Double, s: Double) =>
+      Task.now(f * s)
+    case (f: String, s: Int) =>
+      Task.now(if (s < 0) null else f * s)
     case (f: js.Object, s: js.Object) =>
-      val firstMap = f.asInstanceOf[js.Dictionary[AnyRef]].toMap.mapValues(Task.now)
-      val secondMap = s.asInstanceOf[Dictionary[AnyRef]].toMap.mapValues(Task.now)
+      val firstMap = f.asInstanceOf[js.Dictionary[Any]].toMap.mapValues(Task.now)
+      val secondMap = s.asInstanceOf[Dictionary[Any]].toMap.mapValues(Task.now)
       firstMap.unionWith(secondMap) { (f, s) => Task.mapBoth(f, s)(addJsValues).flatten }.sequence.map(o => js.Dictionary(o.toSeq: _*))
     case (f, s) =>
       Task.raiseError(QQRuntimeException(s"can't multiply $f and $s"))
   }
 
-  override def divideJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
-    case (f: java.lang.Double, s: java.lang.Double) =>
-      Task.now(Double.box(f.doubleValue() / s.doubleValue()))
+  override def divideJsValues(first: Any, second: Any): Task[Any] = (first, second) match {
+    case (f: Double, s: Double) =>
+      Task.now(f / s)
     case (f, s) =>
       Task.raiseError(QQRuntimeException(s"can't divide $f by $s"))
   }
 
-  override def moduloJsValues(first: AnyRef, second: AnyRef): Task[AnyRef] = (first, second) match {
-    case (f: java.lang.Double, s: java.lang.Double) =>
-      Task.now(Double.box(f.doubleValue() % s.doubleValue()))
+  override def moduloJsValues(first: Any, second: Any): Task[Any] = (first, second) match {
+    case (f: Double, s: Double) =>
+      Task.now(f % s)
     case (f, s) =>
       Task.raiseError(QQRuntimeException(s"can't modulo $f by $s"))
   }
 
-  override def enlistFilter(filter: CompiledFilter[AnyRef]): CompiledFilter[AnyRef] = { jsv: AnyRef =>
+  override def enlistFilter(filter: CompiledFilter[Any]): CompiledFilter[Any] = { jsv: Any =>
     for {
       results <- filter(jsv)
     } yield js.Array(results: _*) :: Nil
   }
 
-  override def selectKey(key: String): CompiledFilter[AnyRef] = {
+  override def selectKey(key: String): CompiledFilter[Any] = {
     case f: js.Object =>
-      f.asInstanceOf[js.Dictionary[AnyRef]].get(key) match {
+      f.asInstanceOf[js.Dictionary[Any]].get(key) match {
         case None => taskOfListOfNull
         case Some(v) => Task.now(v :: Nil)
       }
@@ -94,7 +94,7 @@ object JSRuntime extends QQRuntime[AnyRef] {
       Task.raiseError(QQRuntimeException(s"Tried to select key $key in $v but it's not a dictionary"))
   }
 
-  override def selectIndex(index: Int): CompiledFilter[AnyRef] = {
+  override def selectIndex(index: Int): CompiledFilter[Any] = {
     case f: js.Array[js.Object@unchecked] =>
       if (index >= -f.length) {
         if (index >= 0 && index < f.length) {
@@ -111,7 +111,7 @@ object JSRuntime extends QQRuntime[AnyRef] {
       Task.raiseError(QQRuntimeException(s"Tried to select index $index in $v but it's not an array"))
   }
 
-  override def selectRange(start: Int, end: Int): CompiledFilter[AnyRef] = {
+  override def selectRange(start: Int, end: Int): CompiledFilter[Any] = {
     case f: js.Array[js.Object@unchecked] =>
       if (start < end && start < f.length) {
         Task.now(f.jsSlice(start, end) :: Nil)
@@ -120,10 +120,10 @@ object JSRuntime extends QQRuntime[AnyRef] {
       }
   }
 
-  override def collectResults(f: CompiledFilter[AnyRef]): CompiledFilter[AnyRef] = { jsv: AnyRef =>
+  override def collectResults(f: CompiledFilter[Any]): CompiledFilter[Any] = { jsv: Any =>
     f(jsv).flatMap {
       _.traverseM {
-        case arr: js.Array[AnyRef@unchecked] =>
+        case arr: js.Array[Any@unchecked] =>
           Task.now(arr.toList)
         case dict: js.Object =>
           Task.now(dict.asInstanceOf[js.Dictionary[js.Object]].map(_._2)(collection.breakOut))
@@ -133,14 +133,14 @@ object JSRuntime extends QQRuntime[AnyRef] {
     }
   }
 
-  override def enjectFilter(obj: List[(\/[String, CompiledFilter[AnyRef]], CompiledFilter[AnyRef])]): CompiledFilter[AnyRef] = { jsv: AnyRef =>
+  override def enjectFilter(obj: List[(\/[String, CompiledFilter[Any]], CompiledFilter[Any])]): CompiledFilter[Any] = { jsv: Any =>
     for {
-      kvPairs <- obj.traverse[Task, List[List[(String, AnyRef)]]] {
+      kvPairs <- obj.traverse[Task, List[List[(String, Any)]]] {
         case (\/-(filterKey), filterValue) =>
           for {
             keyResults <- filterKey(jsv)
             valueResults <- filterValue(jsv)
-            keyValuePairs <- keyResults.traverse[Task, List[(String, AnyRef)]] {
+            keyValuePairs <- keyResults.traverse[Task, List[(String, Any)]] {
               case keyString: String =>
                 Task.now(valueResults.map(keyString -> _))
               case k =>
@@ -153,7 +153,7 @@ object JSRuntime extends QQRuntime[AnyRef] {
           } yield valueResults.map(filterName -> _) :: Nil
       }
       kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => foldWithPrefixes(h, l.toList: _*) }
-    } yield kvPairsProducts.map(js.Dictionary[AnyRef](_: _*))
+    } yield kvPairsProducts.map(js.Dictionary[Any](_: _*))
   }
 
   override def platformPrelude = JSPrelude

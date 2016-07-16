@@ -5,6 +5,7 @@ import dash.views.ReactiveReact.ReactiveState
 import japgolly.scalajs.react._
 import monix.execution.Scheduler
 import monix.reactive.Observable
+import monocle.Lens
 import monocle.macros.GenLens
 
 import scalacss.Defaults._

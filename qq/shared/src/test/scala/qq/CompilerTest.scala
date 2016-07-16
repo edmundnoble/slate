@@ -57,4 +57,11 @@ object CompilerTest {
     )
   }
 
+  val fatStackTest = {
+    def fun(f: Filter, i: Int): Filter = if (i == 0) f else fun(compose(id, f), i - 1)
+    CompilerTest(
+      fun(id, 1000), Js.False, List(Js.False)
+    )
+  }
+
 }
