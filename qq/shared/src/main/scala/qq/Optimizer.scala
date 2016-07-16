@@ -45,6 +45,6 @@ object Optimizer {
   val optimizations: NonEmptyList[Optimization] =
     NonEmptyList(idCompose, collectEnlist, MathOptimizations.constReduce)
   val allOptimizationsƒ: Filter => Filter = repeatedly(optimizations.foldLeft1(_ orElse _).lift)
-  def optimize(f: Filter): Filter = SafeRec.transCataT(f)(allOptimizationsƒ).result
+  def optimize(f: Filter): Filter = SafeRec.transCataT(f)(allOptimizationsƒ).run
 
 }

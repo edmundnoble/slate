@@ -80,7 +80,7 @@ object QQCompiler {
           if (params.length == defn.numParams) {
             defn.body(params)
           } else {
-            WrongNumParams(filterIdentifier, defn.numParams, params.length).left[CompiledFilter[AnyTy]]
+            WrongNumParams(filterIdentifier, defn.numParams, params.length).left
           }
         },
         NoSuchMethod(filterIdentifier).left
@@ -109,7 +109,7 @@ object QQCompiler {
       platformSpecificDefinitions <- runtime.platformPrelude.all(runtime)
       allDefinitions = sharedDefinitions ++ platformSpecificDefinitions ++ definitions
       compiledProgram <-
-      SafeRec.cataM[Fix, FilterComponent, OrCompilationError, CompiledFilter[AnyTy]](filter)(compileStep(runtime, allDefinitions, _)).result
+      SafeRec.cataM[Fix, FilterComponent, OrCompilationError, CompiledFilter[AnyTy]](filter)(compileStep(runtime, allDefinitions, _)).run
     } yield compiledProgram
 
 }
