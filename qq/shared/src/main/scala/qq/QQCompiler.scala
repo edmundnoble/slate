@@ -1,7 +1,6 @@
 package qq
 
 import matryoshka.Fix
-import matryoshka.Recursive.ops._
 import monix.eval.Task
 import qq.FilterComponent._
 import qq.Util._
