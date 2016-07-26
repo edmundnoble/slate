@@ -25,8 +25,8 @@ object Interpreter {
   def programInterpreter: Interpreter = taskSwitch orElse Interpreter("program:", {
     case program =>
       Runner.parseAndCompile(UpickleRuntime, program, optimize = true).fold(
-        (err: Exception) => Task.evalAlways {
-          val () = Console.err.println(s"Error: $err")
+        err => Task.evalAlways {
+          val () = Console.err.println(s"Error: ${err.merge[Exception].getMessage}")
           ("", programInterpreter)
         },
         (compiledFilter: CompiledFilter[Js.Value]) => Task.now(("", programInterpreterOf(program, compiledFilter)))
@@ -51,8 +51,8 @@ object Interpreter {
   def inputInterpreterOf(source: String, input: Js.Value): Interpreter = taskSwitch orElse Interpreter(s"input $source, program: ", {
     case program =>
       Runner.parseAndCompile(UpickleRuntime, program, optimize = true).fold(
-        (err: Exception) => Task.evalAlways {
-          val () = Console.err.println(s"Error: $err")
+        err => Task.evalAlways {
+          val () = Console.err.println(s"Error: ${err.merge[Exception].getMessage}")
           ("", programInterpreter)
         },
         (compiledFilter: CompiledFilter[Js.Value]) => compiledFilter(input).map { outputs =>

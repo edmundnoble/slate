@@ -172,6 +172,7 @@ object DashboarderBuild extends Build {
     scalaVersion := "2.11.8",
     scalacOptions ++= Seq(
       "-Xlint",
+      "-feature",
       "-Ywarn-value-discard",
       "-Ywarn-adapted-args",
       "-Ywarn-adapted-args",

@@ -10,8 +10,8 @@ import scalaz.~>
 object MonixUtil {
 
   def taskToCallback[A](fa: Task[A])(implicit scheduler: Scheduler): Callback = {
-    Callback {
-      fa.runAsync(scheduler)
+    CallbackTo.pure {
+      val _ = fa.runAsync(scheduler)
     }
   }
 

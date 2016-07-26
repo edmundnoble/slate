@@ -20,32 +20,8 @@ object DashboardPage {
   import scala.language.implicitConversions
   import scalacss.ScalaCssReact._
 
-  case class Filter(url: String, name: String, owner: String, jql: String, viewUrl: String)
-  object Filter {
-    implicit val pkl = SnakeOptionPickle.macroRW[Filter]
-  }
-
-  case class Issue(url: String, summary: String, key: String, project: String,
-                   status: String, description: String) {
-    def toTitledContentModel: TitledContentModel =
-      TitledContentModel(title = s"$status - $key - $summary",
-        titleUrl = Some("https://auviknetworks.atlassian.net/browse/" + key),
-        content = description)
-  }
-  object Issue {
-    implicit val pkl = SnakeOptionPickle.macroRW[Issue]
-  }
-
-  case class SearchResult(filter: Filter, issues: Seq[Issue]) {
-    def toExpandableContentModel: ExpandableContentModel =
-      ExpandableContentModel(title = filter.name, titleUrl = Some(filter.viewUrl), content = issues.map(_.toTitledContentModel))
-  }
-  object SearchResult {
-    implicit val pkl = upickle.default.macroRW[SearchResult]
-  }
-
-  def makeFilterRow(firstResult: Option[SearchResult], secondResult: Option[SearchResult]): ReactElement = {
-    def toView(r: SearchResult) = ExpandableContentView.build(r.toExpandableContentModel)
+  def makeFilterRow(firstResult: Option[ExpandableContentModel], secondResult: Option[ExpandableContentModel]): ReactElement = {
+    def toView(r: ExpandableContentModel) = ExpandableContentView.build(r)
     <.div(Styles.filterContainer,
       <.div(Styles.innerFilterContainer,
         single(firstResult.map(toView))
@@ -56,15 +32,15 @@ object DashboardPage {
     )
   }
 
-  case class SearchPageState(searchResults: IndexedSeq[SearchResult])
-    extends ReactiveState[SearchPageState, IndexedSeq[SearchResult], Unit](searchResults, ()) {
-    override def setReactive(r: IndexedSeq[SearchResult]): SearchPageState = copy(searchResults = r)
+  case class SearchPageState(ExpandableContentModels: IndexedSeq[ExpandableContentModel])
+    extends ReactiveState[SearchPageState, IndexedSeq[ExpandableContentModel], Unit](ExpandableContentModels, ()) {
+    override def setReactive(r: IndexedSeq[ExpandableContentModel]): SearchPageState = copy(ExpandableContentModels = r)
   }
 
-  def makeSearchPage(searchResultStream: Observable[IndexedSeq[SearchResult]])(implicit sch: Scheduler): ReactElement = {
+  def makeSearchPage(ExpandableContentModelStream: Observable[IndexedSeq[ExpandableContentModel]])(implicit sch: Scheduler): ReactElement = {
     import views.ReactiveReact._
     reactiveBackendReplace(
-      ReactComponentB[Observable[IndexedSeq[SearchResult]]]("Main search page")
+      ReactComponentB[Observable[IndexedSeq[ExpandableContentModel]]]("Main search page")
         .initialState(SearchPageState(IndexedSeq.empty))
         .noBackend
         .renderS { ($, state) =>
@@ -80,14 +56,14 @@ object DashboardPage {
             ),
             <.div(
               <.div(Styles.container,
-                state.searchResults.grouped(2).map(xs => makeFilterRow(xs.headOption, xs.drop(1).headOption)).toSeq
+                state.ExpandableContentModels.grouped(2).map(xs => makeFilterRow(xs.headOption, xs.drop(1).headOption)).toSeq
               )
             )
           )
         }
         .domType[TopNode]
     )
-      .build(searchResultStream)
+      .build(ExpandableContentModelStream)
   }
 
 }
