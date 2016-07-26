@@ -20,11 +20,7 @@ abstract class UITestSuite extends FreeSpec with Matchers with WebBrowser with B
       )
   }
 
-  val chromeDriverService =
-    new ChromeDriverService.Builder()
-      .usingDriverExecutable(new File("/usr/local/sbin/chromedriver"))
-      .usingAnyFreePort()
-      .build()
+  var chromeDriverService: ChromeDriverService = _
 
   val options = new ChromeOptions()
   val extensionPath = new File("ui/target/chrome/unpackedfast").getAbsolutePath
@@ -57,6 +53,13 @@ abstract class UITestSuite extends FreeSpec with Matchers with WebBrowser with B
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
+
+    chromeDriverService =
+      new ChromeDriverService.Builder()
+        .usingDriverExecutable(new File("/usr/local/sbin/chromedriver"))
+        .usingAnyFreePort()
+        .build()
+
     chromeDriverService.start()
   }
 
