@@ -20,11 +20,11 @@ class JSCompilerTest extends QQTestSuite {
         .runFuture
   }
 
-  "select keys" in Future.traverse(selectKeyTest)(testRun)
-  "select index" in Future.traverse(selectIndexTest)(testRun)
-  "id" in Future.traverse(idTest)(testRun)
-  "select range" in Future.traverse(selectRangeTest)(testRun)
-  "collect results" in Future.traverse(collectResultsTest)(testRun)
-  "fat stack" in testRun(fatStackTest)
+  "select keys" in Future.traverse(selectKeyTests)(testRun)
+  "select index" in Future.traverse(selectIndexTests)(testRun)
+  "id" in Future.traverse(idTests)(testRun)
+  "select range" in Future.traverse(selectRangeTests)(testRun)
+  "collect results" in Future.traverse(collectResultsTests)(testRun)
+  "fat stack" in Future.traverse(fatStackTests)(testRun)
 
 }

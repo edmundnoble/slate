@@ -4,12 +4,12 @@ class StartupTests extends UITestSuite {
 
   import Elements._
 
-  "roots should be displayed" in {
+  "roots should be displayed" taggedAs WebTestTag in {
     container shouldBe displayed
     reactRoot shouldBe displayed
   }
 
-  "appbar should be displayed with text" in {
+  "appbar should be displayed with text" taggedAs WebTestTag in {
     appbar shouldBe displayed
     appbar.text shouldBe "Dashboarder"
   }

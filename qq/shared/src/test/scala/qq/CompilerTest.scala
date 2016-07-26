@@ -8,7 +8,7 @@ object CompilerTest {
 
   import FilterDSL._
 
-  val selectKeyTest: List[CompilerTest] = {
+  val selectKeyTests: List[CompilerTest] = {
     val dict = Js.Obj("present" -> Js.Num(1))
     List(
       CompilerTest(selectKey("present"), dict, List(Js.Num(1))),
@@ -16,7 +16,7 @@ object CompilerTest {
     )
   }
 
-  val selectIndexTest: List[CompilerTest] = {
+  val selectIndexTests: List[CompilerTest] = {
     val arr = Js.Arr(Js.Num(1), Js.Num(2))
     List(
       CompilerTest(selectIndex(-3), arr, List(Js.Null)),
@@ -28,12 +28,12 @@ object CompilerTest {
     )
   }
 
-  val idTest: List[CompilerTest] = {
+  val idTests: List[CompilerTest] = {
     val dict = Js.Obj("present" -> Js.Num(1))
     List(CompilerTest(id, dict, List(dict)))
   }
 
-  val selectRangeTest: List[CompilerTest] = {
+  val selectRangeTests: List[CompilerTest] = {
     val arr = Js.Arr(Js.Num(1), Js.Num(2), Js.Num(3), Js.Num(4))
     List(
       CompilerTest(selectRange(0, 0), arr, List(Js.Arr())),
@@ -46,7 +46,7 @@ object CompilerTest {
     )
   }
 
-  val collectResultsTest: List[CompilerTest] = {
+  val collectResultsTests: List[CompilerTest] = {
     List(
       CompilerTest(collectResults(id),
         Js.Arr(Js.Num(1), Js.Num(2), Js.Num(3), Js.Num(4)),
@@ -57,10 +57,12 @@ object CompilerTest {
     )
   }
 
-  val fatStackTest = {
+  val fatStackTests: List[CompilerTest] = {
     def fun(f: Filter, i: Int): Filter = if (i == 0) f else fun(compose(id, f), i - 1)
-    CompilerTest(
-      fun(id, 1000), Js.False, List(Js.False)
+    List(
+      CompilerTest(
+        fun(id, 1000), Js.False, List(Js.False)
+      )
     )
   }
 

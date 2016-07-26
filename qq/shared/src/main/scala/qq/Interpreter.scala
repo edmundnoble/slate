@@ -7,7 +7,7 @@ import upickle.{Js, json}
 object Interpreter {
 
   // used as an escape hatch from the interpreter
-  final case class ExitException() extends Exception("exit", null, false, false)
+  final case class ExitException() extends Exception
 
   final case class Interpreter(name: String, run: PartialFunction[String, Task[(String, Interpreter)]]) {
     def orElse(other: Interpreter): Interpreter = Interpreter(other.name, run.orElse(other.run))
@@ -16,10 +16,7 @@ object Interpreter {
   def taskSwitch: Interpreter = Interpreter(":p, :i:", {
     case ":p" => Task.evalAlways(("", programInterpreter))
     case ":i" => Task.evalAlways(("", inputInterpreter))
-    case ":q" => Task.defer {
-      val () = println("Bye!")
-      Task.raiseError(ExitException())
-    }
+    case ":q" => Task.raiseError(ExitException())
   })
 
   def programInterpreter: Interpreter = taskSwitch orElse Interpreter("program:", {

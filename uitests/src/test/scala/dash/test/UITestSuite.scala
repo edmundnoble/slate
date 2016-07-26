@@ -32,6 +32,8 @@ abstract class UITestSuite extends FreeSpec with Matchers with WebBrowser with B
   val capabilities = new DesiredCapabilities()
   capabilities.setCapability(ChromeOptions.CAPABILITY, options)
 
+  object WebTestTag extends Tag("WebTestTag")
+
   object Elements {
     def reactRoot = find(IdQuery("react-root")).value
     def container = find(IdQuery("container")).value

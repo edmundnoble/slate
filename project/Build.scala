@@ -167,6 +167,9 @@ object DashboarderBuild extends Build {
   lazy val replMain =
     mainClass in(Compile, run) := Some("qq.InterpreterMain")
 
+  val unitTest = TaskKey[Unit]("unitTest")
+  val itTest = TaskKey[Unit]("itTest")
+
   val baseSettings: Seq[sbt.Def.Setting[_]] = Seq(
     version := "0.0.1",
     scalaVersion := "2.11.8",
@@ -179,9 +182,12 @@ object DashboarderBuild extends Build {
       "-Ywarn-inaccessible",
       "-Ywarn-infer-any",
       "-Ywarn-nullary-override",
-      "-Ywarn-nullary-unit"),
+      "-Ywarn-nullary-unit"
+    ),
     persistLauncher in Compile := true,
     persistLauncher in Test := false,
+    unitTest <<= { (testOnly in Test).toTask(" -- -l WebTestTag") },
+    itTest <<= { (testOnly in Test).toTask(" -- -n WebTestTag") },
     addCompilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full),
     addCompilerPlugin("org.spire-math" % "kind-projector" % "0.8.0" cross CrossVersion.binary)
   )
@@ -202,10 +208,13 @@ object DashboarderBuild extends Build {
   lazy val qqjvm = qq.jvm
   lazy val qqjs = qq.js
 
+  def emptyInputTask: Def.Initialize[InputTask[Unit]] =
+    InputTask.createDyn(InputTask.parserAsInput(sbt.complete.Parser.zeroOrMore(sbt.complete.Parser.charClass(_ => true))))(Def.task { _ => Def.task(()) })
+
   private val disableTests: Seq[Def.Setting[_]] = Seq(
-    test in Test := {},
-    testQuick in Test := {},
-    testOnly in Test := {}
+    test in Test := (),
+    testQuick in Test <<= emptyInputTask,
+    testOnly in Test <<= emptyInputTask
   )
 
   lazy val ui = Project(id = "ui", base = file("ui"))
