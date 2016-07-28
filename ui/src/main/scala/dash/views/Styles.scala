@@ -62,7 +62,7 @@ object Styles extends StyleSheet.Inline {
     val leave: StyleA
     val enterActive: StyleA
     val leaveActive: StyleA
-    def apply(children: ReactNode*): ReactComponentU_ = ReactCssTransitionGroup(className)(children)
+    def apply(children: ReactNode*): ReactComponentU_ = ReactCssTransitionGroup(className)(children: _*)
   }
 
   class ScrollFadeContainer(className: String)(implicit r: scalacss.mutable.Register) extends ReactAnimationStyles(className)(r) {

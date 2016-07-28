@@ -1,6 +1,6 @@
 package dash
 
-import dash.models.{ExpandableContentModel, TitledContentModel}
+import dash.models.ExpandableContentModel
 import dash.views.ReactiveReact.ReactiveState
 import dash.views.{ExpandableContentView, Styles}
 import japgolly.scalajs.react._
@@ -8,9 +8,6 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import qq.Util._
 
-import scala.collection.mutable
-import scala.scalajs.js
-import scalaz.std.list._
 import scalacss.Defaults._
 
 object DashboardPage {

@@ -9,7 +9,7 @@ import scalaz.syntax.either._
 import scalaz.syntax.traverse._
 import scalaz.std.list._
 import com.thoughtworks.each.Monadic._
-import qq.Util._
+import monix.scalaz._
 
 object UpicklePrelude extends PlatformPrelude[Js.Value] {
 

@@ -7,7 +7,7 @@ import scalaz.\/
 import scalaz.std.list._
 import scalaz.syntax.traverse._
 import scalaz.syntax.either._
-import Util._
+import monix.scalaz._
 import qq.QQCompiler.CompiledFilter
 
 object Runner {

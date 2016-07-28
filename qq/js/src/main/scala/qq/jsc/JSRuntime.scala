@@ -1,6 +1,7 @@
 package qq.jsc
 
 import monix.eval.Task
+import monix.scalaz._
 import qq.{QQRuntime, QQRuntimeException}
 import qq.QQCompiler.CompiledFilter
 import qq.Util._
@@ -20,7 +21,7 @@ object JSRuntime extends QQRuntime[Any] {
   val taskOfListOfNull: Task[List[Any]] = Task.now(List(null))
   val emptyArray: js.Array[Any] = new js.Array[Any](0)
 
-  override def constNumber(num: Double): CompiledFilter[Any] = _ => Task.now((num) :: Nil)
+  override def constNumber(num: Double): CompiledFilter[Any] = _ => Task.now(num :: Nil)
 
   override def constString(str: String): CompiledFilter[Any] = _ => Task.now(str :: Nil)
 

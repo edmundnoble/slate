@@ -1,6 +1,7 @@
 package qq
 
 import monix.eval.Task
+import monix.scalaz._
 import qq.FilterComponent._
 import upickle.Js
 import qq.QQCompiler.CompiledFilter

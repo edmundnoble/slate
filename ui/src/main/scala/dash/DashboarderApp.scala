@@ -4,11 +4,14 @@ import dash.models.ExpandableContentModel
 import japgolly.scalajs.react.{Addons, ReactDOM}
 import monix.eval.Callback
 import monix.reactive.Observable
+import monocle.function.At
 import org.scalajs.dom.raw.Element
 
 import scala.concurrent.duration._
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
+import org.scalajs.dom
+import org.scalajs.dom.ext.LocalStorage
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
@@ -25,7 +28,7 @@ object DashboarderApp extends scalajs.js.JSApp {
       override def onSuccess(results: Observable[IndexedSeq[ExpandableContentModel]]): Unit = {
         val searchPage =
           DashboardPage.makeSearchPage(results)
-        val container: Element = org.scalajs.dom.document.body.children.namedItem("container")
+        val container: Element = dom.document.body.children.namedItem("container")
         if (!js.isUndefined(Addons.Perf)) {
           logger.info("Starting perf")
           Addons.Perf.start()
@@ -46,6 +49,7 @@ object DashboarderApp extends scalajs.js.JSApp {
     }
 
     val _ = JIRAApp.fetchSearchResults.runAsync(callback)
+    println(s"value: ${dom.window.localStorage.getItem("testKey")}")
   }
 
 }

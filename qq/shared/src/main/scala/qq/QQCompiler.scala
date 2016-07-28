@@ -2,8 +2,8 @@ package qq
 
 import matryoshka.Fix
 import monix.eval.Task
+import monix.scalaz._
 import qq.FilterComponent._
-import qq.Util._
 
 import scalaz.\/
 import scalaz.std.list._

@@ -1,13 +1,11 @@
 package dash.views
 
 import dash.models.ExpandableContentModel
-import dash.views.ReactiveReact.ReactiveState
 import japgolly.scalajs.react._
-import monix.execution.Scheduler
-import monix.reactive.Observable
-import monocle.Lens
 import monocle.macros.GenLens
 
+import scala.language.higherKinds
+import scalaz.syntax.std.boolean._
 import scalacss.Defaults._
 
 object ExpandableContentView {
@@ -115,11 +113,7 @@ object ExpandableContentView {
               )
             ),
             Styles.animationGroup(
-              (if (state.expanded) {
-                model.content.map(TitledContentView.build)
-              } else {
-                Vector.empty[ReactElement]
-              }): _*
+              state.expanded ?? model.content.map(TitledContentView.build)
             )
           )
         )

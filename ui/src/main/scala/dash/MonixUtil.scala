@@ -1,6 +1,6 @@
 package dash
 
-import japgolly.scalajs.react.{Callback, CallbackTo, ReactElement}
+import japgolly.scalajs.react.{Callback, CallbackTo}
 import monix.eval.Task
 import monix.execution.Scheduler
 

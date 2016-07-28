@@ -1,23 +1,10 @@
 package qq
 
-import monix.eval.Task
-import monix.reactive.Observable
-
 import scala.util.control.TailCalls
 import scala.util.control.TailCalls.TailRec
 import scalaz.{Monad, ~>}
 
 object Util {
-
-  implicit object TaskMonad extends Monad[Task] {
-    override def point[A](a: => A): Task[A] = Task.now(a)
-    override def bind[A, B](fa: Task[A])(f: (A) => Task[B]): Task[B] = fa.flatMap(f)
-  }
-
-  implicit object ObservableMonad extends Monad[Observable] {
-    override def point[A](a: => A): Observable[A] = Observable.now(a)
-    override def bind[A, B](fa: Observable[A])(f: (A) => Observable[B]): Observable[B] = fa.flatMap(f)
-  }
 
   implicit val TailRecMonad = new Monad[TailRec] {
     override def point[A](a: => A): TailRec[A] = TailCalls.done(a)
@@ -32,7 +19,10 @@ object Util {
 
   def single: Option ~> Seq = new (Option ~> Seq) {
     def apply[A](op: Option[A]): Seq[A] =
-      op.fold(Vector.empty[A])(Vector.empty[A] :+ _)
+      op match {
+        case None => Vector.empty[A]
+        case Some(v) => Vector.empty[A] :+ v
+      }
   }
 
 }

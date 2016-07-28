@@ -2,15 +2,15 @@ package qq.jsc
 
 import java.util.regex.Pattern
 
+import com.thoughtworks.each.Monadic._
 import monix.eval.Task
+import monix.scalaz._
+import qq._
 
+import scala.scalajs.js
+import scalaz.std.list._
 import scalaz.syntax.either._
 import scalaz.syntax.traverse._
-import scalaz.std.list._
-import scala.scalajs.js
-import com.thoughtworks.each.Monadic._
-import qq._
-import qq.Util._
 
 object JSPrelude extends PlatformPrelude[Any] {
 
