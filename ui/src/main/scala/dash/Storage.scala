@@ -1,9 +1,9 @@
 package dash
 
 import monix.eval.Task
-import org.scalajs.dom.ext.Storage
+import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
 
-case class TaskStorage(underlying: Storage) extends AnyVal {
+case class Storage(underlying: SStorage) extends AnyVal {
 
   import Task.evalAlways
 
@@ -19,4 +19,9 @@ case class TaskStorage(underlying: Storage) extends AnyVal {
 
   def key(index: Int): Task[Option[String]] = evalAlways(underlying.key(index))
 
+}
+
+object Storage {
+  val Local = Storage(LocalStorage)
+  val Session = Storage(SessionStorage)
 }

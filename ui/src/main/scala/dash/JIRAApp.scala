@@ -31,7 +31,7 @@ object JIRAApp {
     implicit val pkl = SnakeOptionPickle.macroRW[Issue]
   }
 
-  case class SearchResult(filter: Filter, issues: Seq[Issue]) {
+  case class SearchResult(filter: Filter, issues: List[Issue]) {
     def toExpandableContentModel: ExpandableContentModel =
       ExpandableContentModel(title = filter.name, titleUrl = Some(filter.viewUrl), content = issues.map(_.toTitledContentModel))
   }

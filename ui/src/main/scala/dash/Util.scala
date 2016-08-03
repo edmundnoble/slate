@@ -5,9 +5,11 @@ import monix.eval.Task
 import monix.execution.Scheduler
 
 import scala.language.implicitConversions
-import scalaz.~>
+import scala.scalajs.js
+import scala.scalajs.js.Array
+import scalaz.{Applicative, Traverse, ~>}
 
-object MonixUtil {
+object Util {
 
   def taskToCallback[A](fa: Task[A])(implicit scheduler: Scheduler): Callback = {
     CallbackTo.pure {

@@ -6,6 +6,7 @@ import monocle.macros.GenLens
 
 import scala.language.higherKinds
 import scalaz.syntax.std.boolean._
+import scalaz.std.list._
 import scalacss.Defaults._
 
 object ExpandableContentView {

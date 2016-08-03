@@ -49,7 +49,6 @@ object DashboarderApp extends scalajs.js.JSApp {
     }
 
     val _ = JIRAApp.fetchSearchResults.runAsync(callback)
-    println(s"value: ${dom.window.localStorage.getItem("testKey")}")
   }
 
 }
