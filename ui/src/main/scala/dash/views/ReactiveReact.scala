@@ -11,29 +11,35 @@ object ReactiveReact {
     def setReactive(r: R): ST
   }
 
-  @inline def reactiveBackendReplaceL[P, R, ST <: ReactiveState[ST, R, _], N <: TopNode]
-  (builder: ReactComponentB[P, ST, Unit, N], lens: P => Observable[R])
-  (implicit sch: Scheduler): ReactComponentB[P, ST, Unit, N] =
-    builder.componentWillMount($ =>
-      CallbackTo.pure {
-        val _ = lens($.props).foreach { r =>
-          val () = $.modState(_.setReactive(r)).runNow()
+  implicit class ReactiveOps[P, ST, B, N <: TopNode](val builder: ReactComponentB[P, ST, B, N]) {
+
+    @inline def reactiveReplaceL[R]
+    (builder: ReactComponentB[P, ST, B, N], getReactivePart: P => Observable[R])
+    (implicit sch: Scheduler,
+     stateIsReactiveEv: ST <:< ReactiveState[ST, R, _]): ReactComponentB[P, ST, B, N] =
+      builder.componentWillMount($ =>
+        CallbackTo.pure {
+          val _ = getReactivePart($.props).foreach { r =>
+            val () = $.modState(_.setReactive(r)).runNow()
+          }
         }
-      }
-    )
+      )
 
-  @inline def reactiveBackendReplace[R, ST <: ReactiveState[ST, R, _], N <: TopNode]
-  (builder: ReactComponentB[Observable[R], ST, Unit, N])
-  (implicit sch: Scheduler): ReactComponentB[Observable[R], ST, Unit, N] =
-    reactiveBackendReplaceL(builder, s => s)
+    @inline def reactiveReplace[R]
+    (implicit sch: Scheduler,
+     stateIsReactiveEv: ST <:< ReactiveState[ST, R, _], propsAreReactiveEv: P =:= Observable[R]
+    ): ReactComponentB[P, ST, B, N] =
+      reactiveReplaceL(builder, propsAreReactiveEv)
 
-  @inline def reactiveMonoidBackend[R, ST <: ReactiveState[ST, R, _], N <: TopNode]
-  (builder: ReactComponentB[Observable[R], ST, Unit, N])
-  (implicit R: Monoid[R], sch: Scheduler): ReactComponentB[Observable[R], ST, Unit, N] = {
-    builder.componentWillMount { $ =>
-      CallbackTo.pure {
-        val _ = $.props.foldLeftF(R.zero)(R.append(_, _)).foreach { r =>
-          val () = $.modState(_.setReactive(r)).runNow()
+    @inline def reactiveMonoid[R]
+    (implicit sch: Scheduler, R: Monoid[R],
+     stateIsReactiveEv: ST <:< ReactiveState[ST, R, _], propsAreReactiveEv: P =:= Observable[R]
+    ): ReactComponentB[P, ST, B, N] = {
+      builder.componentWillMount { $ =>
+        CallbackTo.pure {
+          val _ = $.props.foldLeftF(R.zero)(R.append(_, _)).foreach { r =>
+            val () = $.modState(_.setReactive(r)).runNow()
+          }
         }
       }
     }

@@ -1,13 +1,31 @@
 package qq
 
+import org.scalatest.Assertion
 import upickle.Js
 
+import scala.concurrent.Future
 import scalaz.\/
 import scalaz.syntax.either._
+import scalaz.syntax.std.`try`._
+import TestUtil._
+import monix.execution.Scheduler
 
 case class RunnerTest(program: String, input: Js.Value, expectedOutputOrException: Exception \/ List[Js.Value])
 
 object RunnerTest {
+
+  import org.scalatest.Matchers._
+
+  def runTest[AnyTy](runtime: QQRuntime[AnyTy], fromUpickle: Js.Value => AnyTy, toUpickle: AnyTy => Js.Value, test: RunnerTest)
+                    (implicit sch: Scheduler): Future[Assertion] =
+    Runner
+      .run(runtime, test.program)(List(fromUpickle(test.input)))
+      .materialize
+      .map { outputOrExceptionTry =>
+        val outputUpickleOrExceptionTry = outputOrExceptionTry.map(_.map(toUpickle))
+        outputUpickleOrExceptionTry.toDisjunction should be(test.expectedOutputOrException)
+      }
+      .runFuture
 
   val identityProgram = {
     val dict = Js.Obj("1" -> Js.Num(2), "3" -> Js.Num(4))

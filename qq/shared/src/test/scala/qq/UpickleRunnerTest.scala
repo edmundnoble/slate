@@ -1,22 +1,15 @@
 package qq
 
-import qq.TestUtil._
-import monix.execution.Scheduler.Implicits.global
+import org.scalatest.Assertion
 
 import scala.concurrent.Future
-import scalaz.{\/, \/-}
-import scalaz.syntax.std.`try`._
 
 class UpickleRunnerTest extends QQTestSuite {
 
   import RunnerTest._
 
-  def runTest(test: RunnerTest): Future[Any] =
-    Runner
-      .run(UpickleRuntime, test.program)(List(test.input))
-      .materialize
-      .map { outputOrExceptionTry => outputOrExceptionTry.toDisjunction shouldBe test.expectedOutputOrException }
-      .runFuture
+  def runTest(test: RunnerTest): Future[Assertion] =
+    RunnerTest.runTest(UpickleRuntime, identity[upickle.Js.Value], identity[upickle.Js.Value], test)
 
   "identity" in runTest(identityProgram)
   "ensequenced filters" in runTest(ensequencedFilters)

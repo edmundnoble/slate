@@ -1,12 +1,30 @@
 package qq
 
+import monix.eval.Task
+import org.scalatest.Assertion
 import upickle.Js
+import TestUtil._
+import monix.execution.Scheduler
+
+import scala.concurrent.Future
 
 case class CompilerTest(program: Filter, input: Js.Value, expectedOutput: List[Js.Value])
 
 object CompilerTest {
 
+  import org.scalatest.Matchers._
   import FilterDSL._
+
+  def runTest[AnyTy](runtime: QQRuntime[AnyTy], qqCompilerTest: CompilerTest)
+                    (implicit sch: Scheduler): Future[Assertion] = qqCompilerTest match {
+    case CompilerTest(filter, input, expectedOutput) =>
+      QQCompiler
+        .compile(UpickleRuntime, Nil, filter)
+        .fold[Task[Assertion]](
+        err => Task.evalAlways(fail(s"error occurred during compilation: $err")),
+        program => program(input).map { output => output shouldBe expectedOutput })
+        .runFuture
+  }
 
   val selectKeyTests: List[CompilerTest] = {
     val dict = Js.Obj("present" -> Js.Num(1))

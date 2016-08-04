@@ -62,23 +62,23 @@ object TitledContentView {
   }
 
   def build: (TitledContentModel) => ReactComponentU[TitledContentModel, Unit, Unit, TopNode] = {
-    import japgolly.scalajs.react.vdom.prefix_<^._
+    import japgolly.scalajs.react.vdom.all._
     import scalacss.ScalaCssReact._
 
     ReactComponentB[TitledContentModel]("Issue")
       .stateless
       .noBackend
       .renderP { ($, model) =>
-        <.div(Styles.render[ReactElement],
-          ^.key := model.title + model.titleUrl,
-          <.div(Styles.base,
-            <.div(Styles.title,
-              <.a(
+        div(Styles.render[ReactElement],
+          key := model.title + model.titleUrl,
+          div(Styles.base,
+            div(Styles.title,
+              a(
                 model.title,
-                ^.href := model.titleUrl
+                href := model.titleUrl
               )
             ),
-            <.div(Styles.content,
+            div(Styles.content,
               model.content
             )
           )

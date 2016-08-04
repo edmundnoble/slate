@@ -4,6 +4,7 @@ import net.lullabyte.Chrome
 import org.scalajs.sbtplugin.{OptimizerOptions, ScalaJSPlugin}
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import org.scalajs.sbtplugin.cross.CrossProject
+import scoverage.ScoverageKeys.coverageExcludedPackages
 import upickle.Js
 
 object DashboarderBuild extends Build {
@@ -170,6 +171,8 @@ object DashboarderBuild extends Build {
 
   val unitTest = TaskKey[Unit]("unitTest")
   val itTest = TaskKey[Unit]("itTest")
+//val unitTestQuick = TaskKey[Unit]("unitTestQuick")
+//val itTestQuick = TaskKey[Unit]("itTestQuick")
 
   val baseSettings: Seq[sbt.Def.Setting[_]] = Seq(
     version := "0.0.1",
@@ -177,6 +180,7 @@ object DashboarderBuild extends Build {
     scalacOptions ++= Seq(
       "-Xlint",
       "-feature",
+      "-language:higherKinds",
       "-Ywarn-value-discard",
       "-Ywarn-adapted-args",
       "-Ywarn-adapted-args",
@@ -185,6 +189,7 @@ object DashboarderBuild extends Build {
       "-Ywarn-nullary-override",
       "-Ywarn-nullary-unit"
     ),
+    coverageExcludedPackages := ";qq.*Main;",
     persistLauncher in Compile := true,
     persistLauncher in Test := false,
     unitTest <<= { (testOnly in Test).toTask(" -- -l WebTestTag") },

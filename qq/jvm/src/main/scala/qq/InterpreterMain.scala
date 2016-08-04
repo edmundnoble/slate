@@ -14,8 +14,14 @@ object InterpreterMain extends App {
 
   def runInterpreter(interpreter: Interpreter.Interpreter): Task[Unit] = Task.defer {
     println(s"Entered interpreter ${interpreter.name}")
-    interpreter.run.lift(StdIn.readLine()).cata(
-      _.flatMap { case (output, nextInterpreter) => println(output); Task.defer(runInterpreter(nextInterpreter)) },
+    interpreter.resume(StdIn.readLine()).cata(
+      _.fold(
+        _ => Task.evalAlways(println("Bye!")),
+        _.flatMap { case (output, nextInterpreter) =>
+          val () = println(output)
+          runInterpreter(nextInterpreter)
+        }
+      ),
       Task.defer {
         val () = println("what?")
         runInterpreter(interpreter)
@@ -23,9 +29,6 @@ object InterpreterMain extends App {
   }
 
   val interpreterFinished: CancelableFuture[Unit] = runInterpreter(Interpreter.mainMenu).runAsync
-  try {
-    val () = Await.result(interpreterFinished, Duration.Inf)
-  } catch {
-    case ExitException() =>
-  }
+  val () = Await.result(interpreterFinished, Duration.Inf)
+
 }

@@ -84,33 +84,33 @@ object ExpandableContentView {
 
   def build(props: ExpandableContentModel): ReactComponentU[ExpandableContentModel, ExpandableState, Unit, TopNode] = {
     import MonocleReact._
-    import japgolly.scalajs.react.vdom.prefix_<^._
+    import japgolly.scalajs.react.vdom.all._
 
     import scalacss.ScalaCssReact._
 
     def buttonStyleForState(state: ExpandableState): Seq[TagMod] = {
       val otherStyles = Vector[TagMod](Styles.filterButtonIcon, "expand_more")
-      if (state.expanded) otherStyles.:+[TagMod, Vector[TagMod]](Styles.filterButtonExpanded)
+      if (state.expanded) otherStyles :+ styleaToTagMod(Styles.filterButtonExpanded)
       else otherStyles
     }
 
     ReactComponentB[ExpandableContentModel]("Expandable content view")
       .initialState(ExpandableState(expanded = false))
       .renderPS { ($, model, state) =>
-        val titleLink = ^.href := model.titleUrl
-        <.div(Styles.render[ReactElement],
-          <.div(Styles.base,
-            <.div(Styles.header,
-              <.div(Styles.headerLeft,
-                <.div(Styles.number,
-                  <.a(model.content.length.toString(), titleLink)),
-                <.div(Styles.title,
-                  <.a(model.title, titleLink)
+        val titleLink = href := model.titleUrl
+        div(Styles.render[ReactElement],
+          div(Styles.base,
+            div(Styles.header,
+              div(Styles.headerLeft,
+                div(Styles.number,
+                  a(model.content.length.toString(), titleLink)),
+                div(Styles.title,
+                  a(model.title, titleLink)
                 )
               ),
-              <.button(Styles.filterButton,
-                ^.onClick --> $.modStateL(ExpandableState.expanded)(!_),
-                <.i(buttonStyleForState(state): _*)
+              button(Styles.filterButton,
+                onClick --> $.modStateL(ExpandableState.expanded)(!_),
+                i(buttonStyleForState(state): _*)
               )
             ),
             Styles.animationGroup(
