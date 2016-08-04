@@ -6,6 +6,7 @@ import japgolly.scalajs.react.ReactComponentB.PSB
 
 import scalacss.Defaults._
 import japgolly.scalajs.react._
+import japgolly.scalajs.react.extra.Reusability
 
 object TitledContentView {
 
@@ -61,14 +62,12 @@ object TitledContentView {
     val searchResultContainer = new ScrollFadeContainer("searchResultContainer")
   }
 
-  def build: (TitledContentModel) => ReactComponentU[TitledContentModel, Unit, Unit, TopNode] = {
+  def builder: ReactComponentB[TitledContentModel, Unit, Unit, TopNode] = {
     import japgolly.scalajs.react.vdom.all._
     import scalacss.ScalaCssReact._
 
     ReactComponentB[TitledContentModel]("Issue")
-      .stateless
-      .noBackend
-      .renderP { ($, model) =>
+      .renderP((_, model) =>
         div(Styles.render[ReactElement],
           key := model.title + model.titleUrl,
           div(Styles.base,
@@ -83,8 +82,8 @@ object TitledContentView {
             )
           )
         )
-      }
-      .build(_)
+      )
+      .configure(Reusability.shouldComponentUpdate)
   }
 
 }

@@ -21,7 +21,7 @@ object DashboardPage {
   import scalacss.ScalaCssReact._
 
   def makeFilterRow(results: Seq[ExpandableContentModel]): ReactElement = {
-    def toView(r: ExpandableContentModel) = ExpandableContentView.build(r)
+    def toView(r: ExpandableContentModel) = ExpandableContentView.builder.build(r)
     div(Styles.filterContainer,
       results.map(result =>
         div(Styles.innerFilterContainer,
@@ -37,9 +37,6 @@ object DashboardPage {
   }
 
   object SearchPageState {
-
-    import Reusability._
-
     implicit val reusability = Reusability.byRefOr_==[SearchPageState]
   }
 
@@ -47,7 +44,6 @@ object DashboardPage {
     import views.ReactiveReact._
     ReactComponentB[Observable[IndexedSeq[ExpandableContentModel]]]("Main search page")
       .initialState(SearchPageState(IndexedSeq.empty))
-      .noBackend
       .renderS { (_, state) =>
         div(Styles.render[ReactElement],
           id := "react-root",
@@ -60,17 +56,16 @@ object DashboardPage {
             )
           ),
           div(
-            div(styleaToTagMod(Styles.container) +:
+            div((Styles.container: TagMod) +:
               state.expandableContentModels.grouped(2).map { xs =>
-                ReactNodeFrag(makeFilterRow(xs))
+                makeFilterRow(xs): TagMod
               }.toSeq: _*
             )
           )
         ).render
       }
-      .domType[TopNode]
-      .reactiveReplace
       .configure(Reusability.shouldComponentUpdate)
+      .reactiveReplace
       .build(expandableContentModelStream)
   }
 

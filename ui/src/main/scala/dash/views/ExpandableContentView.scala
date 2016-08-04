@@ -2,6 +2,7 @@ package dash.views
 
 import dash.models.ExpandableContentModel
 import japgolly.scalajs.react._
+import japgolly.scalajs.react.extra.Reusability
 import monocle.macros.GenLens
 
 import scala.language.higherKinds
@@ -14,6 +15,8 @@ object ExpandableContentView {
 
   object ExpandableState {
     def expanded = GenLens[ExpandableState](_.expanded)
+    implicit val reusability: Reusability[ExpandableState] =
+      Reusability.byRefOr_==[ExpandableState]
   }
 
   object Styles extends StyleSheet.Inline {
@@ -82,7 +85,7 @@ object ExpandableContentView {
 
   }
 
-  def build(props: ExpandableContentModel): ReactComponentU[ExpandableContentModel, ExpandableState, Unit, TopNode] = {
+  def builder: ReactComponentB[ExpandableContentModel, ExpandableState, Unit, TopNode] = {
     import MonocleReact._
     import japgolly.scalajs.react.vdom.all._
 
@@ -114,13 +117,12 @@ object ExpandableContentView {
               )
             ),
             Styles.animationGroup(
-              state.expanded ?? model.content.map(TitledContentView.build)
+              state.expanded ?? model.content.map(TitledContentView.builder.build(_))
             )
           )
         )
       }
-      .domType[TopNode]
-      .build(props)
+      .configure(Reusability.shouldComponentUpdate)
   }
 
 }

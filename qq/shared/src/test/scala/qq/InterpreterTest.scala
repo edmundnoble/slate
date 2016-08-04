@@ -9,12 +9,15 @@ class InterpreterTest extends QQTestSuite {
 
   import Interpreter._
 
-  def runLoop(interpreter: Interpreter, input: String, next: String*): Task[(String, Interpreter)] = {
+  def runInterpreter(interpreter: Interpreter, input: String, next: String*): Task[(String, Interpreter)] = {
     val run = interpreter.resume(input).value.value
     if (next.isEmpty) {
       run
     } else {
-      Task.defer(run.map(_._2).flatMap(runLoop(_, next.head, next.tail: _*)))
+      run.flatMap {
+        case (_, nextInterpreter) =>
+          Task.defer(runInterpreter(nextInterpreter, next.head, next.tail: _*))
+      }
     }
   }
 
@@ -26,7 +29,7 @@ class InterpreterTest extends QQTestSuite {
 
     "accessible from main menu" in {
       for {
-        programMenu <- runLoop(mainMenu, ":p").runFuture
+        programMenu <- runInterpreter(mainMenu, ":p").runFuture
       } yield {
         programMenu._2.name should be("program:")
       }
@@ -34,13 +37,13 @@ class InterpreterTest extends QQTestSuite {
 
     "take any program and input subsequently" in {
       for {
-        output <- runLoop(mainMenu, ":p", ".", "[]").runFuture
+        output <- runInterpreter(mainMenu, ":p", ".", "[]").runFuture
       } yield output._1 should be("([])")
     }
 
     "take any program and input subsequently several times" in {
       for {
-        output <- runLoop(mainMenu, ":p", ".", "[]", "1").runFuture
+        output <- runInterpreter(mainMenu, ":p", ".", "[]", "1").runFuture
       } yield output._1 should be("(1)")
     }
 
@@ -50,7 +53,7 @@ class InterpreterTest extends QQTestSuite {
 
     "accessible from main menu" in {
       for {
-        inputMenu <- runLoop(mainMenu, ":i").runFuture
+        inputMenu <- runInterpreter(mainMenu, ":i").runFuture
       } yield {
         inputMenu._2.name should be("input:")
       }
@@ -58,13 +61,13 @@ class InterpreterTest extends QQTestSuite {
 
     "take any input and program subsequently" in {
       for {
-        output <- runLoop(mainMenu, ":i", "[]", ".").runFuture
+        output <- runInterpreter(mainMenu, ":i", "[]", ".").runFuture
       } yield output._1 should be("([])")
     }
 
     "take any input and program subsequently several times" in {
       for {
-        output <- runLoop(mainMenu, ":i", "0", ". + 1", ". + 2").runFuture
+        output <- runInterpreter(mainMenu, ":i", "0", ". + 1", ". + 2").runFuture
       } yield output._1 should be("(2)")
     }
 
