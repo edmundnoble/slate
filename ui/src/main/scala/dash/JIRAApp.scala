@@ -6,6 +6,12 @@ import monix.eval.Task
 import monix.reactive.Observable
 import monix.scalaz._
 import org.scalajs.dom.XMLHttpRequest
+import qq.QQCompiler.CompiledFilter
+import qq.jsc.JSRuntime
+import qq._
+import scodec.Codec
+import scodec.bits.BitVector
+import upickle.Js.Value
 import upickle.{Js, json}
 
 import scala.collection.immutable.IndexedSeq
@@ -58,7 +64,7 @@ object JIRAApp {
       }
     } yield (favoriteFilters, filterRequests)
 
-    val compiledQQProgram = qq.Runner.parseAndCompile(qq.UpickleRuntime,
+    val qqProgram =
       """.issues.[] | {
         |  url: .self,
         |  summary: .fields.summary,
@@ -67,7 +73,30 @@ object JIRAApp {
         |  description: (.fields.description | replaceAll("\n+\\s*"; " ↪ ")),
         |  status: .fields.status.name
         |}""".stripMargin
-    ).fold(err => Task.raiseError(err.merge[Exception]), Task.now).each
+
+    val hash = qqProgram.hashCode.toString
+
+    val storage = Storage.local(TaskStorage(_))
+
+    val programInStorage = storage(hash).each
+
+    import qq.FilterProtocol._
+
+    val decodedOptimizedProgram = programInStorage.fold {
+
+      val parsedQQProgram = Parser.program.parse(qqProgram).get.value
+      val optimizedProgram = Optimizer.optimize(parsedQQProgram)
+
+      val encodedOptimizedProgram = programCodec.encode(optimizedProgram).require
+      val out = encodedOptimizedProgram.toBase64
+      Storage.local(TaskStorage(_)).update(hash, out)
+      optimizedProgram
+    } { encodedProgram =>
+      programCodec.decode(BitVector.fromBase64(encodedProgram).get).require.value
+    }
+
+    val compiledQQProgram: CompiledFilter[Js.Value] =
+      QQCompiler.compileProgram(UpickleRuntime, decodedOptimizedProgram).valueOr(ex => throw ex)
     searchRequests.flatMap {
       case (filter, responses) =>
         responses.traverse[Observable, List[Issue]] { r =>

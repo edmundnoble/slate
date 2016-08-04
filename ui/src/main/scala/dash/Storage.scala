@@ -84,7 +84,6 @@ object Storage {
 }
 
 final class TaskStorage(underlying: SStorage) extends Storage[Task] {
-
   import Task.evalAlways
 
   override def length: Task[Int] = evalAlways(underlying.length)
@@ -95,8 +94,24 @@ final class TaskStorage(underlying: SStorage) extends Storage[Task] {
   override def key(index: Int): Task[Option[String]] = evalAlways(underlying.key(index))
 }
 
-final class PureStorage extends Storage[State[String ==>> String, ?]] {
+object TaskStorage {
+  @inline def apply(storage: SStorage) = new TaskStorage(storage)
+}
 
+final class UnsafeStorage(underlying: SStorage) extends Storage[scalaz.Id.Id] {
+  override def length: Int = underlying.length
+  override def apply(key: String): Option[String] = underlying(key)
+  override def update(key: String, data: String): Unit = underlying.update(key, data)
+  override def clear(): Unit = underlying.clear()
+  override def remove(key: String): Unit = underlying.remove(key)
+  override def key(index: Int): Option[String] = underlying.key(index)
+}
+
+object UnsafeStorage {
+  @inline def apply(storage: SStorage) = new UnsafeStorage(storage)
+}
+
+final class PureStorage extends Storage[State[String ==>> String, ?]] {
   import State._
 
   override def length: State[String ==>> String, Int] = get.map(_.size)
@@ -107,6 +122,7 @@ final class PureStorage extends Storage[State[String ==>> String, ?]] {
   override def key(index: Int): State[String ==>> String, Option[String]] = get.map(_.elemAt(index).map(_._2))
 }
 
-object TaskStorage {
-  @inline def apply(storage: SStorage) = new TaskStorage(storage)
+object PureStorage {
+  @inline def apply = new PureStorage
 }
+

@@ -14,16 +14,13 @@ object Runner {
 
   def parseAndCompile[AnyTy](runtime: QQRuntime[AnyTy], program: String, optimize: Boolean = true): \/[QQCompilationException \/ ParseError, CompiledFilter[AnyTy]] = {
     Parser.program.parse(program) match {
-      case Parsed.Success((definitions, main), _) =>
-        (if (optimize) {
-          QQCompiler.compileProgram(
-            runtime,
-            definitions.map(Definition.body.modify(Optimizer.optimize)),
-            Optimizer.optimize(main)
-          )
+      case Parsed.Success(program, _) =>
+        val optimized = if (optimize) {
+          Optimizer.optimize(program)
         } else {
-          QQCompiler.compileProgram(runtime, definitions, main)
-        }).leftMap(_.left)
+          program
+        }
+        QQCompiler.compileProgram(runtime, optimized).leftMap(_.left)
       case f@Parsed.Failure(_, _, _) =>
         new ParseError(f).right[QQCompilationException].left
     }

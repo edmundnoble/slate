@@ -52,9 +52,8 @@ object QQCompiler {
 
   @inline
   def compileProgram[AnyTy](runtime: QQRuntime[AnyTy],
-                            definitions: List[Definition],
-                            main: Filter): OrCompilationError[CompiledFilter[AnyTy]] = {
-    compileDefinitions(runtime, definitions).flatMap(compile(runtime, _, main))
+                            program: Program): OrCompilationError[CompiledFilter[AnyTy]] = {
+    compileDefinitions(runtime, program.defns).flatMap(compile(runtime, _, program.main))
   }
 
   @inline

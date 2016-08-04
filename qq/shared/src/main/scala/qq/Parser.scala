@@ -155,8 +155,8 @@ object Parser {
     ("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~ whitespace ~ filter ~ ";") map (Definition(_, _, _)).tupled
   )
 
-  val program: P[(List[Definition], Filter)] = P(
-    (definition.rep(sep = whitespace) ~ whitespace).?.map(_.getOrElse(Nil)) ~ filter ~ Terminals.End
+  val program: P[Program] = P(
+    ((definition.rep(sep = whitespace) ~ whitespace).?.map(_.getOrElse(Nil)) ~ filter ~ Terminals.End).map((Program.apply _).tupled)
   )
 
 }

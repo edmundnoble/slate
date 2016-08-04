@@ -19,11 +19,11 @@ object FilterProtocol {
       IdFilter[A] :+: ModuloFilters[A] :+: MultiplyFilters[A] :+: SelectIndex[A] :+: SelectKey[A] :+: SelectRange[A] :+:
       SilenceExceptions[A] :+: SubtractFilters[A] :+: CNil
 
-  /** 32-bit CRC using poly 0x04c11db7, initial 0xffffffff, reflected input/output, and final xor 0xffffffff. */
-  lazy val crc32: BitVector => Int = crc.crc32.andThen(_.toInt())
-
   implicit def componentCodec[A](implicit v: Lazy[Codec[A]]): Codec[FilterComponent[A]] =
     deriveGeneric[FilterComponent[A], FilterComponentGenA[A]](Generic.apply[FilterComponent[A]], Lazy(Codec.coproduct[FilterComponentGenA[A]].auto))
+
+  def filterCodec: Codec[Filter] = implicitly
+  def programCodec: Codec[Program] = implicitly
 
   def deriveGeneric[A, Rec](implicit lgen: Generic.Aux[A, Rec], auto: Lazy[Codec[Rec]]): Codec[A] =
     auto.value.xmap(lgen.from, lgen.to)

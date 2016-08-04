@@ -15,10 +15,10 @@ object Optimizer {
   // like in Matryoshka but tail recursive
   @annotation.tailrec
   def repeatedly[A](f: A => Option[A])(expr: A): A =
-    f(expr) match {
-      case None => expr
-      case Some(e) => repeatedly(f)(e)
-    }
+  f(expr) match {
+    case None => expr
+    case Some(e) => repeatedly(f)(e)
+  }
 
   type Optimization = PartialFunction[Filter, Filter]
 
@@ -46,5 +46,8 @@ object Optimizer {
     NonEmptyList(idCompose, collectEnlist, MathOptimizations.constReduce)
   val allOptimizationsƒ: Filter => Filter = repeatedly(optimizations.foldLeft1(_ orElse _).lift)
   def optimize(f: Filter): Filter = SafeRec.transCataT(f)(allOptimizationsƒ).run
+  def optimize(program: Program): Program =
+    program.copy(defns = program.defns.map(optimize), main = optimize(program.main))
+  def optimize(defn: Definition): Definition = defn.copy(body = optimize(defn.body))
 
 }
