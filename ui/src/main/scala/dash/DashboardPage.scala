@@ -57,9 +57,7 @@ object DashboardPage {
           ),
           div(
             div((Styles.container: TagMod) +:
-              state.expandableContentModels.grouped(2).map { xs =>
-                makeFilterRow(xs): TagMod
-              }.toSeq: _*
+              state.expandableContentModels.grouped(2).map(makeFilterRow(_): TagMod).toSeq: _*
             )
           )
         ).render
