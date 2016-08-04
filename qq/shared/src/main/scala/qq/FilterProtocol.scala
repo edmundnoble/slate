@@ -1,10 +1,5 @@
 package qq
 
-import matryoshka.Fix
-import shapeless.Lazy
-
-import scalaz.~>
-
 object FilterProtocol {
 
   import scodec._
@@ -23,6 +18,9 @@ object FilterProtocol {
       DivideFilters[A] :+: EnjectFilters[A] :+: EnlistFilter[A] :+: EnsequenceFilters[A] :+: FetchApi[A] :+:
       IdFilter[A] :+: ModuloFilters[A] :+: MultiplyFilters[A] :+: SelectIndex[A] :+: SelectKey[A] :+: SelectRange[A] :+:
       SilenceExceptions[A] :+: SubtractFilters[A] :+: CNil
+
+  /** 32-bit CRC using poly 0x04c11db7, initial 0xffffffff, reflected input/output, and final xor 0xffffffff. */
+  lazy val crc32: BitVector => Int = crc.crc32.andThen(_.toInt())
 
   implicit def componentCodec[A](implicit v: Lazy[Codec[A]]): Codec[FilterComponent[A]] =
     deriveGeneric[FilterComponent[A], FilterComponentGenA[A]](Generic.apply[FilterComponent[A]], Lazy(Codec.coproduct[FilterComponentGenA[A]].auto))
