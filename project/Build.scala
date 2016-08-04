@@ -9,20 +9,25 @@ import upickle.Js
 
 object DashboarderBuild extends Build {
 
-  val commonDeps = Seq(libraryDependencies ++= Seq(
-    "org.scalatest" %%% "scalatest" % "3.0.0-RC4" % "test",
-    "com.lihaoyi" %%% "upickle" % "0.4.0",
-    "com.lihaoyi" %%% "pprint" % "0.4.0",
-    "com.lihaoyi" %%% "fastparse" % "0.3.7",
-    "io.monix" %%% "monix" % "2.0-RC8",
-    "io.monix" %%% "monix-scalaz-72" % "2.0-RC8",
-    "com.thoughtworks.each" %%% "each" % "0.5.1",
-    "com.github.julien-truffaut" %%% "monocle-core" % "1.2.1",
-    "com.github.julien-truffaut" %%% "monocle-generic" % "1.2.1",
-    "com.github.julien-truffaut" %%% "monocle-macro" % "1.2.1",
-    "com.github.julien-truffaut" %%% "monocle-state" % "1.2.1",
-    "com.slamdata" %%% "matryoshka-core" % "0.11.0"
-  ), resolvers += Resolver.sonatypeRepo("releases"))
+  val commonDeps = Seq(
+    libraryDependencies ++= Seq(
+      "org.scalatest" %%% "scalatest" % "3.0.0-RC4" % "test",
+      "com.lihaoyi" %%% "upickle" % "0.4.0",
+      "com.lihaoyi" %%% "pprint" % "0.4.0",
+      "com.lihaoyi" %%% "fastparse" % "0.3.7",
+      "io.monix" %%% "monix" % "2.0-RC8",
+      "io.monix" %%% "monix-scalaz-72" % "2.0-RC8",
+      "com.thoughtworks.each" %%% "each" % "0.5.1",
+      "com.github.julien-truffaut" %%% "monocle-core" % "1.2.1",
+      "com.github.julien-truffaut" %%% "monocle-generic" % "1.2.1",
+      "com.github.julien-truffaut" %%% "monocle-macro" % "1.2.1",
+      "com.github.julien-truffaut" %%% "monocle-state" % "1.2.1",
+      "com.slamdata" %%% "matryoshka-core" % "0.11.0",
+      "org.scodec" %%% "scodec-bits" % "1.1.0",
+      "org.scodec" %%% "scodec-core" % "1.10.2"
+    ),
+    resolvers += Resolver.sonatypeRepo("releases"),
+    resolvers += "Sonatype Public" at "https://oss.sonatype.org/content/groups/public/")
 
   val uiDeps = libraryDependencies ++= Seq(
     "net.lullabyte" %%% "scala-js-chrome" % "0.2.1",
@@ -171,8 +176,8 @@ object DashboarderBuild extends Build {
 
   val unitTest = TaskKey[Unit]("unitTest")
   val itTest = TaskKey[Unit]("itTest")
-//val unitTestQuick = TaskKey[Unit]("unitTestQuick")
-//val itTestQuick = TaskKey[Unit]("itTestQuick")
+  //val unitTestQuick = TaskKey[Unit]("unitTestQuick")
+  //val itTestQuick = TaskKey[Unit]("itTestQuick")
 
   val baseSettings: Seq[sbt.Def.Setting[_]] = Seq(
     version := "0.0.1",
@@ -192,8 +197,12 @@ object DashboarderBuild extends Build {
     coverageExcludedPackages := ";qq.*Main;",
     persistLauncher in Compile := true,
     persistLauncher in Test := false,
-    unitTest <<= { (testOnly in Test).toTask(" -- -l WebTestTag") },
-    itTest <<= { (testOnly in Test).toTask(" -- -n WebTestTag") },
+    unitTest <<= {
+      (testOnly in Test).toTask(" -- -l WebTestTag")
+    },
+    itTest <<= {
+      (testOnly in Test).toTask(" -- -n WebTestTag")
+    },
     addCompilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full),
     addCompilerPlugin("org.spire-math" % "kind-projector" % "0.8.0" cross CrossVersion.binary)
   )
@@ -215,7 +224,10 @@ object DashboarderBuild extends Build {
   lazy val qqjs = qq.js
 
   def emptyInputTask: Def.Initialize[InputTask[Unit]] =
-    InputTask.createDyn(InputTask.parserAsInput(sbt.complete.Parser.zeroOrMore(sbt.complete.Parser.charClass(_ => true))))(Def.task { _ => Def.task(()) })
+    InputTask.createDyn[String, Unit](
+      InputTask.parserAsInput(
+        sbt.complete.Parser.success("")
+      ))(Def.task[String => Def.Initialize[Task[Unit]]] { (s: String) => Def.task(()) })
 
   private val disableTests: Seq[Def.Setting[_]] = Seq(
     test in Test := (),

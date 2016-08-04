@@ -4,6 +4,7 @@ import qq.Interpreter.ExitException
 import monix.eval.Task
 import monix.execution.CancelableFuture
 import monix.execution.Scheduler.Implicits.global
+import shapeless.LabelledGeneric
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
