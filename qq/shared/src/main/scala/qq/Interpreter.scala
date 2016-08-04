@@ -14,8 +14,8 @@ object Interpreter {
 
   // I think this is just a free monad transformer
   final case class Interpreter(name: String, resumePartial: PartialFunction[String, ExitException.type \/ Task[(String, Interpreter)]]) {
-    def resume: String => Option[ExitException.type \/ Task[(String, Interpreter)]] = resumePartial.lift
-    def orElse(other: Interpreter): Interpreter = Interpreter(other.name, resumePartial.orElse(other.resumePartial))
+    @inline def resume: String => Option[ExitException.type \/ Task[(String, Interpreter)]] = resumePartial.lift
+    @inline def orElse(other: Interpreter): Interpreter = Interpreter(other.name, resumePartial.orElse(other.resumePartial))
   }
 
   def taskSwitch: Interpreter = Interpreter(":p, :i:", {
