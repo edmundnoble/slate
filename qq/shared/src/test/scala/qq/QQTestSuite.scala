@@ -1,6 +1,6 @@
 package qq
 
-import java.lang.Thread.UncaughtExceptionHandler
+import scala.language.implicitConversions
 import java.util.concurrent.TimeUnit
 
 import monix.execution.{Cancelable, Scheduler}
@@ -19,12 +19,10 @@ abstract class QQTestSuite extends AsyncFreeSpec with Matchers with OptionValues
         Cancelable.empty
       }
       override def scheduleWithFixedDelay(initialDelay: Long, delay: Long, unit: TimeUnit, r: Runnable): Cancelable = {
-        executionContext.execute(r)
-        Cancelable.empty
+        ???
       }
       override def scheduleAtFixedRate(initialDelay: Long, period: Long, unit: TimeUnit, r: Runnable): Cancelable = {
-        executionContext.execute(r)
-        Cancelable.empty
+        ???
       }
       override def currentTimeMillis(): Long = System.currentTimeMillis()
       override def executionModel: ExecutionModel = ExecutionModel.SynchronousExecution
