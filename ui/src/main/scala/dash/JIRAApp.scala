@@ -6,12 +6,9 @@ import monix.eval.Task
 import monix.reactive.Observable
 import monix.scalaz._
 import org.scalajs.dom.XMLHttpRequest
-import qq.QQCompiler.CompiledFilter
-import qq.jsc.JSRuntime
+import qq.QQCompiler.{CompiledFilter, OrCompilationError}
 import qq._
-import scodec.Codec
 import scodec.bits.BitVector
-import upickle.Js.Value
 import upickle.{Js, json}
 
 import scala.collection.immutable.IndexedSeq
@@ -74,33 +71,11 @@ object JIRAApp {
         |  status: .fields.status.name
         |}""".stripMargin
 
-    val hash = qqProgram.hashCode.toString
-
-    val storage = Storage.local(TaskStorage(_))
-
-    val programInStorage = storage(hash).each
-
-    import qq.FilterProtocol._
-
-    val decodedOptimizedProgram = programInStorage.fold {
-
-      val parsedQQProgram = Parser.program.parse(qqProgram).get.value
-      val optimizedProgram = Optimizer.optimize(parsedQQProgram)
-
-      val encodedOptimizedProgram = programCodec.encode(optimizedProgram).require
-      val out = encodedOptimizedProgram.toBase64
-      Storage.local(TaskStorage(_)).update(hash, out)
-      optimizedProgram
-    } { encodedProgram =>
-      programCodec.decode(BitVector.fromBase64(encodedProgram).get).require.value
-    }
-
-    val compiledQQProgram: CompiledFilter[Js.Value] =
-      QQCompiler.compileProgram(UpickleRuntime, decodedOptimizedProgram).valueOr(ex => throw ex)
+    val compiledQQProgram = StorageProgram.runProgram(Storage.local(TaskStorage(_)), getCompiledProgram(qqProgram)).each.valueOr(ex => throw ex)
     searchRequests.flatMap {
       case (filter, responses) =>
         responses.traverse[Observable, List[Issue]] { r =>
-          val results = compiledQQProgram(upickle.json read r.responseText)
+          val results = compiledQQProgram(upickle.json.read(r.responseText))
           Observable.fromTask(results map (_ flatMap (Issue.pkl.read.lift(_))))
         }.strengthL(filter)
     }.map { searchResults =>
@@ -108,4 +83,27 @@ object JIRAApp {
     }
   }
 
+  def getCompiledProgram(qqProgram: String): StorageProgram[OrCompilationError[CompiledFilter[Js.Value]]] = monadic[StorageProgram] {
+
+    import qq.FilterProtocol._
+    import StorageProgram._
+
+    val hash = qqProgram.hashCode.toString
+
+    val programInStorage = get(hash).each
+
+    val decodedOptimizedProgram = programInStorage match {
+      case None =>
+        val parsedQQProgram = Parser.program.parse(qqProgram).get.value
+        val optimizedProgram = Optimizer.optimize(parsedQQProgram)
+        val encodedOptimizedProgram = programCodec.encode(optimizedProgram).require
+        val out = encodedOptimizedProgram.toBase64
+        update(hash, out).each
+        optimizedProgram
+      case Some(encodedProgram: String) =>
+        programCodec.decode(BitVector.fromBase64(encodedProgram).get).require.value
+    }
+
+    QQCompiler.compileProgram(UpickleRuntime, decodedOptimizedProgram)
+  }
 }

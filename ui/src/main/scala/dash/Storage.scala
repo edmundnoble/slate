@@ -52,13 +52,11 @@ object StorageProgram {
   import StorageAction._
   import Util._
 
-  type StorageProgram[A] = Free[Coyoneda[StorageAction, ?], A]
-
   @inline final def length: StorageProgram[Int] =
     liftFC(Length)
 
-  @inline final def get(key: String): StorageProgram[Int] =
-    liftFC(Length)
+  @inline final def get(key: String): StorageProgram[Option[String]] =
+    liftFC(Get(key))
 
   @inline final def atIndex(index: Int): StorageProgram[Option[String]] =
     liftFC(AtIndex(index))
