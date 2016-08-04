@@ -25,15 +25,6 @@ object QQCompiler {
   type OrCompilationError[T] = QQCompilationException \/ T
 
   @inline
-  def composeCompiledFilters[AnyTy]
-  (firstFilter: CompiledFilter[AnyTy], secondFilter: CompiledFilter[AnyTy]): CompiledFilter[AnyTy] = { jsv: AnyTy =>
-    for {
-      firstResult <- firstFilter(jsv)
-      secondResult <- firstResult.traverse(secondFilter)
-    } yield secondResult.flatten
-  }
-
-  @inline
   def ensequenceCompiledFilters[AnyTy]
   (first: CompiledFilter[AnyTy], second: CompiledFilter[AnyTy]): CompiledFilter[AnyTy] = { jsv: AnyTy =>
     Task.mapBoth(first(jsv), second(jsv)) { (a, b) => a ++ b }
@@ -61,7 +52,7 @@ object QQCompiler {
                          definitions: List[CompiledDefinition[AnyTy]],
                          filter: FilterComponent[CompiledFilter[AnyTy]]): OrCompilationError[CompiledFilter[AnyTy]] = filter match {
     case leaf: LeafComponent[AnyTy@unchecked] => runtime.evaluateLeaf(leaf).right
-    case ComposeFilters(f, s) => composeCompiledFilters(f, s).right
+    case ComposeFilters(f, s) => f.andThen(_.flatMap(_.traverseM[Task, AnyTy](s))).right
     case EnlistFilter(f) => runtime.enlistFilter(f).right
     case SilenceExceptions(f) => ((jsv: AnyTy) => f(jsv).onErrorRecover { case _: QQRuntimeException => Nil }).right
     case CollectResults(f) => runtime.collectResults(f).right

@@ -42,28 +42,6 @@ object FilterComponent {
 
   implicit def qqFilterComponentTraverse = new Traverse[FilterComponent] {
 
-    override def map[A, B](fa: FilterComponent[A])(f: (A) => B): FilterComponent[B] = fa match {
-      case i: IdFilter[_] => i.retag[B]
-      case f: FetchApi[_] => f.retag[B]
-      case CallFilter(name, params) => CallFilter(name, params map f)
-      case k: SelectKey[_] => k.retag[B]
-      case i: SelectIndex[_] => i.retag[B]
-      case r: SelectRange[_] => r.retag[B]
-      case n: ConstNumber[_] => n.retag[B]
-      case s: ConstString[_] => s.retag[B]
-      case AddFilters(first, second) => AddFilters(f(first), f(second))
-      case SubtractFilters(first, second) => SubtractFilters(f(first), f(second))
-      case MultiplyFilters(first, second) => MultiplyFilters(f(first), f(second))
-      case DivideFilters(first, second) => DivideFilters(f(first), f(second))
-      case ModuloFilters(first, second) => ModuloFilters(f(first), f(second))
-      case ComposeFilters(first, second) => ComposeFilters(f(first), f(second))
-      case SilenceExceptions(a) => SilenceExceptions(f(a))
-      case EnlistFilter(a) => EnlistFilter(f(a))
-      case CollectResults(a) => CollectResults(f(a))
-      case EnsequenceFilters(first, second) => EnsequenceFilters(f(first), f(second))
-      case EnjectFilters(obj) => EnjectFilters(obj.map { case (k, v) => k.map(f) -> f(v) })
-    }
-
     override def traverseImpl[G[_], A, B](fa: FilterComponent[A])(f: (A) => G[B])(implicit G: Applicative[G]): G[FilterComponent[B]] = {
       fa match {
         case i: IdFilter[_] => G.point(i.retag[B])
