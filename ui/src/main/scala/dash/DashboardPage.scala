@@ -51,12 +51,14 @@ object DashboardPage {
             table(
               tr(Styles.appBarRow,
                 td(Styles.appBarText,
-                  "Dashboarder")
+                  "Dashboarder"
+                )
               )
             )
           ),
           div(
-            div((Styles.container: TagMod) +:
+            div(
+              (Styles.container: TagMod) +:
               state.expandableContentModels.grouped(2).map(makeFilterRow(_): TagMod).toSeq: _*
             )
           )
