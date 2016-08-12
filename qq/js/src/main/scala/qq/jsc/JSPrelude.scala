@@ -56,7 +56,7 @@ object JSPrelude extends PlatformPrelude[Any] {
   override def keys: CompiledDefinition[Any] =
     noParamDefinition(
       "keys", {
-        case obj: js.Object => Task.now(js.Array(obj.asInstanceOf[js.Dictionary[js.Any]].keys.toSeq: _*) :: Nil)
+        case obj: js.Object => Task.now(js.Object.keys(obj) :: Nil)
         case k => Task.raiseError(QQRuntimeException(s"Tried to get keys of $k"))
       }
     )

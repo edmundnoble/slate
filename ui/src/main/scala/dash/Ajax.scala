@@ -112,7 +112,7 @@ object Ajax {
       req.responseType = responseType
       req.timeout = if (timeout.value.isFinite()) timeout.value.toMillis else 0
       req.withCredentials = withCredentials
-      headers.foreach(x => req.setRequestHeader(x._1, x._2))
+      headers.foreach((req.setRequestHeader _).tupled)
       if (data == null)
         req.send()
       else

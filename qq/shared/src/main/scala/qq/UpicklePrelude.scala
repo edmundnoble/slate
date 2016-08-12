@@ -18,7 +18,7 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
       "length", {
         case arr: Js.Arr => Task.now(Js.Num(arr.value.length) :: Nil)
         case Js.Str(str) => Task.now(Js.Num(str.length) :: Nil)
-        case obj: Js.Obj => Task.now(Js.Num(obj.value.length) :: Nil)
+        case obj: Js.Obj => Task.now(Js.Num(obj.value.size) :: Nil)
         case Js.Null => Task.now((Js.Num(0): Js.Value) :: Nil)
         case k => Task.raiseError(QQRuntimeException(s"Tried to get length of $k"))
       }
@@ -27,7 +27,7 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
   override def keys: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "keys", {
-        case obj: Js.Obj => Task.now(Js.Arr(obj.value.map(p => Js.Str(p._1)): _*) :: Nil)
+        case obj: Js.Obj => Task.now(Js.Arr(obj.value.map(p => Js.Str(p._1))(collection.breakOut): _*) :: Nil)
         case k => Task.raiseError(QQRuntimeException(s"Tried to get keys of $k"))
       }
     )

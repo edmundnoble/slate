@@ -62,11 +62,9 @@ object FilterComponent {
         case EnlistFilter(a) => G.map(f(a))(EnlistFilter(_))
         case CollectResults(a) => G.map(f(a))(CollectResults(_))
         case EnsequenceFilters(first, second) => G.apply2(f(first), f(second))(EnsequenceFilters(_, _))
-        case EnjectFilters(obj) => obj.traverse { case (k, v) => G.tuple2(k.traverse(f), f(v)) }.map(EnjectFilters(_))
+        case EnjectFilters(obj) => obj.traverse[G, (String \/ B, B)] { case (k, v) => G.tuple2(k.traverse(f), f(v)) }.map(EnjectFilters(_))
       }
     }
   }
-
-  implicit val filterPkl = upickle.default.macroRW[Filter]
 
 }

@@ -3,7 +3,7 @@ package qq
 import matryoshka._
 import qq.FilterDSL._
 
-class OptimizerTest extends QQTestSuite {
+class OptimizerTest extends QQSyncTestSuite {
 
   import Optimizer.optimize
 

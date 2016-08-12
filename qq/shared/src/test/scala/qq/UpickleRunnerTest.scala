@@ -1,15 +1,16 @@
 package qq
 
 import org.scalatest.Assertion
+import upickle.Js
 
 import scala.concurrent.Future
 
-class UpickleRunnerTest extends QQTestSuite {
+class UpickleRunnerTest extends QQAsyncTestSuite {
 
   import RunnerTest._
 
   def runTest(test: RunnerTest): Future[Assertion] =
-    RunnerTest.runTest(UpickleRuntime, identity[upickle.Js.Value], identity[upickle.Js.Value], test)
+    RunnerTest.runTest(UpickleRuntime, identity[Js.Value], identity[Js.Value], test)
 
   "identity" in runTest(identityProgram)
   "ensequenced filters" in runTest(ensequencedFilters)

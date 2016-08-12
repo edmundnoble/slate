@@ -1,10 +1,8 @@
 package qq
 
-import qq.Interpreter.ExitException
 import monix.eval.Task
 import monix.execution.CancelableFuture
 import monix.execution.Scheduler.Implicits.global
-import shapeless.LabelledGeneric
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -13,7 +11,7 @@ import scalaz.syntax.std.option._
 
 object InterpreterMain extends App {
 
-  def runInterpreter(interpreter: Interpreter.Interpreter): Task[Unit] = Task.defer {
+  def runInterpreter(interpreter: Interpreter): Task[Unit] = Task.defer {
     println(s"Entered interpreter ${interpreter.name}")
     interpreter.resume(StdIn.readLine()).cata(
       _.fold(

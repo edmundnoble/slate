@@ -4,6 +4,7 @@ import net.lullabyte.Chrome
 import org.scalajs.sbtplugin.{OptimizerOptions, ScalaJSPlugin}
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import org.scalajs.sbtplugin.cross.CrossProject
+import sbt.complete.Parser
 import scoverage.ScoverageKeys.coverageExcludedPackages
 import upickle.Js
 
@@ -89,7 +90,6 @@ object DashboarderBuild extends Build {
       case None => Js.Null
       case Some(s) => implicitly[Writer[T]].write(s)
     }
-
     override implicit def OptionR[T: Reader]: Reader[Option[T]] = Reader {
       case Js.Null => None
       case v: Js.Value => Some(implicitly[Reader[T]].read.apply(v))
@@ -186,7 +186,6 @@ object DashboarderBuild extends Build {
       "-Xlint",
       "-feature",
       "-language:higherKinds",
-      "-Ywarn-value-discard",
       "-Ywarn-adapted-args",
       "-Ywarn-adapted-args",
       "-Ywarn-inaccessible",
@@ -194,6 +193,7 @@ object DashboarderBuild extends Build {
       "-Ywarn-nullary-override",
       "-Ywarn-nullary-unit"
     ),
+    scalacOptions in Compile += "-Ywarn-value-discard",
     coverageExcludedPackages := ";qq.*Main;",
     persistLauncher in Compile := true,
     persistLauncher in Test := false,
@@ -226,8 +226,9 @@ object DashboarderBuild extends Build {
   def emptyInputTask: Def.Initialize[InputTask[Unit]] =
     InputTask.createDyn[String, Unit](
       InputTask.parserAsInput(
-        sbt.complete.Parser.success("")
-      ))(Def.task[String => Def.Initialize[Task[Unit]]] { (s: String) => Def.task(()) })
+        Parser.zeroOrMore(
+          Parser.charClass(_ => true)).map(_.mkString))
+    )(Def.task { (_: String) => Def.task(()) })
 
   private val disableTests: Seq[Def.Setting[_]] = Seq(
     test in Test := (),

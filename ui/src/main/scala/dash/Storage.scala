@@ -3,8 +3,8 @@ package dash
 import monix.eval.Task
 import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
 
-import scalaz.{==>>, Coyoneda, Free, Monad, State, ~>}
 import scalaz.std.string._
+import scalaz.{==>>, Monad, State, ~>}
 
 abstract class Storage[F[_]] {
   def length: F[Int]
@@ -12,7 +12,7 @@ abstract class Storage[F[_]] {
   def update(key: String, data: String): F[Unit]
   def clear(): F[Unit]
   def remove(key: String): F[Unit]
-  def key(index: Int): F[Option[String]]
+  def keyAtIndex(index: Int): F[Option[String]]
 }
 
 sealed abstract class StorageAction[T] {
@@ -29,8 +29,8 @@ object StorageAction {
     override def run[F[_]](storage: Storage[F]): F[Option[String]] = storage(key)
   }
 
-  final case class AtIndex(index: Int) extends StorageAction[Option[String]] {
-    override def run[F[_]](storage: Storage[F]): F[Option[String]] = storage.key(index)
+  final case class KeyAtIndex(index: Int) extends StorageAction[Option[String]] {
+    override def run[F[_]](storage: Storage[F]): F[Option[String]] = storage.keyAtIndex(index)
   }
 
   final case class Update(key: String, value: String) extends StorageAction[Unit] {
@@ -59,7 +59,7 @@ object StorageProgram {
     liftFC(Get(key))
 
   @inline final def atIndex(index: Int): StorageProgram[Option[String]] =
-    liftFC(AtIndex(index))
+    liftFC(KeyAtIndex(index))
 
   @inline final def update(key: String, value: String): StorageProgram[Unit] =
     liftFC(Update(key, value))
@@ -76,12 +76,8 @@ object StorageProgram {
     })
 }
 
-object Storage {
-  def local[F[_]](make: SStorage => Storage[F]): Storage[F] = make(LocalStorage)
-  def session[F[_]](make: SStorage => Storage[F]): Storage[F] = make(SessionStorage)
-}
+sealed class DomStorage(underlying: SStorage) extends Storage[Task] {
 
-final class TaskStorage(underlying: SStorage) extends Storage[Task] {
   import Task.evalAlways
 
   override def length: Task[Int] = evalAlways(underlying.length)
@@ -89,27 +85,17 @@ final class TaskStorage(underlying: SStorage) extends Storage[Task] {
   override def update(key: String, data: String): Task[Unit] = evalAlways(underlying.update(key, data))
   override def clear(): Task[Unit] = evalAlways(underlying.clear())
   override def remove(key: String): Task[Unit] = evalAlways(underlying.remove(key))
-  override def key(index: Int): Task[Option[String]] = evalAlways(underlying.key(index))
+  override def keyAtIndex(index: Int): Task[Option[String]] = evalAlways(underlying.key(index))
 }
 
-object TaskStorage {
-  @inline def apply(storage: SStorage) = new TaskStorage(storage)
+object DomStorage {
+  @inline def apply(storage: SStorage): DomStorage = new DomStorage(storage)
+  case object Local extends DomStorage(LocalStorage)
+  case object Session extends DomStorage(SessionStorage)
 }
 
-final class UnsafeStorage(underlying: SStorage) extends Storage[scalaz.Id.Id] {
-  override def length: Int = underlying.length
-  override def apply(key: String): Option[String] = underlying(key)
-  override def update(key: String, data: String): Unit = underlying.update(key, data)
-  override def clear(): Unit = underlying.clear()
-  override def remove(key: String): Unit = underlying.remove(key)
-  override def key(index: Int): Option[String] = underlying.key(index)
-}
+object PureStorage extends Storage[State[String ==>> String, ?]] {
 
-object UnsafeStorage {
-  @inline def apply(storage: SStorage) = new UnsafeStorage(storage)
-}
-
-final class PureStorage extends Storage[State[String ==>> String, ?]] {
   import State._
 
   override def length: State[String ==>> String, Int] = get.map(_.size)
@@ -117,10 +103,6 @@ final class PureStorage extends Storage[State[String ==>> String, ?]] {
   override def update(key: String, data: String): State[String ==>> String, Unit] = modify(_.insert(key, data))
   override def clear(): State[String ==>> String, Unit] = put(==>>.empty)
   override def remove(key: String): State[String ==>> String, Unit] = modify(_ - key)
-  override def key(index: Int): State[String ==>> String, Option[String]] = get.map(_.elemAt(index).map(_._2))
-}
-
-object PureStorage {
-  @inline def apply = new PureStorage
+  override def keyAtIndex(index: Int): State[String ==>> String, Option[String]] = get.map(_.elemAt(index).map(_._2))
 }
 

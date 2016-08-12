@@ -31,18 +31,19 @@ object DashboardPage {
     )
   }
 
-  case class SearchPageState(expandableContentModels: IndexedSeq[ExpandableContentModel])
-    extends ReactiveState[SearchPageState, IndexedSeq[ExpandableContentModel], Unit](expandableContentModels, ()) {
-    override def setReactive(r: IndexedSeq[ExpandableContentModel]): SearchPageState = copy(expandableContentModels = r)
+  case class SearchPageState(expandableContentModels: Seq[ExpandableContentModel])
+    extends ReactiveState[SearchPageState, Seq[ExpandableContentModel], Unit](expandableContentModels, ()) {
+    override def setReactive(r: Seq[ExpandableContentModel]): SearchPageState = copy(expandableContentModels = r)
   }
 
   object SearchPageState {
     implicit val reusability = Reusability.byRefOr_==[SearchPageState]
   }
 
-  def makeSearchPage(expandableContentModelStream: Observable[IndexedSeq[ExpandableContentModel]])(implicit sch: Scheduler): ReactElement = {
+  def makeSearchPage(implicit sch: Scheduler
+                    ): ReactComponentB[Observable[Seq[ExpandableContentModel]], SearchPageState, Unit, TopNode] = {
     import views.ReactiveReact._
-    ReactComponentB[Observable[IndexedSeq[ExpandableContentModel]]]("Main search page")
+    ReactComponentB[Observable[Seq[ExpandableContentModel]]]("Main search page")
       .initialState(SearchPageState(IndexedSeq.empty))
       .renderS { (_, state) =>
         div(Styles.render[ReactElement],
@@ -66,7 +67,6 @@ object DashboardPage {
       }
       .configure(Reusability.shouldComponentUpdate)
       .reactiveReplace
-      .build(expandableContentModelStream)
   }
 
 }

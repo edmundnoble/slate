@@ -15,7 +15,7 @@ import scalaz.syntax.std.map._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, NonEmptyList, \/, \/-}
 
-// This is a QQ runtime which executes all operations in native Javascript
+// This is a QQ runtime which executes all operations on native JSON values in Javascript
 object JSRuntime extends QQRuntime[Any] {
 
   val taskOfListOfNull: Task[List[Any]] = Task.now(List(null))

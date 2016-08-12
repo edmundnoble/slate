@@ -1,24 +1,12 @@
 package qq
 
-import monix.eval.Task
-import monix.execution.Scheduler
-import org.scalatest.Assertion
+import scalaz.\/
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.language.implicitConversions
+import org.scalatest.OptionValues._
 
-object TestUtil {
-
-  implicit class TaskRunFuture[A](val task: Task[A]) {
-    def runFuture(implicit s: Scheduler): Future[A] = {
-      val prom = Promise[A]()
-      task.runAsync(prom.complete(_))
-      prom.future
-    }
-  }
-
-  implicit def discardAssertions(fut: Future[List[Assertion]])(implicit ctx: ExecutionContext): Future[Assertion] = {
-    fut.map(_.head)
-  }
-
+trait TestUtil {
+  implicit def convertDisjunctionToValuable[E, A](dis: E \/ A)(implicit pos: org.scalactic.source.Position): Valuable[A] =
+    new Valuable(dis.toOption, pos)
 }
+
+object TestUtil extends TestUtil

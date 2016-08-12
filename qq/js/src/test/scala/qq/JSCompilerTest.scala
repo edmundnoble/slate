@@ -1,15 +1,15 @@
 package qq
 
 import org.scalatest.Assertion
-import TestUtil._
 
 import scala.concurrent.Future
 
-class JSCompilerTest extends QQTestSuite {
+class JSCompilerTest extends QQAsyncTestSuite {
 
   import CompilerTest._
 
-  def runTest(qQDoubleCompilerTest: CompilerTest): Future[Assertion] = CompilerTest.runTest(qq.jsc.JSRuntime, qQDoubleCompilerTest)
+  def runTest(qqCompilerTest: CompilerTest): Future[Assertion] =
+    CompilerTest.runTest[Any](qq.jsc.JSRuntime, qqCompilerTest)
 
   "select keys" in Future.traverse(selectKeyTests)(runTest)
   "select index" in Future.traverse(selectIndexTests)(runTest)

@@ -44,8 +44,8 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
     case (f: Js.Arr, s: Js.Arr) =>
       Task.now(Js.Arr(f.value.filter(!s.value.contains(_)): _*))
     case (f: Js.Obj, s: Js.Obj) =>
-      val contents: Seq[(String, Js.Value)] = (f.value.toMap -- s.value.map[String, Set[String]](_._1)(collection.breakOut)).toSeq
-      Task.now(Js.Obj(contents: _*))
+      val contents: Map[String, Js.Value] = f.value.toMap -- s.value.map[String, Set[String]](_._1)(collection.breakOut)
+      Task.now(Js.Obj(contents.toSeq: _*))
     case (f, s) =>
       Task.raiseError(QQRuntimeException(s"can't subtract $f and $s"))
   }

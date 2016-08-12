@@ -42,10 +42,11 @@ object Optimizer {
     }
   }
 
-  val optimizations: NonEmptyList[Optimization] =
+  val allOptimizations: NonEmptyList[Optimization] =
     NonEmptyList(idCompose, collectEnlist, MathOptimizations.constReduce)
-  val allOptimizationsƒ: Filter => Filter = repeatedly(optimizations.foldLeft1(_ orElse _).lift)
-  def optimize(f: Filter): Filter = SafeRec.transCataT(f)(allOptimizationsƒ).run
+  val allOptimizationsƒ: Filter => Filter = repeatedly(allOptimizations.foldLeft1(_ orElse _).lift)
+  def optimize(filter: Filter): Filter =
+    Rec.transCataT(allOptimizationsƒ).apply(Rec.Unsafe.RecLimitStack(128), filter)
   def optimize(program: Program): Program =
     program.copy(defns = program.defns.map(optimize), main = optimize(program.main))
   def optimize(defn: Definition): Definition = defn.copy(body = optimize(defn.body))

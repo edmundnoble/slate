@@ -2,26 +2,25 @@ package qq
 
 import monix.eval.Task
 import qq.QQCompiler.CompiledFilter
-import upickle.{Js, json}
+import upickle.Js
 
 import scalaz.\/
 import scalaz.syntax.either._
 
+// I think this is just a free monad transformer
+final case class Interpreter(name: String, resumePartial: PartialFunction[String, InterpreterExitException.type \/ Task[(String, Interpreter)]]) {
+  @inline def resume: String => Option[InterpreterExitException.type \/ Task[(String, Interpreter)]] = resumePartial.lift
+  @inline def orElse(other: Interpreter): Interpreter = Interpreter(other.name, resumePartial.orElse(other.resumePartial))
+}
+
+// used as an escape hatch from the interpreter
+object InterpreterExitException extends Exception
+
 object Interpreter {
-
-  // used as an escape hatch from the interpreter
-  object ExitException extends Exception
-
-  // I think this is just a free monad transformer
-  final case class Interpreter(name: String, resumePartial: PartialFunction[String, ExitException.type \/ Task[(String, Interpreter)]]) {
-    @inline def resume: String => Option[ExitException.type \/ Task[(String, Interpreter)]] = resumePartial.lift
-    @inline def orElse(other: Interpreter): Interpreter = Interpreter(other.name, resumePartial.orElse(other.resumePartial))
-  }
-
   def taskSwitch: Interpreter = Interpreter(":p, :i:", {
     case ":p" => Task.evalAlways(("", programInterpreter)).right
     case ":i" => Task.evalAlways(("", inputInterpreter)).right
-    case ":q" => ExitException.left
+    case ":q" => InterpreterExitException.left
   })
 
   def programInterpreter: Interpreter = taskSwitch orElse Interpreter("program:", {

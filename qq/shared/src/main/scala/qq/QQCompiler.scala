@@ -78,7 +78,7 @@ object QQCompiler {
 
   def compileDefinitionStep[AnyTy](runtime: QQRuntime[AnyTy])
                                   (soFar: OrCompilationError[List[CompiledDefinition[AnyTy]]],
-                                   nextDefinition: Definition): OrCompilationError[List[CompiledDefinition[AnyTy]]] = {
+                                   nextDefinition: Definition): OrCompilationError[List[CompiledDefinition[AnyTy]]] =
     soFar.map((definitionsSoFar: List[CompiledDefinition[AnyTy]]) => {
       CompiledDefinition[AnyTy](nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter[AnyTy]]) => {
         val paramsAsDefinitions = (nextDefinition.params, params).zipped.map { (filterName, value) =>
@@ -87,7 +87,6 @@ object QQCompiler {
         compile(runtime, definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body)
       }) :: definitionsSoFar
     })
-  }
 
   @inline
   def compile[AnyTy](runtime: QQRuntime[AnyTy],
@@ -98,7 +97,8 @@ object QQCompiler {
       platformSpecificDefinitions <- runtime.platformPrelude.all(runtime)
       allDefinitions = sharedDefinitions ++ platformSpecificDefinitions ++ definitions
       compiledProgram <-
-      SafeRec.cataM[Fix, FilterComponent, OrCompilationError, CompiledFilter[AnyTy]](filter)(compileStep(runtime, allDefinitions, _)).run
+      Rec.cataM[Fix, FilterComponent, OrCompilationError, CompiledFilter[AnyTy]](compileStep(runtime, allDefinitions, _))
+        .apply(Rec.Unsafe.RecLimitStack(128), filter)
     } yield compiledProgram
 
 }

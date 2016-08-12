@@ -7,8 +7,8 @@ import scala.concurrent.Future
 import scalaz.\/
 import scalaz.syntax.either._
 import scalaz.syntax.std.`try`._
-import TestUtil._
 import monix.execution.Scheduler
+import AsyncTestUtil._
 
 case class RunnerTest(program: String, input: Js.Value, expectedOutputOrException: Exception \/ List[Js.Value])
 

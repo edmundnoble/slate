@@ -3,7 +3,7 @@ package qq
 import scalaz.\/
 import scalaz.std.list._
 
-class ParserTest extends QQTestSuite {
+class ParserTest extends QQSyncTestSuite {
 
   import FilterDSL._
 
@@ -109,9 +109,9 @@ class ParserTest extends QQTestSuite {
   }
 
   "parse full programs" - {
-    "with just a body" in(Parser.program.parse("id").get.value shouldBe ((nil[Definition], call("id"))))
+    "with just a body" in(Parser.program.parse("id").get.value shouldBe Program(nil[Definition], call("id")))
     "with small definitions" in (Parser.program.parse("def id: .; id").get.value shouldBe
-      (List(Definition("id", emptySized, id)), call("id")))
+      Program(List(Definition("id", emptySized, id)), call("id")))
   }
 
   "parse strings" in {

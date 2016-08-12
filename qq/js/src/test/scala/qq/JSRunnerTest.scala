@@ -1,15 +1,22 @@
 package qq
 
 import org.scalatest.Assertion
+import qq.jsc.{JSRuntime, Json}
+import upickle.Js
 
 import scala.concurrent.Future
 
-class JSRunnerTest extends QQTestSuite {
+class JSRunnerTest extends QQAsyncTestSuite {
 
   import RunnerTest._
 
   def runTest(test: RunnerTest): Future[Assertion] =
-    RunnerTest.runTest(qq.jsc.JSRuntime, upickle.json.writeJs, upickle.json.readJs, test)
+    RunnerTest.runTest(
+      JSRuntime,
+      Json.writeJs(Rec.Unsafe.RecUnsafe, _: Js.Value),
+      Json.readJs(Rec.Unsafe.RecUnsafe, _: Any),
+      test
+    )
 
   "identity" in runTest(identityProgram)
   "ensequenced filters" in runTest(ensequencedFilters)
@@ -37,4 +44,5 @@ class JSRunnerTest extends QQTestSuite {
   "multiply" in runTest(multiply)
   "add null exception" in runTest(addNullException)
   "silenced exception" in runTest(silencedException)
+
 }

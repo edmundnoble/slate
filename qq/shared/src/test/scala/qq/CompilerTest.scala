@@ -3,8 +3,8 @@ package qq
 import monix.eval.Task
 import org.scalatest.Assertion
 import upickle.Js
-import TestUtil._
 import monix.execution.Scheduler
+import AsyncTestUtil._
 
 import scala.concurrent.Future
 
