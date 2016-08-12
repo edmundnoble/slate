@@ -41,7 +41,7 @@ object Interpreter {
       val inputJs = json read input
       val outputTask = program(inputJs)
       outputTask.map { outputs =>
-        (outputs.mkString("(", ", ", ")"), programInterpreterOf(source, program))
+        (outputs.mkString(", "), programInterpreterOf(source, program))
       }.right
   })
 
@@ -59,7 +59,7 @@ object Interpreter {
           ("", programInterpreter)
         },
         (compiledFilter: CompiledFilter[Js.Value]) => compiledFilter(input).map { outputs =>
-          (outputs.mkString("(", ", ", ")"), inputInterpreterOf(source, input))
+          (outputs.mkString(", "), inputInterpreterOf(source, input))
         }
       ).right
   })
