@@ -28,7 +28,7 @@ object Rec {
 
     case object RecTrampoline extends RecEngine
 
-    @inline private[Rec] def recTrampoline[I, O]
+    @inline final private[Rec] def recTrampoline[I, O]
     (recStep: RecursiveFunction[I, O], i: I): O = {
       def loop(in: I): Trampoline[O] =
         Trampoline.suspend(recStep.run(in, loop))
@@ -42,7 +42,7 @@ object Rec {
     case class RecLimitStack(maxStackSize: Int) extends AnyVal with RecEngine
     case object RecUnsafe extends RecEngine
 
-    @inline private[Rec] def recUnsafe[I, O]
+    @inline final private[Rec] def recUnsafe[I, O]
     (recStep: RecursiveFunction[I, O], i: I): O = {
       def loop(in: I): Trampoline[O] =
         recStep.run(in, loop)
@@ -50,7 +50,7 @@ object Rec {
       loop(i).run
     }
 
-    @inline private[Rec] def recLimitStack[I, O]
+    @inline final private[Rec] def recLimitStack[I, O]
     (recStep: RecursiveFunction[I, O], maxStackSize: Int, i: I): O = {
       def loop(in: I, stackSize: Int = 0): Trampoline[O] =
         if (stackSize >= maxStackSize)
@@ -63,19 +63,19 @@ object Rec {
 
   }
 
-  @inline def cata[T[_[_]] : Recursive, F[_] : Traverse, A]
+  @inline final def cata[T[_[_]] : Recursive, F[_] : Traverse, A]
   (destroy: F[A] => A): RecursiveFunction[T[F], A] =
     RecursiveFunction { (tf, loop) =>
       tf.project.traverse[Trampoline, A](loop) map destroy
     }
 
-  @inline def cataM[T[_[_]] : Recursive, F[_] : Traverse, M[_] : Monad, A]
+  @inline final def cataM[T[_[_]] : Recursive, F[_] : Traverse, M[_] : Monad, A]
   (destroy: F[A] => M[A]): RecursiveFunction[T[F], M[A]] =
     RecursiveFunction { (tf, loop) =>
       tf.project.traverse[Trampoline, M[A]](loop) map (_.sequence[M, A].flatMap(destroy))
     }
 
-  @inline def transCataT[T[_[_]], F[_]]
+  @inline final def transCataT[T[_[_]], F[_]]
   (rewrite: T[F] => T[F])(implicit F: Traverse[F], T: TraverseT[T]): RecursiveFunction[T[F], T[F]] =
     RecursiveFunction { (tf, loop) =>
       tf.traverse[Trampoline, F](ftf => ftf.traverse[Trampoline, T[F]](tf => loop(tf))).map(rewrite)

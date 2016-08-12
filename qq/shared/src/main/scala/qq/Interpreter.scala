@@ -2,7 +2,7 @@ package qq
 
 import monix.eval.Task
 import qq.QQCompiler.CompiledFilter
-import upickle.Js
+import upickle.{Js, json}
 
 import scalaz.\/
 import scalaz.syntax.either._

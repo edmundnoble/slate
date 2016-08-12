@@ -26,7 +26,7 @@ class InterpreterTest extends QQAsyncTestSuite {
   }
 
   "program interpreter" - {
-    "accessible from maignore menu" ignore {
+    "accessible from main menu" in {
       for {
         programMenu <- runInterpreter(mainMenu, ":p").runFuture
       } yield {
@@ -34,13 +34,13 @@ class InterpreterTest extends QQAsyncTestSuite {
       }
     }
 
-    "take any program and input subsequently" ignore {
+    "take any program and input subsequently" in {
       for {
         output <- runInterpreter(mainMenu, ":p", ".", "[]").runFuture
       } yield output._1 should be("([])")
     }
 
-    "take any program and input subsequently several times" ignore {
+    "take any program and input subsequently several times" in {
       for {
         output <- runInterpreter(mainMenu, ":p", ".", "[]", "1").runFuture
       } yield output._1 should be("(1)")
@@ -50,7 +50,7 @@ class InterpreterTest extends QQAsyncTestSuite {
 
   "input interpreter" - {
 
-    "accessible from maignore menu" ignore {
+    "accessible from main menu" in {
       for {
         inputMenu <- runInterpreter(mainMenu, ":i").runFuture
       } yield {
@@ -58,13 +58,13 @@ class InterpreterTest extends QQAsyncTestSuite {
       }
     }
 
-    "take any input and program subsequently" ignore {
+    "take any input and program subsequently" in {
       for {
         output <- runInterpreter(mainMenu, ":i", "[]", ".").runFuture
       } yield output._1 should be("([])")
     }
 
-    "take any input and program subsequently several times" ignore {
+    "take any input and program subsequently several times" in {
       for {
         output <- runInterpreter(mainMenu, ":i", "0", ". + 1", ". + 2").runFuture
       } yield output._1 should be("(2)")

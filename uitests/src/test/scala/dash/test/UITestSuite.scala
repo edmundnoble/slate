@@ -7,11 +7,11 @@ import org.openqa.selenium.chrome.{ChromeDriverService, ChromeOptions}
 import org.openqa.selenium.remote.{DesiredCapabilities, RemoteWebDriver}
 import org.scalatest._
 import org.scalatest.matchers.{BeMatcher, MatchResult}
-import org.scalatest.selenium.{Page, WebBrowser}
+import org.scalatest.selenium.WebBrowser
 import org.scalatest.time.{Seconds, Span}
 
 abstract class UITestSuite extends FreeSpec with Matchers with WebBrowser with BeforeAndAfterAll with OptionValues {
-  val displayed = new BeMatcher[Element] {
+  lazy val displayed = new BeMatcher[Element] {
     override def apply(left: Element): MatchResult =
       MatchResult(
         left.isDisplayed,
@@ -20,13 +20,31 @@ abstract class UITestSuite extends FreeSpec with Matchers with WebBrowser with B
       )
   }
 
-  var chromeDriverService: ChromeDriverService = _
+  @volatile var chromeDriverServiceInitialized = false
+  lazy val chromeDriverService: ChromeDriverService = {
 
-  val options = new ChromeOptions()
-  val extensionPath = new File("ui/target/chrome/unpackedfast").getAbsolutePath
-  options.addArguments(s"load-extension=$extensionPath")
-  val capabilities = new DesiredCapabilities()
-  capabilities.setCapability(ChromeOptions.CAPABILITY, options)
+    val service = new ChromeDriverService.Builder()
+      .usingDriverExecutable(new File("/usr/local/sbin/chromedriver"))
+      .usingAnyFreePort()
+      .build()
+
+    service.start()
+    chromeDriverServiceInitialized = true
+    service
+  }
+
+  lazy val options = {
+    val extensionPath = new File("ui/target/chrome/unpackedfast").getAbsolutePath
+    val opts = new ChromeOptions()
+    opts.addArguments(s"load-extension=$extensionPath")
+    opts
+  }
+
+  lazy val capabilities = {
+    val caps = new DesiredCapabilities()
+    caps.setCapability(ChromeOptions.CAPABILITY, options)
+    caps
+  }
 
   object WebTestTag extends Tag("WebTestTag")
 
@@ -51,21 +69,11 @@ abstract class UITestSuite extends FreeSpec with Matchers with WebBrowser with B
     outcome
   }
 
-  override protected def beforeAll(): Unit = {
-    super.beforeAll()
-
-    chromeDriverService =
-      new ChromeDriverService.Builder()
-        .usingDriverExecutable(new File("/usr/local/sbin/chromedriver"))
-        .usingAnyFreePort()
-        .build()
-
-    chromeDriverService.start()
-  }
-
   override protected def afterAll(): Unit = {
     super.afterAll()
-    chromeDriverService.stop()
+    if (chromeDriverServiceInitialized) {
+      chromeDriverService.stop()
+    }
   }
 }
 
