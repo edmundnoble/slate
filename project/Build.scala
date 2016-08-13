@@ -104,7 +104,8 @@ object DashboarderBuild extends Build {
 
   def copyResources(suffices: Seq[String]) = Def.task {
     val file = (resourceDirectory in Compile).value
-    val unpacked = suffices.foldLeft(target.value)(_ / _)
+    val targetValue = target.value
+    val unpacked = suffices.foldLeft(targetValue)(_ / _)
     file.listFiles().foreach { resourceFile =>
       val target = unpacked / resourceFile.getName
       if (!target.exists() || resourceFile.lastModified() > target.lastModified()) {
@@ -122,24 +123,28 @@ object DashboarderBuild extends Build {
     chromePackageContent := file("content"),
     chromeBuildOpt := {
       val unpacked = copyResources(Seq("chrome", "unpackedopt")).value
-      Chrome.buildExtentionDirectory(unpacked)(
-        (chromeGenerateManifest in Compile).value,
-        (fullOptJS in Compile).value.data,
-        (packageMinifiedJSDependencies in Compile).value,
-        (packageScalaJSLauncher in Compile).value.data,
-        (chromePackageContent in Compile).value
-      )
+      val file =
+        Chrome.buildExtentionDirectory(unpacked)(
+          (chromeGenerateManifest in Compile).value,
+          (fullOptJS in Compile).value.data,
+          (packageMinifiedJSDependencies in Compile).value,
+          (packageScalaJSLauncher in Compile).value.data,
+          (chromePackageContent in Compile).value
+        )
+      file
     },
 
     chromeBuildFast := {
       val unpacked = copyResources(Seq("chrome", "unpackedfast")).value
-      Chrome.buildExtentionDirectory(unpacked)(
-        (chromeGenerateManifest in Compile).value,
-        (fastOptJS in Compile).value.data,
-        (packageJSDependencies in Compile).value,
-        (packageScalaJSLauncher in Compile).value.data,
-        (chromePackageContent in Compile).value
-      )
+      val file =
+        Chrome.buildExtentionDirectory(unpacked)(
+          (chromeGenerateManifest in Compile).value,
+          (fastOptJS in Compile).value.data,
+          (packageJSDependencies in Compile).value,
+          (packageScalaJSLauncher in Compile).value.data,
+          (chromePackageContent in Compile).value
+        )
+      file
     },
 
     chromeBuildUnopt := {
@@ -169,6 +174,7 @@ object DashboarderBuild extends Build {
     chromeGenerateManifest := {
       generateManifest(target.value / "chrome" / "generated_manifest.json")(ChromeManifest.mySettings)
     }
+
   )
 
   lazy val replMain =

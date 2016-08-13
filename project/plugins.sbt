@@ -1,4 +1,4 @@
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.9")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.11")
 
 addSbtPlugin("net.lullabyte" % "sbt-chrome-plugin" % "0.2.1")
 

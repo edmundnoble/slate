@@ -22,7 +22,7 @@ object DashboarderApp extends scalajs.js.JSApp {
   def main(): Unit = {
     import monix.execution.Scheduler.Implicits.global
 
-    val searchPage = DashboardPage.makeSearchPage.build(Observable.fromTask(JIRAApp.fetchSearchResults))
+    val searchPage = DashboardPage.makeSearchPage.build(Observable.fromTask(GMailApp.fetchMail).flatten)
     val container: Element = dom.document.body.children.namedItem("container")
     if (!js.isUndefined(Addons.Perf)) {
       logger.info("Starting perf")

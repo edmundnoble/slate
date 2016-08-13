@@ -1,7 +1,7 @@
 package dash.app
 
 import com.thoughtworks.each.Monadic._
-import dash.bindings.chrome.GetAuthTokenOptions
+import dash.chrome.{GetAuthTokenOptions, RemoveCachedAuthTokenOptions}
 import dash.models.ExpandableContentModel
 import monix.eval.Task
 import monix.reactive.Observable
@@ -17,9 +17,11 @@ object GMailApp {
     //    Ajax.get
     //    response_type
 
-    val authToken = dash.bindings.chrome.identity.getAuthToken(new GetAuthTokenOptions(interactive = false)).each
-    val authHeader = Map("Authorization" -> s"Bearer $authToken")
+    val authToken = dash.chrome.identity.getAuthToken(new GetAuthTokenOptions(interactive = true)).each
+    dash.chrome.identity.removeCachedAuthToken(new RemoveCachedAuthTokenOptions(token = authToken.get)).each
+    val authHeader = "Authorization" -> s"Bearer $authToken"
 
+    println(s"authHeader: $authHeader")
 
     ???
 

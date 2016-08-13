@@ -34,7 +34,7 @@ object ChromeManifest {
     ),
     background = Background(List("deps.js", "main.js", "launcher.js")),
     offlineEnabled = true,
-    permissions = Set("<all_urls>"),
+    permissions = Set("<all_urls>", "identity"),
     chromeUrlOverrides = Overrides(newtab = "index-dev.html")
   )
 
