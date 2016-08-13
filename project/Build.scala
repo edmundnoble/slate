@@ -119,46 +119,34 @@ object DashboarderBuild extends Build {
     unpacked
   }
 
+  def defineChromeBuildTask(folderName: String, buildTaskKey: TaskKey[Attributed[sbt.File]]) = Def.task {
+    val unpacked = copyResources(Seq("chrome", folderName)).value
+    val file =
+      Chrome.buildExtentionDirectory(unpacked)(
+        (chromeGenerateManifest in Compile).value,
+        (buildTaskKey in Compile).value.data,
+        (packageMinifiedJSDependencies in Compile).value,
+        (packageScalaJSLauncher in Compile).value.data,
+        (chromePackageContent in Compile).value
+      )
+    file
+  }
+
   lazy val chromeTasks: Seq[Def.Setting[_]] = Seq(
     chromePackageContent := file("content"),
+
     chromeBuildOpt := {
-      val unpacked = copyResources(Seq("chrome", "unpackedopt")).value
-      val file =
-        Chrome.buildExtentionDirectory(unpacked)(
-          (chromeGenerateManifest in Compile).value,
-          (fullOptJS in Compile).value.data,
-          (packageMinifiedJSDependencies in Compile).value,
-          (packageScalaJSLauncher in Compile).value.data,
-          (chromePackageContent in Compile).value
-        )
-      file
+      defineChromeBuildTask("unpackedopt", fullOptJS).value
     },
 
     chromeBuildFast := {
-      val unpacked = copyResources(Seq("chrome", "unpackedfast")).value
-      val file =
-        Chrome.buildExtentionDirectory(unpacked)(
-          (chromeGenerateManifest in Compile).value,
-          (fastOptJS in Compile).value.data,
-          (packageJSDependencies in Compile).value,
-          (packageScalaJSLauncher in Compile).value.data,
-          (chromePackageContent in Compile).value
-        )
-      file
+      defineChromeBuildTask("unpackedfast", fastOptJS).value
     },
 
     chromeBuildUnopt := {
-      val unpacked = copyResources(Seq("chrome", "unpackedunopt")).value
       val oldOpts = scalaJSOptimizerOptions.value
       scalaJSOptimizerOptions := oldOpts.withDisableOptimizer(true)
-      val file =
-        Chrome.buildExtentionDirectory(unpacked)(
-          (chromeGenerateManifest in Compile).value,
-          (fastOptJS in Compile).value.data,
-          (packageJSDependencies in Compile).value,
-          (packageScalaJSLauncher in Compile).value.data,
-          (chromePackageContent in Compile).value
-        )
+      val file = defineChromeBuildTask("unpackedunopt", fastOptJS).value
       scalaJSOptimizerOptions := oldOpts
       file
     },
