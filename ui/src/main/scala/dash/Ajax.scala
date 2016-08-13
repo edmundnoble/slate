@@ -38,6 +38,9 @@ object Ajax {
   object InputData {
     implicit def str2ajax(s: String): InputData = s.asInstanceOf[InputData]
 
+    implicit def map2ajax(params: Map[String, String]): InputData =
+      params.map { case (k, v) => s"$k=$v" }.mkString("&")
+
     implicit def arrayBufferView2ajax(b: ArrayBufferView): InputData = b.asInstanceOf[InputData]
 
     implicit def blob2ajax(b: Blob): InputData = b.asInstanceOf[InputData]

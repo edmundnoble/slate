@@ -1,12 +1,14 @@
 package dash.app
 
+import java.util.concurrent.TimeUnit
+
 import dash.Util._
 import dash._
 import dash.models.{ExpandableContentModel, TitledContentModel}
 import monix.eval.Task
 import monix.scalaz._
 import qq.jsc.Json
-import upickle.{Js, json}
+import upickle.Js
 
 import scala.concurrent.duration._
 import scalaz.std.list._
@@ -70,7 +72,7 @@ object JIRAApp extends DashApp {
 
   def fetchSearchResults: Task[Seq[ExpandableContentModel]] = {
 
-    implicit val ajaxTimeout = Ajax.Timeout(Duration(4000, MILLISECONDS))
+    implicit val ajaxTimeout = Ajax.Timeout(Duration(4000, TimeUnit.MILLISECONDS))
 
     for {
       filtersAndResponses <- for {
