@@ -17,11 +17,9 @@ object ChromeManifest {
   case class Oauth2Settings(clientId: String, scopes: List[String])
 
   case class Overrides(newtab: String)
-  object Overrides {
-    implicit val pkl = upickle.default.macroRW[Overrides]
-  }
 
   implicit val pkl = upickle.default.macroRW[ChromeManifest]
+
   val mySettings = ChromeManifest(
     name = "Dashboarder",
     version = "0.0.1",
@@ -37,4 +35,5 @@ object ChromeManifest {
     permissions = Set("<all_urls>"),
     chromeUrlOverrides = Overrides(newtab = "index-dev.html")
   )
+
 }

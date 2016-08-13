@@ -74,15 +74,16 @@ object JIRAApp extends DashApp {
 
     for {
       filtersAndResponses <- for {
-        favoriteFilterResponse <- Ajax.get(url = "https://jira.atlassian.net/rest/api/2/filter/favourite", headers = Creds.authData)
+        favoriteFilterResponse <- Ajax.get(url = "https://jira.atlassian.net/rest/api/2/filter/favourite", headers = Map.empty)//Creds.authData
         extractFavorites <- compiledExtractFavorites
         // TODO: error handling
         favoriteFilters = extractFavorites(Json.read(favoriteFilterResponse.responseText)).map(_.flatMap(Filter.pkl.read.lift(_)))
         filterRequests <- favoriteFilters.flatMap { filters =>
           filters.traverse { filter =>
-            Ajax.post(url = s"https://jira.atlassian.net/rest/api/2/search/",
+            Ajax.post(url = "https://jira.atlassian.net/rest/api/2/search/",
               data = Json.write(Js.Obj("jql" -> Js.Str(filter.jql), "maxResults" -> Js.Num(10))),
-              headers = Creds.authData + ("Content-Type" -> "application/json")).strengthL(filter)
+              headers = //Creds.authData +
+                Map("Content-Type" -> "application/json")).strengthL(filter)
           }
         }
       }

@@ -21,7 +21,7 @@ object Json {
       case true => Trampoline.done(Js.True)
       case false => Trampoline.done(Js.False)
       case null => Trampoline.done(Js.Null)
-      case s: js.Array[Any] =>
+      case s: js.Array[_] =>
         (s: Seq[Any]).traverse[Trampoline, Js.Value]((a: Any) => loop(a)).map(Js.Arr(_: _*))
       case s: js.Object =>
         ToTraverseOps[Map[String, ?], Any](
