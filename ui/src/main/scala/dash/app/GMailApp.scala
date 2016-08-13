@@ -13,6 +13,8 @@ object GMailApp {
   def fetchMail: Task[Observable[IndexedSeq[ExpandableContentModel]]] = monadic[Task] {
 
 //    https://accounts.google.com/o/oauth2/v2/auth
+    Ajax.get
+    response_type
 
     ???
   }
