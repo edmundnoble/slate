@@ -8,3 +8,4 @@ target/
 *Creds.scala
 *.iml
 .DS_Store
+*.pem
