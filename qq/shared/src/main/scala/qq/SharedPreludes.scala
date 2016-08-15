@@ -9,7 +9,7 @@ object SharedPreludes {
 
   object Compiled {
     def print[AnyTy]: CompiledDefinition[AnyTy] = {
-      val body: CompiledFilter[AnyTy] = { (jsv: AnyTy) => println(s"debug: $jsv"); Task.now(jsv :: Nil) }
+      val body: CompiledFilter[AnyTy] = { (jsv: AnyTy) => println("debug: " + jsv.toString); Task.now(jsv :: Nil) }
       CompiledDefinition[AnyTy]("print", 0, body = { _ => body.right[QQCompilationException] })
     }
 

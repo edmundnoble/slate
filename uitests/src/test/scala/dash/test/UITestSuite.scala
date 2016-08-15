@@ -36,7 +36,7 @@ abstract class UITestSuite extends FreeSpec with Matchers with WebBrowser with B
   lazy val options = {
     val extensionPath = new File("ui/target/chrome/unpackedfast").getAbsolutePath
     val opts = new ChromeOptions()
-    opts.addArguments(s"load-extension=$extensionPath")
+    opts.addArguments("load-extension=" + extensionPath)
     opts
   }
 

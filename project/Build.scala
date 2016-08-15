@@ -16,8 +16,8 @@ object DashboarderBuild extends Build {
       "com.lihaoyi" %%% "upickle" % "0.4.0",
       "com.lihaoyi" %%% "pprint" % "0.4.0",
       "com.lihaoyi" %%% "fastparse" % "0.3.7",
-      "io.monix" %%% "monix" % "2.0-RC8",
-      "io.monix" %%% "monix-scalaz-72" % "2.0-RC8",
+      "io.monix" %%% "monix" % "2.0-RC10",
+      "io.monix" %%% "monix-scalaz-72" % "2.0-RC10",
       "com.thoughtworks.each" %%% "each" % "0.5.1",
       "com.github.julien-truffaut" %%% "monocle-core" % "1.2.1",
       "com.github.julien-truffaut" %%% "monocle-generic" % "1.2.1",
@@ -154,7 +154,7 @@ object DashboarderBuild extends Build {
     chromePackage := {
       val out = target.value / "chrome"
       val chromeAppDir = chromeBuildOpt.value
-      val zipFile = new File(out, s"${name.value}.zip")
+      val zipFile = new File(out, name.value + ".zip")
       IO.zip(allSubpaths(chromeAppDir), zipFile)
       zipFile
     },

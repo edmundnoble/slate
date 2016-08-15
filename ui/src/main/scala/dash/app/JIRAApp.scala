@@ -24,7 +24,7 @@ object JIRAApp extends DashApp {
   case class Issue(url: String, summary: String, key: String, project: String,
                    status: String, description: String) {
     def toTitledContentModel: TitledContentModel =
-      TitledContentModel(title = s"$status - $key - $summary",
+      TitledContentModel(title = status + " - " + key + " - " + summary,
         titleUrl = Some("https://auviknetworks.atlassian.net/browse/" + key),
         content = description)
   }
@@ -76,7 +76,7 @@ object JIRAApp extends DashApp {
 
     for {
       filtersAndResponses <- for {
-        favoriteFilterResponse <- Ajax.get(url = "https://jira.atlassian.net/rest/api/2/filter/favourite", headers = Map.empty)//Creds.authData
+        favoriteFilterResponse <- Ajax.get(url = "https://jira.atlassian.net/rest/api/2/filter/favourite", headers = Map.empty) //Creds.authData
         extractFavorites <- compiledExtractFavorites
         // TODO: error handling
         favoriteFilters = extractFavorites(Json.read(favoriteFilterResponse.responseText)).map(_.flatMap(Filter.pkl.read.lift(_)))

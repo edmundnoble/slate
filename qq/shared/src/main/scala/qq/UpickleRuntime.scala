@@ -35,7 +35,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
     case (f: Js.Obj, s: Js.Obj) =>
       Task.now(Js.Obj((f.value.toMap ++ s.value.toMap).toSeq: _*))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException(s"can't add $f and $s"))
+      Task.raiseError(QQRuntimeException("can't add " + f.toString + " and " + s.toString))
   }
 
   override def subtractJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
@@ -47,7 +47,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
       val contents: Map[String, Js.Value] = f.value.toMap -- s.value.map[String, Set[String]](_._1)(collection.breakOut)
       Task.now(Js.Obj(contents.toSeq: _*))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException(s"can't subtract $f and $s"))
+      Task.raiseError(QQRuntimeException("can't subtract " + f.toString + " and " + s.toString))
   }
 
   override def multiplyJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
@@ -59,19 +59,19 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
       val secondMap = s.value.toMap.mapValues(Task.now)
       firstMap.unionWith(secondMap) { (f, s) => Task.mapBoth(f, s)(addJsValues).flatten[Js.Value] }.sequence.map(o => Js.Obj(o.toSeq: _*))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException(s"can't multiply $f and $s"))
+      Task.raiseError(QQRuntimeException("can't multiply " + f.toString + " and " + s.toString))
   }
 
   override def divideJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
     case (Js.Num(f), Js.Num(s)) => Task.now(Js.Num(f / s))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException(s"can't divide $f by $s"))
+      Task.raiseError(QQRuntimeException("can't divide " + f.toString + " by " + s.toString))
   }
 
   override def moduloJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
     case (Js.Num(f), Js.Num(s)) => Task.now(Js.Num(f % s))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException(s"can't modulo $f by $s"))
+      Task.raiseError(QQRuntimeException("can't modulo " + f.toString + " by " + s.toString))
   }
 
   override def enlistFilter(filter: CompiledFilter[Js.Value]): CompiledFilter[Js.Value] = { jsv: Js.Value =>
@@ -87,7 +87,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
         case Some((_, v)) => Task.now(v :: Nil)
       }
     case v =>
-      Task.raiseError(QQRuntimeException(s"Tried to select key $key in $v but it's not a dictionary"))
+      Task.raiseError(QQRuntimeException("Tried to select key " + key.toString + " in " + v.toString + " but it's not a dictionary"))
   }
 
   override def selectIndex(index: Int): CompiledFilter[Js.Value] = {
@@ -105,7 +105,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
         taskOfListOfNull
       }
     case v =>
-      Task.raiseError(QQRuntimeException(s"Tried to select index $index in $v but it's not an array"))
+      Task.raiseError(QQRuntimeException("Tried to select index " + index.toString + " in " + v.toString + " but it's not an array"))
   }
 
   override def selectRange(start: Int, end: Int): CompiledFilter[Js.Value] = {
@@ -117,7 +117,9 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
         Task.now(emptyArray :: Nil)
       }
     case v =>
-      Task.raiseError(QQRuntimeException(s"Tried to select range $start:$end in $v but it's not an array"))
+      Task.raiseError(QQRuntimeException("Tried to select range " +
+        start.toString + ":" + end.toString + " in " + v.toString +
+        " but it's not an array"))
   }
 
   override def collectResults(f: CompiledFilter[Js.Value]): CompiledFilter[Js.Value] = { jsv: Js.Value =>
@@ -128,7 +130,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
         case dict: Js.Obj =>
           Task.now(dict.value.map(_._2)(collection.breakOut))
         case v =>
-          Task.raiseError(QQRuntimeException(s"Tried to flatten $v but it's not an array"))
+          Task.raiseError(QQRuntimeException("Tried to flatten " + v.toString + " but it's not an array"))
       }
     }
   }
@@ -144,7 +146,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
               case Js.Str(keyString) =>
                 Task.now(valueResults.map(keyString -> _))
               case k =>
-                Task.raiseError(QQRuntimeException(s"Tried to use $k as a key for an object but it's not a string"))
+                Task.raiseError(QQRuntimeException("Tried to use " + k.toString + " as a key for an object but it's not a string"))
             }
           } yield keyValuePairs
         case (-\/(filterName), filterValue) =>

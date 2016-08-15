@@ -12,7 +12,7 @@ import scalaz.syntax.std.option._
 object InterpreterMain extends App {
 
   def runInterpreter(interpreter: Interpreter): Task[Unit] = Task.defer {
-    println(s"Entered interpreter ${interpreter.name}")
+    println("Entered interpreter " + interpreter.name)
     interpreter.resume(StdIn.readLine()).cata(
       _.fold(
         _ => Task.evalAlways(println("Bye!")),

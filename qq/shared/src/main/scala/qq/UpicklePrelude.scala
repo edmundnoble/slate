@@ -20,7 +20,7 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
         case Js.Str(str) => Task.now(Js.Num(str.length) :: Nil)
         case obj: Js.Obj => Task.now(Js.Num(obj.value.size) :: Nil)
         case Js.Null => Task.now((Js.Num(0): Js.Value) :: Nil)
-        case k => Task.raiseError(QQRuntimeException(s"Tried to get length of $k"))
+        case k => Task.raiseError(QQRuntimeException("Tried to get length of " + k))
       }
     )
 
@@ -28,7 +28,7 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
     noParamDefinition(
       "keys", {
         case obj: Js.Obj => Task.now(Js.Arr(obj.value.map(p => Js.Str(p._1))(collection.breakOut): _*) :: Nil)
-        case k => Task.raiseError(QQRuntimeException(s"Tried to get keys of $k"))
+        case k => Task.raiseError(QQRuntimeException("Tried to get keys of " + k))
       }
     )
 
@@ -44,13 +44,13 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
               }.each
               val replacements: List[String] = replacementFilter(jsv).each.traverse[Task, String] {
                 case Js.Str(string) => Task.now(string)
-                case j => Task.raiseError(QQRuntimeException(s"can't replace with ${j.toString}"))
+                case j => Task.raiseError(QQRuntimeException("can't replace with " + j.toString))
               }.each
               val valueRegexReplacementList = (regexes, replacements).zipped.map { case (regex, replacement) =>
                 jsv match {
                   case Js.Str(string) =>
                     Task.now(Js.Str(regex.matcher(string).replaceAll(replacement)): Js.Value)
-                  case j => Task.raiseError(QQRuntimeException(s"can't replace ${j.toString}"))
+                  case j => Task.raiseError(QQRuntimeException("can't replace " + j.toString))
                 }
               }.sequence[Task, Js.Value].each
               valueRegexReplacementList

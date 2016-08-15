@@ -21,7 +21,7 @@ object CompilerTest {
       QQCompiler
         .compile(UpickleRuntime, Nil, filter)
         .fold[Task[Assertion]](
-        err => Task.evalAlways(fail(s"error occurred during compilation: $err")),
+        err => Task.evalAlways(fail("error occurred during compilation: " + err.toString)),
         program => program(input).map { output => output shouldBe expectedOutput })
         .runFuture
   }

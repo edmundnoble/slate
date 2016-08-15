@@ -9,26 +9,27 @@ import scalaz.syntax.monad._
 import scalaz.syntax.traverse._
 import scalaz.{Monad, Trampoline, Traverse}
 
-object Rec {
+object Recursion {
 
   // recursion through continuation passing
+  // TODO: make this a category somehow?
   case class RecursiveFunction[I, O](run: (I, (I => Trampoline[O])) => Trampoline[O]) extends AnyVal {
 
-    @inline final def apply(engine: RecEngine, in: I) = engine match {
-      case Safe.RecTrampoline => Safe.recTrampoline(this, in)
-      case Unsafe.RecUnsafe => Unsafe.recUnsafe(this, in)
-      case Unsafe.RecLimitStack(limit) => Unsafe.recLimitStack(this, limit, in)
+    @inline final def apply(engine: RecursionEngine, in: I) = engine match {
+      case Safe.RecursionTrampoline => Safe.recTrampoline(this, in)
+      case Unsafe.RecursionDirect => Unsafe.recDirect(this, in)
+      case Unsafe.RecursionLimitStack(limit) => Unsafe.recLimitStack(this, limit, in)
     }
 
   }
 
-  sealed trait RecEngine extends Any
+  sealed trait RecursionEngine extends Any
 
   object Safe {
 
-    case object RecTrampoline extends RecEngine
+    case object RecursionTrampoline extends RecursionEngine
 
-    @inline final private[Rec] def recTrampoline[I, O]
+    @inline final private[Recursion] def recTrampoline[I, O]
     (recStep: RecursiveFunction[I, O], i: I): O = {
       def loop(in: I): Trampoline[O] =
         Trampoline.suspend(recStep.run(in, loop))
@@ -39,10 +40,10 @@ object Rec {
   }
 
   object Unsafe {
-    case class RecLimitStack(maxStackSize: Int) extends AnyVal with RecEngine
-    case object RecUnsafe extends RecEngine
+    case class RecursionLimitStack(maxStackSize: Int) extends AnyVal with RecursionEngine
+    case object RecursionDirect extends RecursionEngine
 
-    @inline final private[Rec] def recUnsafe[I, O]
+    @inline final private[Recursion] def recDirect[I, O]
     (recStep: RecursiveFunction[I, O], i: I): O = {
       def loop(in: I): Trampoline[O] =
         recStep.run(in, loop)
@@ -50,7 +51,7 @@ object Rec {
       loop(i).run
     }
 
-    @inline final private[Rec] def recLimitStack[I, O]
+    @inline final private[Recursion] def recLimitStack[I, O]
     (recStep: RecursiveFunction[I, O], maxStackSize: Int, i: I): O = {
       def loop(in: I, stackSize: Int = 0): Trampoline[O] =
         if (stackSize >= maxStackSize)

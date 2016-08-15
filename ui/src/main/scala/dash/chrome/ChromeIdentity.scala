@@ -21,7 +21,7 @@ object ChromeIdentity extends js.Object {
   @JSName("getAuthToken")
   @js.native
   def fetchAuthToken(details: UndefOr[GetAuthTokenOptions] = js.undefined,
-                     callback: js.Function1[UndefOr[String], Unit]): Unit = js.native
+                     callback: js.Function1[String, Unit]): Unit = js.native
 
   @js.native
   def removeCachedAuthToken(details: RemoveCachedAuthTokenOptions,
@@ -30,8 +30,6 @@ object ChromeIdentity extends js.Object {
 
 @ScalaJSDefined
 class LastError(val message: UndefOr[String]) extends js.Object
-
-case class ChromeErrorException(message: UndefOr[String]) extends Exception(message.getOrElse("No error message"))
 
 @js.native
 @JSName("chrome.runtime")

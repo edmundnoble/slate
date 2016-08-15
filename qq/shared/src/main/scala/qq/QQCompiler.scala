@@ -12,12 +12,12 @@ import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 
 case class QQRuntimeException(message: String) extends RuntimeException(message)
-case class NotARegex(asStr: String) extends RuntimeException(s"tried to use this as a regex: $asStr")
+case class NotARegex(asStr: String) extends RuntimeException("tried to use this as a regex: " + asStr)
 class QQCompilationException(message: String) extends RuntimeException(message)
 case class NoSuchMethod(name: String)
-  extends QQCompilationException(message = s"No such method: $name")
+  extends QQCompilationException(message = "No such method: " + name)
 case class WrongNumParams(name: String, correct: Int, you: Int)
-  extends QQCompilationException(message = s"Wrong number of params for filter $name: passed $you, wanted $correct")
+  extends QQCompilationException(message = "Wrong number of params for filter " + name.toString + ": passed $you, wanted " + correct)
 
 object QQCompiler {
 
@@ -97,8 +97,8 @@ object QQCompiler {
       platformSpecificDefinitions <- runtime.platformPrelude.all(runtime)
       allDefinitions = sharedDefinitions ++ platformSpecificDefinitions ++ definitions
       compiledProgram <-
-      Rec.cataM[Fix, FilterComponent, OrCompilationError, CompiledFilter[AnyTy]](compileStep(runtime, allDefinitions, _))
-        .apply(Rec.Unsafe.RecLimitStack(128), filter)
+      Recursion.cataM[Fix, FilterComponent, OrCompilationError, CompiledFilter[AnyTy]](compileStep(runtime, allDefinitions, _))
+        .apply(Recursion.Unsafe.RecursionLimitStack(128), filter)
     } yield compiledProgram
 
 }
