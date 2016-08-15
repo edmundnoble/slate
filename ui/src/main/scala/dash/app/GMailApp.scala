@@ -27,7 +27,7 @@ object GMailApp {
     //    Ajax.get
     //    response_type
 
-    val authToken = identify.getAuthToken(new GetAuthTokenOptions(interactive = true)).materializeAttempt.each
+    val authToken = identify.getAuthToken(new GetAuthTokenOptions(interactive = true)).each
     val () = identify.removeCachedAuthToken(new RemoveCachedAuthTokenOptions(token = authToken)).each
     val authHeader = "Authorization" -> ("Bearer " + authToken)
     val getThreadsUrl = "https://www.googleapis.com/gmail/v1/users/me/threads"

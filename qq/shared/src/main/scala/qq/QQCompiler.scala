@@ -11,13 +11,20 @@ import scalaz.syntax.either._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 
-case class QQRuntimeException(message: String) extends RuntimeException(message)
-case class NotARegex(asStr: String) extends RuntimeException("tried to use this as a regex: " + asStr)
+class QQRuntimeException(message: String) extends RuntimeException(message)
+object QQRuntimeException {
+  def apply(message: String): QQRuntimeException = new QQRuntimeException(message)
+}
+case class NotARegex(asStr: String) extends QQRuntimeException(
+  "tried to use this as a regex: " + asStr
+)
+
 class QQCompilationException(message: String) extends RuntimeException(message)
 case class NoSuchMethod(name: String)
   extends QQCompilationException(message = "No such method: " + name)
-case class WrongNumParams(name: String, correct: Int, you: Int)
-  extends QQCompilationException(message = "Wrong number of params for filter " + name.toString + ": passed $you, wanted " + correct)
+case class WrongNumParams(name: String, correct: Int, you: Int) extends QQCompilationException(
+  "Wrong number of params for filter " + name + ": passed " + you.toString + ", wanted " + correct.toString
+)
 
 object QQCompiler {
 

@@ -1,14 +1,14 @@
-import sbt._
-import Keys._
 import net.lullabyte.Chrome
-import org.scalajs.sbtplugin.{OptimizerOptions, ScalaJSPlugin}
+import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import org.scalajs.sbtplugin.cross.CrossProject
+import sbt.Keys._
+import sbt._
 import sbt.complete.Parser
 import scoverage.ScoverageKeys.coverageExcludedPackages
 import upickle.Js
 
-object DashboarderBuild extends Build {
+object DashboarderBuild {
 
   val commonDeps = Seq(
     libraryDependencies ++= Seq(
@@ -71,8 +71,7 @@ object DashboarderBuild extends Build {
 
   object SnakeOptionPickle extends upickle.AttributeTagged {
     def camelToSnake(s: String) = {
-      val res = s.split("(?=[A-Z])", -1).map(_.toLowerCase).mkString("_")
-      res
+      s.split("(?=[A-Z])", -1).map(_.toLowerCase).mkString("_")
     }
     override def CaseR[T: this.Reader, V]
     (f: T => V,
@@ -206,17 +205,6 @@ object DashboarderBuild extends Build {
     relativeSourceMaps := true
   )
 
-  lazy val qq: CrossProject = crossProject.in(file("qq"))
-    .settings(baseSettings: _*)
-    .settings(commonDeps: _*)
-    .settings(replMain: _*)
-    .jsSettings(scalaJSUseRhino in Global := false)
-    .jsSettings(ScalaJSPlugin.projectSettings: _*)
-    .jsSettings(requiresDOM in Test := false)
-
-  lazy val qqjvm = qq.jvm
-  lazy val qqjs = qq.js
-
   def emptyInputTask: Def.Initialize[InputTask[Unit]] =
     InputTask.createDyn[String, Unit](
       InputTask.parserAsInput(
@@ -230,6 +218,20 @@ object DashboarderBuild extends Build {
     testOnly in Test <<= emptyInputTask
   )
 
+  def dependOnChrome[T](taskKey: TaskKey[T]): Def.Setting[Task[T]] =
+    taskKey <<= taskKey.dependsOn(chromeBuildFast in ui)
+
+  lazy val qq: CrossProject = crossProject.in(file("qq"))
+    .settings(baseSettings: _*)
+    .settings(commonDeps: _*)
+    .settings(replMain: _*)
+    .jsSettings(scalaJSUseRhino in Global := false)
+    .jsSettings(ScalaJSPlugin.projectSettings: _*)
+    .jsSettings(requiresDOM in Test := false)
+
+  lazy val qqjvm = qq.jvm
+  lazy val qqjs = qq.js
+
   lazy val ui = Project(id = "ui", base = file("ui"))
     .dependsOn(qqjs)
     .settings(ScalaJSPlugin.projectSettings)
@@ -240,9 +242,6 @@ object DashboarderBuild extends Build {
     .settings(commonDeps)
     .settings(uiDeps)
     .settings(disableTests)
-
-  def dependOnChrome[T](taskKey: TaskKey[T]): Def.Setting[Task[T]] =
-    taskKey <<= taskKey.dependsOn(chromeBuildFast in ui)
 
   lazy val uitests = Project(id = "uitests", base = file("uitests"))
     .dependsOn(ui)
