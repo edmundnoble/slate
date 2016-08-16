@@ -1,10 +1,5 @@
 package dash.test
 
-import monix.reactive.Observable
-import org.scalatest.Succeeded
-
-import scala.concurrent.duration._
-
 class StartupTests extends UITestSuite {
 
   import Elements._

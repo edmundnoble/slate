@@ -250,6 +250,7 @@ object DashboarderBuild {
     .settings(commonDeps)
     .settings(dependOnChrome(testOptions in Test))
     .settings((test in Test) <<= (test in Test).dependsOn(chromeBuildOpt in ui, compile in Test in qqjvm))
+    .settings((testOptions in Test) <<= (testOptions in Test).dependsOn(chromeBuildOpt in ui, compile in Test in qqjvm))
     .settings((testQuick in Test) := (test in Test).value)
 
   lazy val root = project.in(file("."))
