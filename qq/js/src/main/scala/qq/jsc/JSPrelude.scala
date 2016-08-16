@@ -21,7 +21,7 @@ object JSPrelude extends PlatformPrelude[Any] {
         case str: String => Task.now(str.length :: Nil)
         case obj: js.Object => Task.now(obj.asInstanceOf[js.Dictionary[js.Any]].toArray.length :: Nil)
         case null => Task.now(0 :: Nil)
-        case k => Task.raiseError(QQRuntimeException("Tried to get length of " + k.toString))
+        case k => Task.raiseError(QQRuntimeException("Tried to get length of " + String.valueOf(k)))
       }
     )
 
@@ -34,17 +34,17 @@ object JSPrelude extends PlatformPrelude[Any] {
             monadic[Task] {
               val regexes: List[Pattern] = regexFilter(jsv).each.traverse[Task, Pattern] {
                 case string: String => Task.now(Pattern.compile(string))
-                case j => Task.raiseError(NotARegex(j.toString))
+                case j => Task.raiseError(NotARegex(String.valueOf(j)))
               }.each
               val replacements: List[String] = replacementFilter(jsv).each.traverse[Task, String] {
                 case string: String => Task.now(string)
-                case j => Task.raiseError(QQRuntimeException("can't replace with " + j.toString))
+                case j => Task.raiseError(QQRuntimeException("can't replace with " + String.valueOf(j)))
               }.each
               val valueRegexReplacementList = (regexes, replacements).zipped.map { case (regex, replacement) =>
                 jsv match {
                   case string: String =>
                     Task.now(regex.matcher(string).replaceAll(replacement): Any)
-                  case j => Task.raiseError(QQRuntimeException("can't replace " + j.toString))
+                  case j => Task.raiseError(QQRuntimeException("can't replace " + String.valueOf(j)))
                 }
               }.sequence[Task, Any].each
               valueRegexReplacementList
@@ -57,7 +57,7 @@ object JSPrelude extends PlatformPrelude[Any] {
     noParamDefinition(
       "keys", {
         case obj: js.Object => Task.now(js.Object.keys(obj) :: Nil)
-        case k => Task.raiseError(QQRuntimeException("Tried to get keys of " + k.toString))
+        case k => Task.raiseError(QQRuntimeException("Tried to get keys of " + String.valueOf(k)))
       }
     )
 

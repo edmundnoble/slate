@@ -3,11 +3,13 @@ package dash.chrome
 import scala.scalajs.js
 import scala.scalajs.js.UndefOr
 import scala.scalajs.js.annotation.{JSName, ScalaJSDefined}
+import scala.scalajs.js.undefined
+import scala.scalajs.js.native
 
 @ScalaJSDefined
-class GetAuthTokenOptions(val interactive: UndefOr[Boolean] = js.undefined,
-                          val account: UndefOr[AccountInfo] = js.undefined,
-                          val scopes: UndefOr[js.Array[String]] = js.undefined) extends js.Object
+class GetAuthTokenOptions(val interactive: UndefOr[Boolean] = undefined,
+                          val account: UndefOr[AccountInfo] = undefined,
+                          val scopes: UndefOr[js.Array[String]] = undefined) extends js.Object
 
 @ScalaJSDefined
 class RemoveCachedAuthTokenOptions(val token: String) extends js.Object
@@ -15,26 +17,26 @@ class RemoveCachedAuthTokenOptions(val token: String) extends js.Object
 @ScalaJSDefined
 class AccountInfo(val id: String) extends js.Object
 
-@js.native
+@native
 @JSName("chrome.identity")
 object ChromeIdentity extends js.Object {
   @JSName("getAuthToken")
-  @js.native
-  def fetchAuthToken(details: UndefOr[GetAuthTokenOptions] = js.undefined,
-                     callback: js.Function1[String, Unit]): Unit = js.native
+  @native
+  def fetchAuthToken(details: UndefOr[GetAuthTokenOptions] = undefined,
+                     callback: js.Function1[String, Unit]): Unit = native
 
-  @js.native
+  @native
   def removeCachedAuthToken(details: RemoveCachedAuthTokenOptions,
-                            callback: js.Function1[Unit, Unit]): Unit = js.native
+                            callback: js.Function1[Unit, Unit]): Unit = native
 }
 
 @ScalaJSDefined
 class LastError(val message: UndefOr[String]) extends js.Object
 
-@js.native
+@native
 @JSName("chrome.runtime")
 object ChromeRuntime extends js.Object {
-  @js.native
-  def lastError: UndefOr[LastError] = js.native
+  @native
+  def lastError: UndefOr[LastError] = native
 }
 

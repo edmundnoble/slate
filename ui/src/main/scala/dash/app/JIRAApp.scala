@@ -9,8 +9,10 @@ import monix.eval.Task
 import monix.scalaz._
 import qq.jsc.Json
 import upickle.Js
+import upickle.Js.Value
 
 import scala.concurrent.duration._
+import scalaz.\/
 import scalaz.std.list._
 import scalaz.syntax.traverse._
 
@@ -79,11 +81,12 @@ object JIRAApp extends DashApp {
         favoriteFilterResponse <- Ajax.get(url = "https://jira.atlassian.net/rest/api/2/filter/favourite", headers = Map.empty) //Creds.authData
         extractFavorites <- compiledExtractFavorites
         // TODO: error handling
-        favoriteFilters = extractFavorites(Json.read(favoriteFilterResponse.responseText)).map(_.flatMap(Filter.pkl.read.lift(_)))
+        upickle = Json.readUpickle(favoriteFilterResponse.responseText).valueOr(???)
+        favoriteFilters = extractFavorites(upickle).map(_.flatMap(Filter.pkl.read.lift(_)))
         filterRequests <- favoriteFilters.flatMap { filters =>
           filters.traverse { filter =>
             Ajax.post(url = "https://jira.atlassian.net/rest/api/2/search/",
-              data = Json.write(Js.Obj("jql" -> Js.Str(filter.jql), "maxResults" -> Js.Num(10))),
+              data = Json.upickleToString(Js.Obj("jql" -> Js.Str(filter.jql), "maxResults" -> Js.Num(10))),
               headers = //Creds.authData +
                 Map("Content-Type" -> "application/json")).strengthL(filter)
           }
@@ -95,7 +98,7 @@ object JIRAApp extends DashApp {
         filtersAndResponses.map {
           case (filter, response) =>
             def issueToExpandableContentModel(iss: List[Js.Value]) = SearchResult(filter, iss.map(Issue.pkl.read.lift(_))).toExpandableContentModel
-            val issuesJson = Json.read(response.responseText)
+            val issuesJson = Json.readUpickle(response.responseText).valueOr(???)
             extractIssues(issuesJson).map(issueToExpandableContentModel)
         }
       )

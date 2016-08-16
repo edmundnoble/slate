@@ -13,12 +13,14 @@ object Recursion {
 
   // recursion through continuation passing
   // TODO: make this a category somehow?
-  case class RecursiveFunction[I, O](run: (I, (I => Trampoline[O])) => Trampoline[O]) extends AnyVal {
+  trait RecursiveFunction[I, O] extends Any {
 
-    @inline final def apply(engine: RecursionEngine, in: I) = engine match {
-      case Safe.RecursionTrampoline => Safe.recTrampoline(this, in)
-      case Unsafe.RecursionDirect => Unsafe.recDirect(this, in)
-      case Unsafe.RecursionLimitStack(limit) => Unsafe.recLimitStack(this, limit, in)
+    def run(in: I, loop: I => Trampoline[O]): Trampoline[O]
+
+    final def apply(in: I)(implicit engine: RecursionEngine) = engine match {
+      case Safe.Trampoline => Safe.recTrampoline(this, in)
+      case Unsafe.Direct => Unsafe.recDirect(this, in)
+      case Unsafe.LimitStack(limit) => Unsafe.recLimitStack(this, limit, in)
     }
 
   }
@@ -27,12 +29,12 @@ object Recursion {
 
   object Safe {
 
-    case object RecursionTrampoline extends RecursionEngine
+    case object Trampoline extends RecursionEngine
 
     @inline final private[Recursion] def recTrampoline[I, O]
     (recStep: RecursiveFunction[I, O], i: I): O = {
       def loop(in: I): Trampoline[O] =
-        Trampoline.suspend(recStep.run(in, loop))
+        scalaz.Trampoline.suspend(recStep.run(in, loop))
 
       loop(i).run
     }
@@ -40,8 +42,8 @@ object Recursion {
   }
 
   object Unsafe {
-    case class RecursionLimitStack(maxStackSize: Int) extends AnyVal with RecursionEngine
-    case object RecursionDirect extends RecursionEngine
+    case class LimitStack(maxStackSize: Int) extends AnyVal with RecursionEngine
+    case object Direct extends RecursionEngine
 
     @inline final private[Recursion] def recDirect[I, O]
     (recStep: RecursiveFunction[I, O], i: I): O = {
@@ -65,22 +67,22 @@ object Recursion {
   }
 
   @inline final def cata[T[_[_]] : Recursive, F[_] : Traverse, A]
-  (destroy: F[A] => A): RecursiveFunction[T[F], A] =
-    RecursiveFunction { (tf, loop) =>
+  (destroy: F[A] => A): RecursiveFunction[T[F], A] = new RecursiveFunction[T[F], A] {
+    override def run(tf: T[F], loop: T[F] => Trampoline[A]) =
       tf.project.traverse[Trampoline, A](loop) map destroy
-    }
+  }
 
   @inline final def cataM[T[_[_]] : Recursive, F[_] : Traverse, M[_] : Monad, A]
-  (destroy: F[A] => M[A]): RecursiveFunction[T[F], M[A]] =
-    RecursiveFunction { (tf, loop) =>
+  (destroy: F[A] => M[A]): RecursiveFunction[T[F], M[A]] = new RecursiveFunction[T[F], M[A]] {
+    override def run(tf: T[F], loop: T[F] => Trampoline[M[A]]) =
       tf.project.traverse[Trampoline, M[A]](loop) map (_.sequence[M, A].flatMap(destroy))
-    }
+  }
 
-  @inline final def transCataT[T[_[_]], F[_]]
-  (rewrite: T[F] => T[F])(implicit F: Traverse[F], T: TraverseT[T]): RecursiveFunction[T[F], T[F]] =
-    RecursiveFunction { (tf, loop) =>
+  @inline final def transCataT[T[_[_]]: TraverseT, F[_]: Traverse]
+  (rewrite: T[F] => T[F]): RecursiveFunction[T[F], T[F]] = new RecursiveFunction[T[F], T[F]] {
+    override def run(tf: T[F], loop: T[F] => Trampoline[T[F]]) =
       tf.traverse[Trampoline, F](ftf => ftf.traverse[Trampoline, T[F]](tf => loop(tf))).map(rewrite)
-    }
+  }
 
 }
 

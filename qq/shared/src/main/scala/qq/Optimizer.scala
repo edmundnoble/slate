@@ -7,6 +7,7 @@ import scala.util.control.TailCalls.TailRec
 import scalaz.syntax.foldable1._
 import scalaz.syntax.functor._
 import scalaz.{Functor, NonEmptyList}
+import qq.Platform.Rec._
 
 object Optimizer {
 
@@ -46,7 +47,7 @@ object Optimizer {
     NonEmptyList(idCompose, collectEnlist, MathOptimizations.constReduce)
   val allOptimizationsƒ: Filter => Filter = repeatedly(allOptimizations.foldLeft1(_ orElse _).lift)
   def optimize(filter: Filter): Filter =
-    Recursion.transCataT(allOptimizationsƒ).apply(Recursion.Unsafe.RecursionLimitStack(128), filter)
+    Recursion.transCataT(allOptimizationsƒ).apply(filter)
   def optimize(program: Program): Program =
     program.copy(defns = program.defns.map(optimize), main = optimize(program.main))
   def optimize(defn: Definition): Definition = defn.copy(body = optimize(defn.body))

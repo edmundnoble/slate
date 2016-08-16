@@ -13,8 +13,8 @@ class JSRunnerTest extends QQAsyncTestSuite {
   def runTest(test: RunnerTest): Future[Assertion] =
     RunnerTest.runTest(
       JSRuntime,
-      Json.writeJsRec(Recursion.Unsafe.RecursionDirect, _: Js.Value),
-      Json.readJsRec(Recursion.Unsafe.RecursionDirect, _: Any),
+      Json.upickleToJsRec(_: Js.Value),
+      Json.readJsRec(_: Any),
       test
     )
 

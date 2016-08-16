@@ -11,7 +11,14 @@ import scalaz.syntax.either._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 
-class QQRuntimeException(message: String) extends RuntimeException(message)
+import qq.Platform.Rec._
+
+class QQRuntimeException(val message: String) extends RuntimeException(message) {
+  override def equals(obj: scala.Any): Boolean = obj match {
+    case other: QQRuntimeException => message == other.message
+    case _ => false
+  }
+}
 object QQRuntimeException {
   def apply(message: String): QQRuntimeException = new QQRuntimeException(message)
 }
@@ -104,8 +111,7 @@ object QQCompiler {
       platformSpecificDefinitions <- runtime.platformPrelude.all(runtime)
       allDefinitions = sharedDefinitions ++ platformSpecificDefinitions ++ definitions
       compiledProgram <-
-      Recursion.cataM[Fix, FilterComponent, OrCompilationError, CompiledFilter[AnyTy]](compileStep(runtime, allDefinitions, _))
-        .apply(Recursion.Unsafe.RecursionLimitStack(128), filter)
+      Recursion.cataM[Fix, FilterComponent, OrCompilationError, CompiledFilter[AnyTy]](compileStep(runtime, allDefinitions, _)).apply(filter)
     } yield compiledProgram
 
 }

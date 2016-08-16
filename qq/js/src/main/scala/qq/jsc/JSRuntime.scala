@@ -37,7 +37,7 @@ object JSRuntime extends QQRuntime[Any] {
       val secondMap = s.asInstanceOf[js.Dictionary[Any]].toMap
       Task.now(js.Dictionary((firstMap ++ secondMap).toSeq: _*))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't add " + f.toString + " and " + s.toString))
+      Task.raiseError(QQRuntimeException("can't add " + String.valueOf(f) + " and " + String.valueOf(s)))
   }
 
   override def subtractJsValues(first: Any, second: Any): Task[Any] = (first, second) match {
@@ -49,7 +49,7 @@ object JSRuntime extends QQRuntime[Any] {
       val contents: Seq[(String, Any)] = (f.asInstanceOf[Dictionary[Any]].toMap -- s.asInstanceOf[Dictionary[Any]].toMap.keySet).toSeq
       Task.now(js.Dictionary(contents: _*))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't subtract " + f.toString + " and " + s.toString))
+      Task.raiseError(QQRuntimeException("can't subtract " + String.valueOf(f) + " and " + String.valueOf(s)))
   }
 
   override def multiplyJsValues(first: Any, second: Any): Task[Any] = (first, second) match {
@@ -62,21 +62,21 @@ object JSRuntime extends QQRuntime[Any] {
       val secondMap = s.asInstanceOf[Dictionary[Any]].toMap.mapValues(Task.now)
       firstMap.unionWith(secondMap) { (f, s) => Task.mapBoth(f, s)(addJsValues).flatten }.sequence.map(o => js.Dictionary(o.toSeq: _*))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't multiply " + f.toString + " and " + s.toString))
+      Task.raiseError(QQRuntimeException("can't multiply " + String.valueOf(f) + " and " + String.valueOf(s)))
   }
 
   override def divideJsValues(first: Any, second: Any): Task[Any] = (first, second) match {
     case (f: Double, s: Double) =>
       Task.now(f / s)
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't divide " + f.toString + " by " + s.toString))
+      Task.raiseError(QQRuntimeException("can't divide " + String.valueOf(f) + " by " + String.valueOf(s)))
   }
 
   override def moduloJsValues(first: Any, second: Any): Task[Any] = (first, second) match {
     case (f: Double, s: Double) =>
       Task.now(f % s)
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't modulo " + f.toString + " by " + s.toString))
+      Task.raiseError(QQRuntimeException("can't modulo " + String.valueOf(f) + " by " + String.valueOf(s)))
   }
 
   override def enlistFilter(filter: CompiledFilter[Any]): CompiledFilter[Any] = { jsv: Any =>
@@ -92,7 +92,7 @@ object JSRuntime extends QQRuntime[Any] {
         case Some(v) => Task.now(v :: Nil)
       }
     case v =>
-      Task.raiseError(QQRuntimeException("Tried to select key " + key + " in " + v.toString + " but it's not a dictionary"))
+      Task.raiseError(QQRuntimeException("Tried to select key " + key + " in " + String.valueOf(v) + " but it's not a dictionary"))
   }
 
   override def selectIndex(index: Int): CompiledFilter[Any] = {
@@ -109,7 +109,7 @@ object JSRuntime extends QQRuntime[Any] {
         taskOfListOfNull
       }
     case v =>
-      Task.raiseError(QQRuntimeException("Tried to select index " + index.toString + " in " + v.toString + " but it's not an array"))
+      Task.raiseError(QQRuntimeException("Tried to select index " + String.valueOf(index) + " in " + String.valueOf(v) + " but it's not an array"))
   }
 
   override def selectRange(start: Int, end: Int): CompiledFilter[Any] = {
@@ -129,7 +129,7 @@ object JSRuntime extends QQRuntime[Any] {
         case dict: js.Object =>
           Task.now(dict.asInstanceOf[js.Dictionary[js.Object]].map(_._2)(collection.breakOut))
         case v =>
-          Task.raiseError(QQRuntimeException("Tried to flatten " + v.toString + " but it's not an array"))
+          Task.raiseError(QQRuntimeException("Tried to flatten " + String.valueOf(v) + " but it's not an array"))
       }
     }
   }
@@ -145,7 +145,7 @@ object JSRuntime extends QQRuntime[Any] {
               case keyString: String =>
                 Task.now(valueResults.map(keyString -> _))
               case k =>
-                Task.raiseError(QQRuntimeException("Tried to use " + k.toString + " as a key for an object but it's not a string"))
+                Task.raiseError(QQRuntimeException("Tried to use " + String.valueOf(k) + " as a key for an object but it's not a string"))
             }
           } yield keyValuePairs
         case (-\/(filterName), filterValue) =>
