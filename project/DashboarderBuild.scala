@@ -2,8 +2,7 @@ import net.lullabyte.Chrome
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import org.scalajs.sbtplugin.cross.CrossProject
-import sbt.Keys._
-import sbt._
+import sbt._, Keys._
 import sbt.complete.Parser
 import scoverage.ScoverageKeys.coverageExcludedPackages
 import upickle.Js
@@ -232,7 +231,7 @@ object DashboarderBuild {
   lazy val qqjvm = qq.jvm
   lazy val qqjs = qq.js
 
-  lazy val ui = Project(id = "ui", base = file("ui"))
+  lazy val ui = project.in(file("ui"))
     .dependsOn(qqjs)
     .settings(ScalaJSPlugin.projectSettings)
     .enablePlugins(ScalaJSPlugin)
@@ -243,15 +242,17 @@ object DashboarderBuild {
     .settings(uiDeps)
     .settings(disableTests)
 
-  lazy val uitests = Project(id = "uitests", base = file("uitests"))
+  lazy val uitests = project.in(file("uitests"))
     .dependsOn(ui)
+    .dependsOn(qqjvm)
     .settings(libraryDependencies += "org.seleniumhq.selenium" % "selenium-java" % "2.35.0" % "test")
     .settings(baseSettings)
     .settings(commonDeps)
     .settings(dependOnChrome(testOptions in Test))
+    .settings((test in Test) <<= (test in Test).dependsOn(chromeBuildOpt in ui, compile in Test in qqjvm))
     .settings((testQuick in Test) := (test in Test).value)
 
-  lazy val root: Project = Project(id = "root", base = file("."))
+  lazy val root = project.in(file("."))
     .aggregate(ui, uitests, qqjvm, qqjs)
     .settings(Defaults.projectCore)
     .settings(baseSettings)

@@ -34,6 +34,7 @@ final case class SelectKey[A](key: String) extends LeafComponent[A]
 final case class SelectIndex[A](index: Int) extends LeafComponent[A]
 final case class SelectRange[A](start: Int, end: Int) extends LeafComponent[A]
 
+// AST nodes that represent filters ignoring their input
 sealed abstract class ConstantComponent[A] extends LeafComponent[A]
 final case class ConstNumber[A](value: Double) extends ConstantComponent[A]
 final case class ConstString[A](value: String) extends ConstantComponent[A]
@@ -44,14 +45,8 @@ object FilterComponent {
 
     override def traverseImpl[G[_], A, B](fa: FilterComponent[A])(f: (A) => G[B])(implicit G: Applicative[G]): G[FilterComponent[B]] = {
       fa match {
-        case i: IdFilter[_] => G.point(i.retag[B])
-        case f: FetchApi[_] => G.point(f.retag[B])
+        case l: LeafComponent[_] => G.point(l.retag[B])
         case CallFilter(name, params) => params.traverse(f).map(CallFilter(name, _))
-        case k: SelectKey[_] => G.point(k.retag[B])
-        case i: SelectIndex[_] => G.point(i.retag[B])
-        case r: SelectRange[_] => G.point(r.retag[B])
-        case n: ConstNumber[_] => G.point(n.retag[B])
-        case s: ConstString[_] => G.point(s.retag[B])
         case AddFilters(first, second) => G.apply2(f(first), f(second))(AddFilters(_, _))
         case SubtractFilters(first, second) => G.apply2(f(first), f(second))(SubtractFilters(_, _))
         case MultiplyFilters(first, second) => G.apply2(f(first), f(second))(MultiplyFilters(_, _))

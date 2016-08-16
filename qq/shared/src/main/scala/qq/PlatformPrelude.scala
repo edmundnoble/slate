@@ -1,13 +1,18 @@
 package qq
 
-import qq.QQCompiler.CompiledFilter
+import qq.QQCompiler.{CompiledFilter, OrCompilationError}
 
 import scalaz.\/
 import scalaz.syntax.either._
 
 trait PlatformPrelude[AnyTy] extends Prelude[AnyTy] {
 
-  def noParamDefinition(name: String, fun: CompiledFilter[AnyTy]): CompiledDefinition[AnyTy] = {
+  final def sealPartialBody(body: PartialFunction[List[CompiledFilter[AnyTy]], OrCompilationError[CompiledFilter[AnyTy]]]
+                           )(params: List[CompiledFilter[AnyTy]]): OrCompilationError[CompiledFilter[AnyTy]] = {
+    body.applyOrElse(params, ???)
+  }
+
+  final def noParamDefinition(name: String, fun: CompiledFilter[AnyTy]): CompiledDefinition[AnyTy] = {
     CompiledDefinition[AnyTy](
       name,
       numParams = 0,

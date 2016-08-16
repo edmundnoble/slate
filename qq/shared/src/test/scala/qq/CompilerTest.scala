@@ -21,7 +21,7 @@ object CompilerTest {
       QQCompiler
         .compile(UpickleRuntime, Nil, filter)
         .fold[Task[Assertion]](
-        err => Task.evalAlways(fail("error occurred during compilation: " + err.toString)),
+        err => Task.evalAlways(fail("error occurred during compilation: \n" + err.toString)),
         program => program(input).map { output => output shouldBe expectedOutput })
         .runFuture
   }
@@ -76,7 +76,8 @@ object CompilerTest {
   }
 
   val fatStackTests: List[CompilerTest] = {
-    def fun(f: Filter, i: Int): Filter = if (i == 0) f else fun(compose(id, f), i - 1)
+    // tail recursive builder, giving you (i * 2) compositions of id with f.
+    def fun(f: Filter, i: Int): Filter = if (i == 0) f else fun(compose(compose(id, f), id), i - 1)
     List(
       CompilerTest(
         fun(id, 1000), Js.False, List(Js.False)

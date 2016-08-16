@@ -43,6 +43,13 @@ class OptimizerTest extends QQSyncTestSuite {
     ) shouldBe constNumber(20 + (5.4 * (1 / (1 - (0.25 * 2)))))
   }
 
+  "optimize constant chains" in {
+    optimize(
+      compose(constNumber(20), constNumber(30))
+    ) shouldBe constNumber(30)
+  }
+
+
   "no stack overflow on large filters" in {
     def collectRec(f: Filter, i: Int): Filter = if (i == 0) f else collectRec(collectResults(f), i - 1)
     def enlistRec(f: Filter, i: Int): Filter = if (i == 0) f else enlistRec(enlist(f), i - 1)

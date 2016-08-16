@@ -7,6 +7,7 @@ import dash.{Ajax, Logger, LoggerFactory, identify}
 import dash.chrome.{GetAuthTokenOptions, RemoveCachedAuthTokenOptions}
 import dash.models.ExpandableContentModel
 import monix.eval.Task
+import monix.execution.rstreams.SingleAssignmentSubscription
 import monix.reactive.Observable
 import monix.scalaz._
 
@@ -27,14 +28,14 @@ object GMailApp {
     //    Ajax.get
     //    response_type
 
-    val authToken = identify.getAuthToken(interactive = true).each
+//    val authToken = identify.getAuthToken(interactive = true).each
 //    val () = identify.removeCachedAuthToken(token = authToken).each
-    val authHeader = "Authorization" -> ("Bearer " + authToken)
+//    val authHeader = "Authorization" -> ("Bearer " + authToken)
     val getThreadsUrl = "https://www.googleapis.com/gmail/v1/users/me/threads"
-    val threadsResponse = JSON.parse(Ajax.get(getThreadsUrl, headers = Map(authHeader), data = Map("prettyPrint" -> "false")).each.responseText)
-    logger.info("threadsResponse: " + JSON.stringify(threadsResponse, null: js.Array[js.Any], space = scalajs.js.Any.fromInt(2)))
+//    val threadsResponse = JSON.parse(Ajax.get(getThreadsUrl, headers = Map(authHeader), data = Map("prettyPrint" -> "false")).each.responseText)
+//    logger.info("threadsResponse: " + JSON.stringify(threadsResponse, null: js.Array[js.Any], space = scalajs.js.Any.fromInt(2)))
 
-    ???
+    Observable.now(IndexedSeq.empty[ExpandableContentModel])
 
   }
 

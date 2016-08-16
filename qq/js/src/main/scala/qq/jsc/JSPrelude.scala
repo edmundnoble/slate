@@ -25,7 +25,6 @@ object JSPrelude extends PlatformPrelude[Any] {
       }
     )
 
-
   override def replaceAll: CompiledDefinition[Any] =
     CompiledDefinition[Any](name = "replaceAll", numParams = 2,
       body = {
@@ -40,7 +39,7 @@ object JSPrelude extends PlatformPrelude[Any] {
                 case string: String => Task.now(string)
                 case j => Task.raiseError(QQRuntimeException("can't replace with " + String.valueOf(j)))
               }.each
-              val valueRegexReplacementList = (regexes, replacements).zipped.map { case (regex, replacement) =>
+              val valueRegexReplacementList = (regexes, replacements).zipped.map { (regex, replacement) =>
                 jsv match {
                   case string: String =>
                     Task.now(regex.matcher(string).replaceAll(replacement): Any)
@@ -66,7 +65,7 @@ object JSPrelude extends PlatformPrelude[Any] {
       "arrays", {
         case null => Task.now(Nil)
         case arr: js.Array[_] => Task.now(arr :: Nil)
-        case k => Task.now(Nil)
+        case _ => Task.now(Nil)
       })
 
   override def objects: CompiledDefinition[Any] =
@@ -75,7 +74,7 @@ object JSPrelude extends PlatformPrelude[Any] {
         case null => Task.now(Nil)
         case arr: js.Array[_] => Task.now(Nil)
         case obj: js.Object => Task.now(obj :: Nil)
-        case k => Task.now(Nil)
+        case _ => Task.now(Nil)
       })
 
   override def iterables: CompiledDefinition[Any] =
@@ -84,7 +83,7 @@ object JSPrelude extends PlatformPrelude[Any] {
         case null => Task.now(Nil)
         case arr: js.Array[_] => Task.now(arr :: Nil)
         case obj: js.Object => Task.now(obj :: Nil)
-        case k => Task.now(Nil)
+        case _ => Task.now(Nil)
       })
 
   override def booleans: CompiledDefinition[Any] =
@@ -92,7 +91,7 @@ object JSPrelude extends PlatformPrelude[Any] {
       "booleans", {
         case null => Task.now(Nil)
         case bool: java.lang.Boolean => Task.now(bool :: Nil)
-        case k => Task.now(Nil)
+        case _ => Task.now(Nil)
       })
 
   override def numbers: CompiledDefinition[Any] =
@@ -100,7 +99,7 @@ object JSPrelude extends PlatformPrelude[Any] {
       "numbers", {
         case null => Task.now(Nil)
         case num: java.lang.Double => Task.now(num :: Nil)
-        case k => Task.now(Nil)
+        case _ => Task.now(Nil)
       })
 
   override def strings: CompiledDefinition[Any] =
@@ -108,14 +107,14 @@ object JSPrelude extends PlatformPrelude[Any] {
       "strings", {
         case null => Task.now(Nil)
         case str: String => Task.now(str :: Nil)
-        case k => Task.now(Nil)
+        case _ => Task.now(Nil)
       })
 
   override def nulls: CompiledDefinition[Any] =
     noParamDefinition(
       "nulls", {
         case null => Task.now(null :: Nil)
-        case k => Task.now(Nil)
+        case _ => Task.now(Nil)
       })
 
   override def values: CompiledDefinition[Any] =

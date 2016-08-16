@@ -33,6 +33,15 @@ object Optimizer {
     case Fix(CollectResults(Fix(EnlistFilter(f)))) => f
   }
 
+  def constFuse: Optimization = {
+    case Fix(
+    ComposeFilters(
+    Fix(_: ConstantComponent[Fix[FilterComponent]]),
+    nextConst@Fix(_: ConstantComponent[Fix[FilterComponent]])
+    )
+    ) => nextConst
+  }
+
   object MathOptimizations {
     def constReduce: Optimization = {
       case Fix(AddFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f + s))
@@ -44,7 +53,7 @@ object Optimizer {
   }
 
   val allOptimizations: NonEmptyList[Optimization] =
-    NonEmptyList(idCompose, collectEnlist, MathOptimizations.constReduce)
+    NonEmptyList(constFuse, idCompose, collectEnlist, MathOptimizations.constReduce)
   val allOptimizationsƒ: Filter => Filter = repeatedly(allOptimizations.foldLeft1(_ orElse _).lift)
   def optimize(filter: Filter): Filter =
     Recursion.transCataT(allOptimizationsƒ).apply(filter)

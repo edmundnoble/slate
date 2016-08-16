@@ -1,7 +1,6 @@
 package qq
 
 import monix.eval.Task
-import org.scalatest.Ignore
 
 import scalaz.syntax.either._
 
