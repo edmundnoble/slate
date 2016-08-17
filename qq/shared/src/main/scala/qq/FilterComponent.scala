@@ -1,9 +1,9 @@
 package qq
 
 import scala.language.higherKinds
-import scalaz.{Applicative, Functor, Traverse, \/}
-import scalaz.syntax.traverse._
 import scalaz.std.list._
+import scalaz.syntax.traverse._
+import scalaz.{Applicative, Traverse, \/}
 
 sealed abstract class FilterComponent[A]
 

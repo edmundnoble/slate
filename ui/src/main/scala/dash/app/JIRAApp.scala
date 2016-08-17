@@ -81,7 +81,7 @@ object JIRAApp extends DashApp {
         favoriteFilterResponse <- Ajax.get(url = "https://jira.atlassian.net/rest/api/2/filter/favourite", headers = Map.empty) //Creds.authData
         extractFavorites <- compiledExtractFavorites
         // TODO: error handling
-        upickle = Json.readUpickle(favoriteFilterResponse.responseText).valueOr(???)
+        upickle = Json.stringToUpickle(favoriteFilterResponse.responseText).valueOr(???)
         favoriteFilters = extractFavorites(upickle).map(_.flatMap(Filter.pkl.read.lift(_)))
         filterRequests <- favoriteFilters.flatMap { filters =>
           filters.traverse { filter =>
@@ -98,7 +98,7 @@ object JIRAApp extends DashApp {
         filtersAndResponses.map {
           case (filter, response) =>
             def issueToExpandableContentModel(iss: List[Js.Value]) = SearchResult(filter, iss.map(Issue.pkl.read.lift(_))).toExpandableContentModel
-            val issuesJson = Json.readUpickle(response.responseText).valueOr(???)
+            val issuesJson = Json.stringToUpickle(response.responseText).valueOr(???)
             extractIssues(issuesJson).map(issueToExpandableContentModel)
         }
       )

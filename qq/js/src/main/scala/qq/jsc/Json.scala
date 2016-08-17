@@ -1,19 +1,16 @@
 package qq.jsc
 
 import qq.Platform.Rec._
-import qq.Recursion.{RecursionEngine, RecursiveFunction}
+import qq.Recursion.RecursiveFunction
 import qq.Unsafe
 import upickle.{Invalid, Js}
 
 import scala.scalajs.js
 import scalaz.Free.Trampoline
 import scalaz.syntax.either._
-import scalaz.syntax.traverse._
 import scalaz.{Trampoline, \/}
 
 object Json {
-
-  import Unsafe._
 
   def stringToJs(s: String): Invalid.Json \/ js.Any = {
     try {
@@ -24,7 +21,8 @@ object Json {
     }
   }
 
-  // makes a shallow copy of arrays, mutators be warned!
+  import qq.Platform.Js.Unsafe._
+
   final val readJsRec = new RecursiveFunction[Any, Js.Value] {
     override def run(value: Any, loop: Any => Trampoline[Js.Value]) =
       value match {
@@ -33,15 +31,18 @@ object Json {
         case true => Trampoline.done(Js.True)
         case false => Trampoline.done(Js.False)
         case null => Trampoline.done(Js.Null)
-        case s: js.Array[_] =>
-          (s: Seq[Any]).traverse[Trampoline, Js.Value]((a: Any) => loop(a)).map(Js.Arr(_: _*))
+        case s: js.Array[Any] =>
+          Unsafe.builderTraverse[js.WrappedArray]
+            .traverse[Trampoline, Any, Js.Value](new js.WrappedArray[Any](s))((a: Any) => loop(a))
+            .map(Js.Arr(_: _*))
         case s: js.Object =>
-          Unsafe.mapTraverse[String].traverse[Trampoline, Any, Js.Value](
-            js.Any.wrapDictionary(s.asInstanceOf[js.Dictionary[Any]]).toMap)(loop).map(m => Js.Obj(m.toSeq: _*))
+          Unsafe.mapTraverse[String]
+            .traverse[Trampoline, Any, Js.Value](js.Any.wrapDictionary(s.asInstanceOf[js.Dictionary[Any]]).toMap)(loop)
+            .map(m => Js.Obj(m.toSeq: _*))
       }
   }
 
-  @inline final def readUpickle(s: String): Invalid.Json \/ Js.Value = {
+  @inline final def stringToUpickle(s: String): Invalid.Json \/ Js.Value = {
     stringToJs(s).map(readJsRec(_))
   }
 
@@ -54,9 +55,13 @@ object Json {
         case Js.False => Trampoline.done(js.Any.fromBoolean(false))
         case Js.Null => Trampoline.done(null)
         case Js.Arr(children@_*) =>
-          children.traverse[Trampoline, js.Any](loop).map(js.Array(_: _*))
+          Unsafe.builderTraverse[Seq]
+            .traverse[Trampoline, Js.Value, js.Any](children)(loop)
+            .map(js.Array(_: _*))
         case obj: Js.Obj =>
-          obj.value.traverse[Trampoline, (String, js.Any)] { case (s, d) => loop(d) map (r => (s, r)) }.map(f => js.Dictionary[Any](f: _*))
+          Unsafe.builderTraverse[Seq]
+            .traverse[Trampoline, (String, Js.Value), (String, js.Any)](obj.value) { case (s, d) => loop(d) map (r => (s, r)) }
+            .map(js.Dictionary[Any](_: _*))
       }
   }
 
