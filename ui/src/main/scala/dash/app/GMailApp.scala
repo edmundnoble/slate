@@ -3,20 +3,36 @@ package dash.app
 import java.util.concurrent.TimeUnit
 
 import com.thoughtworks.each.Monadic._
-import dash.{Ajax, Logger, LoggerFactory, identify}
-import dash.chrome.{GetAuthTokenOptions, RemoveCachedAuthTokenOptions}
+import dash.ajax.SingleBinding
+import dash.ajax.{Ajax, Bindings}
 import dash.models.ExpandableContentModel
+import dash.{LoggerFactory, identify}
 import monix.eval.Task
-import monix.execution.rstreams.SingleAssignmentSubscription
 import monix.reactive.Observable
 import monix.scalaz._
+import qq.jsc.Json
+import shapeless._
+import shapeless.record._
+import shapeless.syntax.singleton._
 
 import scala.collection.immutable.IndexedSeq
 import scala.concurrent.duration.Duration
 import scala.scalajs.js
+import scala.scalajs.js.UndefOr
 import scala.scalajs.js.JSON
 
 object GMailApp {
+
+  object Messages {
+    val url = "https://www.googleapis.com/gmail/v1/users/me/messages"
+    val get = new SingleBinding[GetData, AuthHeaders](url, dash.ajax.GET)
+
+    type AuthHeaders =
+      Record.`"Authorization" -> String, "Cache-Control" -> String`.T
+
+    type GetData =
+      Record.`"includeSpamTrash" -> UndefOr[Boolean], "labelIds" -> UndefOr[String], "maxResults" -> UndefOr[Int], "pageToken" -> UndefOr[Int], "q" -> UndefOr[String]`.T
+  }
 
   def fetchMail: Task[Observable[IndexedSeq[ExpandableContentModel]]] = monadic[Task] {
 
@@ -28,12 +44,25 @@ object GMailApp {
     //    Ajax.get
     //    response_type
 
-//    val authToken = identify.getAuthToken(interactive = true).each
-//    val () = identify.removeCachedAuthToken(token = authToken).each
-//    val authHeader = "Authorization" -> ("Bearer " + authToken)
-    val getThreadsUrl = "https://www.googleapis.com/gmail/v1/users/me/threads"
-//    val threadsResponse = JSON.parse(Ajax.get(getThreadsUrl, headers = Map(authHeader), data = Map("prettyPrint" -> "false")).each.responseText)
-//    logger.info("threadsResponse: " + JSON.stringify(threadsResponse, null: js.Array[js.Any], space = scalajs.js.Any.fromInt(2)))
+    val authToken = identify.getAuthToken(interactive = true).each
+    //    val () = identify.removeCachedAuthToken(token = authToken).each
+    val authHeader = "Authorization" ->> ("Bearer " + authToken)
+    val getMessagesUrl = "https://www.googleapis.com/gmail/v1/users/me/messages"
+    val unreadMessagesResponse =
+      Json.stringToJs(
+        Ajax.bound(Messages.get)(
+          data =
+            "includeSpamTrash" ->> js.undefined ::
+              "labelIds" ->> js.undefined ::
+              "maxResults" ->> js.undefined ::
+              "pageToken" ->> js.undefined ::
+              "q" ->> js.UndefOr.any2undefOrA("is:unread") :: HNil,
+          headers =
+            authHeader :: "Cache-Control" ->> "no-cache" :: HNil
+        )
+          .each.responseText
+      )
+    logger.info("MessagesResponse: " + unreadMessagesResponse.map(JSON.stringify(_, null: js.Array[js.Any], space = scalajs.js.Any.fromInt(2))))
 
     Observable.now(IndexedSeq.empty[ExpandableContentModel])
 

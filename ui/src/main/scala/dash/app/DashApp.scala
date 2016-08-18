@@ -6,6 +6,8 @@ import qq._
 import scodec.bits.BitVector
 import upickle.Js
 import com.thoughtworks.each.Monadic._
+import japgolly.scalajs.react
+import japgolly.scalajs.react.ReactComponentB
 
 trait DashApp {
 
@@ -17,6 +19,7 @@ trait DashApp {
     val hash = qqProgram.hashCode.toString
     val programInStorage = get(hash).each
 
+    // don't replace this with fold, monadic doesn't work with by-names
     val decodedOptimizedProgram = programInStorage match {
       case None =>
         val parsedQQProgram = Parser.program.parse(qqProgram).get.value
@@ -31,5 +34,11 @@ trait DashApp {
 
     QQCompiler.compileProgram[Js.Value](UpickleRuntime: QQRuntime[Js.Value], decodedOptimizedProgram)
   }
+
+//  type P
+//  type S
+//  type B
+//
+//  def rootComponent: ReactComponentB[P, S, B, react.TopNode]
 
 }

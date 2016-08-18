@@ -21,6 +21,10 @@ object Json {
     }
   }
 
+  def jsToString(a: js.Any): String = {
+      js.JSON.stringify(a, null)
+  }
+
   import qq.Platform.Js.Unsafe._
 
   final val readJsRec = new RecursiveFunction[Any, Js.Value] {

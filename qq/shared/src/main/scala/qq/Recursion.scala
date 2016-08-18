@@ -1,13 +1,14 @@
 package qq
 
 import matryoshka.Recursive.ops._
-import matryoshka.{Recursive, TraverseT}
+import matryoshka.{Corecursive, Fix, Recursive, TraverseT}
 import TraverseT.ops._
+
 import scala.language.higherKinds
 import scalaz.Free.Trampoline
 import scalaz.syntax.monad._
 import scalaz.syntax.traverse._
-import scalaz.{Monad, Trampoline, Traverse}
+import scalaz.{Functor, Monad, Trampoline, Traverse}
 
 object Recursion {
 
@@ -78,10 +79,17 @@ object Recursion {
       tf.project.traverse[Trampoline, M[A]](loop) map (_.sequence[M, A].flatMap(destroy))
   }
 
-  @inline final def transCataT[T[_[_]]: TraverseT, F[_]: Traverse]
+  @inline final def transCataT[T[_[_]] : TraverseT, F[_] : Traverse]
   (rewrite: T[F] => T[F]): RecursiveFunction[T[F], T[F]] = new RecursiveFunction[T[F], T[F]] {
     override def run(tf: T[F], loop: T[F] => Trampoline[T[F]]) =
       tf.traverse[Trampoline, F](ftf => ftf.traverse[Trampoline, T[F]](tf => loop(tf))).map(rewrite)
+  }
+
+  @inline final def allocate[T[_[_]] : Recursive, F[_] : Functor](tf: T[F]): Fix[F] =
+    tf.cata(Fix[F])
+
+  @inline final def stream[T[_[_]], F[_] : Functor](tf: Fix[F])(implicit T: Corecursive[T]): T[F] = {
+    T.ana(tf)(_.unFix)
   }
 
 }

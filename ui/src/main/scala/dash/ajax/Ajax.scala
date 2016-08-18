@@ -1,4 +1,4 @@
-package dash
+package dash.ajax
 
 import java.nio.ByteBuffer
 
@@ -7,6 +7,8 @@ import monix.execution.Cancelable
 import org.scalajs.dom
 import org.scalajs.dom.FormData
 import org.scalajs.dom.raw.Blob
+import qq.jsc.Json
+import shapeless.HList
 
 import scala.concurrent.duration._
 import scala.language.implicitConversions
@@ -38,8 +40,8 @@ object Ajax {
   object InputData {
     implicit def str2ajax(s: String): InputData = s.asInstanceOf[InputData]
 
-    implicit def map2ajax(params: Map[String, String]): InputData =
-      params.map { case (k, v) => k + "=" + v }.mkString("&")
+    implicit def map2ajax(params: Map[String, js.Any]): InputData =
+      params.map { case (k, v) => k + "=" + Json.jsToString(v) }.mkString("&")
 
     implicit def arrayBufferView2ajax(b: ArrayBufferView): InputData = b.asInstanceOf[InputData]
 
@@ -104,13 +106,14 @@ object Ajax {
       val req = new dom.XMLHttpRequest()
 
       req.onreadystatechange = { (e: dom.Event) =>
-        if (req.readyState.toInt == 4) {
+        if (req.readyState == 4) {
           if ((req.status >= 200 && req.status < 300) || req.status == 304)
             callback.onSuccess(req)
           else
             callback.onError(AjaxException(req))
         }
       }
+
       req.open(method, url)
       req.responseType = responseType
       req.timeout = if (timeout.value.isFinite()) timeout.value.toMillis else 0
@@ -123,5 +126,17 @@ object Ajax {
 
       Cancelable(() => req.abort())
     }
+  }
+
+  def bound[Data <: HList, Headers <: HList](binding: SingleBinding[Data, Headers])(data: Data, headers: Headers)
+                                            (implicit timeout: Timeout): Task[dom.XMLHttpRequest] = {
+    apply(
+      AjaxMethod.asString(binding.method),
+      binding.url,
+      data = binding.dataToMap(data).asInstanceOf[Map[String, js.Any]],
+      headers = binding.headersToMap(headers),
+      withCredentials = false,
+      responseType = ""
+    )
   }
 }
