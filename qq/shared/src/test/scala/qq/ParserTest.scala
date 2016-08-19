@@ -124,8 +124,9 @@ class ParserTest extends QQSyncTestSuite {
   }
 
   "parse enjected filter regression" in {
-    Parser.filter.parse(
+    Parser.program.parse(
     "{user, (.titleName[]): .titles[]}").get.value
+    // should just succeed
   }
 
   "precedence" in {
