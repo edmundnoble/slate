@@ -47,18 +47,20 @@ object GMailApp {
     val authToken = identify.getAuthToken(interactive = true).each
     //    val () = identify.removeCachedAuthToken(token = authToken).each
     val authHeader = "Authorization" ->> ("Bearer " + authToken)
-    val getMessagesUrl = "https://www.googleapis.com/gmail/v1/users/me/messages"
     val unreadMessagesResponse =
       Json.stringToJs(
         Ajax.bound(Messages.get)(
           data =
             "includeSpamTrash" ->> js.undefined ::
               "labelIds" ->> js.undefined ::
-              "maxResults" ->> js.undefined ::
+              "maxResults" ->> (10: UndefOr[Int]) ::
               "pageToken" ->> js.undefined ::
-              "q" ->> js.UndefOr.any2undefOrA("is:unread") :: HNil,
+              "q" ->> ("is:unread": UndefOr[String]) ::
+              HNil,
           headers =
-            authHeader :: "Cache-Control" ->> "no-cache" :: HNil
+            authHeader ::
+              "Cache-Control" ->> "no-cache" ::
+              HNil
         )
           .each.responseText
       )
