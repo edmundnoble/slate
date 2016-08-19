@@ -34,23 +34,28 @@ object Parser {
   val quote: P0 = P("\"")
 
   def isStringLiteralChar(c: Char): Boolean = Character.isAlphabetic(c) || Character.isDigit(c)
-  val stringLiteral: P[String] = P(CharsWhile(isStringLiteralChar).!)
+  lazy val stringLiteralChars = Seq('a' to 'z': Seq[Char], 'A' to 'Z': Seq[Char], '0' to '9': Seq[Char], "↪+*-": Seq[Char])
+  lazy val stringLiteralChar = CharIn(stringLiteralChars: _*)
+  val stringLiteral: P[String] = P(stringLiteralChar.rep(min = 1).!)
+
+  val whitespaceChars: String = " \n\t"
+  val whitespace: P0 = P(CharIn(whitespaceChars.toSeq).rep.map(_ => ()))
+  val stringLiteralOrWhitespace = stringLiteralChars :+ whitespaceChars.toSeq
 
   val escapedStringLiteral: P[String] = P(
     quote ~/
-      ((wspStr("""\n""") >| "\n") | (wspStr("""\\""") >| "\\") | CharPred(ch => isStringLiteralChar(ch) || ch == '↪' || ch == ' ' || ch == '+' || ch == '*' || ch == '-' || ch == '\t').!).rep.map(_.mkString) ~
-      quote
+      ((Terminals.CharLiteral('\\') ~/ (Terminals.CharLiteral('\n').map(_ => "\n") | Terminals.CharLiteral('\\').!)) |
+        CharIn(stringLiteralOrWhitespace: _*).!
+        ).rep.map(_.mkString) ~ quote
   )
 
-  val whitespace: P0 = P(CharsWhile(ch => ch == ' ' || ch == '\n' || ch == '\t').?)
-
   val numericLiteral: P[Int] = P(
-    CharsWhile(Character.isDigit).! map ((_: String).toInt)
+    CharIn('0' to '9').rep(min = 1).!.map(_.toInt)
   )
 
   val doubleLiteral: P[Double] = P(
     // TODO: fix
-    CharsWhile(Character.isDigit).! map ((_: String).toInt)
+    numericLiteral.map(_.toDouble)
   )
 
   val selectKey: P[Filter] = P(
@@ -87,7 +92,7 @@ object Parser {
   )
 
   private val filterIdentifier: P[String] = P(
-    CharsWhile(Character.isAlphabetic(_)).!
+    CharIn('a' to 'z', 'A' to 'Z').rep(min = 1).!
   )
 
   val callFilter: P[Filter] = P(
@@ -156,7 +161,7 @@ object Parser {
   )
 
   val program: P[Program] = P(
-    ((definition.rep(sep = whitespace) ~ whitespace).?.map(_.getOrElse(Nil)) ~ filter ~ Terminals.End).map((Program.apply _).tupled)
+    ((definition.rep(min = 1, sep = whitespace) ~ whitespace).?.map(_.getOrElse(Nil)) ~ filter ~ Terminals.End).map((Program.apply _).tupled)
   )
 
 }

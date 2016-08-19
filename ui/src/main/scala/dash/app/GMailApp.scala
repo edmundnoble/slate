@@ -3,7 +3,6 @@ package dash.app
 import java.util.concurrent.TimeUnit
 
 import com.thoughtworks.each.Monadic._
-import dash.ajax.PathSegment.PathToString
 import dash.ajax._
 import dash.models.ExpandableContentModel
 import dash.{LoggerFactory, identify}
@@ -24,14 +23,23 @@ import scala.scalajs.js.JSON
 object GMailApp {
 
   object Messages {
-    val url = "https://www.googleapis.com/gmail/v1/users/me/messages"
+
+    import PathSegment.DSL._
+
+    val listPath = "https://www.googleapis.com/gmail/v1/users/me/messages" :/: PathEnding
     val list =
-      Binding[StringPathSegment[PathEnding], GetData, AuthHeaders](StringPathSegment(url, PathEnding), dash.ajax.GET)
+      Binding[StringPathSegment[PathEnding.type], ListData, AuthHeaders](listPath, AjaxMethod.GET)
+
+    val getPath = "https://www.googleapis.com/gmail/v1/users/me/messages" :/: StringTag :/: PathEnding
+    val get = Binding[StringPathSegment[GenericPathSegment[String, PathEnding.type]], GetData, AuthHeaders](getPath, AjaxMethod.GET)
 
     type AuthHeaders =
       Record.`"Authorization" -> String, "Cache-Control" -> String`.T
 
     type GetData =
+      Record.`"format" -> UndefOr[String], "metadataHeaders" -> UndefOr[String]`.T
+
+    type ListData =
       Record.`"includeSpamTrash" -> UndefOr[Boolean], "labelIds" -> UndefOr[String], "maxResults" -> UndefOr[Int], "pageToken" -> UndefOr[Int], "q" -> UndefOr[String]`.T
   }
 
@@ -45,9 +53,13 @@ object GMailApp {
     //    Ajax.get
     //    response_type
 
-    val authToken = identify.getAuthToken(interactive = true).each
+    val authToken = identify.getAuthToken(interactive = false).each
     //    val () = identify.removeCachedAuthToken(token = authToken).each
     val authHeader = "Authorization" ->> ("Bearer " + authToken)
+    val defaultHeaders =
+      authHeader ::
+        "Cache-Control" ->> "no-cache" ::
+        HNil
     val unreadMessagesResponse =
       Json.stringToJs(
         Ajax.boundConstantPath(Messages.list,
@@ -57,12 +69,24 @@ object GMailApp {
             "pageToken" ->> js.undefined ::
             "q" ->> ("is:unread": UndefOr[String]) ::
             HNil,
-          authHeader ::
-            "Cache-Control" ->> "no-cache" ::
-            HNil
+          defaultHeaders
         ).each.responseText
       )
-    logger.info("MessagesResponse: " + unreadMessagesResponse.map(JSON.stringify(_, null: js.Array[js.Any], space = scalajs.js.Any.fromInt(2))))
+    val ids = unreadMessagesResponse.map(_.asInstanceOf[js.Dynamic].messages.asInstanceOf[js.Array[js.Dynamic]].map(_.id.asInstanceOf[String]))
+    val messages = ids.traverse(idArr =>
+      Task.gatherUnordered(
+        new js.WrappedArray(idArr).map { id =>
+          Ajax.bound(Messages.get,
+            "format" ->> ("metadata": UndefOr[String]) ::
+              "metadataHeaders" ->> js.undefined ::
+              HNil,
+            defaultHeaders,
+            id :: HNil
+          ).map(_.responseText)
+        }
+      )
+    ).each
+    logger.info("MessagesResponse: " + messages.map(Json.jsToString(_, space = 2)))
 
     Observable.now(IndexedSeq.empty[ExpandableContentModel])
 

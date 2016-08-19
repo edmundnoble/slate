@@ -176,6 +176,7 @@ object DashboarderBuild {
     scalaVersion := "2.11.8",
     scalacOptions ++= Seq(
       "-Xlint",
+      "-deprecation",
       "-feature",
       "-language:higherKinds",
       "-Ywarn-adapted-args",
@@ -190,7 +191,8 @@ object DashboarderBuild {
     persistLauncher in Compile := true,
     persistLauncher in Test := false,
     unitTest <<= {
-      (testOnly in Test).toTask(" -- -l WebTestTag")
+//      testOptions in Test += Tests.Argument("-oD")
+      (testOnly in Test).toTask(" -- -oD -l WebTestTag")
     },
     itTest <<= {
       (testOnly in Test).toTask(" -- -n WebTestTag")

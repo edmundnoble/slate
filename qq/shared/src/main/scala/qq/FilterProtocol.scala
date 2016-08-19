@@ -38,6 +38,7 @@ object FilterProtocol {
   implicit def ensequenceDiscriminator[A]: Discriminator[FilterComponentGenA[A], EnsequenceFilters[A], Int] = Discriminator(6)
   implicit def enjectDiscriminator[A]: Discriminator[FilterComponentGenA[A], EnjectFilters[A], Int] = Discriminator(7)
   implicit def callDiscriminator[A]: Discriminator[FilterComponentGenA[A], CallFilter[A], Int] = Discriminator(8)
+  //noinspection MutatorLikeMethodIsParameterless
   implicit def addDiscriminator[A]: Discriminator[FilterComponentGenA[A], AddFilters[A], Int] = Discriminator(9)
   implicit def subtractDiscriminator[A]: Discriminator[FilterComponentGenA[A], SubtractFilters[A], Int] = Discriminator(10)
   implicit def multiplyDiscriminator[A]: Discriminator[FilterComponentGenA[A], MultiplyFilters[A], Int] = Discriminator(11)

@@ -1,12 +1,11 @@
 package qq
 
-import scala.language.higherKinds
-import scalaz.\/
 import matryoshka.Fix
 
-object FilterDSL {
+import scala.language.higherKinds
+import scalaz.\/
 
-  import FilterComponent._
+object FilterDSL {
 
   def id: Filter = Fix(IdFilter())
   def fetch: Filter = Fix(FetchApi())

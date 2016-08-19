@@ -10,7 +10,7 @@ class ParserTest extends QQSyncTestSuite {
   val emptySized: List[String] = Nil
 
   "parse plain dots" in {
-    Parser.dot.parse(".").get.value shouldBe()
+    Parser.dot.parse(".").get.value.shouldBe(())
   }
 
   "parse selections" - {
@@ -109,14 +109,23 @@ class ParserTest extends QQSyncTestSuite {
   }
 
   "parse full programs" - {
-    "with just a body" in(Parser.program.parse("id").get.value shouldBe Program(nil[Definition], call("id")))
+    "with just a body" in (Parser.program.parse("id").get.value shouldBe Program(nil[Definition], call("id")))
     "with small definitions" in (Parser.program.parse("def id: .; id").get.value shouldBe
       Program(List(Definition("id", emptySized, id)), call("id")))
   }
 
-  "parse strings" in {
+  "parse string literals" in {
+    Parser.escapedStringLiteral.parse(""""hello"""").get.value shouldBe "hello"
+  }
+
+  "parse string literal filters" in {
     Parser.filter.parse(""""hello"""").get.value shouldBe constString("hello")
     Parser.filter.parse(""""\\"""").get.value shouldBe constString("\\")
+  }
+
+  "parse enjected filter regression" in {
+    Parser.filter.parse(
+    "{user, (.titleName[]): .titles[]}").get.value
   }
 
   "precedence" in {

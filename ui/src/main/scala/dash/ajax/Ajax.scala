@@ -2,7 +2,6 @@ package dash.ajax
 
 import java.nio.ByteBuffer
 
-import dash.ajax.PathSegment.PathToString
 import monix.eval.Task
 import monix.execution.Cancelable
 import org.scalajs.dom
@@ -140,7 +139,7 @@ object Ajax {
     apply(
       AjaxMethod.asString(binding.method),
       ev.create(binding.path, pathArgs),
-      data = binding.dataToMap(data).asInstanceOf[Map[String, js.Any]],
+      data = binding.dataToMap(data).collect { case (k, v) if !js.isUndefined(v) => k -> v.asInstanceOf[js.Any] },
       headers = binding.headersToMap(headers),
       withCredentials = false,
       responseType = ""

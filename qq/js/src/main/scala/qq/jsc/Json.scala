@@ -21,8 +21,8 @@ object Json {
     }
   }
 
-  def jsToString(a: Any): String = {
-      js.JSON.stringify(a.asInstanceOf[js.Any], null)
+  def jsToString(a: Any, space: Int = 0): String = {
+      js.JSON.stringify(a.asInstanceOf[js.Any], null: js.Array[js.Any], js.Any.fromInt(space))
   }
 
   import qq.Platform.Js.Unsafe._

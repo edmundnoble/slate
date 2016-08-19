@@ -15,10 +15,9 @@ case class StringPathSegment[T0 <: PathSegment](stringPart: String, next: T0) ex
 case class GenericPathSegment[A, T0 <: PathSegment](tag: GenericPathSegmentTag[A], next: T0) extends PathSegment {
   override type T = T0
 }
-sealed trait PathEnding extends PathSegment {
+case object PathEnding extends PathSegment {
   override type T = Nothing
 }
-case object PathEnding extends PathEnding
 
 sealed trait GenericPathSegmentTag[T]
 case object BooleanTag extends GenericPathSegmentTag[Boolean]
@@ -27,35 +26,43 @@ case object IntTag extends GenericPathSegmentTag[Int]
 case object DoubleTag extends GenericPathSegmentTag[Double]
 case object StringTag extends GenericPathSegmentTag[String]
 
-object PathSegment {
-  sealed trait PathToString {
-    type P <: PathSegment
-    type In <: HList
+sealed trait PathToString {
+  type P <: PathSegment
+  type In <: HList
 
-    def create(path: P, arg: In): String
+  def create(path: P, arg: In): String
+}
+
+object PathToString {
+  type Aux[P0 <: PathSegment, In0 <: HList] = PathToString {type P = P0; type In = In0}
+  type Aux1[P0 <: PathSegment] = PathToString {type P = P0}
+
+  implicit def stringPathSegmentArgs[P0 <: PathSegment, In0 <: HList](implicit rest: Aux[P0, In0]): Aux[StringPathSegment[P0], In0] = new PathToString {
+    override type P = StringPathSegment[P0]
+    override type In = In0
+    override def create(path: StringPathSegment[P0], arg: In0) =
+      path.stringPart + "/" + rest.create(path.next, arg)
   }
-  object PathToString {
-    type Aux[P0 <: PathSegment, In0 <: HList] = PathToString {type P = P0; type In = In0}
-    type Aux1[P0 <: PathSegment] = PathToString {type P = P0}
+  implicit def genericPathSegmentArgs[A, P0 <: PathSegment, In0 <: HList](implicit rest: Aux[P0, In0]): Aux[GenericPathSegment[A, P0], A :: In0] = new PathToString {
+    override type P = GenericPathSegment[A, P0]
+    override type In = A :: In0
+    override def create(path: GenericPathSegment[A, P0], arg: A :: In0) =
+      js.URIUtils.encodeURIComponent(arg.head.toString) + "/" + rest.create(path.next, arg.tail)
+  }
+  implicit def pathEndingArgsSing[P0]: Aux[PathEnding.type, HNil] = new PathToString {
+    override type P = PathEnding.type
+    override type In = HNil
+    override def create(path: PathEnding.type, arg: HNil) = ""
+  }
+  @inline
+  final def apply[P <: PathSegment](implicit ev: Aux1[P]): ev.type = ev
+}
 
-    implicit def stringPathSegmentArgs[P0 <: PathSegment, In0 <: HList](implicit rest: Aux[P0, In0]): Aux[StringPathSegment[P0], In0] = new PathToString {
-      override type P = StringPathSegment[P0]
-      override type In = In0
-      override def create(path: StringPathSegment[P0], arg: In0) =
-        path.stringPart + "/" + rest.create(path.next, arg)
+object PathSegment {
+  object DSL {
+    implicit class pathSegmentOps[P <: PathSegment](seg: P) {
+      def :/:(str: String) = StringPathSegment(str, seg)
+      def :/:[A](tag: GenericPathSegmentTag[A]) = GenericPathSegment(tag, seg)
     }
-    implicit def genericPathSegmentArgs[A, P0 <: PathSegment, In0 <: HList](implicit rest: Aux[P0, In0]): Aux[GenericPathSegment[A, P0], A :: In0] = new PathToString {
-      override type P = GenericPathSegment[A, P0]
-      override type In = A :: In0
-      override def create(path: GenericPathSegment[A, P0], arg: A :: In0) =
-        js.URIUtils.encodeURIComponent(Json.jsToString(arg.head)) + "/" + rest.create(path.next, arg.tail)
-    }
-    implicit def pathEndingArgs[P0]: Aux[PathEnding, HNil] = new PathToString {
-      override type P = PathEnding
-      override type In = HNil
-      override def create(path: PathEnding, arg: HNil) = "/"
-    }
-    @inline
-    final def apply[P <: PathSegment](implicit ev: Aux1[P]): Aux1[P] = ev
   }
 }
