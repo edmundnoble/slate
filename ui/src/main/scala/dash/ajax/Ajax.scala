@@ -2,13 +2,14 @@ package dash.ajax
 
 import java.nio.ByteBuffer
 
+import dash.ajax.PathSegment.PathToString
 import monix.eval.Task
 import monix.execution.Cancelable
 import org.scalajs.dom
 import org.scalajs.dom.FormData
 import org.scalajs.dom.raw.Blob
 import qq.jsc.Json
-import shapeless.HList
+import shapeless.{HList, HNil}
 
 import scala.concurrent.duration._
 import scala.language.implicitConversions
@@ -128,15 +129,21 @@ object Ajax {
     }
   }
 
-  def bound[Data <: HList, Headers <: HList](binding: SingleBinding[Data, Headers])(data: Data, headers: Headers)
-                                            (implicit timeout: Timeout): Task[dom.XMLHttpRequest] = {
+  def boundConstantPath[PathTy <: PathSegment, Data <: HList, Headers <: HList]
+  (binding: SingleBinding[PathTy, Data, Headers], data: Data, headers: Headers)
+  (implicit timeout: Timeout, ev: PathToString.Aux[PathTy, HNil]) =
+    bound(binding, data, headers, HNil: HNil)
+
+  def bound[PathTy <: PathSegment, PathArgs <: HList, Data <: HList, Headers <: HList]
+  (binding: SingleBinding[PathTy, Data, Headers], data: Data, headers: Headers, pathArgs: PathArgs)
+  (implicit timeout: Timeout, ev: PathToString.Aux[PathTy, PathArgs]) =
     apply(
       AjaxMethod.asString(binding.method),
-      binding.url,
+      ev.create(binding.path, pathArgs),
       data = binding.dataToMap(data).asInstanceOf[Map[String, js.Any]],
       headers = binding.headersToMap(headers),
       withCredentials = false,
       responseType = ""
     )
-  }
+
 }

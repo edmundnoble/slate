@@ -3,8 +3,8 @@ package dash.app
 import java.util.concurrent.TimeUnit
 
 import com.thoughtworks.each.Monadic._
-import dash.ajax.SingleBinding
-import dash.ajax.{Ajax, Bindings}
+import dash.ajax.PathSegment.PathToString
+import dash.ajax._
 import dash.models.ExpandableContentModel
 import dash.{LoggerFactory, identify}
 import monix.eval.Task
@@ -25,7 +25,8 @@ object GMailApp {
 
   object Messages {
     val url = "https://www.googleapis.com/gmail/v1/users/me/messages"
-    val get = new SingleBinding[GetData, AuthHeaders](url, dash.ajax.GET)
+    val list =
+      new SingleBinding[StringPathSegment[PathEnding], GetData, AuthHeaders](StringPathSegment(url, PathEnding), dash.ajax.GET)
 
     type AuthHeaders =
       Record.`"Authorization" -> String, "Cache-Control" -> String`.T
@@ -49,20 +50,17 @@ object GMailApp {
     val authHeader = "Authorization" ->> ("Bearer " + authToken)
     val unreadMessagesResponse =
       Json.stringToJs(
-        Ajax.bound(Messages.get)(
-          data =
-            "includeSpamTrash" ->> js.undefined ::
-              "labelIds" ->> js.undefined ::
-              "maxResults" ->> (10: UndefOr[Int]) ::
-              "pageToken" ->> js.undefined ::
-              "q" ->> ("is:unread": UndefOr[String]) ::
-              HNil,
-          headers =
-            authHeader ::
-              "Cache-Control" ->> "no-cache" ::
-              HNil
-        )
-          .each.responseText
+        Ajax.boundConstantPath(Messages.list,
+          "includeSpamTrash" ->> js.undefined ::
+            "labelIds" ->> js.undefined ::
+            "maxResults" ->> (10: UndefOr[Int]) ::
+            "pageToken" ->> js.undefined ::
+            "q" ->> ("is:unread": UndefOr[String]) ::
+            HNil,
+          authHeader ::
+            "Cache-Control" ->> "no-cache" ::
+            HNil
+        ).each.responseText
       )
     logger.info("MessagesResponse: " + unreadMessagesResponse.map(JSON.stringify(_, null: js.Array[js.Any], space = scalajs.js.Any.fromInt(2))))
 
