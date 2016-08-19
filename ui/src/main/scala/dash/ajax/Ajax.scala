@@ -130,12 +130,12 @@ object Ajax {
   }
 
   def boundConstantPath[PathTy <: PathSegment, Data <: HList, Headers <: HList]
-  (binding: SingleBinding[PathTy, Data, Headers], data: Data, headers: Headers)
+  (binding: Binding[PathTy, Data, Headers], data: Data, headers: Headers)
   (implicit timeout: Timeout, ev: PathToString.Aux[PathTy, HNil]) =
     bound(binding, data, headers, HNil: HNil)
 
   def bound[PathTy <: PathSegment, PathArgs <: HList, Data <: HList, Headers <: HList]
-  (binding: SingleBinding[PathTy, Data, Headers], data: Data, headers: Headers, pathArgs: PathArgs)
+  (binding: Binding[PathTy, Data, Headers], data: Data, headers: Headers, pathArgs: PathArgs)
   (implicit timeout: Timeout, ev: PathToString.Aux[PathTy, PathArgs]) =
     apply(
       AjaxMethod.asString(binding.method),

@@ -26,7 +26,7 @@ object GMailApp {
   object Messages {
     val url = "https://www.googleapis.com/gmail/v1/users/me/messages"
     val list =
-      new SingleBinding[StringPathSegment[PathEnding], GetData, AuthHeaders](StringPathSegment(url, PathEnding), dash.ajax.GET)
+      Binding[StringPathSegment[PathEnding], GetData, AuthHeaders](StringPathSegment(url, PathEnding), dash.ajax.GET)
 
     type AuthHeaders =
       Record.`"Authorization" -> String, "Cache-Control" -> String`.T
