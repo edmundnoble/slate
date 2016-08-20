@@ -191,10 +191,10 @@ object DashboarderBuild {
     persistLauncher in Compile := true,
     persistLauncher in Test := false,
     unitTest <<= {
-      (testOnly in Test).toTask(" -- -oD -l WebTest")
+      (testOnly in Test).toTask(" -- -oD -l WebTest -l StackTest")
     },
     itTest <<= {
-      (testOnly in Test).toTask(" -- -oD -n WebTest")
+      (testOnly in Test).toTask(" -- -oD -n WebTest -n StackTest")
     },
     addCompilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full),
     addCompilerPlugin("org.spire-math" % "kind-projector" % "0.8.0" cross CrossVersion.binary)

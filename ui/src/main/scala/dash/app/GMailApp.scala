@@ -86,7 +86,7 @@ object GMailApp {
         }
       )
     ).each
-    logger.info("MessagesResponse: " + messages.map(Json.jsToString(_, space = 2)))
+//    logger.info("MessagesResponse: " + messages.map(Json.jsToString(_, space = 2)))
 
     Observable.now(IndexedSeq.empty[ExpandableContentModel])
 

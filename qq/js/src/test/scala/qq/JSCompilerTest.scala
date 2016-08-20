@@ -16,6 +16,6 @@ class JSCompilerTest extends QQAsyncTestSuite {
   "id" in Future.traverse(idTests)(runTest)
   "select range" in Future.traverse(selectRangeTests)(runTest)
   "collect results" in Future.traverse(collectResultsTests)(runTest)
-  "fat stack" in Future.traverse(fatStackTests)(runTest)
+  "fat stack" taggedAs StackTest in Future.traverse(fatStackTests)(runTest)
 
 }

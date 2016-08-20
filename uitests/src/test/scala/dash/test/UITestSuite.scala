@@ -91,7 +91,9 @@ abstract class UITestSuite extends AsyncFreeSpec with Matchers with WebBrowser w
 
   final def runFuture[A](task: Task[A]): Future[A] = {
     val prom = Promise[A]()
-    val _ = task.runAsync(prom.complete(_))
+    val _ = task.runAsync { t =>
+      val _ = prom.complete(t)
+    }
     prom.future
   }
 

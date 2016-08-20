@@ -60,9 +60,9 @@ object PathToString {
 
 object PathSegment {
   object DSL {
-    implicit class pathSegmentOps[P <: PathSegment](seg: P) {
-      def :/:(str: String) = StringPathSegment(str, seg)
-      def :/:[A](tag: GenericPathSegmentTag[A]) = GenericPathSegment(tag, seg)
+    @inline implicit class pathSegmentOps[P <: PathSegment](val seg: P) extends AnyVal {
+      @inline final def :/:(str: String) = StringPathSegment(str, seg)
+      @inline final def :/:[A](tag: GenericPathSegmentTag[A]) = GenericPathSegment(tag, seg)
     }
   }
 }
