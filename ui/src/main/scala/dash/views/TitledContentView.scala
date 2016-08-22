@@ -68,7 +68,7 @@ object TitledContentView {
 
     ReactComponentB[TitledContentModel]("Issue")
       .renderP((_, model) =>
-        div(Styles.render[ReactElement],
+        div(
           key := model.title + model.titleUrl,
           div(Styles.base,
             div(Styles.title,

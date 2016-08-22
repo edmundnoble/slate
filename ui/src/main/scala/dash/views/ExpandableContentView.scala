@@ -14,7 +14,7 @@ object ExpandableContentView {
   case class ExpandableState(expanded: Boolean)
 
   object ExpandableState {
-    def expanded = GenLens[ExpandableState](_.expanded)
+    val expanded = GenLens[ExpandableState](_.expanded)
     implicit val reusability: Reusability[ExpandableState] =
       Reusability.byRefOr_==[ExpandableState]
   }
@@ -101,7 +101,7 @@ object ExpandableContentView {
       .initialState(ExpandableState(expanded = false))
       .renderPS { ($, model, state) =>
         val titleLink = href := model.titleUrl
-        div(Styles.render[ReactElement],
+        div(
           div(Styles.base,
             div(Styles.header,
               div(Styles.headerLeft,

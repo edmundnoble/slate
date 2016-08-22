@@ -4,11 +4,12 @@ import java.util.concurrent.TimeUnit
 
 import com.thoughtworks.each.Monadic._
 import dash.ajax._
-import dash.models.ExpandableContentModel
+import dash.models.{ExpandableContentModel, TitledContentModel}
 import dash.{LoggerFactory, identify}
 import monix.eval.Task
 import monix.reactive.Observable
 import monix.scalaz._
+import qq.Unsafe
 import qq.jsc.Json
 import shapeless._
 import shapeless.record._
@@ -19,6 +20,9 @@ import scala.concurrent.duration.Duration
 import scala.scalajs.js
 import scala.scalajs.js.UndefOr
 import scala.scalajs.js.JSON
+import scalaz.\/
+import scalaz.syntax.monad._
+import scalaz.syntax.traverse._
 
 object GMailApp {
 
@@ -37,7 +41,8 @@ object GMailApp {
       Record.`"Authorization" -> String, "Cache-Control" -> String`.T
 
     type GetData =
-      Record.`"format" -> UndefOr[String], "metadataHeaders" -> UndefOr[String]`.T
+      Record.`"format" -> UndefOr[String], "metadataHeaders" -> UndefOr[String], "fields" -> UndefOr[String]`.T
+
 
     type ListData =
       Record.`"includeSpamTrash" -> UndefOr[Boolean], "labelIds" -> UndefOr[String], "maxResults" -> UndefOr[Int], "pageToken" -> UndefOr[Int], "q" -> UndefOr[String]`.T
@@ -61,34 +66,51 @@ object GMailApp {
         "Cache-Control" ->> "no-cache" ::
         HNil
     val unreadMessagesResponse =
-      Json.stringToJs(
-        Ajax.boundConstantPath(Messages.list,
-          "includeSpamTrash" ->> js.undefined ::
-            "labelIds" ->> js.undefined ::
-            "maxResults" ->> (10: UndefOr[Int]) ::
-            "pageToken" ->> js.undefined ::
-            "q" ->> ("is:unread": UndefOr[String]) ::
-            HNil,
-          defaultHeaders
-        ).each.responseText
-      )
-    val ids = unreadMessagesResponse.map(_.asInstanceOf[js.Dynamic].messages.asInstanceOf[js.Array[js.Dynamic]].map(_.id.asInstanceOf[String]))
-    val messages = ids.traverse(idArr =>
+      Ajax.boundConstantPath(Messages.list,
+        "includeSpamTrash" ->> js.undefined ::
+          "labelIds" ->> js.undefined ::
+          "maxResults" ->> (10: UndefOr[Int]) ::
+          "pageToken" ->> js.undefined ::
+          "q" ->> ("is:unread": UndefOr[String]) ::
+          HNil,
+        defaultHeaders
+      ).map(r => Json.stringToJs(r.responseText))
+    val ids = unreadMessagesResponse.map(_.map(_.asInstanceOf[js.Dynamic].messages.asInstanceOf[js.Array[js.Dynamic]].map(_.id.asInstanceOf[String])))
+
+    import qq.Platform.Js.Unsafe._
+
+    val messages = ids.flatMap(_.traverse[Task, upickle.Invalid.Json, js.WrappedArray[upickle.Invalid.Json \/ js.Any]](idArr =>
       Task.gatherUnordered(
         new js.WrappedArray(idArr).map { id =>
           Ajax.bound(Messages.get,
             "format" ->> ("metadata": UndefOr[String]) ::
-              "metadataHeaders" ->> js.undefined ::
+              "metadataHeaders" ->> ("Subject": UndefOr[String]) ::
+              "fields" ->> ("snippet,payload(headers)": UndefOr[String]) ::
               HNil,
             defaultHeaders,
             id :: HNil
-          ).map(_.responseText)
+          ).map { resp => Json.stringToJs(resp.responseText) }
         }
       )
-    ).each
-//    logger.info("MessagesResponse: " + messages.map(Json.jsToString(_, space = 2)))
+    ))
 
-    Observable.now(IndexedSeq.empty[ExpandableContentModel])
+    val d =
+      Observable.fromTask(messages)
+        .map(_.flatMap(Unsafe.builderTraverse[js.WrappedArray].sequence(_)))
+        .map(_.valueOr(_ => js.WrappedArray.empty)
+          .map { (jsv: js.Any) =>
+            val json = jsv.asInstanceOf[js.Dynamic]
+            val subject = json.payload.headers.asInstanceOf[js.Array[js.Any]](0).asInstanceOf[js.Dynamic].value.asInstanceOf[String]
+            val snippet = json.snippet.asInstanceOf[String]
+            val ret = TitledContentModel(subject, None, snippet)
+            ret
+          }
+          .toList
+        )
+
+    val seq = d.map(c => IndexedSeq(ExpandableContentModel("Gmail", None, c)))
+
+    seq
 
   }
 

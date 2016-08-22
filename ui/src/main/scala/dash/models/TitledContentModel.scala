@@ -9,8 +9,5 @@ object TitledContentModel {
   implicit val reusability: Reusability[TitledContentModel] =
     Reusability.caseClass[TitledContentModel]
 
-  implicit val pkl =
-    upickle.default.macroRW[TitledContentModel]
-
 }
 

@@ -9,7 +9,4 @@ object ExpandableContentModel {
   implicit val reusability: Reusability[ExpandableContentModel] =
     Reusability.caseClass[ExpandableContentModel]
 
-  implicit val pkl =
-    upickle.default.macroRW[ExpandableContentModel]
-
 }

@@ -13,7 +13,7 @@ object ReactiveReact {
 
   implicit class ReactiveOps[P, ST, B, N <: TopNode](val builder: ReactComponentB[P, ST, B, N]) {
 
-    @inline def reactiveReplaceL[R]
+    @inline final def reactiveReplaceL[R]
     (builder: ReactComponentB[P, ST, B, N], getReactivePart: P => Observable[R])
     (implicit sch: Scheduler,
      stateIsReactiveEv: ST <:< ReactiveState[ST, R, _]): ReactComponentB[P, ST, B, N] =
@@ -25,18 +25,18 @@ object ReactiveReact {
         }
       )
 
-    @inline def reactiveReplace[R]
+    @inline final def reactiveReplace[R]
     (implicit sch: Scheduler,
      stateIsReactiveEv: ST <:< ReactiveState[ST, R, _], propsAreReactiveEv: P =:= Observable[R]
     ): ReactComponentB[P, ST, B, N] =
       reactiveReplaceL(builder, propsAreReactiveEv)
 
-    @inline def reactiveMonoid[R]
+    @inline final def reactiveMonoid[R]
     (implicit sch: Scheduler, R: Monoid[R],
      stateIsReactiveEv: ST <:< ReactiveState[ST, R, _], propsAreReactiveEv: P =:= Observable[R]
     ): ReactComponentB[P, ST, B, N] = {
       builder.componentWillMount { $ =>
-        CallbackTo.pure {
+        CallbackTo {
           val _ = $.props.foldLeftF(R.zero)(R.append(_, _)).foreach { r =>
             val () = $.modState(_.setReactive(r)).runNow()
           }

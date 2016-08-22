@@ -21,11 +21,10 @@ object DashboardPage {
   import scalacss.ScalaCssReact._
 
   def makeFilterRow(results: Seq[ExpandableContentModel]): ReactElement = {
-    def toView(r: ExpandableContentModel) = ExpandableContentView.builder.build(r)
     div(Styles.filterContainer,
       results.map(result =>
         div(Styles.innerFilterContainer,
-          toView(result)
+          ExpandableContentView.builder.build(result)
         )
       )
     )
@@ -33,7 +32,9 @@ object DashboardPage {
 
   case class SearchPageState(expandableContentModels: Seq[ExpandableContentModel])
     extends ReactiveState[SearchPageState, Seq[ExpandableContentModel], Unit](expandableContentModels, ()) {
-    override def setReactive(r: Seq[ExpandableContentModel]): SearchPageState = copy(expandableContentModels = r)
+    override def setReactive(r: Seq[ExpandableContentModel]): SearchPageState = {
+      copy(expandableContentModels = r)
+    }
   }
 
   object SearchPageState {
@@ -46,7 +47,7 @@ object DashboardPage {
     ReactComponentB[Observable[Seq[ExpandableContentModel]]]("Main search page")
       .initialState(SearchPageState(IndexedSeq.empty))
       .renderS { (_, state) =>
-        div(Styles.render[ReactElement],
+        div(
           id := "react-root",
           div(Styles.appBar,
             table(
@@ -58,9 +59,10 @@ object DashboardPage {
             )
           ),
           div(
-            div(
-              (Styles.container: TagMod) +:
-              state.expandableContentModels.grouped(2).map(makeFilterRow(_): TagMod).toSeq: _*
+            div(Styles.container,
+              Styles.dashboardContainer(
+                state.expandableContentModels.grouped(2).map(makeFilterRow).toSeq: _*
+              )
             )
           )
         ).render

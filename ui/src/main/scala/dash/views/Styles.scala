@@ -95,4 +95,6 @@ object Styles extends StyleSheet.Inline {
 
   }
 
+  val dashboardContainer = new ScrollFadeContainer("dashboardContainer")
+
 }
