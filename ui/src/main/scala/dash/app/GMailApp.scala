@@ -18,8 +18,7 @@ import shapeless.syntax.singleton._
 import scala.collection.immutable.IndexedSeq
 import scala.concurrent.duration.Duration
 import scala.scalajs.js
-import scala.scalajs.js.UndefOr
-import scala.scalajs.js.JSON
+import scala.scalajs.js.{Any, Array, Dynamic, JSON, UndefOr}
 import scalaz.\/
 import scalaz.syntax.monad._
 import scalaz.syntax.traverse._
@@ -79,39 +78,43 @@ object GMailApp {
 
     import qq.Platform.Js.Unsafe._
 
-    val messages = ids.flatMap(_.traverse[Task, upickle.Invalid.Json, js.WrappedArray[upickle.Invalid.Json \/ js.Any]](idArr =>
-      Task.gatherUnordered(
-        new js.WrappedArray(idArr).map { id =>
-          Ajax.bound(Messages.get,
-            "format" ->> ("metadata": UndefOr[String]) ::
-              "metadataHeaders" ->> ("Subject": UndefOr[String]) ::
-              "fields" ->> ("snippet,payload(headers)": UndefOr[String]) ::
-              HNil,
-            defaultHeaders,
-            id :: HNil
-          ).map { resp => Json.stringToJs(resp.responseText) }
-        }
-      )
-    ))
-
-    val d =
-      Observable.fromTask(messages)
-        .map(_.flatMap(Unsafe.builderTraverse[js.WrappedArray].sequence(_)))
-        .map(_.valueOr(_ => js.WrappedArray.empty)
-          .map { (jsv: js.Any) =>
-            val json = jsv.asInstanceOf[js.Dynamic]
-            val subject = json.payload.headers.asInstanceOf[js.Array[js.Any]](0).asInstanceOf[js.Dynamic].value.asInstanceOf[String]
-            val snippet = json.snippet.asInstanceOf[String]
-            val ret = TitledContentModel(subject, None, snippet)
-            ret
-          }
-          .toList
+    val messages = Observable
+      .fromTask(ids)
+      .flatMap {
+        _.traverse[Observable, upickle.Invalid.Json, Seq[upickle.Invalid.Json \/ js.Any]](idArr =>
+          Observable.combineLatestList(
+            new js.WrappedArray(idArr).map { id =>
+              val getMessage = Ajax.bound(Messages.get,
+                "format" ->> ("metadata": UndefOr[String]) ::
+                  "metadataHeaders" ->> ("Subject": UndefOr[String]) ::
+                  "fields" ->> ("snippet,payload(headers)": UndefOr[String]) ::
+                  HNil,
+                defaultHeaders,
+                id :: HNil
+              ).map { resp => Json.stringToJs(resp.responseText) }
+              Observable.fromTask(getMessage)
+            }: _*
+          )
         )
+      }
 
-    val seq = d.map(c => IndexedSeq(ExpandableContentModel("Gmail", None, c)))
+    val titledContentModels =
+      messages
+        .map {
+          _.flatMap(Unsafe.builderTraverse[Seq].sequence(_))
+            .valueOr(_ => js.WrappedArray.empty).map(messageToTitledContentModel).toList
+        }
 
-    seq
+    val expandableContentModels = titledContentModels.map(c => IndexedSeq(ExpandableContentModel("Gmail", None, c)))
+
+    expandableContentModels
 
   }
 
+  def messageToTitledContentModel(jsv: Any): TitledContentModel = {
+    val json = jsv.asInstanceOf[Dynamic]
+    val subject = json.payload.headers.asInstanceOf[Array[Any]](0).asInstanceOf[Dynamic].value.asInstanceOf[String]
+    val snippet = json.snippet.asInstanceOf[String]
+    TitledContentModel(subject, None, snippet)
+  }
 }

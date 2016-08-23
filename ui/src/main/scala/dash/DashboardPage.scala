@@ -9,6 +9,7 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import qq.Util._
 import dash.Util._
+import dash.views.ExpandableContentView.{ExpandableContentProps, ExpandableState}
 import japgolly.scalajs.react.vdom.ReactNodeFrag
 
 import scalacss.Defaults._
@@ -19,53 +20,68 @@ object DashboardPage {
 
   import scala.language.implicitConversions
   import scalacss.ScalaCssReact._
+  import views.ReactiveReact._
 
-  def makeFilterRow(results: Seq[ExpandableContentModel]): ReactElement = {
+  def makeFilterRow(results: Seq[Observable[ExpandableContentModel]])(implicit sch: Scheduler
+  ): ReactElement = {
     div(Styles.filterContainer,
       results.map(result =>
         div(Styles.innerFilterContainer,
-          ExpandableContentView.builder.build(result)
+          ExpandableContentView.builder.build(ExpandableContentProps(result, expanded = false))
         )
       )
     )
   }
 
-  case class SearchPageState(expandableContentModels: Seq[ExpandableContentModel])
-    extends ReactiveState[SearchPageState, Seq[ExpandableContentModel], Unit](expandableContentModels, ()) {
-    override def setReactive(r: Seq[ExpandableContentModel]): SearchPageState = {
-      copy(expandableContentModels = r)
-    }
+  case class AppBarState(scrollY: Double)
+
+  object AppBarState {
+    implicit val reusability = Reusability.by_==[AppBarState]
   }
 
-  object SearchPageState {
-    implicit val reusability = Reusability.byRefOr_==[SearchPageState]
-  }
-
-  def makeSearchPage(implicit sch: Scheduler
-                    ): ReactComponentB[Observable[Seq[ExpandableContentModel]], SearchPageState, Unit, TopNode] = {
-    import views.ReactiveReact._
-    ReactComponentB[Observable[Seq[ExpandableContentModel]]]("Main search page")
-      .initialState(SearchPageState(IndexedSeq.empty))
+  def appBar(implicit sch: Scheduler
+            ): ReactComponentB[Observable[AppBarState], AppBarState, Unit, TopNode] =
+    ReactComponentB[Observable[AppBarState]]("App bar")
+      .initialState(AppBarState(0.0))
       .renderS { (_, state) =>
-        div(
-          id := "react-root",
-          div(Styles.appBar,
-            table(
-              tr(Styles.appBarRow,
-                td(Styles.appBarText,
-                  "Dashboarder"
-                )
-              )
-            )
-          ),
-          div(
-            div(Styles.container,
-              Styles.dashboardContainer(
-                state.expandableContentModels.grouped(2).map(makeFilterRow).toSeq: _*
+        div(Styles.appBar,
+          table(
+            tr(Styles.appBarRow,
+              td(Styles.appBarText,
+                "Dashboarder"
               )
             )
           )
-        ).render
+        )
+      }
+      .configure(Reusability.shouldComponentUpdate)
+      .reactiveReplace
+
+  case class SearchPageState(expandableContentModels: Seq[ExpandableContentModel])
+
+  object SearchPageState {
+    implicit val reusability = Reusability.by_==[SearchPageState]
+  }
+
+  def makeSearchPage(appbarProps: Observable[AppBarState])(implicit sch: Scheduler
+  ): ReactComponentB[Observable[SearchPageState], SearchPageState, Unit, TopNode] = {
+    ReactComponentB[Observable[SearchPageState]]("Main search page")
+      .initialState(SearchPageState(Seq.empty))
+      .renderS { (_, state) =>
+        div(
+          id := "react-root",
+          appBar.build(appbarProps),
+          div(
+            div(Styles.container,
+              Styles.dashboardContainer(
+                state.expandableContentModels
+                  .iterator
+                  .grouped(2)
+                  .map(exs => makeFilterRow(exs.map(Observable.now))).toSeq: _*
+              )
+            )
+          )
+        )
       }
       .configure(Reusability.shouldComponentUpdate)
       .reactiveReplace

@@ -176,6 +176,7 @@ object DashboarderBuild {
     scalaVersion := "2.11.8",
     scalacOptions ++= Seq(
       "-Xlint",
+      "-Xexperimental",
       "-deprecation",
       "-feature",
       "-language:higherKinds",
