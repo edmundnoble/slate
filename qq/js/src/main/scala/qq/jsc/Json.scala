@@ -22,7 +22,7 @@ object Json {
   }
 
   def jsToString(a: Any, space: Int = 0): String = {
-      js.JSON.stringify(a.asInstanceOf[js.Any], null: js.Array[js.Any], js.Any.fromInt(space))
+    js.JSON.stringify(a.asInstanceOf[js.Any], null: js.Array[js.Any], js.Any.fromInt(space))
   }
 
   import qq.Platform.Js.Unsafe._
@@ -35,7 +35,7 @@ object Json {
         case true => Trampoline.done(Js.True)
         case false => Trampoline.done(Js.False)
         case null => Trampoline.done(Js.Null)
-        case s: js.Array[Any] =>
+        case s: js.Array[Any@unchecked] =>
           Unsafe.builderTraverse[js.WrappedArray]
             .traverse[Trampoline, Any, Js.Value](new js.WrappedArray[Any](s))((a: Any) => loop(a))
             .map(Js.Arr(_: _*))

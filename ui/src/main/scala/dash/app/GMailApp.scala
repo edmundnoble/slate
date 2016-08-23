@@ -25,26 +25,13 @@ import scalaz.syntax.traverse._
 
 object GMailApp {
 
-  object Messages {
+  import GMailBindings._
 
-    import PathSegment.DSL._
-
-    val listPath = "https://www.googleapis.com/gmail/v1/users/me/messages" :/: PathEnding
-    val list =
-      Binding[StringPathSegment[PathEnding.type], ListData, AuthHeaders](listPath, AjaxMethod.GET)
-
-    val getPath = "https://www.googleapis.com/gmail/v1/users/me/messages" :/: StringTag :/: PathEnding
-    val get = Binding[StringPathSegment[GenericPathSegment[String, PathEnding.type]], GetData, AuthHeaders](getPath, AjaxMethod.GET)
-
-    type AuthHeaders =
-      Record.`"Authorization" -> String, "Cache-Control" -> String`.T
-
-    type GetData =
-      Record.`"format" -> UndefOr[String], "metadataHeaders" -> UndefOr[String], "fields" -> UndefOr[String]`.T
-
-
-    type ListData =
-      Record.`"includeSpamTrash" -> UndefOr[Boolean], "labelIds" -> UndefOr[String], "maxResults" -> UndefOr[Int], "pageToken" -> UndefOr[Int], "q" -> UndefOr[String]`.T
+  def threadToTitledContentModel(jsv: Any): TitledContentModel = {
+    val json = jsv.asInstanceOf[Dynamic].messages.asInstanceOf[js.Array[Any]](0).asInstanceOf[Dynamic]
+    val subject = json.payload.headers.asInstanceOf[js.Array[Any]](0).asInstanceOf[Dynamic].value.asInstanceOf[String]
+    val snippet = json.snippet.asInstanceOf[String]
+    TitledContentModel(subject, None, snippet)
   }
 
   def fetchMail: Task[Observable[IndexedSeq[ExpandableContentModel]]] = monadic[Task] {
@@ -64,8 +51,8 @@ object GMailApp {
       authHeader ::
         "Cache-Control" ->> "no-cache" ::
         HNil
-    val unreadMessagesResponse =
-      Ajax.boundConstantPath(Messages.list,
+    val unreadThreadsResponse =
+      Ajax.boundConstantPath(Threads.list,
         "includeSpamTrash" ->> js.undefined ::
           "labelIds" ->> js.undefined ::
           "maxResults" ->> (10: UndefOr[Int]) ::
@@ -74,20 +61,22 @@ object GMailApp {
           HNil,
         defaultHeaders
       ).map(r => Json.stringToJs(r.responseText))
-    val ids = unreadMessagesResponse.map(_.map(_.asInstanceOf[js.Dynamic].messages.asInstanceOf[js.Array[js.Dynamic]].map(_.id.asInstanceOf[String])))
+    val ids = unreadThreadsResponse.map(_.map { any =>
+      any.asInstanceOf[Dynamic].threads.asInstanceOf[Array[Dynamic]].map(_.id.asInstanceOf[String])
+    })
 
     import qq.Platform.Js.Unsafe._
 
-    val messages = Observable
+    val threads = Observable
       .fromTask(ids)
       .flatMap {
         _.traverse[Observable, upickle.Invalid.Json, Seq[upickle.Invalid.Json \/ js.Any]](idArr =>
           Observable.combineLatestList(
             new js.WrappedArray(idArr).map { id =>
-              val getMessage = Ajax.bound(Messages.get,
+              val getMessage = Ajax.bound(Threads.get,
                 "format" ->> ("metadata": UndefOr[String]) ::
                   "metadataHeaders" ->> ("Subject": UndefOr[String]) ::
-                  "fields" ->> ("snippet,payload(headers)": UndefOr[String]) ::
+                  "fields" ->> ("messages(payload/headers,snippet)": UndefOr[String]) ::
                   HNil,
                 defaultHeaders,
                 id :: HNil
@@ -99,22 +88,14 @@ object GMailApp {
       }
 
     val titledContentModels =
-      messages
-        .map {
-          _.flatMap(Unsafe.builderTraverse[Seq].sequence(_))
-            .valueOr(_ => js.WrappedArray.empty).map(messageToTitledContentModel).toList
-        }
+      threads.map {
+        _.flatMap(Unsafe.builderTraverse[Seq].sequence(_))
+          .valueOr(_ => js.WrappedArray.empty).map(threadToTitledContentModel).toList
+      }
 
     val expandableContentModels = titledContentModels.map(c => IndexedSeq(ExpandableContentModel("Gmail", None, c)))
 
     expandableContentModels
 
-  }
-
-  def messageToTitledContentModel(jsv: Any): TitledContentModel = {
-    val json = jsv.asInstanceOf[Dynamic]
-    val subject = json.payload.headers.asInstanceOf[Array[Any]](0).asInstanceOf[Dynamic].value.asInstanceOf[String]
-    val snippet = json.snippet.asInstanceOf[String]
-    TitledContentModel(subject, None, snippet)
   }
 }

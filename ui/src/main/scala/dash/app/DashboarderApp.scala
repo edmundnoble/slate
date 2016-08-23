@@ -1,22 +1,19 @@
 package dash.app
 
 import dash.DashboardPage.{AppBarState, SearchPageState}
-import dash.models.ExpandableContentModel
 import dash.{DashboardPage, LoggerFactory}
-import japgolly.scalajs.react.{Addons, ReactDOM, ReactElement}
-import monix.eval.{Callback, Task}
+import japgolly.scalajs.react.{Addons, ReactDOM}
 import monix.execution.Cancelable
 import monix.reactive.observers.Subscriber.Sync
 import monix.reactive.{Observable, OverflowStrategy}
 import org.scalajs.dom
 import org.scalajs.dom.raw._
 
+import scala.concurrent.duration._
 import scala.scalajs.js
 import scala.scalajs.js.Any
-import scala.concurrent.duration._
 import scala.scalajs.js.annotation.JSExport
-import scalacss.{Env, Renderer, ScalaCssReactFns, StringRenderer}
-import scalacss.ScalaCssReact._
+import scalacss.{ScalaCssReactFns, StringRenderer}
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
@@ -69,7 +66,7 @@ object DashboarderApp extends scalajs.js.JSApp {
       import dash.views._
       val renderer = new StringRenderer.Raw(StringRenderer.formatTiny)
       val aggregateStyles =
-        ScalaCssReactFns.createStyle("html {\n    overflow-y:scroll;\n}\n" + Styles.renderA(renderer) + "\n" +
+        ScalaCssReactFns.createStyle("html{\noverflow-y:scroll;\n}\n" + Styles.renderA(renderer) + "\n" +
           ExpandableContentView.Styles.renderA(renderer) + "\n" +
           TitledContentView.Styles.renderA(renderer))
       dom.document.head appendChild aggregateStyles

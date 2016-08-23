@@ -6,7 +6,7 @@ import japgolly.scalajs.react.extra.Reusability
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import monocle.macros.GenLens
-import dash.Util._
+import dash.Util.observableReusability
 
 import scala.language.higherKinds
 import scalaz.syntax.std.boolean._
