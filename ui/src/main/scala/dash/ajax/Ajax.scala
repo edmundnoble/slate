@@ -137,12 +137,14 @@ object Ajax {
   }
 
   def boundConstantPath[PathTy <: PathSegment, QueryData <: HList, Headers <: HList]
-  (binding: Binding[PathTy, QueryData, Headers], queryData: QueryData, headers: Headers)
+  (binding: Binding[PathTy, QueryData, Headers])
+  (queryData: QueryData, headers: Headers)
   (implicit timeout: Timeout, ev: PathToString.Aux[PathTy, HNil]) =
-    bound(binding, queryData, headers, HNil: HNil)
+    bound(binding)(queryData, headers, HNil: HNil)
 
   def bound[PathTy <: PathSegment, PathArgs <: HList, QueryParams <: HList, Headers <: HList]
-  (binding: Binding[PathTy, QueryParams, Headers], data: QueryParams, headers: Headers, pathArgs: PathArgs)
+  (binding: Binding[PathTy, QueryParams, Headers])
+  (data: QueryParams, headers: Headers, pathArgs: PathArgs)
   (implicit timeout: Timeout, ev: PathToString.Aux[PathTy, PathArgs]) = {
     val stringPath = ev.create(binding.path, pathArgs)
     val queryDataMap = binding.queryDataToMap(data).collect { case (k, v) if !js.isUndefined(v) => k -> v.asInstanceOf[Any] }

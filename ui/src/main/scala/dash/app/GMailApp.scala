@@ -52,14 +52,14 @@ object GMailApp {
         "Cache-Control" ->> "no-cache" ::
         HNil
     val unreadThreadsResponse =
-      Ajax.boundConstantPath(Threads.list,
-        "includeSpamTrash" ->> js.undefined ::
+      Ajax.boundConstantPath(Threads.list)(
+        queryData = "includeSpamTrash" ->> js.undefined ::
           "labelIds" ->> js.undefined ::
           "maxResults" ->> (10: UndefOr[Int]) ::
           "pageToken" ->> js.undefined ::
           "q" ->> ("is:unread": UndefOr[String]) ::
           HNil,
-        defaultHeaders
+        headers = defaultHeaders
       ).map(r => Json.stringToJs(r.responseText))
     val ids = unreadThreadsResponse.map(_.map { any =>
       any.asInstanceOf[Dynamic].threads.asInstanceOf[Array[Dynamic]].map(_.id.asInstanceOf[String])
@@ -73,13 +73,13 @@ object GMailApp {
         _.traverse[Observable, upickle.Invalid.Json, Seq[upickle.Invalid.Json \/ js.Any]](idArr =>
           Observable.combineLatestList(
             new js.WrappedArray(idArr).map { id =>
-              val getMessage = Ajax.bound(Threads.get,
-                "format" ->> ("metadata": UndefOr[String]) ::
+              val getMessage = Ajax.bound(Threads.get)(
+                data = "format" ->> ("metadata": UndefOr[String]) ::
                   "metadataHeaders" ->> ("Subject": UndefOr[String]) ::
                   "fields" ->> ("messages(payload/headers,snippet)": UndefOr[String]) ::
                   HNil,
-                defaultHeaders,
-                id :: HNil
+                headers = defaultHeaders,
+                pathArgs = ("id" ->> id) :: HNil
               ).map { resp => Json.stringToJs(resp.responseText) }
               Observable.fromTask(getMessage)
             }: _*
