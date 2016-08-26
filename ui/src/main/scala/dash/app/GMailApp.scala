@@ -44,6 +44,8 @@ object GMailApp {
     //    Ajax.get
     //    response_type
 
+    import qq.Platform.Js.Unsafe._
+
     val authToken = identify.getAuthToken(interactive = false).each
     //    val () = identify.removeCachedAuthToken(token = authToken).each
     val authHeader = "Authorization" ->> ("Bearer " + authToken)
@@ -64,8 +66,6 @@ object GMailApp {
     val ids = unreadThreadsResponse.map(_.map { any =>
       any.asInstanceOf[Dynamic].threads.asInstanceOf[Array[Dynamic]].map(_.id.asInstanceOf[String])
     })
-
-    import qq.Platform.Js.Unsafe._
 
     val threads = Observable
       .fromTask(ids)

@@ -95,6 +95,10 @@ object Parser {
     CharIn('a' to 'z', 'A' to 'Z').rep(min = 1).!
   )
 
+  private val variableIdentifier: P[String] = P(
+    "$" ~ filterIdentifier
+  )
+
   val callFilter: P[Filter] = P(
     for {
       identifier <- filterIdentifier

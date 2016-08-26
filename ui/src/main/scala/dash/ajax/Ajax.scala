@@ -63,39 +63,39 @@ object Ajax {
     }
   }
 
-  def get(url: String,
-          data: PostData = null,
-          queryData: Map[String, js.Any] = Map.empty,
-          headers: Map[String, String] = Map.empty,
-          withCredentials: Boolean = false,
-          responseType: String = "")(implicit timeout: Timeout) = {
+  @inline final def get(url: String,
+                        data: PostData = null,
+                        queryData: Map[String, js.Any] = Map.empty,
+                        headers: Map[String, String] = Map.empty,
+                        withCredentials: Boolean = false,
+                        responseType: String = "")(implicit timeout: Timeout) = {
     apply("GET", url, data, queryData, headers, withCredentials, responseType)
   }
 
-  def post(url: String,
-           data: PostData = null,
-           queryData: Map[String, js.Any] = Map.empty,
-           headers: Map[String, String] = Map.empty,
-           withCredentials: Boolean = false,
-           responseType: String = "")(implicit timeout: Timeout) = {
+  @inline final def post(url: String,
+                         data: PostData = null,
+                         queryData: Map[String, js.Any] = Map.empty,
+                         headers: Map[String, String] = Map.empty,
+                         withCredentials: Boolean = false,
+                         responseType: String = "")(implicit timeout: Timeout) = {
     apply("POST", url, data, queryData, headers, withCredentials, responseType)
   }
 
-  def put(url: String,
-          data: PostData = null,
-          queryData: Map[String, js.Any] = Map.empty,
-          headers: Map[String, String] = Map.empty,
-          withCredentials: Boolean = false,
-          responseType: String = "")(implicit timeout: Timeout) = {
+  @inline final def put(url: String,
+                        data: PostData = null,
+                        queryData: Map[String, js.Any] = Map.empty,
+                        headers: Map[String, String] = Map.empty,
+                        withCredentials: Boolean = false,
+                        responseType: String = "")(implicit timeout: Timeout) = {
     apply("PUT", url, data, queryData, headers, withCredentials, responseType)
   }
 
-  def delete(url: String,
-             data: PostData = null,
-             queryData: Map[String, js.Any] = Map.empty,
-             headers: Map[String, String] = Map.empty,
-             withCredentials: Boolean = false,
-             responseType: String = "")(implicit timeout: Timeout) = {
+  @inline final def delete(url: String,
+                           data: PostData = null,
+                           queryData: Map[String, js.Any] = Map.empty,
+                           headers: Map[String, String] = Map.empty,
+                           withCredentials: Boolean = false,
+                           responseType: String = "")(implicit timeout: Timeout) = {
     apply("DELETE", url, data, queryData, headers, withCredentials, responseType)
   }
 
@@ -136,13 +136,13 @@ object Ajax {
     }
   }
 
-  def boundConstantPath[PathTy <: PathSegment, QueryData <: HList, Headers <: HList]
+  @inline final def boundConstantPath[PathTy <: PathSegment, QueryData <: HList, Headers <: HList]
   (binding: Binding[PathTy, QueryData, Headers])
   (queryData: QueryData, headers: Headers)
   (implicit timeout: Timeout, ev: PathToString.Aux[PathTy, HNil]) =
     bound(binding)(queryData, headers, HNil: HNil)
 
-  def bound[PathTy <: PathSegment, PathArgs <: HList, QueryParams <: HList, Headers <: HList]
+  @inline final def bound[PathTy <: PathSegment, PathArgs <: HList, QueryParams <: HList, Headers <: HList]
   (binding: Binding[PathTy, QueryParams, Headers])
   (data: QueryParams, headers: Headers, pathArgs: PathArgs)
   (implicit timeout: Timeout, ev: PathToString.Aux[PathTy, PathArgs]) = {

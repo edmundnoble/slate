@@ -10,7 +10,6 @@ import scalaz.std.list._
 import scalaz.syntax.either._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
-
 import qq.Platform.Rec._
 
 class QQRuntimeException(val message: String) extends RuntimeException(message) {
@@ -22,6 +21,7 @@ class QQRuntimeException(val message: String) extends RuntimeException(message) 
 object QQRuntimeException {
   def apply(message: String): QQRuntimeException = new QQRuntimeException(message)
 }
+
 case class NotARegex(asStr: String) extends QQRuntimeException(
   "tried to use this as a regex: " + asStr
 )
@@ -93,14 +93,14 @@ object QQCompiler {
   def compileDefinitionStep[AnyTy](runtime: QQRuntime[AnyTy])
                                   (soFar: OrCompilationError[List[CompiledDefinition[AnyTy]]],
                                    nextDefinition: Definition): OrCompilationError[List[CompiledDefinition[AnyTy]]] =
-    soFar.map((definitionsSoFar: List[CompiledDefinition[AnyTy]]) => {
+    soFar.map { (definitionsSoFar: List[CompiledDefinition[AnyTy]]) =>
       CompiledDefinition[AnyTy](nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter[AnyTy]]) => {
         val paramsAsDefinitions = (nextDefinition.params, params).zipped.map { (filterName, value) =>
           CompiledDefinition[AnyTy](filterName, 0, (_: List[CompiledFilter[AnyTy]]) => value.right[QQCompilationException])
         }
         compile(runtime, definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body)
       }) :: definitionsSoFar
-    })
+    }
 
   @inline
   def compile[AnyTy](runtime: QQRuntime[AnyTy],

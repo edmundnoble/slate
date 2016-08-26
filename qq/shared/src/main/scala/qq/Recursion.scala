@@ -1,8 +1,8 @@
 package qq
 
 import matryoshka.Recursive.ops._
+import matryoshka.TraverseT.ops._
 import matryoshka.{Corecursive, Fix, Recursive, TraverseT}
-import TraverseT.ops._
 
 import scala.language.higherKinds
 import scalaz.Free.Trampoline
