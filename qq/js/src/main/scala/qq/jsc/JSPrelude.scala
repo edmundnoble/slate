@@ -127,8 +127,8 @@ object JSPrelude extends PlatformPrelude[Any] {
   override def scalars: CompiledDefinition[Any] =
     noParamDefinition(
       "scalars", {
-        case arr: js.Array[_] => Task.now(Nil)
-        case obj: js.Object => Task.now(Nil)
+        case _: js.Array[_] => Task.now(Nil)
+        case _: js.Object => Task.now(Nil)
         case k => Task.now(k :: Nil)
       })
 
