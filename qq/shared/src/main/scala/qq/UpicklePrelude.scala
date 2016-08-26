@@ -124,4 +124,13 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
         case k => Task.now(k :: Nil)
       })
 
+
+  def httpDelete: CompiledDefinition[Js.Value] = ???
+
+  def httpGet: CompiledDefinition[Js.Value] = ???
+
+  def httpPost: CompiledDefinition[Js.Value] = ???
+
+  def httpPut: CompiledDefinition[Js.Value] = ???
+
 }

@@ -43,7 +43,8 @@ object JSPrelude extends PlatformPrelude[Any] {
                 jsv match {
                   case string: String =>
                     Task.now(regex.matcher(string).replaceAll(replacement): Any)
-                  case j => Task.raiseError(QQRuntimeException("can't replace " + String.valueOf(j)))
+                  case j =>
+                    Task.raiseError(QQRuntimeException("can't replace " + String.valueOf(j)))
                 }
               }.sequence[Task, Any].each
               valueRegexReplacementList
@@ -131,6 +132,14 @@ object JSPrelude extends PlatformPrelude[Any] {
         case obj: js.Object => Task.now(Nil)
         case k => Task.now(k :: Nil)
       })
+
+  override def httpDelete: CompiledDefinition[Any] = ???
+
+  override def httpGet: CompiledDefinition[Any] = ???
+
+  override def httpPost: CompiledDefinition[Any] = ???
+
+  override def httpPut: CompiledDefinition[Any] = ???
 
 }
 
