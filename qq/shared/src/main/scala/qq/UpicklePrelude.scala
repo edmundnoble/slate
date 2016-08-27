@@ -125,12 +125,14 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
       })
 
 
-  def httpDelete: CompiledDefinition[Js.Value] = ???
+  def httpDelete: CompiledDefinition[Js.Value] = CompiledDefinition.undefinedOnPlatform("httpDelete")
 
-  def httpGet: CompiledDefinition[Js.Value] = ???
+  def httpGet: CompiledDefinition[Js.Value] = CompiledDefinition.undefinedOnPlatform("httpGet")
 
-  def httpPost: CompiledDefinition[Js.Value] = ???
+  def httpPatch: CompiledDefinition[Js.Value] = CompiledDefinition.undefinedOnPlatform("httpPatch")
 
-  def httpPut: CompiledDefinition[Js.Value] = ???
+  def httpPost: CompiledDefinition[Js.Value] = CompiledDefinition.undefinedOnPlatform("httpPost")
+
+  def httpPut: CompiledDefinition[Js.Value] = CompiledDefinition.undefinedOnPlatform("httpPut")
 
 }

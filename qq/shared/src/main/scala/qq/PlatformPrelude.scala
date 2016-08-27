@@ -48,6 +48,8 @@ trait PlatformPrelude[AnyTy] extends Prelude[AnyTy] {
 
   def httpGet: CompiledDefinition[AnyTy]
 
+  def httpPatch: CompiledDefinition[AnyTy]
+
   def httpPost: CompiledDefinition[AnyTy]
 
   def httpPut: CompiledDefinition[AnyTy]
@@ -55,7 +57,7 @@ trait PlatformPrelude[AnyTy] extends Prelude[AnyTy] {
   override def all(runtime: QQRuntime[AnyTy]): QQCompilationException \/ List[CompiledDefinition[AnyTy]] = {
     (length +: keys +: replaceAll +: arrays +: objects +: iterables +: booleans +:
       numbers +: strings +: nulls +: values +: scalars +: httpDelete +: httpGet +:
-      httpPost +: httpPut +: Nil).right[QQCompilationException]
+      httpPatch +: httpPost +: httpPut +: Nil).right[QQCompilationException]
   }
 
 }

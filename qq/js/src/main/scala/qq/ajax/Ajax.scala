@@ -1,4 +1,4 @@
-package dash.ajax
+package qq.ajax
 
 import java.nio.ByteBuffer
 

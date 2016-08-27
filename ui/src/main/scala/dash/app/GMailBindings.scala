@@ -1,6 +1,6 @@
 package dash.app
 
-import dash.ajax._
+import qq.ajax._
 import scala.scalajs.js.UndefOr
 
 object GMailBindings {

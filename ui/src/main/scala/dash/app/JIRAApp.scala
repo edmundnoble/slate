@@ -4,7 +4,7 @@ import java.util.concurrent.TimeUnit
 
 import dash.Util._
 import dash._
-import dash.ajax.Ajax
+import qq.ajax.Ajax
 import dash.models.{ExpandableContentModel, TitledContentModel}
 import monix.eval.Task
 import monix.scalaz._

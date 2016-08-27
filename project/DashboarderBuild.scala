@@ -228,7 +228,7 @@ object DashboarderBuild {
     .settings(replMain: _*)
     .jsSettings(scalaJSUseRhino in Global := false)
     .jsSettings(ScalaJSPlugin.projectSettings: _*)
-    .jsSettings(requiresDOM in Test := false)
+    .jsSettings(libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.0")
 
   lazy val qqjvm = qq.jvm
   lazy val qqjs = qq.js

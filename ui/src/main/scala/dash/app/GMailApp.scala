@@ -3,7 +3,7 @@ package dash.app
 import java.util.concurrent.TimeUnit
 
 import com.thoughtworks.each.Monadic._
-import dash.ajax._
+import qq.ajax._
 import dash.models.{ExpandableContentModel, TitledContentModel}
 import dash.{LoggerFactory, identify}
 import monix.eval.Task
@@ -55,7 +55,7 @@ object GMailApp {
         HNil
     val unreadThreadsResponse =
       Ajax.boundConstantPath(Threads.list)(
-        queryData = "includeSpamTrash" ->> js.undefined ::
+        queryParams = "includeSpamTrash" ->> js.undefined ::
           "labelIds" ->> js.undefined ::
           "maxResults" ->> (10: UndefOr[Int]) ::
           "pageToken" ->> js.undefined ::

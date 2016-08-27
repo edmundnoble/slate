@@ -6,9 +6,11 @@ import com.thoughtworks.each.Monadic._
 import monix.eval.Task
 import monix.scalaz._
 import qq._
+import qq.ajax.{Ajax, AjaxMethod}
 
 import scala.scalajs.js
 import scalaz.std.list._
+import scala.concurrent.duration._
 import scalaz.syntax.either._
 import scalaz.syntax.traverse._
 
@@ -133,13 +135,44 @@ object JSPrelude extends PlatformPrelude[Any] {
         case k => Task.now(k :: Nil)
       })
 
-  override def httpDelete: CompiledDefinition[Any] = ???
+  private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition[Any](name, 4, {
+    case List(urlFilter, queryParamsFilter, dataFilter, headersFilter) => { (jsv: Any) =>
+      monadic[Task] {
+        val url = (urlFilter(jsv).each.head match {
+          case s: String => Task.now(s)
+          case k => Task.raiseError(QQRuntimeException(String.valueOf(k) + " is not a URL"))
+        }).each
+        val queryParams = (queryParamsFilter(jsv).each.head match {
+          case o: js.Object => Task.now(o)
+          case k => Task.raiseError(QQRuntimeException(String.valueOf(k) + " is not query params/data"))
+        }).each.asInstanceOf[js.Dictionary[js.Any]]
+        val data = (dataFilter(jsv).each.head match {
+          case s: String => Task.now(s)
+          case k => Task.raiseError(QQRuntimeException(String.valueOf(k) + " is not usable as POST data"))
+        }).each
+        val headers = (headersFilter(jsv).each.head match {
+          case o: js.Object => Task.now(o)
+          case k => Task.raiseError(QQRuntimeException(String.valueOf(k) + " is not headers"))
+        }).each.asInstanceOf[js.Dictionary[String]]
+        val ajax = (if (ajaxMethod == AjaxMethod.POST) {
+          Ajax.post(url, data, queryParams.toMap, headers.toMap)(Ajax.Timeout(1000.millis))
+        } else {
+          Ajax.apply(AjaxMethod.asString(ajaxMethod), url, null, queryParams.toMap, headers.toMap, false, "")(Ajax.Timeout(1000.millis))
+        }).each
+        List(Json.stringToJs(ajax.responseText).fold(Task.raiseError, Task.now).each)
+      }
+    }.right
+  })
 
-  override def httpGet: CompiledDefinition[Any] = ???
+  override def httpDelete: CompiledDefinition[Any] = makeAjaxDefinition("httpDelete", AjaxMethod.DELETE)
 
-  override def httpPost: CompiledDefinition[Any] = ???
+  override def httpGet: CompiledDefinition[Any] = makeAjaxDefinition("httpGet", AjaxMethod.GET)
 
-  override def httpPut: CompiledDefinition[Any] = ???
+  override def httpPost: CompiledDefinition[Any] = makeAjaxDefinition("httpGet", AjaxMethod.POST)
+
+  override def httpPatch: CompiledDefinition[Any] = makeAjaxDefinition("httpGet", AjaxMethod.PATCH)
+
+  override def httpPut: CompiledDefinition[Any] = makeAjaxDefinition("httpPut", AjaxMethod.PUT)
 
 }
 

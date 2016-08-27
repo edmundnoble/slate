@@ -1,4 +1,4 @@
-package dash.ajax
+package qq.ajax
 
 import shapeless.labelled.FieldType
 import shapeless.{::, HList, HNil}
