@@ -94,8 +94,7 @@ object JIRAApp extends DashApp {
                 Map("Content-Type" -> "application/json")).strengthL(filter)
           }
         }
-      }
-        yield filterRequests
+      } yield filterRequests
       extractIssues <- compiledExtractIssues
       issues <- Task.gatherUnordered(
         filtersAndResponses.map {
