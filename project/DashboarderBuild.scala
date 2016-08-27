@@ -98,7 +98,7 @@ object DashboarderBuild {
     out
   }
 
-  def copyResources(suffices: Seq[String]) = Def.task {
+  def copyResources(sourceMap: sbt.File, suffices: Seq[String]) = Def.task {
     val file = (resourceDirectory in Compile).value
     val targetValue = target.value
     val unpacked = suffices.foldLeft(targetValue)(_ / _)
@@ -112,20 +112,24 @@ object DashboarderBuild {
         }
       }
     }
+    IO.copyFile(sourceMap, unpacked / "main.js.map")
     unpacked
   }
 
-  def defineChromeBuildTask(folderName: String, buildTaskKey: TaskKey[Attributed[sbt.File]]) = Def.task {
-    val unpacked = copyResources(Seq("chrome", folderName)).value
-    val file =
-      Chrome.buildExtentionDirectory(unpacked)(
-        (chromeGenerateManifest in Compile).value,
-        (buildTaskKey in Compile).value.data,
-        (packageMinifiedJSDependencies in Compile).value,
-        (packageScalaJSLauncher in Compile).value.data,
-        (chromePackageContent in Compile).value
-      )
-    file
+  def defineChromeBuildTask(folderName: String, buildTaskKey: TaskKey[Attributed[sbt.File]]) = Def.taskDyn {
+    val r = (buildTaskKey in Compile).value
+    val unpacked = Def.task { copyResources(r.get(scalaJSSourceMap).get, Seq("chrome", folderName)).value }
+    Def.task {
+      val file =
+        Chrome.buildExtentionDirectory(unpacked.value)(
+          (chromeGenerateManifest in Compile).value,
+          r.data,
+          (packageMinifiedJSDependencies in Compile).value,
+          (packageScalaJSLauncher in Compile).value.data,
+          (chromePackageContent in Compile).value
+        )
+      file
+    }
   }
 
   lazy val chromeTasks: Seq[Def.Setting[_]] = Seq(
@@ -201,7 +205,8 @@ object DashboarderBuild {
 
   val jsSettings: Seq[sbt.Def.Setting[_]] = Seq(
     scalaJSUseRhino in Global := false,
-    relativeSourceMaps := true
+    (relativeSourceMaps in fullOptJS) := true,
+    (relativeSourceMaps in fastOptJS) := true
   )
 
   // amazingly hard to do
