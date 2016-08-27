@@ -55,11 +55,9 @@ object GMailApp extends DashApp {
         |  fields: "messages(payload/headers,snippet)"
         |};
         |def threadList:
-        |  httpGet("https://www.googleapis.com/gmail/v1/users/me/threads"; listParams; ""; headers);
-        |def threadListId:
-        |  threadList | .threads | .[] | .id;
+        |  httpGet("https://www.googleapis.com/gmail/v1/users/me/threads"; listParams; ""; headers) | .threads | .[];
         |def threadDetails:
-        |  threadListId | httpGet("https://www.googleapis.com/gmail/v1/users/me/threads/" + .; getParams; ""; headers);
+        |  threadList | .id | httpGet("https://www.googleapis.com/gmail/v1/users/me/threads/" + .; getParams; ""; headers);
         |threadDetails""".stripMargin
 
     val programInStorage = StorageProgram.runProgram(DomStorage.Local, getCompiledProgram(app)).flatMap(_.valueOrThrow).each(js.Array[Any]())
