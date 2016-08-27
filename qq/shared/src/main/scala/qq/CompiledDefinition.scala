@@ -8,5 +8,13 @@ final case class CompiledDefinition[AnyTy]
 
 object CompiledDefinition {
   def undefinedOnPlatform[AnyTy](name: String) = CompiledDefinition[AnyTy](name, 0, body = _ => UndefinedOnPlatform(name).left)
+
+  final def noParamDefinition[AnyTy](name: String, fun: CompiledFilter[AnyTy]): CompiledDefinition[AnyTy] = {
+    CompiledDefinition[AnyTy](
+      name,
+      numParams = 0,
+      _ => fun.right[QQCompilationException]
+    )
+  }
 }
 

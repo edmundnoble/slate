@@ -27,7 +27,7 @@ object Json {
 
   import qq.Platform.Js.Unsafe._
 
-  final val readJsRec = new RecursiveFunction[Any, Js.Value] {
+  final val jsToUpickleRec = new RecursiveFunction[Any, Js.Value] {
     override def run(value: Any, loop: Any => Trampoline[Js.Value]) =
       value match {
         case s: String => Trampoline.done(Js.Str(s))
@@ -47,7 +47,7 @@ object Json {
   }
 
   @inline final def stringToUpickle(s: String): Invalid.Json \/ Js.Value = {
-    stringToJs(s).map(readJsRec(_))
+    stringToJs(s).map(jsToUpickleRec(_))
   }
 
   @inline final val upickleToJsRec = new RecursiveFunction[Js.Value, js.Any] {

@@ -31,7 +31,7 @@ object SharedPreludes {
 
     def apply[AnyTy]: Prelude[AnyTy] = new Prelude[AnyTy] {
       override def all(runtime: QQRuntime[AnyTy]): OrCompilationError[List[CompiledDefinition[AnyTy]]] =
-        QQCompiler.compileDefinitions(runtime, map :: Nil)
+        QQCompiler.compileDefinitions(runtime, Nil, map :: Nil)
     }
   }
 

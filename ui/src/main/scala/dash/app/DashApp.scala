@@ -8,10 +8,11 @@ import upickle.Js
 import com.thoughtworks.each.Monadic._
 import japgolly.scalajs.react
 import japgolly.scalajs.react.ReactComponentB
+import qq.jsc.JSRuntime
 
 trait DashApp {
 
-  def getCompiledProgram(qqProgram: String): StorageProgram[OrCompilationError[CompiledFilter[Js.Value]]] = monadic[StorageProgram] {
+  def getCompiledProgram(qqProgram: String): StorageProgram[OrCompilationError[CompiledFilter[Any]]] = monadic[StorageProgram] {
 
     import qq.FilterProtocol._
     import StorageProgram._
@@ -32,7 +33,7 @@ trait DashApp {
         programCodec.decode(BitVector.fromBase64(encodedProgram).get).require.value
     }
 
-    QQCompiler.compileProgram[Js.Value](UpickleRuntime: QQRuntime[Js.Value], decodedOptimizedProgram)
+    QQCompiler.compileProgram[Any](JSRuntime: QQRuntime[Any], prelude = DashPrelude.all, decodedOptimizedProgram)
   }
 
 //  type P

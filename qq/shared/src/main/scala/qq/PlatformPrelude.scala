@@ -12,14 +12,6 @@ trait PlatformPrelude[AnyTy] extends Prelude[AnyTy] {
     body.applyOrElse(params, ???)
   }
 
-  final def noParamDefinition(name: String, fun: CompiledFilter[AnyTy]): CompiledDefinition[AnyTy] = {
-    CompiledDefinition[AnyTy](
-      name,
-      numParams = 0,
-      _ => fun.right[QQCompilationException]
-    )
-  }
-
   def length: CompiledDefinition[AnyTy]
 
   def keys: CompiledDefinition[AnyTy]

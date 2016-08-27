@@ -16,6 +16,8 @@ import scalaz.syntax.traverse._
 
 object JSPrelude extends PlatformPrelude[Any] {
 
+  import CompiledDefinition.noParamDefinition
+
   override def length: CompiledDefinition[Any] =
     noParamDefinition(
       "length", {
