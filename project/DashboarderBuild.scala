@@ -9,7 +9,7 @@ import upickle.Js
 
 object DashboarderBuild {
 
-  val commonDeps = Seq(
+  lazy val commonDeps = Seq(
     libraryDependencies ++= Seq(
       "org.scalatest" %%% "scalatest" % "3.0.0-RC4" % "test",
       "com.lihaoyi" %%% "upickle" % "0.4.0",
@@ -29,7 +29,7 @@ object DashboarderBuild {
     resolvers += Resolver.sonatypeRepo("releases"),
     resolvers += "Sonatype Public" at "https://oss.sonatype.org/content/groups/public/")
 
-  val uiDeps = libraryDependencies ++= Seq(
+  lazy val uiDeps = libraryDependencies ++= Seq(
     "net.lullabyte" %%% "scala-js-chrome" % "0.2.1",
     "org.scala-js" %%% "scalajs-dom" % "0.9.0",
     "com.github.japgolly.scalajs-react" %%% "core" % "0.11.1",
@@ -38,24 +38,22 @@ object DashboarderBuild {
     "com.github.japgolly.scalacss" %%% "ext-react" % "0.4.1"
   )
 
-  // React JS itself (Note the filenames, adjust as needed, eg. to remove addons.)
-  val jsDeps = jsDependencies ++= Seq(
-    "org.webjars.bower" % "react" % "15.0.2"
+  //   React JS itself (Note the filenames, adjust as needed, eg. to remove addons.)
+  lazy val jsDeps = jsDependencies ++= Seq(
+    "org.webjars.bower" % "react" % "15.0.1"
       / "react-with-addons.js"
       minified "react-with-addons.min.js"
       commonJSName "React",
 
-    "org.webjars.bower" % "react" % "15.0.2"
+    "org.webjars.bower" % "react" % "15.0.1"
       / "react-dom.js"
       minified "react-dom.min.js"
       dependsOn "react-with-addons.js"
       commonJSName "ReactDOM",
 
-    "org.webjars.bower" % "react" % "15.0.2"
-      / "react-dom-server.js"
-      minified "react-dom-server.min.js"
-      dependsOn "react-dom.js"
-      commonJSName "ReactDOMServer"
+    "org.webjars" % "chartjs" % "1.0.2"
+      / "Chart.js"
+      minified "Chart.min.js"
   )
 
   val chromePackageContent = SettingKey[File]("chromePackageContent",
@@ -206,6 +204,7 @@ object DashboarderBuild {
     relativeSourceMaps := true
   )
 
+  // amazingly hard to do
   def emptyInputTask: Def.Initialize[InputTask[Unit]] =
     InputTask.createDyn[String, Unit](
       InputTask.parserAsInput(
@@ -219,8 +218,8 @@ object DashboarderBuild {
     testOnly in Test <<= emptyInputTask
   )
 
-  def dependOnChrome[T](taskKey: TaskKey[T]): Def.Setting[Task[T]] =
-    taskKey <<= taskKey.dependsOn(chromeBuildFast in ui)
+  def dependOnChrome[T](chromeKey: TaskKey[sbt.File], taskKey: TaskKey[T]): Def.Setting[Task[T]] =
+    taskKey <<= taskKey.dependsOn(chromeKey in ui)
 
   lazy val qq: CrossProject = crossProject.in(file("qq"))
     .settings(baseSettings: _*)
@@ -250,10 +249,44 @@ object DashboarderBuild {
     .settings(libraryDependencies += "org.seleniumhq.selenium" % "selenium-java" % "2.35.0" % "test")
     .settings(baseSettings)
     .settings(commonDeps)
-    .settings(dependOnChrome(testOptions in Test))
+    .settings(dependOnChrome(chromeBuildFast, testOptions in Test))
     .settings((test in Test) <<= (test in Test).dependsOn(chromeBuildOpt in ui, compile in Test in qqjvm))
     .settings((testOptions in Test) <<= (testOptions in Test).dependsOn(chromeBuildOpt in ui, compile in Test in qqjvm))
     .settings((testQuick in Test) := (test in Test).value)
+
+  lazy val uibench = project.in(file("uibench"))
+    .dependsOn(ui)
+    .dependsOn(qqjs)
+    .settings(ScalaJSPlugin.projectSettings)
+    .enablePlugins(ScalaJSPlugin)
+    .settings((resourceDirectory in Compile) := (resourceDirectory in Compile in ui).value)
+    .settings(baseSettings: _*)
+    .settings(chromeTasks)
+    .settings(jsSettings)
+    .settings(commonDeps: _*)
+    .settings(uiDeps: _*)
+//    .settings(jsDeps)
+    .settings(libraryDependencies += "com.github.japgolly.scalajs-benchmark" %%% "benchmark" % "0.2.3")
+    .settings((mainClass in Compile) := Some("dash.bench.BenchmarkApp"))
+    .settings(jsManifestFilter := {
+      import org.scalajs.core.tools.jsdep.{JSDependencyManifest, JSDependency}
+
+      (seq: Traversable[JSDependencyManifest]) => {
+        seq map { manifest =>
+
+          def isOkToInclude(jsDep: JSDependency): Boolean = {
+            !List("react-dom", "react-with-addons").exists(jsDep.resourceName.startsWith)
+          }
+
+          new JSDependencyManifest(
+            origin = manifest.origin,
+            libDeps = manifest.libDeps filter isOkToInclude,
+            requiresDOM = manifest.requiresDOM,
+            compliantSemantics = manifest.compliantSemantics
+          )
+        }
+      }
+    })
 
   lazy val root = project.in(file("."))
     .aggregate(ui, uitests, qqjvm, qqjs)
