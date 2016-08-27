@@ -13,6 +13,8 @@ import monix.scalaz._
 
 object UpicklePrelude extends PlatformPrelude[Js.Value] {
 
+  import CompiledDefinition.noParamDefinition
+
   override def length: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "length", {
@@ -123,5 +125,16 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
         case obj: Js.Obj => Task.now(Nil)
         case k => Task.now(k :: Nil)
       })
+
+
+  override def httpDelete: CompiledDefinition[Js.Value] = CompiledDefinition.undefinedOnPlatform("httpDelete")
+
+  override def httpGet: CompiledDefinition[Js.Value] = CompiledDefinition.undefinedOnPlatform("httpGet")
+
+  override def httpPatch: CompiledDefinition[Js.Value] = CompiledDefinition.undefinedOnPlatform("httpPatch")
+
+  override def httpPost: CompiledDefinition[Js.Value] = CompiledDefinition.undefinedOnPlatform("httpPost")
+
+  override def httpPut: CompiledDefinition[Js.Value] = CompiledDefinition.undefinedOnPlatform("httpPut")
 
 }

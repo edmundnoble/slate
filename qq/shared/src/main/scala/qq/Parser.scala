@@ -30,11 +30,10 @@ object Parser {
   }
 
   val dot: P0 = P(".")
-  val fetch: P[Filter] = P("fetch") map (_ => FilterDSL.fetch)
   val quote: P0 = P("\"")
 
   def isStringLiteralChar(c: Char): Boolean = Character.isAlphabetic(c) || Character.isDigit(c)
-  lazy val stringLiteralChars = Seq('a' to 'z': Seq[Char], 'A' to 'Z': Seq[Char], '0' to '9': Seq[Char], "↪+*-": Seq[Char])
+  lazy val stringLiteralChars = Seq('a' to 'z': Seq[Char], 'A' to 'Z': Seq[Char], '0' to '9': Seq[Char], "↪+*-:/(),.": Seq[Char])
   lazy val stringLiteralChar = CharIn(stringLiteralChars: _*)
   val stringLiteral: P[String] = P(stringLiteralChar.rep(min = 1).!)
 

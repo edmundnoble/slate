@@ -14,7 +14,6 @@ sealed abstract class LeafComponent[A] extends FilterComponent[A] {
 }
 
 final case class IdFilter[A]() extends LeafComponent[A]
-final case class FetchApi[A]() extends LeafComponent[A]
 final case class ComposeFilters[A](first: A, second: A) extends FilterComponent[A]
 final case class SilenceExceptions[A](f: A) extends FilterComponent[A]
 final case class EnlistFilter[A](f: A) extends FilterComponent[A]

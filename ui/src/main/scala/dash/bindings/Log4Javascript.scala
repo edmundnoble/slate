@@ -104,22 +104,22 @@ object Log4JavaScript extends js.GlobalScope {
 
 class L4JSLogger(jsLogger: JSLogger) extends Logger {
 
-  private def undefOrError(e: Exception): js.UndefOr[js.Error] = {
+  private def undefOrError(e: Throwable): js.UndefOr[js.Error] = {
     if (e == null)
       js.undefined
     else
       e.asInstanceOf[js.Error]
   }
 
-  override def debug(msg: String, e: Exception): Unit = jsLogger.debug(msg, undefOrError(e))
+  override def debug(msg: String, e: Throwable): Unit = jsLogger.debug(msg, undefOrError(e))
   override def debug(msg: String): Unit = jsLogger.debug(msg)
-  override def info(msg: String, e: Exception): Unit = jsLogger.info(msg, undefOrError(e))
+  override def info(msg: String, e: Throwable): Unit = jsLogger.info(msg, undefOrError(e))
   override def info(msg: String): Unit = jsLogger.info(msg)
-  override def warn(msg: String, e: Exception): Unit = jsLogger.warn(msg, undefOrError(e))
+  override def warn(msg: String, e: Throwable): Unit = jsLogger.warn(msg, undefOrError(e))
   override def warn(msg: String): Unit = jsLogger.warn(msg)
-  override def error(msg: String, e: Exception): Unit = jsLogger.error(msg, undefOrError(e))
+  override def error(msg: String, e: Throwable): Unit = jsLogger.error(msg, undefOrError(e))
   override def error(msg: String): Unit = jsLogger.error(msg)
-  override def fatal(msg: String, e: Exception): Unit = jsLogger.fatal(msg, undefOrError(e))
+  override def fatal(msg: String, e: Throwable): Unit = jsLogger.fatal(msg, undefOrError(e))
   override def fatal(msg: String): Unit = jsLogger.fatal(msg)
 }
 

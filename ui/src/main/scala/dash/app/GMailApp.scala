@@ -3,9 +3,9 @@ package dash.app
 import java.util.concurrent.TimeUnit
 
 import com.thoughtworks.each.Monadic._
-import dash.ajax._
+import qq.ajax._
 import dash.models.{ExpandableContentModel, TitledContentModel}
-import dash.{LoggerFactory, identify}
+import dash.{DomStorage, LoggerFactory, StorageProgram, identify}
 import monix.eval.Task
 import monix.reactive.Observable
 import monix.scalaz._
@@ -18,84 +18,55 @@ import shapeless.syntax.singleton._
 import scala.collection.immutable.IndexedSeq
 import scala.concurrent.duration.Duration
 import scala.scalajs.js
-import scala.scalajs.js.{Any, Array, Dynamic, JSON, UndefOr}
+import scala.scalajs.js.{Array, Dynamic, JSON, UndefOr}
 import scalaz.\/
 import scalaz.syntax.monad._
 import scalaz.syntax.traverse._
+import dash.Util._
 
-object GMailApp {
+object GMailApp extends DashApp {
 
   import GMailBindings._
 
-  def threadToTitledContentModel(jsv: Any): TitledContentModel = {
-    val json = jsv.asInstanceOf[Dynamic].messages.asInstanceOf[js.Array[Any]](0).asInstanceOf[Dynamic]
-    val subject = json.payload.headers.asInstanceOf[js.Array[Any]](0).asInstanceOf[Dynamic].value.asInstanceOf[String]
+  def threadToTitledContentModel(jsv: js.Any): TitledContentModel = {
+    val json = jsv.asInstanceOf[Dynamic].messages.asInstanceOf[js.Array[js.Any]](0).asInstanceOf[Dynamic]
+    val subject = json.payload.headers.asInstanceOf[js.Array[js.Any]](0).asInstanceOf[Dynamic].value.asInstanceOf[String]
     val snippet = json.snippet.asInstanceOf[String]
     TitledContentModel(subject, None, snippet)
   }
 
   def fetchMail: Task[Observable[IndexedSeq[ExpandableContentModel]]] = monadic[Task] {
 
-    implicit val ajaxTimeout = Ajax.Timeout(Duration(4000, TimeUnit.MILLISECONDS))
-
     implicit val logger = LoggerFactory.getLogger("GmailApp")
-
-    //    https://accounts.google.com/o/oauth2/v2/auth
-    //    Ajax.get
-    //    response_type
 
     import qq.Platform.Js.Unsafe._
 
-    val authToken = identify.getAuthToken(interactive = false).each
-    //    val () = identify.removeCachedAuthToken(token = authToken).each
-    val authHeader = "Authorization" ->> ("Bearer " + authToken)
-    val defaultHeaders =
-      authHeader ::
-        "Cache-Control" ->> "no-cache" ::
-        HNil
-    val unreadThreadsResponse =
-      Ajax.boundConstantPath(Threads.list)(
-        queryData = "includeSpamTrash" ->> js.undefined ::
-          "labelIds" ->> js.undefined ::
-          "maxResults" ->> (10: UndefOr[Int]) ::
-          "pageToken" ->> js.undefined ::
-          "q" ->> ("is:unread": UndefOr[String]) ::
-          HNil,
-        headers = defaultHeaders
-      ).map(r => Json.stringToJs(r.responseText))
-    val ids = unreadThreadsResponse.map(_.map { any =>
-      any.asInstanceOf[Dynamic].threads.asInstanceOf[Array[Dynamic]].map(_.id.asInstanceOf[String])
-    })
+    val app =
+      """def headers: {
+        |  Authorization: "Bearer " + googleAuth
+        |};
+        |def listParams: {
+        |  maxResults: 10,
+        |  q: "is:unread"
+        |};
+        |def getParams: {
+        |  format: "metadata",
+        |  metadataHeaders: "Subject",
+        |  fields: "messages(payload/headers,snippet)"
+        |};
+        |def threadList:
+        |  httpGet("https://www.googleapis.com/gmail/v1/users/me/threads"; listParams; ""; headers) | .threads | .[];
+        |def threadDetails:
+        |  threadList | .id | httpGet("https://www.googleapis.com/gmail/v1/users/me/threads/" + .; getParams; ""; headers);
+        |threadDetails""".stripMargin
 
-    val threads = Observable
-      .fromTask(ids)
-      .flatMap {
-        _.traverse[Observable, upickle.Invalid.Json, Seq[upickle.Invalid.Json \/ js.Any]](idArr =>
-          Observable.combineLatestList(
-            new js.WrappedArray(idArr).map { id =>
-              val getMessage = Ajax.bound(Threads.get)(
-                data = "format" ->> ("metadata": UndefOr[String]) ::
-                  "metadataHeaders" ->> ("Subject": UndefOr[String]) ::
-                  "fields" ->> ("messages(payload/headers,snippet)": UndefOr[String]) ::
-                  HNil,
-                headers = defaultHeaders,
-                pathArgs = ("id" ->> id) :: HNil
-              ).map { resp => Json.stringToJs(resp.responseText) }
-              Observable.fromTask(getMessage)
-            }: _*
-          )
-        )
-      }
-
+    val programInStorage = StorageProgram.runProgram(DomStorage.Local, getCompiledProgram(app)).flatMap(_.valueOrThrow).each(js.Array[Any]())
     val titledContentModels =
-      threads.map {
-        _.flatMap(Unsafe.builderTraverse[Seq].sequence(_))
-          .valueOr(_ => js.WrappedArray.empty).map(threadToTitledContentModel).toList
-      }
+      programInStorage.map(_.map(a => threadToTitledContentModel(a.asInstanceOf[js.Any])))
 
     val expandableContentModels = titledContentModels.map(c => IndexedSeq(ExpandableContentModel("Gmail", None, c)))
 
-    expandableContentModels
+    Observable.fromTask(expandableContentModels)
 
   }
 }

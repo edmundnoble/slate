@@ -12,14 +12,6 @@ trait PlatformPrelude[AnyTy] extends Prelude[AnyTy] {
     body.applyOrElse(params, ???)
   }
 
-  final def noParamDefinition(name: String, fun: CompiledFilter[AnyTy]): CompiledDefinition[AnyTy] = {
-    CompiledDefinition[AnyTy](
-      name,
-      numParams = 0,
-      _ => fun.right[QQCompilationException]
-    )
-  }
-
   def length: CompiledDefinition[AnyTy]
 
   def keys: CompiledDefinition[AnyTy]
@@ -44,9 +36,20 @@ trait PlatformPrelude[AnyTy] extends Prelude[AnyTy] {
 
   def scalars: CompiledDefinition[AnyTy]
 
+  def httpDelete: CompiledDefinition[AnyTy]
+
+  def httpGet: CompiledDefinition[AnyTy]
+
+  def httpPatch: CompiledDefinition[AnyTy]
+
+  def httpPost: CompiledDefinition[AnyTy]
+
+  def httpPut: CompiledDefinition[AnyTy]
+
   override def all(runtime: QQRuntime[AnyTy]): QQCompilationException \/ List[CompiledDefinition[AnyTy]] = {
     (length +: keys +: replaceAll +: arrays +: objects +: iterables +: booleans +:
-      numbers +: strings +: nulls +: values +: scalars +: Nil).right[QQCompilationException]
+      numbers +: strings +: nulls +: values +: scalars +: httpDelete +: httpGet +:
+      httpPatch +: httpPost +: httpPut +: Nil).right[QQCompilationException]
   }
 
 }

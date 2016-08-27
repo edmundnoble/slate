@@ -1,6 +1,6 @@
 package dash.views
 
-import dash.models.ExpandableContentModel
+import dash.models.{ExpandableContentModel, TitledContentModel}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.extra.Reusability
 import monix.execution.Scheduler
@@ -80,7 +80,9 @@ object ExpandableContentView {
 
   }
 
-  case class ExpandableState(expanded: Boolean, model: ExpandableContentModel)
+  final case class ExpandableState(expanded: Boolean, model: ExpandableContentModel) {
+    final def toggleExpanded = copy(expanded = !expanded)
+  }
 
   object ExpandableState {
     val expanded = GenLens[ExpandableState](_.expanded)
@@ -88,8 +90,7 @@ object ExpandableContentView {
       Reusability.caseClass[ExpandableState]
   }
 
-  case class ExpandableContentProps(models: Observable[ExpandableContentModel], expanded: Boolean) {
-  }
+  final case class ExpandableContentProps(models: Observable[ExpandableContentModel], expanded: Boolean)
 
   object ExpandableContentProps {
     implicit val reusability: Reusability[ExpandableContentProps] =
@@ -105,10 +106,11 @@ object ExpandableContentView {
     import scalacss.ScalaCssReact._
 
     def buttonStyleForState(state: ExpandableState): Seq[TagMod] = {
-      val otherStyles = Vector[TagMod](Styles.filterButtonIcon, "expand_more")
-      if (state.expanded) otherStyles :+ styleaToTagMod(Styles.filterButtonExpanded)
+      val otherStyles = (Styles.filterButtonIcon: TagMod) :: ("expand_more": TagMod) :: Nil
+      if (state.expanded) (Styles.filterButtonExpanded: TagMod) :: otherStyles
       else otherStyles
     }
+    val makeContent = scalaz.Memo.mutableHashMapMemo[List[TitledContentModel], List[ReactComponentU[_, _, _, _]]]((_: List[TitledContentModel]).map(TitledContentView.builder.build(_)))
 
     ReactComponentB[ExpandableContentProps]("Expandable content view")
       .initialState[ExpandableState](ExpandableState(expanded = false, ExpandableContentModel("", None, Nil)))
@@ -125,12 +127,12 @@ object ExpandableContentView {
                 )
               ),
               button(Styles.filterButton,
-                onClick --> $.modStateL(ExpandableState.expanded)(!_),
+                onClick --> $.modState(_.toggleExpanded),
                 i(buttonStyleForState(state): _*)
               )
             ),
             Styles.animationGroup(
-              state.expanded ?? state.model.content.map(TitledContentView.builder.build(_)): _*
+              state.expanded ?? makeContent(state.model.content): _*
             )
           )
         )

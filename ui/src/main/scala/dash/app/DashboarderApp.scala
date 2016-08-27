@@ -1,6 +1,7 @@
 package dash.app
 
 import dash.DashboardPage.{AppBarState, SearchPageState}
+import dash.models.ExpandableContentModel
 import dash.{DashboardPage, LoggerFactory}
 import japgolly.scalajs.react.{Addons, ReactDOM}
 import monix.execution.Cancelable
@@ -54,7 +55,14 @@ object DashboarderApp extends scalajs.js.JSApp {
     val searchPage =
       DashboardPage
         .makeSearchPage(wheelPosition.map(p => AppBarState(p._2)))
-        .build(Observable.fromTask(GMailApp.fetchMail).flatten.map(SearchPageState(_)))
+        .build(Observable.fromTask(GMailApp.fetchMail.materialize.map(_.recover(
+          new PartialFunction[Throwable, Observable[IndexedSeq[ExpandableContentModel]]] {
+            override def isDefinedAt(x: Throwable) = {
+              logger.error("error while rendering", x)
+              false
+            }
+            override def apply(v1: Throwable) = ???
+          })).dematerialize).flatten.map(SearchPageState(_)))
     val container =
       dom.document.body.children.namedItem("container")
     if (!js.isUndefined(Addons.Perf)) {

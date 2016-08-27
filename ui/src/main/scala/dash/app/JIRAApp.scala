@@ -4,7 +4,7 @@ import java.util.concurrent.TimeUnit
 
 import dash.Util._
 import dash._
-import dash.ajax.Ajax
+import qq.ajax.Ajax
 import dash.models.{ExpandableContentModel, TitledContentModel}
 import monix.eval.Task
 import monix.scalaz._
@@ -77,13 +77,15 @@ object JIRAApp extends DashApp {
 
     implicit val ajaxTimeout = Ajax.Timeout(Duration(4000, TimeUnit.MILLISECONDS))
 
+    import qq.Platform.Rec._
+
     for {
       filtersAndResponses <- for {
         favoriteFilterResponse <- Ajax.get(url = "https://jira.atlassian.net/rest/api/2/filter/favourite", headers = Map.empty) //Creds.authData
         extractFavorites <- compiledExtractFavorites
         // TODO: error handling
         upickle = Json.stringToUpickle(favoriteFilterResponse.responseText).valueOr(???)
-        favoriteFilters = extractFavorites(upickle).map(_.flatMap(Filter.pkl.read.lift(_)))
+        favoriteFilters = extractFavorites(upickle).map(_.flatMap(i => Filter.pkl.read.lift(Json.jsToUpickleRec(i))))
         filterRequests <- favoriteFilters.flatMap { filters =>
           filters.traverse { filter =>
             Ajax.post(url = "https://jira.atlassian.net/rest/api/2/search/",
@@ -92,14 +94,13 @@ object JIRAApp extends DashApp {
                 Map("Content-Type" -> "application/json")).strengthL(filter)
           }
         }
-      }
-        yield filterRequests
+      } yield filterRequests
       extractIssues <- compiledExtractIssues
       issues <- Task.gatherUnordered(
         filtersAndResponses.map {
           case (filter, response) =>
-            def issueToExpandableContentModel(iss: List[Js.Value]) = SearchResult(filter, iss.map(Issue.pkl.read.lift(_))).toExpandableContentModel
-            val issuesJson = Json.stringToUpickle(response.responseText).valueOr(???)
+            def issueToExpandableContentModel(iss: List[Any]) = SearchResult(filter, iss.map(i => Issue.pkl.read.lift(Json.jsToUpickleRec(i)))).toExpandableContentModel
+            val issuesJson = Json.stringToJs(response.responseText).valueOr(???)
             extractIssues(issuesJson).map(issueToExpandableContentModel)
         }
       )

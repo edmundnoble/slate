@@ -14,7 +14,7 @@ class JSRunnerTest extends QQAsyncTestSuite {
     RunnerTest.runTest(
       JSRuntime,
       Json.upickleToJsRec(_: Js.Value),
-      Json.readJsRec(_: Any),
+      Json.jsToUpickleRec(_: Any),
       test
     )
 

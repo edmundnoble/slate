@@ -1,4 +1,4 @@
-package dash.ajax
+package qq.ajax
 
 import java.nio.ByteBuffer
 
@@ -65,44 +65,44 @@ object Ajax {
 
   @inline final def get(url: String,
                         data: PostData = null,
-                        queryData: Map[String, js.Any] = Map.empty,
+                        queryParams: Map[String, js.Any] = Map.empty,
                         headers: Map[String, String] = Map.empty,
                         withCredentials: Boolean = false,
                         responseType: String = "")(implicit timeout: Timeout) = {
-    apply("GET", url, data, queryData, headers, withCredentials, responseType)
+    apply("GET", url, data, queryParams, headers, withCredentials, responseType)
   }
 
   @inline final def post(url: String,
                          data: PostData = null,
-                         queryData: Map[String, js.Any] = Map.empty,
+                         queryParams: Map[String, js.Any] = Map.empty,
                          headers: Map[String, String] = Map.empty,
                          withCredentials: Boolean = false,
                          responseType: String = "")(implicit timeout: Timeout) = {
-    apply("POST", url, data, queryData, headers, withCredentials, responseType)
+    apply("POST", url, data, queryParams, headers, withCredentials, responseType)
   }
 
   @inline final def put(url: String,
                         data: PostData = null,
-                        queryData: Map[String, js.Any] = Map.empty,
+                        queryParams: Map[String, js.Any] = Map.empty,
                         headers: Map[String, String] = Map.empty,
                         withCredentials: Boolean = false,
                         responseType: String = "")(implicit timeout: Timeout) = {
-    apply("PUT", url, data, queryData, headers, withCredentials, responseType)
+    apply("PUT", url, data, queryParams, headers, withCredentials, responseType)
   }
 
   @inline final def delete(url: String,
                            data: PostData = null,
-                           queryData: Map[String, js.Any] = Map.empty,
+                           queryParams: Map[String, js.Any] = Map.empty,
                            headers: Map[String, String] = Map.empty,
                            withCredentials: Boolean = false,
                            responseType: String = "")(implicit timeout: Timeout) = {
-    apply("DELETE", url, data, queryData, headers, withCredentials, responseType)
+    apply("DELETE", url, data, queryParams, headers, withCredentials, responseType)
   }
 
   def apply(method: String,
             url: String,
             data: PostData,
-            queryData: Map[String, js.Any],
+            queryParams: Map[String, js.Any],
             headers: Map[String, String],
             withCredentials: Boolean,
             responseType: String)(implicit timeout: Timeout): Task[dom.XMLHttpRequest] = {
@@ -119,9 +119,9 @@ object Ajax {
       }
 
       val queryString =
-        queryData.map { case (k, v) => k + "=" + v }.mkString("&")
+        queryParams.map { case (k, v) => k + "=" + v }.mkString("&")
 
-      val urlWithQuery = if (queryData.isEmpty) url else url + "?" + queryString
+      val urlWithQuery = if (queryParams.isEmpty) url else url + "?" + queryString
       req.open(method, urlWithQuery)
       req.responseType = responseType
       req.timeout = if (timeout.value.isFinite()) timeout.value.toMillis else 0
@@ -136,24 +136,24 @@ object Ajax {
     }
   }
 
-  @inline final def boundConstantPath[PathTy <: PathSegment, QueryData <: HList, Headers <: HList]
-  (binding: Binding[PathTy, QueryData, Headers])
-  (queryData: QueryData, headers: Headers)
+  @inline final def boundConstantPath[PathTy <: PathSegment, queryParams <: HList, Headers <: HList]
+  (binding: Binding[PathTy, queryParams, Headers])
+  (queryParams: queryParams, headers: Headers)
   (implicit timeout: Timeout, ev: PathToString.Aux[PathTy, HNil]) =
-    bound(binding)(queryData, headers, HNil: HNil)
+    bound(binding)(queryParams, headers, HNil: HNil)
 
   @inline final def bound[PathTy <: PathSegment, PathArgs <: HList, QueryParams <: HList, Headers <: HList]
   (binding: Binding[PathTy, QueryParams, Headers])
   (data: QueryParams, headers: Headers, pathArgs: PathArgs)
   (implicit timeout: Timeout, ev: PathToString.Aux[PathTy, PathArgs]) = {
     val stringPath = ev.create(binding.path, pathArgs)
-    val queryDataMap = binding.queryDataToMap(data).collect { case (k, v) if !js.isUndefined(v) => k -> v.asInstanceOf[Any] }
+    val queryParamsMap = binding.queryParamsToMap(data).collect { case (k, v) if !js.isUndefined(v) => k -> v.asInstanceOf[Any] }
     val headerMap = binding.headersToMap(headers)
     apply(
       AjaxMethod.asString(binding.method),
       stringPath,
       data = null,
-      queryData = queryDataMap,
+      queryParams = queryParamsMap,
       headers = headerMap,
       withCredentials = false,
       responseType = ""

@@ -29,6 +29,8 @@ case class NotARegex(asStr: String) extends QQRuntimeException(
 class QQCompilationException(message: String) extends RuntimeException(message)
 case class NoSuchMethod(name: String)
   extends QQCompilationException(message = "No such method: " + name)
+case class UndefinedOnPlatform(name: String)
+  extends QQCompilationException(message = "This method is undefined on platform: " + name)
 case class WrongNumParams(name: String, correct: Int, you: Int) extends QQCompilationException(
   "Wrong number of params for filter " + name + ": passed " + you.toString + ", wanted " + correct.toString
 )
@@ -52,13 +54,15 @@ object QQCompiler {
 
   @inline
   def compileDefinitions[AnyTy](runtime: QQRuntime[AnyTy],
+                                prelude: List[CompiledDefinition[AnyTy]] = Nil,
                                 definitions: List[Definition]): OrCompilationError[List[CompiledDefinition[AnyTy]]] =
-    definitions.foldLeft(nil[CompiledDefinition[AnyTy]].right[QQCompilationException])(compileDefinitionStep(runtime))
+    definitions.foldLeft(prelude.right[QQCompilationException])(compileDefinitionStep(runtime))
 
   @inline
   def compileProgram[AnyTy](runtime: QQRuntime[AnyTy],
+                            prelude: List[CompiledDefinition[AnyTy]] = Nil,
                             program: Program): OrCompilationError[CompiledFilter[AnyTy]] = {
-    compileDefinitions(runtime, program.defns).flatMap(compile(runtime, _, program.main))
+    compileDefinitions(runtime, prelude, program.defns).flatMap(compile(runtime, _, program.main))
   }
 
   @inline
