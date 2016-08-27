@@ -36,10 +36,4 @@ trait DashApp {
     QQCompiler.compileProgram[Any](JSRuntime: QQRuntime[Any], prelude = DashPrelude.all, decodedOptimizedProgram)
   }
 
-//  type P
-//  type S
-//  type B
-//
-//  def rootComponent: ReactComponentB[P, S, B, react.TopNode]
-
 }
