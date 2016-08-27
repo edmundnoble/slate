@@ -30,7 +30,6 @@ object Parser {
   }
 
   val dot: P0 = P(".")
-  val fetch: P[Filter] = P("fetch") map (_ => FilterDSL.fetch)
   val quote: P0 = P("\"")
 
   def isStringLiteralChar(c: Char): Boolean = Character.isAlphabetic(c) || Character.isDigit(c)

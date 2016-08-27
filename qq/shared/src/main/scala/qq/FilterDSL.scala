@@ -8,7 +8,6 @@ import scalaz.\/
 object FilterDSL {
 
   @inline final def id: Filter = Fix(IdFilter())
-  @inline final def fetch: Filter = Fix(FetchApi())
   @inline final def compose(first: Filter, second: Filter): Filter = Fix(ComposeFilters(first, second))
   @inline final def silence(f: Filter): Filter = Fix(SilenceExceptions(f))
   @inline final def enlist(f: Filter): Filter = Fix(EnlistFilter(f))
