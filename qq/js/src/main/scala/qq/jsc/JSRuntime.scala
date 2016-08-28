@@ -7,7 +7,7 @@ import qq.QQCompiler.CompiledFilter
 import qq.Util._
 
 import scala.scalajs.js
-import scala.scalajs.js.Dictionary
+import scala.scalajs.js.{Array, Dictionary, Object}
 import scalaz.std.list._
 import scalaz.std.map._
 import scalaz.syntax.std.list._

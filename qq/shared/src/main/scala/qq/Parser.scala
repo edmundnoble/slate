@@ -33,18 +33,18 @@ object Parser {
   val quote: P0 = P("\"")
 
   def isStringLiteralChar(c: Char): Boolean = Character.isAlphabetic(c) || Character.isDigit(c)
-  lazy val stringLiteralChars = Seq('a' to 'z': Seq[Char], 'A' to 'Z': Seq[Char], '0' to '9': Seq[Char], "↪+*-:/(),.": Seq[Char])
+  lazy val stringLiteralChars = Seq('a' to 'z': Seq[Char], 'A' to 'Z': Seq[Char], '0' to '9': Seq[Char], "↪+*-": Seq[Char])
   lazy val stringLiteralChar = CharIn(stringLiteralChars: _*)
-  val stringLiteral: P[String] = P(stringLiteralChar.rep(min = 1).!)
+  lazy val stringLiteral: P[String] = P(stringLiteralChar.rep(min = 1).!)
 
-  val whitespaceChars: String = " \n\t"
-  val whitespace: P0 = P(CharIn(whitespaceChars.toSeq).rep.map(_ => ()))
-  val stringLiteralOrWhitespace = stringLiteralChars :+ whitespaceChars.toSeq
+  lazy val whitespaceChars: String = " \n\t"
+  lazy val whitespace: P0 = P(CharIn(whitespaceChars.toSeq).rep.map(_ => ()))
+  lazy val escapedStringLiteralChars = stringLiteralChars :+ ("(),.:/": Seq[Char]) :+ whitespaceChars.toSeq
 
   val escapedStringLiteral: P[String] = P(
     quote ~/
       ((Terminals.CharLiteral('\\') ~/ (Terminals.CharLiteral('\n').map(_ => "\n") | Terminals.CharLiteral('\\').!)) |
-        CharIn(stringLiteralOrWhitespace: _*).!
+        CharIn(escapedStringLiteralChars: _*).!
         ).rep.map(_.mkString) ~ quote
   )
 
