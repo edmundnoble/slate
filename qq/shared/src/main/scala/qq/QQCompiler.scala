@@ -11,6 +11,8 @@ import scalaz.syntax.either._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import qq.Platform.Rec._
+import qq.Util._
+import scalaz.Tags.Parallel
 
 class QQRuntimeException(val message: String) extends RuntimeException(message) {
   override def equals(obj: scala.Any): Boolean = obj match {
@@ -40,19 +42,21 @@ object QQCompiler {
   type CompiledFilter[AnyTy] = AnyTy => Task[List[AnyTy]]
   type OrCompilationError[T] = QQCompilationException \/ T
 
-  @inline
+  def composeFilters[AnyTy](f: CompiledFilter[AnyTy], s: CompiledFilter[AnyTy]): \/[Nothing, (AnyTy) => Task[List[AnyTy]]] = {
+    f.andThen(_.flatMap(t => Parallel.unwrap(t.traverseM[TaskParallel, AnyTy](s.andThen(Parallel(_)))))).right
+  }
+
   def ensequenceCompiledFilters[AnyTy]
   (first: CompiledFilter[AnyTy], second: CompiledFilter[AnyTy]): CompiledFilter[AnyTy] = { jsv: AnyTy =>
     Task.mapBoth(first(jsv), second(jsv)) { (a, b) => a ++ b }
   }
 
-  @inline
   def zipFiltersWith[AnyTy]
   (first: CompiledFilter[AnyTy], second: CompiledFilter[AnyTy], fun: (AnyTy, AnyTy) => Task[AnyTy]): CompiledFilter[AnyTy] = { jsv: AnyTy =>
     Task.mapBoth(first(jsv), second(jsv)) { (f, s) => (f, s).zipped.map(fun) }.map(_.sequence).flatten
   }
 
-  @inline
+@inline
   def compileDefinitions[AnyTy](runtime: QQRuntime[AnyTy],
                                 prelude: List[CompiledDefinition[AnyTy]] = Nil,
                                 definitions: List[Definition]): OrCompilationError[List[CompiledDefinition[AnyTy]]] =
@@ -70,7 +74,7 @@ object QQCompiler {
                          definitions: List[CompiledDefinition[AnyTy]],
                          filter: FilterComponent[CompiledFilter[AnyTy]]): OrCompilationError[CompiledFilter[AnyTy]] = filter match {
     case leaf: LeafComponent[AnyTy@unchecked] => runtime.evaluateLeaf(leaf).right
-    case ComposeFilters(f, s) => f.andThen(_.flatMap(_.traverseM[Task, AnyTy](s))).right
+    case ComposeFilters(f, s) => composeFilters(f, s)
     case EnlistFilter(f) => runtime.enlistFilter(f).right
     case SilenceExceptions(f) => ((jsv: AnyTy) => f(jsv).onErrorRecover { case _: QQRuntimeException => Nil }).right
     case CollectResults(f) => runtime.collectResults(f).right

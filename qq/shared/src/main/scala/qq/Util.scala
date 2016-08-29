@@ -1,5 +1,6 @@
 package qq
 
+import monix.eval.Task
 import scodec._
 import scodec.bits.BitVector
 import shapeless.Lazy
@@ -7,14 +8,26 @@ import shapeless.Lazy
 import scala.language.implicitConversions
 import scala.util.control.TailCalls
 import scala.util.control.TailCalls.TailRec
+import scalaz.Tags.Parallel
 import scalaz.syntax.either._
-import scalaz.{Monad, \/, ~>}
+import scalaz.{@@, Applicative, Monad, Tag, \/, ~>}
 
 object Util {
 
   implicit val TailRecMonad = new Monad[TailRec] {
     override def point[A](a: => A): TailRec[A] = TailCalls.done(a)
     override def bind[A, B](fa: TailRec[A])(f: (A) => TailRec[B]): TailRec[B] = fa.flatMap(f)
+  }
+
+  type TaskParallel[A] = Task[A] @@ Parallel
+
+  implicit val TaskParMonad = new Monad[TaskParallel] {
+    override def point[A](a: => A) = Parallel(Task.now(a))
+    override def ap[A, B](fa: => TaskParallel[A])(f: => TaskParallel[(A) => B]): @@[Task[B], Parallel] = {
+      Parallel(Task.mapBoth(Parallel.unwrap(fa), Parallel.unwrap(f))((a, f) => f(a)))
+    }
+    override def bind[A, B](fa: TaskParallel[A])(f: (A) => TaskParallel[B]): TaskParallel[B] =
+      Parallel(Parallel.unwrap(fa).flatMap(a => Parallel.unwrap(f(a))))
   }
 
   def withPrefixes[A](xss: List[List[A]], ys: List[A]): List[List[A]] =

@@ -14,6 +14,7 @@ import scalaz.syntax.std.list._
 import scalaz.syntax.std.map._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, NonEmptyList, \/, \/-}
+import scalaz.Tags.Parallel
 
 // This is a QQ runtime which executes all operations on native JSON values in Javascript
 object JSRuntime extends QQRuntime[Any] {
@@ -122,21 +123,22 @@ object JSRuntime extends QQRuntime[Any] {
   }
 
   override def collectResults(f: CompiledFilter[Any]): CompiledFilter[Any] = { jsv: Any =>
-    f(jsv).flatMap {
-      _.traverseM {
+    for {
+      out <- f(jsv)
+      collected <- Parallel.unwrap(out.traverse[TaskParallel, List[Any]] {
         case arr: js.Array[Any@unchecked] =>
-          Task.now(arr.toList)
+          Parallel(Task.now(arr.toList))
         case dict: js.Object =>
-          Task.now(dict.asInstanceOf[js.Dictionary[js.Object]].map(_._2)(collection.breakOut))
+          Parallel(Task.now(dict.asInstanceOf[js.Dictionary[js.Object]].map[js.Object, List[js.Object]](_._2)(collection.breakOut)))
         case v =>
-          Task.raiseError(QQRuntimeException("Tried to flatten " + String.valueOf(v) + " but it's not an array"))
-      }
-    }
+          Parallel(Task.raiseError(QQRuntimeException("Tried to flatten " + String.valueOf(v) + " but it's not an array")))
+      })
+    } yield collected.flatten
   }
 
   override def enjectFilter(obj: List[(\/[String, CompiledFilter[Any]], CompiledFilter[Any])]): CompiledFilter[Any] = { jsv: Any =>
     for {
-      kvPairs <- obj.traverse[Task, List[List[(String, Any)]]] {
+      kvPairs <- Task.gatherUnordered(obj.map {
         case (\/-(filterKey), filterValue) =>
           for {
             keyResults <- filterKey(jsv)
@@ -152,7 +154,7 @@ object JSRuntime extends QQRuntime[Any] {
           for {
             valueResults <- filterValue(jsv)
           } yield valueResults.map(filterName -> _) :: Nil
-      }
+      })
       kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => foldWithPrefixes(h, l.toList: _*) }
     } yield kvPairsProducts.map(js.Dictionary[Any](_: _*))
   }

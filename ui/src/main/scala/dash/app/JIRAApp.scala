@@ -96,7 +96,7 @@ object JIRAApp extends DashApp {
         }
       } yield filterRequests
       extractIssues <- compiledExtractIssues
-      issues <- Task.gatherUnordered(
+      issues <- Task.gather(
         filtersAndResponses.map {
           case (filter, response) =>
             def issueToExpandableContentModel(iss: List[Any]) = SearchResult(filter, iss.map(i => Issue.pkl.read.lift(Json.jsToUpickleRec(i)))).toExpandableContentModel
