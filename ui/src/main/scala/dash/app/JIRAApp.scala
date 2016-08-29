@@ -67,12 +67,6 @@ object JIRAApp extends DashApp {
   status: .fields.status.name
 }"""
 
-  val compiledExtractFavorites =
-    StorageProgram.runProgram(DomStorage.Local, getCompiledProgram(qqExtractFavoritesProgram)).flatMap(_.valueOrThrow)
-
-  val compiledExtractIssues =
-    StorageProgram.runProgram(DomStorage.Local, getCompiledProgram(qqExtractIssuesProgram)).flatMap(_.valueOrThrow)
-
   def fetchSearchResults: Task[Seq[ExpandableContentModel]] = {
 
     implicit val ajaxTimeout = Ajax.Timeout(Duration(4000, TimeUnit.MILLISECONDS))
@@ -82,9 +76,9 @@ object JIRAApp extends DashApp {
     for {
       filtersAndResponses <- for {
         favoriteFilterResponse <- Ajax.get(url = "https://jira.atlassian.net/rest/api/2/filter/favourite", headers = Map.empty) //Creds.authData
-        extractFavorites <- compiledExtractFavorites
         // TODO: error handling
         upickle = Json.stringToUpickle(favoriteFilterResponse.responseText).valueOr(???)
+        extractFavorites <- StorageProgram.runProgram(DomStorage.Local, getCompiledProgram(qqExtractFavoritesProgram)).flatMap(_.valueOrThrow)
         favoriteFilters = extractFavorites(upickle).map(_.flatMap(i => Filter.pkl.read.lift(Json.jsToUpickleRec(i))))
         filterRequests <- favoriteFilters.flatMap { filters =>
           filters.traverse { filter =>
@@ -95,7 +89,7 @@ object JIRAApp extends DashApp {
           }
         }
       } yield filterRequests
-      extractIssues <- compiledExtractIssues
+      extractIssues <- StorageProgram.runProgram(DomStorage.Local, getCompiledProgram(qqExtractIssuesProgram)).flatMap(_.valueOrThrow)
       issues <- Task.gather(
         filtersAndResponses.map {
           case (filter, response) =>
