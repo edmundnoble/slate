@@ -2,7 +2,6 @@ package dash
 
 import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.{Callback, CallbackTo}
-import monix.eval.Task.Attempt
 import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -22,11 +21,11 @@ object Util {
     Reusability.byRef[Observable[A]]
 
   def callbackToTask: CallbackTo ~> Task = new (CallbackTo ~> Task) {
-    override def apply[A](fa: CallbackTo[A]): Task[A] = Task.evalAlways(fa.runNow())
+    override def apply[A](fa: CallbackTo[A]): Task[A] = Task.eval(fa.runNow())
   }
 
   implicit final class EitherTaskOps[E <: Throwable, A](val eOrA: E \/ A) extends AnyVal {
-    @inline def valueOrThrow: Attempt[A] = eOrA.fold(Task.Error(_), Task.Now(_))
+    @inline def valueOrThrow: Task[A] = eOrA.fold(Task.raiseError, Task.now)
   }
 
   @inline def liftFC[S[_], A](sa: S[A]): Free[Coyoneda[S, ?], A] =

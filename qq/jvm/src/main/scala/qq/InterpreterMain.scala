@@ -15,7 +15,7 @@ object InterpreterMain extends App {
     println("Entered interpreter " + interpreter.name)
     interpreter.resume(StdIn.readLine()).cata(
       _.fold(
-        _ => Task.evalAlways(println("Bye!")),
+        _ => Task.eval(println("Bye!")),
         _.flatMap { case (output, nextInterpreter) =>
           val () = println(output)
           runInterpreter(nextInterpreter)

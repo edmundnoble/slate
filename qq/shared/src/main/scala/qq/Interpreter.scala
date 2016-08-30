@@ -18,8 +18,8 @@ object InterpreterExitException extends Exception
 
 object Interpreter {
   def taskSwitch: Interpreter = Interpreter(":p, :i:", {
-    case ":p" => Task.evalAlways(("", programInterpreter)).right
-    case ":i" => Task.evalAlways(("", inputInterpreter)).right
+    case ":p" => Task.eval(("", programInterpreter)).right
+    case ":i" => Task.eval(("", inputInterpreter)).right
     case ":q" => InterpreterExitException.left
   })
 
@@ -27,7 +27,7 @@ object Interpreter {
     Interpreter("program:", {
       case program =>
         Runner.parseAndCompile(UpickleRuntime, program, optimize = true).fold(
-          err => Task.evalAlways {
+          err => Task.eval {
             val () = Console.err.println("Error: " + err.merge[Exception].getMessage)
             ("", programInterpreter)
           },
@@ -57,7 +57,7 @@ object Interpreter {
     Interpreter("input " + source + ", program:", {
       case program =>
         Runner.parseAndCompile(UpickleRuntime, program, optimize = true).fold(
-          err => Task.evalAlways {
+          err => Task.eval {
             val () = Console.err.println("Error: " + err.merge[Exception].getMessage)
             ("", programInterpreter)
           },

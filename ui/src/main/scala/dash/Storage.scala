@@ -78,14 +78,14 @@ object StorageProgram {
 
 sealed class DomStorage(underlying: SStorage) extends Storage[Task] {
 
-  import Task.evalAlways
+  import Task.eval
 
-  override def length: Task[Int] = evalAlways(underlying.length)
-  override def apply(key: String): Task[Option[String]] = evalAlways(underlying(key))
-  override def update(key: String, data: String): Task[Unit] = evalAlways(underlying.update(key, data))
-  override def clear(): Task[Unit] = evalAlways(underlying.clear())
-  override def remove(key: String): Task[Unit] = evalAlways(underlying.remove(key))
-  override def keyAtIndex(index: Int): Task[Option[String]] = evalAlways(underlying.key(index))
+  override def length: Task[Int] = eval(underlying.length)
+  override def apply(key: String): Task[Option[String]] = eval(underlying(key))
+  override def update(key: String, data: String): Task[Unit] = eval(underlying.update(key, data))
+  override def clear(): Task[Unit] = eval(underlying.clear())
+  override def remove(key: String): Task[Unit] = eval(underlying.remove(key))
+  override def keyAtIndex(index: Int): Task[Option[String]] = eval(underlying.key(index))
 }
 
 object DomStorage {

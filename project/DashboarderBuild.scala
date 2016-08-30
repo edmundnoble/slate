@@ -11,8 +11,8 @@ object DashboarderBuild {
   lazy val commonDeps = Seq(
     libraryDependencies ++= Seq(
       "org.scalatest" %%% "scalatest" % "3.0.0" % "test",
-      "com.lihaoyi" %%% "upickle" % "0.4.0",
-      "com.lihaoyi" %%% "pprint" % "0.4.0",
+      "com.lihaoyi" %%% "upickle" % "0.4.1",
+//      "com.lihaoyi" %%% "pprint" % "0.4.1",
       "com.lihaoyi" %%% "fastparse" % "0.3.7",
       "io.monix" %%% "monix" % "2.0-RC13",
       "io.monix" %%% "monix-scalaz-72" % "2.0-RC13",

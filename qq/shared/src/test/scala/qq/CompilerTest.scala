@@ -20,7 +20,7 @@ object CompilerTest {
       QQCompiler
         .compile(UpickleRuntime, Nil, filter)
         .fold[Task[Assertion]](
-        err => Task.evalAlways(fail("error occurred during compilation: \n" + err.toString)),
+        err => Task.eval(fail("error occurred during compilation: \n" + err.toString)),
         program => program(input).map { output => output shouldBe expectedOutput })
         .runAsync
   }
