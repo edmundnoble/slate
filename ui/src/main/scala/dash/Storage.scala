@@ -89,7 +89,6 @@ sealed class DomStorage(underlying: SStorage) extends Storage[Task] {
 }
 
 object DomStorage {
-  @inline def apply(storage: SStorage): DomStorage = new DomStorage(storage)
   case object Local extends DomStorage(LocalStorage)
   case object Session extends DomStorage(SessionStorage)
 }

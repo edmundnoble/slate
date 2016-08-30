@@ -4,7 +4,6 @@ import monix.eval.Task
 import org.scalatest.Assertion
 import upickle.Js
 import monix.execution.Scheduler
-import AsyncTestUtil._
 
 import scala.concurrent.Future
 
@@ -23,7 +22,7 @@ object CompilerTest {
         .fold[Task[Assertion]](
         err => Task.evalAlways(fail("error occurred during compilation: \n" + err.toString)),
         program => program(input).map { output => output shouldBe expectedOutput })
-        .runFuture
+        .runAsync
   }
 
   val selectKeyTests: List[CompilerTest] = {

@@ -25,7 +25,7 @@ object RunnerTest {
         val outputUpickleOrExceptionTry = outputOrExceptionTry.map(_.map(toUpickle))
         outputUpickleOrExceptionTry.toDisjunction should be(test.expectedOutputOrException)
       }
-      .runFuture
+      .runAsync
 
   val identityProgram = {
     val dict = Js.Obj("1" -> Js.Num(2), "3" -> Js.Num(4))

@@ -1,7 +1,6 @@
 import net.lullabyte.Chrome
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
-import org.scalajs.sbtplugin.cross.CrossProject
 import sbt._, Keys._
 import sbt.complete.Parser
 import scoverage.ScoverageKeys.coverageExcludedPackages
@@ -11,12 +10,12 @@ object DashboarderBuild {
 
   lazy val commonDeps = Seq(
     libraryDependencies ++= Seq(
-      "org.scalatest" %%% "scalatest" % "3.0.0-RC4" % "test",
+      "org.scalatest" %%% "scalatest" % "3.0.0" % "test",
       "com.lihaoyi" %%% "upickle" % "0.4.0",
       "com.lihaoyi" %%% "pprint" % "0.4.0",
       "com.lihaoyi" %%% "fastparse" % "0.3.7",
-      "io.monix" %%% "monix" % "2.0-RC10",
-      "io.monix" %%% "monix-scalaz-72" % "2.0-RC10",
+      "io.monix" %%% "monix" % "2.0-RC13",
+      "io.monix" %%% "monix-scalaz-72" % "2.0-RC13",
       "com.thoughtworks.each" %%% "each" % "0.5.1",
       "com.github.julien-truffaut" %%% "monocle-core" % "1.2.1",
       "com.github.julien-truffaut" %%% "monocle-generic" % "1.2.1",
@@ -226,7 +225,7 @@ object DashboarderBuild {
   def dependOnChrome[T](chromeKey: TaskKey[sbt.File], taskKey: TaskKey[T]): Def.Setting[Task[T]] =
     taskKey <<= taskKey.dependsOn(chromeKey in ui)
 
-  lazy val qq: CrossProject = crossProject.in(file("qq"))
+  lazy val qq = crossProject.in(file("qq"))
     .settings(baseSettings: _*)
     .settings(commonDeps: _*)
     .settings(replMain: _*)

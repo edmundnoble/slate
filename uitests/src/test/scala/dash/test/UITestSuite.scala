@@ -3,7 +3,6 @@ package dash.test
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-import monix.eval.Task
 import monix.execution.schedulers.ExecutionModel
 import monix.execution.{Cancelable, Scheduler}
 import org.openqa.selenium.WebDriver
@@ -14,7 +13,7 @@ import org.scalatest.matchers.{BeMatcher, MatchResult}
 import org.scalatest.selenium.WebBrowser
 import org.scalatest.time.{Seconds, Span}
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.ExecutionContext
 
 abstract class UITestSuite extends AsyncFreeSpec with Matchers with WebBrowser with BeforeAndAfterAll with OptionValues {
   lazy val displayed = new BeMatcher[Element] {
@@ -81,20 +80,6 @@ abstract class UITestSuite extends AsyncFreeSpec with Matchers with WebBrowser w
     if (chromeDriverServiceInitialized) {
       chromeDriverService.stop()
     }
-  }
-
-  implicit class TaskRunFuture[A](val task: Task[A]) {
-    def runFuture: Future[A] = {
-      UITestSuite.this.runFuture(task)
-    }
-  }
-
-  final def runFuture[A](task: Task[A]): Future[A] = {
-    val prom = Promise[A]()
-    val _ = task.runAsync { t =>
-      val _ = prom.complete(t)
-    }
-    prom.future
   }
 
   implicit val schedulerVal: Scheduler = scheduler(super.executionContext)

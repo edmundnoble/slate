@@ -27,13 +27,13 @@ trait DashApp {
         val optimizedProgram = Optimizer.optimize(parsedQQProgram)
         val encodedOptimizedProgram = programCodec.encode(optimizedProgram).require
         val out = encodedOptimizedProgram.toBase64
-        update(hash, out).each
+        val () = update(hash, out).each
         optimizedProgram
       case Some(encodedProgram) =>
         programCodec.decode(BitVector.fromBase64(encodedProgram).get).require.value
     }
 
-    QQCompiler.compileProgram[Any](JSRuntime: QQRuntime[Any], prelude = DashPrelude.all, decodedOptimizedProgram)
+    QQCompiler.compileProgram(JSRuntime, prelude = DashPrelude.all, decodedOptimizedProgram)
   }
 
 }

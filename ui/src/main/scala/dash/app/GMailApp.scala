@@ -39,26 +39,26 @@ object GMailApp extends DashApp {
 
     implicit val logger = LoggerFactory.getLogger("GmailApp")
 
-    import qq.Platform.Js.Unsafe._
-
     val app =
-      """def headers: {
-        |  Authorization: "Bearer " + googleAuth
-        |};
-        |def listParams: {
-        |  maxResults: 10,
-        |  q: "is:unread"
-        |};
-        |def getParams: {
-        |  format: "metadata",
-        |  metadataHeaders: "Subject",
-        |  fields: "messages(payload/headers,snippet)"
-        |};
-        |def threadList:
-        |  httpGet("https://www.googleapis.com/gmail/v1/users/me/threads"; listParams; ""; headers) | .threads | .[];
-        |def threadDetails:
-        |  threadList | .id | httpGet("https://www.googleapis.com/gmail/v1/users/me/threads/" + .; getParams; ""; headers);
-        |threadDetails""".stripMargin
+      """
+def headers: {
+  Authorization: "Bearer " + googleAuth
+};
+def listParams: {
+  maxResults: 10,
+  q: "is:unread"
+};
+def getParams: {
+  format: "metadata",
+  metadataHeaders: "Subject",
+  fields: "messages(payload/headers,snippet)"
+};
+def threadList:
+  httpGet("https://www.googleapis.com/gmail/v1/users/me/threads"; listParams; ""; headers) | .threads | .[];
+def threadDetails:
+  threadList | .id | httpGet("https://www.googleapis.com/gmail/v1/users/me/threads/" + .; getParams; ""; headers);
+threadDetails
+      """
 
     val programInStorage = StorageProgram.runProgram(DomStorage.Local, getCompiledProgram(app)).flatMap(_.valueOrThrow).each(js.Array[Any]())
     val titledContentModels =
