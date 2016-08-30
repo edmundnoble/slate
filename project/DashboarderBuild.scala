@@ -12,7 +12,6 @@ object DashboarderBuild {
     libraryDependencies ++= Seq(
       "org.scalatest" %%% "scalatest" % "3.0.0" % "test",
       "com.lihaoyi" %%% "upickle" % "0.4.1",
-//      "com.lihaoyi" %%% "pprint" % "0.4.1",
       "com.lihaoyi" %%% "fastparse" % "0.3.7",
       "io.monix" %%% "monix" % "2.0-RC13",
       "io.monix" %%% "monix-scalaz-72" % "2.0-RC13",
@@ -20,7 +19,6 @@ object DashboarderBuild {
       "com.github.julien-truffaut" %%% "monocle-core" % "1.2.1",
       "com.github.julien-truffaut" %%% "monocle-generic" % "1.2.1",
       "com.github.julien-truffaut" %%% "monocle-macro" % "1.2.1",
-      "com.github.julien-truffaut" %%% "monocle-state" % "1.2.1",
       "com.slamdata" %%% "matryoshka-core" % "0.11.0",
       "org.scodec" %%% "scodec-bits" % "1.1.0",
       "org.scodec" %%% "scodec-core" % "1.10.2"
