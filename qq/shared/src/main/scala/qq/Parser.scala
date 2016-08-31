@@ -33,13 +33,13 @@ object Parser {
   val quote: P0 = P("\"")
 
   def isStringLiteralChar(c: Char): Boolean = Character.isAlphabetic(c) || Character.isDigit(c)
-  lazy val stringLiteralChars = Seq('a' to 'z': Seq[Char], 'A' to 'Z': Seq[Char], '0' to '9': Seq[Char], "↪+*-": Seq[Char])
-  lazy val stringLiteralChar = CharIn(stringLiteralChars: _*)
-  lazy val stringLiteral: P[String] = P(stringLiteralChar.rep(min = 1).!)
+  val stringLiteralChars = Seq('a' to 'z': Seq[Char], 'A' to 'Z': Seq[Char], '0' to '9': Seq[Char], "↪+*-": Seq[Char])
+  val stringLiteralChar = CharIn(stringLiteralChars: _*)
+  val stringLiteral: P[String] = P(stringLiteralChar.rep(min = 1).!)
 
-  lazy val whitespaceChars: String = " \n\t"
-  lazy val whitespace: P0 = P(CharIn(whitespaceChars.toSeq).rep.map(_ => ()))
-  lazy val escapedStringLiteralChars = stringLiteralChars :+ ("(),.:/": Seq[Char]) :+ whitespaceChars.toSeq
+  val whitespaceChars: String = " \n\t"
+  val whitespace: P0 = P(CharIn(whitespaceChars.toSeq).rep.map(_ => ()))
+  val escapedStringLiteralChars = stringLiteralChars :+ ("(),.:/": Seq[Char]) :+ whitespaceChars.toSeq
 
   val escapedStringLiteral: P[String] = P(
     quote ~/
@@ -94,7 +94,7 @@ object Parser {
     CharIn('a' to 'z', 'A' to 'Z').rep(min = 1).!
   )
 
-  private val variableIdentifier: P[String] = P(
+  private lazy val variableIdentifier: P[String] = P(
     "$" ~ filterIdentifier
   )
 
