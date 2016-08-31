@@ -19,22 +19,16 @@ import scalacss.{ScalaCssReactFns, StringRenderer}
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
 
-  val wheelPosition: Observable[(Double, Double)] =
-    Observable.create[(Double, Double)](OverflowStrategy.Unbounded) { (s: Sync[(Double, Double)]) =>
-      var posX = 0.0
+  val wheelPositionY: Observable[Double] =
+    Observable.create[Double](OverflowStrategy.Unbounded) { (s: Sync[Double]) =>
       var posY = 0.0
       val wheelHandler = Any.fromFunction1((ev: WheelEvent) => {
-        if (ev.deltaX == 0) {
-          posX = 0
-        } else {
-          posX += ev.deltaX
-        }
         if (ev.deltaY == 0) {
           posY = 0
         } else {
           posY += ev.deltaY
         }
-        s.onNext((posX, posY))
+        s.onNext(posY)
         js.Any.fromUnit(())
       })
 
@@ -54,7 +48,7 @@ object DashboarderApp extends scalajs.js.JSApp {
     import monix.execution.Scheduler.Implicits.global
     val searchPage =
       DashboardPage
-        .makeSearchPage(wheelPosition.map(p => AppBarState(p._2)))
+        .makeSearchPage(wheelPositionY.map(AppBarState(_)))
         .build(Observable.fromTask(GMailApp.fetchMail.materialize.map(_.recover(
           new PartialFunction[Throwable, Observable[IndexedSeq[ExpandableContentModel]]] {
             override def isDefinedAt(x: Throwable) = {
