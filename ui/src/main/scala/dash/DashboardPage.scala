@@ -43,7 +43,7 @@ object DashboardPage {
             ): ReactComponentB[Observable[AppBarState], AppBarState, Unit, TopNode] =
     ReactComponentB[Observable[AppBarState]]("App bar")
       .initialState(AppBarState(0.0))
-      .renderS { (_, state) =>
+      .render_S { _ =>
         div(Styles.appBar,
           table(
             tr(Styles.appBarRow,
