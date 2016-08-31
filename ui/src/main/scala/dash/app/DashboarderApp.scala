@@ -43,7 +43,7 @@ object DashboarderApp extends scalajs.js.JSApp {
       Cancelable { () =>
         dom.window.removeEventListener[WheelEvent]("wheel", wheelHandler)
       }
-    }.throttleLast(100.millis)
+    }.throttleLast(30.millis)
 
   private[this] val logger = LoggerFactory.getLogger("DashboarderApp")
 
