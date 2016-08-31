@@ -167,6 +167,7 @@ object DashboarderBuild {
 
   val unitTest = TaskKey[Unit]("unitTest")
   val itTest = TaskKey[Unit]("itTest")
+  val stackTest = TaskKey[Unit]("stackTest")
   //val unitTestQuick = TaskKey[Unit]("unitTestQuick")
   //val itTestQuick = TaskKey[Unit]("itTestQuick")
 
@@ -195,6 +196,9 @@ object DashboarderBuild {
     },
     itTest <<= {
       (testOnly in Test).toTask(" -- -oD -n WebTest -n StackTest")
+    },
+    stackTest <<= {
+      (testOnly in Test).toTask(" -- -oD -n StackTest")
     },
     addCompilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full),
     addCompilerPlugin("org.spire-math" % "kind-projector" % "0.8.0" cross CrossVersion.binary)
@@ -255,6 +259,7 @@ object DashboarderBuild {
     .settings((test in Test) <<= (test in Test).dependsOn(chromeBuildOpt in ui, compile in Test in qqjvm))
     .settings((testOptions in Test) <<= (testOptions in Test).dependsOn(chromeBuildOpt in ui, compile in Test in qqjvm))
     .settings((testQuick in Test) := (test in Test).value)
+    .settings(unitTest := ())
 
   lazy val uibench = project.in(file("uibench"))
     .dependsOn(ui)
