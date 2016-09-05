@@ -18,7 +18,7 @@ object CompilerTest {
                     (implicit sch: Scheduler): Future[Assertion] = qqCompilerTest match {
     case CompilerTest(filter, input, expectedOutput) =>
       QQCompiler
-        .compile(UpickleRuntime, Nil, filter)
+        .compile(UpickleRuntime, IndexedSeq.empty, filter)
         .fold[Task[Assertion]](
         err => Task.eval(fail("error occurred during compilation: \n" + err.toString)),
         program => program(input).map { output => output shouldBe expectedOutput })

@@ -12,6 +12,7 @@ import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import qq.Platform.Rec._
 import qq.Util._
+
 import scalaz.Tags.Parallel
 
 class QQRuntimeException(val message: String) extends RuntimeException(message) {
@@ -58,20 +59,20 @@ object QQCompiler {
 
 @inline
   def compileDefinitions[AnyTy](runtime: QQRuntime[AnyTy],
-                                prelude: List[CompiledDefinition[AnyTy]] = Nil,
-                                definitions: List[Definition]): OrCompilationError[List[CompiledDefinition[AnyTy]]] =
+                                prelude: IndexedSeq[CompiledDefinition[AnyTy]] = Vector.empty,
+                                definitions: IndexedSeq[Definition]): OrCompilationError[IndexedSeq[CompiledDefinition[AnyTy]]] =
     definitions.foldLeft(prelude.right[QQCompilationException])(compileDefinitionStep(runtime))
 
   @inline
   def compileProgram[AnyTy](runtime: QQRuntime[AnyTy],
-                            prelude: List[CompiledDefinition[AnyTy]] = Nil,
+                            prelude: IndexedSeq[CompiledDefinition[AnyTy]] = Vector.empty,
                             program: Program): OrCompilationError[CompiledFilter[AnyTy]] = {
     compileDefinitions(runtime, prelude, program.defns).flatMap(compile(runtime, _, program.main))
   }
 
   @inline
   def compileStep[AnyTy](runtime: QQRuntime[AnyTy],
-                         definitions: List[CompiledDefinition[AnyTy]],
+                         definitions: IndexedSeq[CompiledDefinition[AnyTy]],
                          filter: FilterComponent[CompiledFilter[AnyTy]]): OrCompilationError[CompiledFilter[AnyTy]] = filter match {
     case leaf: LeafComponent[AnyTy@unchecked] => runtime.evaluateLeaf(leaf).right
     case ComposeFilters(f, s) => composeFilters(f, s)
@@ -99,20 +100,20 @@ object QQCompiler {
   }
 
   def compileDefinitionStep[AnyTy](runtime: QQRuntime[AnyTy])
-                                  (soFar: OrCompilationError[List[CompiledDefinition[AnyTy]]],
-                                   nextDefinition: Definition): OrCompilationError[List[CompiledDefinition[AnyTy]]] =
-    soFar.map { (definitionsSoFar: List[CompiledDefinition[AnyTy]]) =>
+                                  (soFar: OrCompilationError[IndexedSeq[CompiledDefinition[AnyTy]]],
+                                   nextDefinition: Definition): OrCompilationError[IndexedSeq[CompiledDefinition[AnyTy]]] =
+    soFar.map { (definitionsSoFar: IndexedSeq[CompiledDefinition[AnyTy]]) =>
       CompiledDefinition[AnyTy](nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter[AnyTy]]) => {
-        val paramsAsDefinitions = (nextDefinition.params, params).zipped.map { (filterName, value) =>
+        val paramsAsDefinitions: IndexedSeq[CompiledDefinition[AnyTy]] = (nextDefinition.params, params).zipped.map { (filterName, value) =>
           CompiledDefinition[AnyTy](filterName, 0, (_: List[CompiledFilter[AnyTy]]) => value.right[QQCompilationException])
-        }
+        }(collection.breakOut)
         compile(runtime, definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body)
-      }) :: definitionsSoFar
+      }) +: definitionsSoFar
     }
 
   @inline
   def compile[AnyTy](runtime: QQRuntime[AnyTy],
-                     definitions: List[CompiledDefinition[AnyTy]],
+                     definitions: IndexedSeq[CompiledDefinition[AnyTy]],
                      filter: Filter): OrCompilationError[CompiledFilter[AnyTy]] =
     for {
       sharedDefinitions <- SharedPreludes[AnyTy].all(runtime)

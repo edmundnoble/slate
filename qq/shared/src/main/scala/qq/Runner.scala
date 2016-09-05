@@ -20,7 +20,7 @@ object Runner {
         } else {
           program
         }
-        QQCompiler.compileProgram(runtime, Nil, optimized).leftMap(_.left)
+        QQCompiler.compileProgram(runtime, IndexedSeq.empty, optimized).leftMap(_.left)
       case f@Parsed.Failure(_, _, _) =>
         new ParseError(f).right[QQCompilationException].left
     }

@@ -1,26 +1,23 @@
 package dash
 
+import dash.Util._
 import dash.models.ExpandableContentModel
-import dash.views.ReactiveReact.ReactiveState
+import dash.views.ExpandableContentView.ExpandableContentProps
 import dash.views.{ExpandableContentView, Styles}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.extra.Reusability
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import qq.Util._
-import dash.Util._
-import dash.views.ExpandableContentView.{ExpandableContentProps, ExpandableState}
-import japgolly.scalajs.react.vdom.ReactNodeFrag
 
 import scalacss.Defaults._
 
 object DashboardPage {
 
   import japgolly.scalajs.react.vdom.all._
+  import views.ReactiveReact._
 
   import scala.language.implicitConversions
   import scalacss.ScalaCssReact._
-  import views.ReactiveReact._
 
   def makeFilterRow(results: Seq[Observable[ExpandableContentModel]])(implicit sch: Scheduler
   ): ReactElement = {

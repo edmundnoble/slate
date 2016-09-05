@@ -24,29 +24,29 @@ object Styles extends StyleSheet.Inline {
 
   val pseudoContent = content := "\"\""
 
-  val appBar = style(
+  val appBar: StyleA = style(
     addClassName("mui-appbar")
   )
 
-  val appBarRow = style(
+  val appBarRow: StyleA = style(
     verticalAlign.middle
   )
 
-  val appBarText = style(
+  val appBarText: StyleA = style(
     addClassNames("mui--appbar-height", "mui--text-display1"),
     paddingLeft(10 px),
     fontFamily(robotoLight)
   )
 
-  val innerFilterContainer = style(
+  val innerFilterContainer: StyleA = style(
     addClassName("mui-col-md-6")
   )
 
-  val filterContainer = style(
+  val filterContainer: StyleA = style(
     addClassName("mui-row")
   )
 
-  val container = style(
+  val container: StyleA = style(
     addClassName("mui-container-fluid"),
     width(100 %%),
     fontFamily(roboto),
@@ -96,6 +96,6 @@ object Styles extends StyleSheet.Inline {
 
   }
 
-  val dashboardContainer = new ScrollFadeContainer("dashboardContainer")
+  val dashboardContainer: ScrollFadeContainer = new ScrollFadeContainer("dashboardContainer")
 
 }

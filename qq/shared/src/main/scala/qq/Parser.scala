@@ -165,7 +165,7 @@ object Parser {
   )
 
   val program: P[Program] = P(
-    (whitespace ~ (definition.rep(min = 1, sep = whitespace) ~ whitespace).?.map(_.getOrElse(Nil)) ~ filter ~ Terminals.End).map((Program.apply _).tupled)
+    (whitespace ~ (definition.rep(min = 1, sep = whitespace) ~ whitespace).?.map(_.map(_.toVector).getOrElse(Vector.empty)) ~ filter ~ Terminals.End).map((Program.apply _).tupled)
   )
 
 }

@@ -1,6 +1,6 @@
 package qq
 
-case class Program(defns: List[Definition], main: Filter)
+case class Program(defns: Vector[Definition], main: Filter)
 
 object Program {
 

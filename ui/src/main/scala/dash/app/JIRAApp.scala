@@ -48,8 +48,7 @@ def extractFilters: .[] | {
   viewUrl
 };
 
-def filters: httpGet("https://dashboarder.atlassian.net/rest/api/2/filter/favourite"; {};
-                     {}; authHeaders) | extractFilters;
+def filters: httpGet("https://dashboarder.atlassian.net/rest/api/2/filter/favourite"; {}; {}; authHeaders) | extractFilters;
 
 def contentFromIssue: { title: .status + " - " + .key + " - " + .summary,
                         titleUrl: "https://dashboarder.atlassian.net/browse/" + .key,
@@ -59,7 +58,7 @@ def contentFromFilter: { title: .name,
                          titleUrl: .viewUrl,
                          content: [.issues.[] | contentFromIssue] };
 
-filters | contentFromFilter | print
+filters | contentFromFilter
 """
 
   def fetchSearchResults: Task[Seq[ExpandableContentModel]] = {

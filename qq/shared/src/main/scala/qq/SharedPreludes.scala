@@ -14,8 +14,8 @@ object SharedPreludes {
     }
 
     def apply[AnyTy]: Prelude[AnyTy] = new Prelude[AnyTy] {
-      override def all(runtime: QQRuntime[AnyTy]): OrCompilationError[List[CompiledDefinition[AnyTy]]] =
-        (print(runtime) :: Nil).right.map(identity)
+      override def all(runtime: QQRuntime[AnyTy]): OrCompilationError[IndexedSeq[CompiledDefinition[AnyTy]]] =
+        (print(runtime) +: IndexedSeq.empty).right.map(identity)
     }
   }
 
@@ -29,13 +29,13 @@ object SharedPreludes {
     }
 
     def apply[AnyTy]: Prelude[AnyTy] = new Prelude[AnyTy] {
-      override def all(runtime: QQRuntime[AnyTy]): OrCompilationError[List[CompiledDefinition[AnyTy]]] =
-        QQCompiler.compileDefinitions(runtime, Nil, map :: Nil)
+      override def all(runtime: QQRuntime[AnyTy]): OrCompilationError[IndexedSeq[CompiledDefinition[AnyTy]]] =
+        QQCompiler.compileDefinitions(runtime, IndexedSeq.empty, map +: Vector.empty)
     }
   }
 
   def apply[AnyTy]: Prelude[AnyTy] = new Prelude[AnyTy] {
-    override def all(runtime: QQRuntime[AnyTy]): OrCompilationError[List[CompiledDefinition[AnyTy]]] =
+    override def all(runtime: QQRuntime[AnyTy]): OrCompilationError[IndexedSeq[CompiledDefinition[AnyTy]]] =
       for {
         raw <- Raw[AnyTy].all(runtime)
         compiled <- Compiled[AnyTy].all(runtime)

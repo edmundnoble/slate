@@ -1,9 +1,9 @@
 package dash
 
+import japgolly.scalajs.react.CallbackTo
 import japgolly.scalajs.react.extra.Reusability
-import japgolly.scalajs.react.{Callback, CallbackTo}
-import monix.eval.{Coeval, Task}
-import monix.execution.Scheduler
+import monix.eval.Task
+import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.Observable
 
 import scala.language.implicitConversions
@@ -11,9 +11,9 @@ import scalaz.{Coyoneda, Free, Monad, \/, ~>}
 
 object Util {
 
-  def taskToCallback[A](fa: Task[A])(implicit scheduler: Scheduler): Callback = {
-    CallbackTo.pure {
-      val _ = fa.runAsync(scheduler)
+  def taskToCallback[A](fa: Task[A])(implicit scheduler: Scheduler): CallbackTo[CancelableFuture[A]] = {
+    CallbackTo.lift { () =>
+      fa.runAsync(scheduler)
     }
   }
 
@@ -33,7 +33,5 @@ object Util {
 
   @inline def foldMapFC[F[_], G[_] : Monad, A](program: Free[Coyoneda[F, ?], A], nt: F ~> G): G[A] =
     program.foldMap[G](Coyoneda.liftTF(nt))
-
-
 
 }

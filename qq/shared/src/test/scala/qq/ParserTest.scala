@@ -111,13 +111,13 @@ class ParserTest extends QQSyncTestSuite {
 
   "parse full programs" - {
     "with just a body" in (Parser.program.parse("id").get.value shouldBe
-      Program(nil[Definition], call("id")))
+      Program(Vector.empty[Definition], call("id")))
     "with small definitions" in (Parser.program.parse("def id: .; id").get.value shouldBe
-      Program(List(Definition("id", emptySized, id)), call("id")))
+      Program(Vector(Definition("id", emptySized, id)), call("id")))
     "with whitespace at the start" in (Parser.program.parse(" .").get.value shouldBe
-      Program(nil[Definition], id))
+      Program(Vector.empty[Definition], id))
     "with whitespace at the end" in (Parser.program.parse(". ").get.value shouldBe
-      Program(nil[Definition], id))
+      Program(Vector.empty[Definition], id))
   }
 
   "parse string literals" in {

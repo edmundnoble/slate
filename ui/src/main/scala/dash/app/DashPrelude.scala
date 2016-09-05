@@ -9,5 +9,5 @@ object DashPrelude {
 
   def googleAuth: CompiledDefinition[Any] = noParamDefinition("googleAuth", _ => identify.getAuthToken(interactive = false).map(_ :: Nil))
 
-  val all = List(googleAuth)
+  val all = googleAuth +: Vector.empty
 }
