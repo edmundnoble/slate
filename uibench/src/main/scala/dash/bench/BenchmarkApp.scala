@@ -66,7 +66,11 @@ object BenchmarkApp extends scalajs.js.JSApp {
   @JSExport
   def main(): Unit = {
     val body = dom.document getElementById "container"
-    BenchmarkGUI.renderMenu(body, layout = configureLayout)(CompilerBench.qqCompilerSuite, RuntimeBench.qqRuntimeSuite)
+    BenchmarkGUI.renderMenu(body, layout = configureLayout)(
+      CompilerBench.qqCompilerSuite,
+      RuntimeBench.qqRuntimeSuite,
+      UIBench.startupSuite
+    )
   }
 
 }

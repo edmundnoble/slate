@@ -2,6 +2,7 @@ package dash
 package app
 
 import dash.DashboardPage.{AppBarState, SearchPageState}
+import dash.models.ExpandableContentModel
 import japgolly.scalajs.react.{Addons, ReactDOM}
 import monix.eval.Task
 import monix.execution.Cancelable
@@ -55,20 +56,12 @@ object DashboarderApp extends scalajs.js.JSApp {
         t
       }.dematerialize
 
-  @JSExport
-  def main(): Unit = {
+  def render(container: Element, wheelPosY: Observable[Double], content: Observable[IndexedSeq[ExpandableContentModel]]) = {
     import monix.execution.Scheduler.Implicits.global
     val searchPage =
       DashboardPage
-        .makeSearchPage(wheelPositionY.map(AppBarState(_)))
-        .build(getContent.map(SearchPageState(_)))
-    val container =
-      dom.document.body.children.namedItem("container")
-    if (!js.isUndefined(Addons.Perf)) {
-      logger.info("Starting perf")
-      Addons.Perf.start()
-      logger.info("Rendering DOM")
-    }
+        .makeSearchPage(wheelPosY.map(AppBarState(_)))
+        .build(content.map(SearchPageState(_)))
     locally {
       import dash.views._
       val renderer = new StringRenderer.Raw(StringRenderer.formatTiny)
@@ -79,6 +72,18 @@ object DashboarderApp extends scalajs.js.JSApp {
       dom.document.head appendChild aggregateStyles
     }
     ReactDOM.render(searchPage, container)
+  }
+
+  @JSExport
+  def main(): Unit = {
+    if (!js.isUndefined(Addons.Perf)) {
+      logger.info("Starting perf")
+      Addons.Perf.start()
+      logger.info("Rendering DOM")
+    }
+    val container =
+      dom.document.body.children.namedItem("container")
+    render(container, wheelPositionY, getContent)
     if (!js.isUndefined(Addons.Perf)) {
       logger.info("Stopping perf")
       Addons.Perf.stop()
