@@ -36,23 +36,23 @@ def getParams: {
 };
 
 def threadList:
-  httpGet("https://www.googleapis.com/gmail/v1/users/me/threads"; listParams; ""; headers) | .threads | .[];
+  httpGet("https://www.googleapis.com/gmail/v1/users/me/threads"; listParams; ""; headers) | .threads.[].id;
 
 def threadDetails:
-  [threadList | .id | httpGet("https://www.googleapis.com/gmail/v1/users/me/threads/" + .; getParams; ""; headers)];
+  [threadList | httpGet("https://www.googleapis.com/gmail/v1/users/me/threads/" + .; getParams; ""; headers)];
 
 def threadToContent: {
   title: "Gmail",
-  content: [threadDetails | .[] | .messages.[0] | {
+  content: [threadDetails | .[].messages.[0] | {
     title: .payload.headers.[0].value,
     content: .snippet
   }]
 };
 
-threadDetails | threadToContent
+threadToContent
 """
 
-    val programInStorage = StorageProgram.runProgram(DomStorage.Local, getCachedCompiledProgram(app)).flatMap(_.valueOrThrow).flatMap(_(js.Array[Any]()))
+    val programInStorage = StorageProgram.runProgram(DomStorage.Local, getCachedCompiledProgram(app)).flatMap(_.valueOrThrow).flatMap(_(null))
 
     programInStorage.map(_.flatMap(v => ExpandableContentModel.pkl.read.lift(Json.jsToUpickleRec(v))).toIndexedSeq)
   }

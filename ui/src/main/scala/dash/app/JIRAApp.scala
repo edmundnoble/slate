@@ -57,9 +57,9 @@ def contentFromIssue: { title: .status + " - " + .key + " - " + .summary,
 
 def contentFromFilter: { title: .name,
                          titleUrl: .viewUrl,
-                         content: [.issues | .[] | contentFromIssue] };
+                         content: [.issues.[] | contentFromIssue] };
 
-filters | contentFromFilter
+filters | contentFromFilter | print
 """
 
   def fetchSearchResults: Task[Seq[ExpandableContentModel]] = {

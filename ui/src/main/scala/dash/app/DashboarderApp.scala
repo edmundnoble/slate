@@ -4,6 +4,7 @@ package app
 import dash.DashboardPage.{AppBarState, SearchPageState}
 import dash.models.ExpandableContentModel
 import japgolly.scalajs.react.{Addons, ReactDOM}
+import monix.eval.Task
 import monix.execution.Cancelable
 import monix.reactive.observers.Subscriber.Sync
 import monix.reactive.{Notification, Observable, OverflowStrategy}
@@ -44,7 +45,7 @@ object DashboarderApp extends scalajs.js.JSApp {
   final class EmptyResponseException extends java.lang.Exception("Empty response")
 
   def getContent =
-    Observable.combineLatestMap2(Observable.fromTask(GMailApp.fetchMail), Observable.fromTask(JIRAApp.fetchSearchResults)) { (a, b) => a ++ b }
+    Observable.fromTask(Task.mapBoth(GMailApp.fetchMail, JIRAApp.fetchSearchResults) { (a, b) => a ++ b })
       .materialize
       .map { t =>
         t match {
