@@ -51,8 +51,8 @@ object RunnerTest {
   )
 
   val collectResults = RunnerTest(
-    ".titles[]",
     Js.Obj("titles" -> Js.Arr(Js.Str("lol1"), Js.Str("wat1"))),
+    ".titles[]",
     List(Js.Str("lol1"), Js.Str("wat1")).right)
 
   val enjectedFilters = RunnerTest(

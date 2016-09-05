@@ -17,12 +17,12 @@ object CompilerTest {
 
   def runTest[AnyTy](runtime: QQRuntime[AnyTy], qqCompilerTest: CompilerTest)
                     (implicit sch: Scheduler): Future[Assertion] = qqCompilerTest match {
-    case CompilerTest(input, filter, expectedOutput) =>
+    case CompilerTest(input, filter, expectedOutput@_*) =>
       QQCompiler
         .compile(UpickleRuntime, IndexedSeq.empty, filter)
         .fold[Task[Assertion]](
         err => Task.eval(fail("error occurred during compilation: \n" + err.toString)),
-        program => program(input).map { output => output shouldBe expectedOutput })
+        program => program(input).map { output => output shouldBe expectedOutput.toList })
         .runAsync
   }
 
