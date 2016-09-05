@@ -4,7 +4,6 @@ package app
 import dash.DashboardPage.{AppBarState, SearchPageState}
 import dash.models.ExpandableContentModel
 import japgolly.scalajs.react.{Addons, ReactDOM}
-import monix.eval.Task
 import monix.execution.Cancelable
 import monix.reactive.observers.Subscriber.Sync
 import monix.reactive.{Notification, Observable, OverflowStrategy}

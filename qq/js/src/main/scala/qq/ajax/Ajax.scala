@@ -7,16 +7,14 @@ import monix.execution.Cancelable
 import org.scalajs.dom
 import org.scalajs.dom.FormData
 import org.scalajs.dom.raw.Blob
-import qq.jsc.Json
 import shapeless.{HList, HNil}
 
 import scala.concurrent.duration._
 import scala.language.implicitConversions
 import scala.scalajs.js
-import scala.scalajs.js.{Any, |}
+import scala.scalajs.js.Any
 import scala.scalajs.js.typedarray.TypedArrayBufferOps._
 import scala.scalajs.js.typedarray._
-import scalaz.\/
 
 /**
   * Thrown when `Ajax.get` or `Ajax.post` receives a non-20X response code.

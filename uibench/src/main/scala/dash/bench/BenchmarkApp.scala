@@ -1,7 +1,6 @@
 package dash
 package bench
 
-import dash.LoggerFactory
 import japgolly.scalajs.benchmark.gui.BenchmarkGUI
 import org.scalajs.dom
 import qq.QQCompiler.CompiledFilter
@@ -14,8 +13,6 @@ import scala.scalajs.js.annotation.JSExport
 
 @JSExport
 object BenchmarkApp extends scalajs.js.JSApp {
-
-  private[this] lazy val logger = LoggerFactory.getLogger("BenchmarkApp")
 
   import japgolly.scalajs.benchmark.gui.MenuComp.LayoutCfg
   import japgolly.scalajs.react._
