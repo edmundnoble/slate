@@ -34,12 +34,10 @@ object Optimizer {
   }
 
   def constFuse: Optimization = {
-    case Fix(
-    ComposeFilters(
+    case Fix(ComposeFilters(
     Fix(_: ConstantComponent[Fix[FilterComponent]]),
     nextConst@Fix(_: ConstantComponent[Fix[FilterComponent]])
-    )
-    ) => nextConst
+    )) => nextConst
   }
 
   object MathOptimizations {
