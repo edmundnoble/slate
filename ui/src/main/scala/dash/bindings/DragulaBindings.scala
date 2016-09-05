@@ -1,4 +1,5 @@
-package dash.bindings
+package dash
+package bindings
 
 import org.scalajs.dom.raw.HTMLElement
 

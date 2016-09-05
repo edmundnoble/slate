@@ -8,14 +8,14 @@ import scalaz.syntax.either._
 object SharedPreludes {
 
   object Compiled {
-    def print[AnyTy]: CompiledDefinition[AnyTy] = {
-      val body: CompiledFilter[AnyTy] = { (jsv: AnyTy) => println("debug: " + jsv.toString); Task.now(jsv :: Nil) }
+    def print[AnyTy](runtime: QQRuntime[AnyTy]): CompiledDefinition[AnyTy] = {
+      val body: CompiledFilter[AnyTy] = { (jsv: AnyTy) => println("debug: " + runtime.print(jsv)); Task.now(jsv :: Nil) }
       CompiledDefinition[AnyTy]("print", 0, body = { _ => body.right[QQCompilationException] })
     }
 
     def apply[AnyTy]: Prelude[AnyTy] = new Prelude[AnyTy] {
       override def all(runtime: QQRuntime[AnyTy]): OrCompilationError[List[CompiledDefinition[AnyTy]]] =
-        (print[AnyTy] :: Nil).right.map(identity)
+        (print(runtime) :: Nil).right.map(identity)
     }
   }
 
@@ -27,7 +27,6 @@ object SharedPreludes {
         body = compose(collectResults(id), call("x"))
       )
     }
-
 
     def apply[AnyTy]: Prelude[AnyTy] = new Prelude[AnyTy] {
       override def all(runtime: QQRuntime[AnyTy]): OrCompilationError[List[CompiledDefinition[AnyTy]]] =

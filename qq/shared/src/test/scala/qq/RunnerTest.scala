@@ -195,5 +195,11 @@ object RunnerTest {
     List().right
   )
 
+  val emptyObjectProgram = RunnerTest(
+    "{}",
+    Js.Null,
+    List(Js.Obj()).right
+  )
+
 
 }

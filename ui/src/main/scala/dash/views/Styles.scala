@@ -1,4 +1,5 @@
-package dash.views
+package dash
+package views
 
 import japgolly.scalajs.react.Addons.ReactCssTransitionGroup
 import japgolly.scalajs.react.{ReactComponentU_, ReactNode}

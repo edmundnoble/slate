@@ -1,18 +1,15 @@
-package dash.app
+package dash
+package app
 
-import dash.StorageProgram
+import qq.{Optimizer, Parser, QQCompiler}
 import qq.QQCompiler.{CompiledFilter, OrCompilationError}
-import qq._
 import scodec.bits.BitVector
-import upickle.Js
 import com.thoughtworks.each.Monadic._
-import japgolly.scalajs.react
-import japgolly.scalajs.react.ReactComponentB
 import qq.jsc.JSRuntime
 
 trait DashApp {
 
-  def getCompiledProgram(qqProgram: String): StorageProgram[OrCompilationError[CompiledFilter[Any]]] = monadic[StorageProgram] {
+  def getCachedCompiledProgram(qqProgram: String): StorageProgram[OrCompilationError[CompiledFilter[Any]]] = monadic[StorageProgram] {
 
     import qq.FilterProtocol._
     import StorageProgram._

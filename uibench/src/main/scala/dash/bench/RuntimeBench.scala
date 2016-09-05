@@ -1,4 +1,5 @@
-package dash.bench
+package dash
+package bench
 
 import dash.bench.BenchmarkApp.{BenchParams, JSRuntimeParams, QQRuntimeParams, UpickleRuntimeParams}
 import japgolly.scalajs.benchmark._

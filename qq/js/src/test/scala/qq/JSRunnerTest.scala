@@ -44,5 +44,5 @@ class JSRunnerTest extends QQAsyncTestSuite {
   "multiply" in runTest(multiply)
   "add null exception" in runTest(addNullException)
   "silenced exception" in runTest(silencedException)
-
+  "empty object" in runTest(emptyObjectProgram)
 }

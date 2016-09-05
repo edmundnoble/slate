@@ -16,6 +16,7 @@ class ParserTest extends QQSyncTestSuite {
   "parse selections" - {
     "select key" in {
       Parser.selectKey.parse("key").get.value shouldBe selectKey("key")
+      Parser.selectKey.parse("viewUrl").get.value shouldBe selectKey("viewUrl")
     }
     "select index" in {
       Parser.selectIndex.parse("1").get.value shouldBe selectIndex(1)

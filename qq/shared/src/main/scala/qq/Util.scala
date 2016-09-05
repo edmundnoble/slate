@@ -51,10 +51,14 @@ object Util {
     }
     val dec = Decoder.apply {
       (in: BitVector) =>
-        if (in.head) {
-          E.value.decode(in.tail).map(_.map(_.left[A]))
+        if (in.isEmpty) {
+          Attempt.failure(Err.insufficientBits(1, 0))
         } else {
-          A.value.decode(in.tail).map(_.map(_.right[E]))
+          if (in.head) {
+            E.value.decode(in.tail).map(_.map(_.left[A]))
+          } else {
+            A.value.decode(in.tail).map(_.map(_.right[E]))
+          }
         }
     }
     Codec(enc, dec)

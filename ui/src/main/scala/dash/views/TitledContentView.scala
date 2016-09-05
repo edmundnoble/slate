@@ -1,4 +1,5 @@
-package dash.views
+package dash
+package views
 
 import dash.models.TitledContentModel
 import japgolly.scalajs.react.ReactComponentB

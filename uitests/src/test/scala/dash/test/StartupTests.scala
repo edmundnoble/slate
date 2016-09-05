@@ -1,4 +1,5 @@
-package dash.test
+package dash
+package test
 
 class StartupTests extends UITestSuite {
 

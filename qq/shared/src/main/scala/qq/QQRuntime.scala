@@ -9,6 +9,8 @@ trait QQRuntime[AnyTy] {
 
   import QQCompiler._
 
+  def print(value: AnyTy): String
+
   def platformPrelude: PlatformPrelude[AnyTy]
 
   def enjectFilter(obj: List[(\/[String, CompiledFilter[AnyTy]], CompiledFilter[AnyTy])]): CompiledFilter[AnyTy]

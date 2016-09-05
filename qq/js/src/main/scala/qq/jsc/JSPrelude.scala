@@ -150,6 +150,7 @@ object JSPrelude extends PlatformPrelude[Any] {
         }).each.asInstanceOf[js.Dictionary[js.Any]]
         val data = (dataFilter(jsv).each.head match {
           case s: String => Task.now(s)
+          case o: js.Object => Task.now(Json.jsToString(o))
           case k => Task.raiseError(QQRuntimeException(String.valueOf(k) + " is not usable as POST data"))
         }).each
         val headers = (headersFilter(jsv).each.head match {
@@ -170,9 +171,9 @@ object JSPrelude extends PlatformPrelude[Any] {
 
   override def httpGet: CompiledDefinition[Any] = makeAjaxDefinition("httpGet", AjaxMethod.GET)
 
-  override def httpPost: CompiledDefinition[Any] = makeAjaxDefinition("httpGet", AjaxMethod.POST)
+  override def httpPost: CompiledDefinition[Any] = makeAjaxDefinition("httpPost", AjaxMethod.POST)
 
-  override def httpPatch: CompiledDefinition[Any] = makeAjaxDefinition("httpGet", AjaxMethod.PATCH)
+  override def httpPatch: CompiledDefinition[Any] = makeAjaxDefinition("httpPatch", AjaxMethod.PATCH)
 
   override def httpPut: CompiledDefinition[Any] = makeAjaxDefinition("httpPut", AjaxMethod.PUT)
 

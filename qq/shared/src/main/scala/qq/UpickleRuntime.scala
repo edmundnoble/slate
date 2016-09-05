@@ -136,26 +136,32 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
   }
 
   override def enjectFilter(obj: List[(\/[String, CompiledFilter[Js.Value]], CompiledFilter[Js.Value])]): CompiledFilter[Js.Value] = { jsv: Js.Value =>
-    for {
-      kvPairs <- obj.traverse[Task, List[List[(String, Js.Value)]]] {
-        case (\/-(filterKey), filterValue) =>
-          for {
-            keyResults <- filterKey(jsv)
-            valueResults <- filterValue(jsv)
-            keyValuePairs <- keyResults.traverse[Task, List[(String, Js.Value)]] {
-              case Js.Str(keyString) =>
-                Task.now(valueResults.map(keyString -> _))
-              case k =>
-                Task.raiseError(QQRuntimeException("Tried to use " + k.toString + " as a key for an object but it's not a string"))
-            }
-          } yield keyValuePairs
-        case (-\/(filterName), filterValue) =>
-          filterValue(jsv).map(_.map(filterName -> _) :: Nil)
-      }
-      kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => foldWithPrefixes(h, l.toList: _*) }
-    } yield kvPairsProducts.map(Js.Obj(_: _*))
+    if (obj.isEmpty) {
+      Task.now(Js.Obj() :: Nil)
+    } else {
+      for {
+        kvPairs <- obj.traverse[Task, List[List[(String, Js.Value)]]] {
+          case (\/-(filterKey), filterValue) =>
+            for {
+              keyResults <- filterKey(jsv)
+              valueResults <- filterValue(jsv)
+              keyValuePairs <- keyResults.traverse[Task, List[(String, Js.Value)]] {
+                case Js.Str(keyString) =>
+                  Task.now(valueResults.map(keyString -> _))
+                case k =>
+                  Task.raiseError(QQRuntimeException("Tried to use " + k.toString + " as a key for an object but it's not a string"))
+              }
+            } yield keyValuePairs
+          case (-\/(filterName), filterValue) =>
+            filterValue(jsv).map(_.map(filterName -> _) :: Nil)
+        }
+        kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => foldWithPrefixes(h, l.toList: _*) }
+      } yield kvPairsProducts.map(Js.Obj(_: _*))
+    }
   }
 
   override def platformPrelude = UpicklePrelude
+
+  override def print(value: Js.Value) = value.toString
 
 }

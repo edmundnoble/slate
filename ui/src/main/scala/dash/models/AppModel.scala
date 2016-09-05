@@ -1,4 +1,5 @@
-package dash.models
+package dash
+package models
 
 import japgolly.scalajs.react.extra.Reusability
 

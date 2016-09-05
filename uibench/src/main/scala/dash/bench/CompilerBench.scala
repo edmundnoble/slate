@@ -1,4 +1,5 @@
-package dash.bench
+package dash
+package bench
 
 import japgolly.scalajs.benchmark._
 import japgolly.scalajs.benchmark.gui.{GuiParam, GuiParams, GuiSuite}

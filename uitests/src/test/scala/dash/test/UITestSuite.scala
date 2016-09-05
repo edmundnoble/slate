@@ -1,4 +1,5 @@
-package dash.test
+package dash
+package test
 
 import java.io.File
 import java.util.concurrent.TimeUnit

@@ -1,6 +1,6 @@
-package dash.app
+package dash
+package app
 
-import dash.identify
 import qq.CompiledDefinition
 
 object DashPrelude {

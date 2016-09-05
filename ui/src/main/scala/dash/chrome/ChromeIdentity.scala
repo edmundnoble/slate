@@ -1,4 +1,5 @@
-package dash.chrome
+package dash
+package chrome
 
 import scala.scalajs.js
 import scala.scalajs.js.UndefOr

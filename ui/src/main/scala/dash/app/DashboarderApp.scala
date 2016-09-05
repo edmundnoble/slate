@@ -1,12 +1,12 @@
-package dash.app
+package dash
+package app
 
 import dash.DashboardPage.{AppBarState, SearchPageState}
-import dash.models.ExpandableContentModel
-import dash.{DashboardPage, LoggerFactory}
 import japgolly.scalajs.react.{Addons, ReactDOM}
+import monix.eval.Task
 import monix.execution.Cancelable
 import monix.reactive.observers.Subscriber.Sync
-import monix.reactive.{Observable, OverflowStrategy}
+import monix.reactive.{Notification, Observable, OverflowStrategy}
 import org.scalajs.dom
 import org.scalajs.dom.raw._
 
@@ -43,20 +43,25 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   final class EmptyResponseException extends java.lang.Exception("Empty response")
 
+  def getContent =
+    Observable.combineLatestMap2(Observable.fromTask(GMailApp.fetchMail), Observable.fromTask(JIRAApp.fetchSearchResults)) { (a, b) => a ++ b }
+      .materialize
+      .map { t =>
+        t match {
+          case Notification.OnError(ex) =>
+            logger.error("error while rendering", ex)
+          case _ =>
+        }
+        t
+      }.dematerialize
+
   @JSExport
   def main(): Unit = {
     import monix.execution.Scheduler.Implicits.global
     val searchPage =
       DashboardPage
         .makeSearchPage(wheelPositionY.map(AppBarState(_)))
-        .build(Observable.fromTask(GMailApp.fetchMail.materialize.map(_.recover(
-          new PartialFunction[Throwable, Observable[IndexedSeq[ExpandableContentModel]]] {
-            override def isDefinedAt(x: Throwable) = {
-              logger.error("error while rendering", x)
-              false
-            }
-            override def apply(v1: Throwable) = ???
-          })).dematerialize).flatten.map(SearchPageState(_)))
+        .build(getContent.map(SearchPageState(_)))
     val container =
       dom.document.body.children.namedItem("container")
     if (!js.isUndefined(Addons.Perf)) {

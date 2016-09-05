@@ -1,4 +1,5 @@
-package dash.views
+package dash
+package views
 
 import japgolly.scalajs.react.{CallbackTo, ReactComponentB, TopNode}
 import monix.execution.{CancelableFuture, Scheduler}

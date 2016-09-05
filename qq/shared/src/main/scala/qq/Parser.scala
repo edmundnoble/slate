@@ -33,7 +33,7 @@ object Parser {
   val quote: P0 = P("\"")
 
   def isStringLiteralChar(c: Char): Boolean = Character.isAlphabetic(c) || Character.isDigit(c)
-  val stringLiteralChars = Seq('a' to 'z': Seq[Char], 'A' to 'Z': Seq[Char], '0' to '9': Seq[Char], "↪+*-": Seq[Char])
+  val stringLiteralChars = Seq(('a' to 'z') ++ ('A' to 'Z') ++ ('0' to '9'), "↪+*-_": Seq[Char])
   val stringLiteralChar = CharIn(stringLiteralChars: _*)
   val stringLiteral: P[String] = P(stringLiteralChar.rep(min = 1).!)
 
@@ -43,7 +43,7 @@ object Parser {
 
   val escapedStringLiteral: P[String] = P(
     quote ~/
-      ((Terminals.CharLiteral('\\') ~/ (Terminals.CharLiteral('\n').map(_ => "\n") | Terminals.CharLiteral('\\').!)) |
+      ((Terminals.CharLiteral('\\') ~/ (Terminals.CharLiteral('n').map(_ => "\n") | Terminals.CharLiteral('\\').!)) |
         CharIn(escapedStringLiteralChars: _*).!
         ).rep.map(_.mkString) ~ quote
   )
@@ -91,7 +91,8 @@ object Parser {
   )
 
   private val filterIdentifier: P[String] = P(
-    CharIn('a' to 'z', 'A' to 'Z').rep(min = 1).!
+//    CharIn('a' to 'z', 'A' to 'Z').rep(min = 1).!
+    stringLiteral
   )
 
   private lazy val variableIdentifier: P[String] = P(

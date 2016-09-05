@@ -1,4 +1,5 @@
-package dash.bench
+package dash
+package bench
 
 import dash.LoggerFactory
 import japgolly.scalajs.benchmark.gui.BenchmarkGUI

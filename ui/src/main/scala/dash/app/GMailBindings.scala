@@ -1,4 +1,5 @@
-package dash.app
+package dash
+package app
 
 import qq.ajax._
 import scala.scalajs.js.UndefOr

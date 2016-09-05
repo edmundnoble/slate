@@ -1,41 +1,20 @@
-package dash.app
+package dash
+package app
 
-import java.util.concurrent.TimeUnit
-
-import com.thoughtworks.each.Monadic._
-import qq.ajax._
-import dash.models.{ExpandableContentModel, TitledContentModel}
-import dash.{DomStorage, LoggerFactory, StorageProgram, identify}
+import dash.Util._
+import dash.models.ExpandableContentModel
 import monix.eval.Task
-import monix.reactive.Observable
 import monix.scalaz._
-import qq.Unsafe
 import qq.jsc.Json
-import shapeless._
-import shapeless.record._
-import shapeless.syntax.singleton._
 
 import scala.collection.immutable.IndexedSeq
-import scala.concurrent.duration.Duration
 import scala.scalajs.js
-import scala.scalajs.js.{Array, Dynamic, JSON, UndefOr}
-import scalaz.\/
-import scalaz.syntax.monad._
-import scalaz.syntax.traverse._
-import dash.Util._
+import scala.scalajs.js.UndefOr
+import qq.Platform.Rec._
 
 object GMailApp extends DashApp {
 
-  import GMailBindings._
-
-  def threadToTitledContentModel(jsv: js.Any): TitledContentModel = {
-    val json = jsv.asInstanceOf[Dynamic].messages.asInstanceOf[js.Array[js.Any]](0).asInstanceOf[Dynamic]
-    val subject = json.payload.headers.asInstanceOf[js.Array[js.Any]](0).asInstanceOf[Dynamic].value.asInstanceOf[String]
-    val snippet = json.snippet.asInstanceOf[String]
-    TitledContentModel(subject, None, snippet)
-  }
-
-  def fetchMail: Task[Observable[IndexedSeq[ExpandableContentModel]]] = monadic[Task] {
+  def fetchMail: Task[IndexedSeq[ExpandableContentModel]] = {
 
     implicit val logger = LoggerFactory.getLogger("GmailApp")
 
@@ -44,29 +23,37 @@ object GMailApp extends DashApp {
 def headers: {
   Authorization: "Bearer " + googleAuth
 };
+
 def listParams: {
   maxResults: 10,
   q: "is:unread"
 };
+
 def getParams: {
   format: "metadata",
   metadataHeaders: "Subject",
   fields: "messages(payload/headers,snippet)"
 };
+
 def threadList:
   httpGet("https://www.googleapis.com/gmail/v1/users/me/threads"; listParams; ""; headers) | .threads | .[];
+
 def threadDetails:
-  threadList | .id | httpGet("https://www.googleapis.com/gmail/v1/users/me/threads/" + .; getParams; ""; headers);
-threadDetails
-      """
+  [threadList | .id | httpGet("https://www.googleapis.com/gmail/v1/users/me/threads/" + .; getParams; ""; headers)];
 
-    val programInStorage = StorageProgram.runProgram(DomStorage.Local, getCompiledProgram(app)).flatMap(_.valueOrThrow).each(js.Array[Any]())
-    val titledContentModels =
-      programInStorage.map(_.map(a => threadToTitledContentModel(a.asInstanceOf[js.Any])))
+def threadToContent: {
+  title: "Gmail",
+  content: [threadDetails | .[] | .messages.[0] | {
+    title: .payload.headers.[0].value,
+    content: .snippet
+  }]
+};
 
-    val expandableContentModels = titledContentModels.map(c => IndexedSeq(ExpandableContentModel("Gmail", None, c)))
+threadDetails | threadToContent
+"""
 
-    Observable.fromTask(expandableContentModels)
+    val programInStorage = StorageProgram.runProgram(DomStorage.Local, getCachedCompiledProgram(app)).flatMap(_.valueOrThrow).flatMap(_(js.Array[Any]()))
 
+    programInStorage.map(_.flatMap(v => ExpandableContentModel.pkl.read.lift(Json.jsToUpickleRec(v))).toIndexedSeq)
   }
 }

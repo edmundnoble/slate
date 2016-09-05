@@ -1,4 +1,5 @@
-package dash.views
+package dash
+package views
 
 import dash.models.{ExpandableContentModel, TitledContentModel}
 import japgolly.scalajs.react._
@@ -9,6 +10,7 @@ import monocle.macros.GenLens
 import dash.Util.observableReusability
 
 import scala.language.higherKinds
+import scala.scalajs.js
 import scalaz.syntax.std.boolean._
 import scalaz.std.list._
 import scalacss.Defaults._
