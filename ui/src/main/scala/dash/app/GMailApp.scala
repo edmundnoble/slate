@@ -36,7 +36,7 @@ def getParams: {
 };
 
 def threadList:
-  httpGet("https://www.googleapis.com/gmail/v1/users/me/threads"; listParams; ""; headers) | .threads.[].id;
+  httpGet("https://www.googleapis.com/gmail/v1/users/me/threads"; listParams; ""; headers) | .threads[].id;
 
 def threadDetails:
   [threadList | httpGet("https://www.googleapis.com/gmail/v1/users/me/threads/" + .; getParams; ""; headers)];

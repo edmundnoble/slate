@@ -130,8 +130,7 @@ class ParserTest extends QQSyncTestSuite {
   }
 
   "parse enjected filter regression" in {
-    Parser.program.parse(
-    "{user, (.titleName[]): .titles[]}").get.value
+    Parser.program.parse("{user, (.titleName[]): .titles[]}").get.value
     // should just succeed
   }
 

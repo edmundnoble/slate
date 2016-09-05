@@ -31,6 +31,9 @@ object Util {
   @inline def liftFC[S[_], A](sa: S[A]): Free[Coyoneda[S, ?], A] =
     Free.liftF[Coyoneda[S, ?], A](Coyoneda.lift(sa))
 
+  @inline def pureFC[S[_], A](a: A): Free[Coyoneda[S, ?], A] =
+    Free.pure[Coyoneda[S, ?], A](a)
+
   @inline def foldMapFC[F[_], G[_] : Monad, A](program: Free[Coyoneda[F, ?], A], nt: F ~> G): G[A] =
     program.foldMap[G](Coyoneda.liftTF(nt))
 

@@ -1,36 +1,33 @@
 package dash
 package app
 
-import qq.{Optimizer, Parser, QQCompiler}
+import qq.{Optimizer, Parser, Program, QQCompiler}
 import qq.QQCompiler.{CompiledFilter, OrCompilationError}
 import scodec.bits.BitVector
-import com.thoughtworks.each.Monadic._
+
 import qq.jsc.JSRuntime
 
 trait DashApp {
 
-  def getCachedCompiledProgram(qqProgram: String): StorageProgram[OrCompilationError[CompiledFilter[Any]]] = monadic[StorageProgram] {
+  def getCachedCompiledProgram(qqProgram: String): StorageProgram[OrCompilationError[CompiledFilter[Any]]] = {
 
     import qq.FilterProtocol._
     import StorageProgram._
 
     val hash = qqProgram.hashCode.toString
-    val programInStorage = get(hash).each
-
-    // don't replace this with fold, monadic doesn't work with by-names
-    val decodedOptimizedProgram = programInStorage match {
-      case None =>
-        val parsedQQProgram = Parser.program.parse(qqProgram).get.value
-        val optimizedProgram = Optimizer.optimize(parsedQQProgram)
-        val encodedOptimizedProgram = programCodec.encode(optimizedProgram).require
-        val out = encodedOptimizedProgram.toBase64
-        val () = update(hash, out).each
-        optimizedProgram
-      case Some(encodedProgram) =>
-        programCodec.decode(BitVector.fromBase64(encodedProgram).get).require.value
-    }
-
-    QQCompiler.compileProgram(JSRuntime, prelude = DashPrelude.all, decodedOptimizedProgram)
+    for {
+      programInStorage <- get(hash)
+      decodedOptimizedProgram <- programInStorage match {
+        case None =>
+          val parsedQQProgram = Parser.program.parse(qqProgram).get.value
+          val optimizedProgram = Optimizer.optimize(parsedQQProgram)
+          val encodedOptimizedProgram = programCodec.encode(optimizedProgram).require
+          val out = encodedOptimizedProgram.toBase64
+          update(hash, out).map(_ => optimizedProgram)
+        case Some(encodedProgram) =>
+          Util.pureFC[StorageAction, Program](programCodec.decode(BitVector.fromBase64(encodedProgram).get).require.value)
+      }
+    } yield QQCompiler.compileProgram(JSRuntime, prelude = DashPrelude.all, decodedOptimizedProgram)
   }
 
 }

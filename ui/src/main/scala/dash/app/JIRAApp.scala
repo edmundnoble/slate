@@ -27,7 +27,7 @@ object JIRAApp extends DashApp {
     raw"""
 def authHeaders: { Authorization: "Basic ${Creds.hashedJiraCreds}" };
 
-def extractIssues: .issues.[] | {
+def extractIssues: .issues[] | {
   url: .self,
   summary: .fields.summary,
   key,
@@ -56,7 +56,7 @@ def contentFromIssue: { title: .status + " - " + .key + " - " + .summary,
 
 def contentFromFilter: { title: .name,
                          titleUrl: .viewUrl,
-                         content: [.issues.[] | contentFromIssue] };
+                         content: [.issues[] | contentFromIssue] };
 
 filters | contentFromFilter
 """

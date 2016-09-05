@@ -47,9 +47,11 @@ trait PlatformPrelude[AnyTy] extends Prelude[AnyTy] {
   def httpPut: CompiledDefinition[AnyTy]
 
   override def all(runtime: QQRuntime[AnyTy]): QQCompilationException \/ IndexedSeq[CompiledDefinition[AnyTy]] = {
-    (length +: keys +: replaceAll +: arrays +: objects +: iterables +: booleans +:
-      numbers +: strings +: nulls +: values +: scalars +: httpDelete +: httpGet +:
-      httpPatch +: httpPost +: httpPut +: IndexedSeq.empty).right[QQCompilationException]
+    Vector(
+      length, keys, replaceAll, arrays, objects, iterables, booleans,
+      numbers, strings, nulls, values, scalars, httpDelete, httpGet,
+      httpPatch, httpPost, httpPut
+    ).right[QQCompilationException]
   }
 
 }
