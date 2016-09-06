@@ -29,6 +29,7 @@ case class AjaxException(xhr: dom.XMLHttpRequest) extends Exception {
   * an Ajax call, returning a Future.
   */
 object Ajax {
+
   /**
     * Supported data formats for Ajax are implicitly converted to InputData
     */
@@ -133,5 +134,14 @@ object Ajax {
       Cancelable(() => req.abort())
     }
   }
+
+  def apply(method: AjaxMethod,
+            url: String,
+            data: PostData,
+            queryParams: Map[String, js.Any],
+            headers: Map[String, String],
+            withCredentials: Boolean,
+            responseType: String)(implicit timeout: Timeout): Task[dom.XMLHttpRequest] =
+    apply(AjaxMethod.asString(method), url, data, queryParams, headers, withCredentials, responseType)
 
 }

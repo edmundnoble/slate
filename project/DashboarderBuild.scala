@@ -17,7 +17,6 @@ object DashboarderBuild {
       "io.monix" %%% "monix-scalaz-72" % "2.0-RC13",
       "com.thoughtworks.each" %%% "each" % "0.5.1",
       "com.github.julien-truffaut" %%% "monocle-core" % "1.2.1",
-      "com.github.julien-truffaut" %%% "monocle-generic" % "1.2.1",
       "com.github.julien-truffaut" %%% "monocle-macro" % "1.2.1",
       "com.slamdata" %%% "matryoshka-core" % "0.11.0",
       "org.scodec" %%% "scodec-bits" % "1.1.0",
