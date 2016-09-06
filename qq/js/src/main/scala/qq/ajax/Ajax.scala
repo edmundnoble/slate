@@ -7,12 +7,10 @@ import monix.execution.Cancelable
 import org.scalajs.dom
 import org.scalajs.dom.FormData
 import org.scalajs.dom.raw.Blob
-import shapeless.{HList, HNil}
 
 import scala.concurrent.duration._
 import scala.language.implicitConversions
 import scala.scalajs.js
-import scala.scalajs.js.Any
 import scala.scalajs.js.typedarray.TypedArrayBufferOps._
 import scala.scalajs.js.typedarray._
 

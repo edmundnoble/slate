@@ -16,7 +16,7 @@ object RunnerTest {
 
   import org.scalatest.Matchers._
 
-  def runTest[AnyTy](runtime: QQRuntime[AnyTy], fromUpickle: Js.Value => AnyTy, toUpickle: AnyTy => Js.Value, test: RunnerTest)
+  def runTest[JsonTy](runtime: QQRuntime[JsonTy], fromUpickle: Js.Value => JsonTy, toUpickle: JsonTy => Js.Value, test: RunnerTest)
                     (implicit sch: Scheduler): Future[Assertion] =
     Runner
       .run(runtime, test.program)(List(fromUpickle(test.input)))

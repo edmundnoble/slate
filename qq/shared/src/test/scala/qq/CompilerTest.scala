@@ -15,7 +15,7 @@ object CompilerTest {
   import org.scalatest.Matchers._
   import FilterDSL._
 
-  def runTest[AnyTy](runtime: QQRuntime[AnyTy], qqCompilerTest: CompilerTest)
+  def runTest[JsonTy](runtime: QQRuntime[JsonTy], qqCompilerTest: CompilerTest)
                     (implicit sch: Scheduler): Future[Assertion] = qqCompilerTest match {
     case CompilerTest(input, filter, expectedOutput@_*) =>
       QQCompiler

@@ -5,35 +5,59 @@ import scalaz.std.list._
 import scalaz.syntax.traverse._
 import scalaz.{Applicative, Traverse, \/}
 
+// A single node of the QQ AST. Type parameter used for child nodes.
 sealed abstract class FilterComponent[A]
 
-// AST nodes with no child nodes
+// AST nodes with no child nodes. These are thus Phantom Functors.
 sealed abstract class LeafComponent[A] extends FilterComponent[A] {
   @inline
   final def retag[B]: LeafComponent[B] = this.asInstanceOf[LeafComponent[B]]
 }
 
+// Identity filter; function taking a value and returning it
 final case class IdFilter[A]() extends LeafComponent[A]
+// compose filters in "pipe" order
+// ComposeFilters(first, second) is a filter which executes the parameter filters in named order on the input values.
+// Associative.
 final case class ComposeFilters[A](first: A, second: A) extends FilterComponent[A]
+// Makes a new filter Silence the exceptions coming from another filter
+// Idempotent.
 final case class SilenceExceptions[A](f: A) extends FilterComponent[A]
+
+// Enlisting a filter entails taking the list of results it returns,
+// and returning that as a single result in a JSON array.
+// Right inverse of CollectResults.
 final case class EnlistFilter[A](f: A) extends FilterComponent[A]
+
+// Collecting the results from a filter which returns JSON arrays
+// yields a filter which concatenates the arrays' values into a single list of output values
+// Left inverse of EnlistFilter.
 final case class CollectResults[A](f: A) extends FilterComponent[A]
+
+// Runs two filters at once, appending their result lists.
+// Associative.
 final case class EnsequenceFilters[A](first: A, second: A) extends FilterComponent[A]
+
+// Creates a JSON object from some (string \/ filter, filter) pairs.
 final case class EnjectFilters[A](obj: List[((String \/ A), A)]) extends FilterComponent[A]
 
+// Calls another filter or filter operator.
 final case class CallFilter[A](name: String, params: List[A]) extends FilterComponent[A]
 
+// Math, lots of JS-ish special cases for certain types.
 final case class AddFilters[A](first: A, second: A) extends FilterComponent[A]
 final case class SubtractFilters[A](first: A, second: A) extends FilterComponent[A]
 final case class MultiplyFilters[A](first: A, second: A) extends FilterComponent[A]
 final case class DivideFilters[A](first: A, second: A) extends FilterComponent[A]
 final case class ModuloFilters[A](first: A, second: A) extends FilterComponent[A]
 
+// Select key, index or range in JSON object or array.
+// Return null if asked for something not contained in the target.
 final case class SelectKey[A](key: String) extends LeafComponent[A]
 final case class SelectIndex[A](index: Int) extends LeafComponent[A]
 final case class SelectRange[A](start: Int, end: Int) extends LeafComponent[A]
 
-// AST nodes that represent filters ignoring their input
+// AST nodes that represent filters ignoring their input.
 sealed abstract class ConstantComponent[A] extends LeafComponent[A]
 final case class ConstNumber[A](value: Double) extends ConstantComponent[A]
 final case class ConstString[A](value: String) extends ConstantComponent[A]

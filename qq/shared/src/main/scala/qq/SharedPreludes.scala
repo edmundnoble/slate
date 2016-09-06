@@ -8,13 +8,13 @@ import scalaz.syntax.either._
 object SharedPreludes {
 
   object Compiled {
-    def print[AnyTy](runtime: QQRuntime[AnyTy]): CompiledDefinition[AnyTy] = {
-      val body: CompiledFilter[AnyTy] = { (jsv: AnyTy) => println("debug: " + runtime.print(jsv)); Task.now(jsv :: Nil) }
-      CompiledDefinition[AnyTy]("print", 0, body = { _ => body.right[QQCompilationException] })
+    def print[JsonTy](runtime: QQRuntime[JsonTy]): CompiledDefinition[JsonTy] = {
+      val body: CompiledFilter[JsonTy] = { (jsv: JsonTy) => println("debug: " + runtime.print(jsv)); Task.now(jsv :: Nil) }
+      CompiledDefinition[JsonTy]("print", 0, body = { _ => body.right[QQCompilationException] })
     }
 
-    def apply[AnyTy]: Prelude[AnyTy] = new Prelude[AnyTy] {
-      override def all(runtime: QQRuntime[AnyTy]): OrCompilationError[IndexedSeq[CompiledDefinition[AnyTy]]] =
+    def apply[JsonTy]: Prelude[JsonTy] = new Prelude[JsonTy] {
+      override def all(runtime: QQRuntime[JsonTy]): OrCompilationError[IndexedSeq[CompiledDefinition[JsonTy]]] =
         (print(runtime) +: IndexedSeq.empty).right.map(identity)
     }
   }
@@ -28,17 +28,17 @@ object SharedPreludes {
       )
     }
 
-    def apply[AnyTy]: Prelude[AnyTy] = new Prelude[AnyTy] {
-      override def all(runtime: QQRuntime[AnyTy]): OrCompilationError[IndexedSeq[CompiledDefinition[AnyTy]]] =
+    def apply[JsonTy]: Prelude[JsonTy] = new Prelude[JsonTy] {
+      override def all(runtime: QQRuntime[JsonTy]): OrCompilationError[IndexedSeq[CompiledDefinition[JsonTy]]] =
         QQCompiler.compileDefinitions(runtime, IndexedSeq.empty, map +: Vector.empty)
     }
   }
 
-  def apply[AnyTy]: Prelude[AnyTy] = new Prelude[AnyTy] {
-    override def all(runtime: QQRuntime[AnyTy]): OrCompilationError[IndexedSeq[CompiledDefinition[AnyTy]]] =
+  def apply[JsonTy]: Prelude[JsonTy] = new Prelude[JsonTy] {
+    override def all(runtime: QQRuntime[JsonTy]): OrCompilationError[IndexedSeq[CompiledDefinition[JsonTy]]] =
       for {
-        raw <- Raw[AnyTy].all(runtime)
-        compiled <- Compiled[AnyTy].all(runtime)
+        raw <- Raw[JsonTy].all(runtime)
+        compiled <- Compiled[JsonTy].all(runtime)
       } yield raw ++ compiled
   }
 

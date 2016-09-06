@@ -12,13 +12,13 @@ import qq.QQCompiler.CompiledFilter
 
 object Runner {
 
-  def parseAndCompile[AnyTy](runtime: QQRuntime[AnyTy], program: String, optimize: Boolean = true): \/[QQCompilationException \/ ParseError, CompiledFilter[AnyTy]] = {
+  def parseAndCompile[JsonTy](runtime: QQRuntime[JsonTy], program: String, optimize: Boolean = true): \/[QQCompilationException \/ ParseError, CompiledFilter[JsonTy]] = {
     Parser.program.parse(program) match {
-      case Parsed.Success(program, _) =>
+      case Parsed.Success(parsedProgram, _) =>
         val optimized = if (optimize) {
-          Optimizer.optimize(program)
+          Optimizer.optimize(parsedProgram)
         } else {
-          program
+          parsedProgram
         }
         QQCompiler.compileProgram(runtime, IndexedSeq.empty, optimized).leftMap(_.left)
       case f@Parsed.Failure(_, _, _) =>
@@ -26,7 +26,7 @@ object Runner {
     }
   }
 
-  def run[AnyTy](runtime: QQRuntime[AnyTy], qqProgram: String, optimize: Boolean = true)(input: List[AnyTy]): Task[List[AnyTy]] = {
+  def run[JsonTy](runtime: QQRuntime[JsonTy], qqProgram: String, optimize: Boolean = true)(input: List[JsonTy]): Task[List[JsonTy]] = {
     parseAndCompile(runtime, qqProgram, optimize).fold(
       ex => Task.raiseError(ex.merge[Exception]),
       input.traverseM(_)

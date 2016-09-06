@@ -1,8 +1,7 @@
 package qq
 
-import scala.collection.SeqLike
-import scala.collection.generic.{CanBuildFrom, GenericCompanion}
 import scala.collection.mutable
+import scala.language.higherKinds
 import scalaz.Liskov.<~<
 import scalaz.syntax.applicative._
 import scalaz.{Applicative, Liskov, Traverse}
