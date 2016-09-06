@@ -7,7 +7,7 @@ import scodec.bits.BitVector
 
 import qq.jsc.JSRuntime
 
-trait DashApp {
+object DashApp {
 
   def getCachedCompiledProgram(qqProgram: String): StorageProgram[OrCompilationError[CompiledFilter[Any]]] = {
 

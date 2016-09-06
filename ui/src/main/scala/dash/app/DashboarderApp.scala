@@ -13,9 +13,12 @@ import org.scalajs.dom.raw._
 
 import scala.concurrent.duration._
 import scala.scalajs.js
-import scala.scalajs.js.Any
 import scala.scalajs.js.annotation.JSExport
 import scalacss.{ScalaCssReactFns, StringRenderer}
+import dash.Util._
+import qq.jsc.Json
+import monix.scalaz._
+import qq.Platform.Rec._
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
@@ -23,7 +26,7 @@ object DashboarderApp extends scalajs.js.JSApp {
   val wheelPositionY: Observable[Double] =
     Observable.create[Double](OverflowStrategy.Unbounded) { (s: Sync[Double]) =>
       var posY = 0.0
-      val wheelHandler = Any.fromFunction1((ev: WheelEvent) => {
+      val wheelHandler = js.Any.fromFunction1((ev: WheelEvent) => {
         if (ev.deltaY == 0) {
           posY = 0
         } else {
@@ -44,8 +47,21 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   final class EmptyResponseException extends java.lang.Exception("Empty response")
 
+  val programs =
+    List(GmailApp.program, JIRAApp.program)
+
+  val compiledPrograms = programs.map(prog =>
+    StorageProgram.runProgram(DomStorage.Local,
+      DashApp.getCachedCompiledProgram(prog))
+      .flatMap(_.valueOrThrow)
+      .flatMap(f => f(js.Object())
+        .map(_.flatMap(i => ExpandableContentModel.pkl.read.lift(Json.jsToUpickleRec(i))))
+      )
+  )
+
   def getContent =
-    Observable.fromTask(Task.mapBoth(GMailApp.fetchMail, JIRAApp.fetchSearchResults) { (a, b) => a ++ b })
+    Observable.fromTask(Task.gatherUnordered(compiledPrograms))
+      .map(_.flatten.toIndexedSeq)
       .materialize
       .map { t =>
         t match {

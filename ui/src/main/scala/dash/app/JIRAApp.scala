@@ -1,29 +1,9 @@
 package dash
 package app
 
-import java.util.concurrent.TimeUnit
+object JIRAApp {
 
-import dash.Util._
-import dash._
-import qq.ajax.Ajax
-import dash.models.{ExpandableContentModel, TitledContentModel}
-import monix.eval.Task
-import monix.scalaz._
-import qq.QQCompiler.{CompiledFilter, OrCompilationError}
-import qq.Runner
-import qq.jsc.{JSRuntime, Json}
-import upickle.Js
-import upickle.Js.Value
-
-import scala.concurrent.duration._
-import scala.scalajs.js
-import scalaz.\/
-import scalaz.std.list._
-import scalaz.syntax.traverse._
-
-object JIRAApp extends DashApp {
-
-  val qqExtractContentProgram =
+  val program =
     raw"""
 def authHeaders: { Authorization: "Basic ${Creds.hashedJiraCreds}" };
 
@@ -60,18 +40,5 @@ def contentFromFilter: { title: .name,
 
 filters | contentFromFilter
 """
-
-  def fetchSearchResults: Task[Seq[ExpandableContentModel]] = {
-
-    implicit val ajaxTimeout = Ajax.Timeout(Duration(4000, TimeUnit.MILLISECONDS))
-
-    import qq.Platform.Rec._
-
-    for {
-      extractContent <- StorageProgram.runProgram(DomStorage.Local, getCachedCompiledProgram(qqExtractContentProgram)).flatMap(_.valueOrThrow)
-      content <- extractContent(null.asInstanceOf[Any])
-      readContent = content.flatMap(i => ExpandableContentModel.pkl.read.lift(Json.jsToUpickleRec(i)))
-    } yield readContent
-  }
 
 }
