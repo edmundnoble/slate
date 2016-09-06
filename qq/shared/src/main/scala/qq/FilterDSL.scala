@@ -25,5 +25,8 @@ object FilterDSL {
   @inline final def modulo(first: Filter, second: Filter): Filter = Fix(ModuloFilters(first, second))
   @inline final def constNumber(value: Double): Filter = Fix(ConstNumber(value))
   @inline final def constString(value: String): Filter = Fix(ConstString(value))
+  @inline final def constTrue: Filter = Fix(ConstTrue())
+  @inline final def constFalse: Filter = Fix(ConstFalse())
+  @inline final def constNull: Filter = Fix(ConstNull())
 
 }

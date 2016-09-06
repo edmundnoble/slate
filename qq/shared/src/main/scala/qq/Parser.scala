@@ -108,8 +108,11 @@ object Parser {
 
   val constInt: P[Filter] = P(numericLiteral map (FilterDSL.constNumber(_)))
   val constString: P[Filter] = P(escapedStringLiteral map FilterDSL.constString)
+  val constTrue: P[Filter] = P(wspStr("true") >| FilterDSL.constTrue)
+  val constFalse: P[Filter] = P(wspStr("false") >| FilterDSL.constFalse)
+  val constNull: P[Filter] = P(wspStr("null") >| FilterDSL.constNull)
 
-  val smallFilter: P[Filter] = P(constInt | constString | dottedFilter | callFilter)
+  val smallFilter: P[Filter] = P(constInt | constString | constTrue | constFalse | constNull | dottedFilter | callFilter)
 
   val enlistedFilter: P[Filter] = P(
     "[" ~/ filter.map(FilterDSL.enlist) ~ "]"
