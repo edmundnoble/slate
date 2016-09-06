@@ -126,6 +126,7 @@ object Parser {
     "{" ~/ whitespace ~ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(FilterDSL.enject) ~ whitespace ~ "}"
   )
 
+  // binary operators with the same precedence level
   def binaryOperators[A](rec: P[A], op1: (String, (A, A) => A), ops: (String, (A, A) => A)*): P[A] = {
     def makeParser(text: String, function: (A, A) => A): P[(A, A) => A] = wspStr(text) >| function
     def foldOperators(begin: A, operators: List[((A, A) => A, A)]): A =

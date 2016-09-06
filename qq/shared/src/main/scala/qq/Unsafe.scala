@@ -8,6 +8,7 @@ import scalaz.{Applicative, Liskov, Traverse}
 
 object Unsafe {
 
+  // Proof that forall A, F[A] is a subtype of G[A]
   trait Liskov1[F[_], G[_]] {
     def apply[A]: F[A] <~< G[A]
   }
@@ -27,6 +28,8 @@ object Unsafe {
     }
   }
 
+  // Ever want to traverse anything with a CanBuildFrom which is Iterable?
+  // I did too, at first
   final def builderTraverse[S[_]](implicit cbf: GenericBuilderFactory[S], ev: Liskov1[S, Iterable]): Traverse[S] = new Traverse[S] {
     override def traverseImpl[G[_], A, B](fa: S[A])(f: (A) => G[B])(implicit evidence: Applicative[G]): G[S[B]] = {
       val bldr = cbf.newBuilder[B]
