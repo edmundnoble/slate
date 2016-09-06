@@ -10,10 +10,17 @@ import scalaz.syntax.traverse._
 import scalaz.std.list._
 import com.thoughtworks.each.Monadic._
 import monix.scalaz._
+import qq.QQCompiler.CompiledFilter
 
 object UpicklePrelude extends PlatformPrelude[Js.Value] {
 
   import CompiledDefinition.noParamDefinition
+
+  def `null`: CompiledDefinition[Js.Value] = noParamDefinition("null", CompiledFilter.const(Js.Null))
+
+  def `true`: CompiledDefinition[Js.Value]  = noParamDefinition("true", CompiledFilter.const(Js.True))
+
+  def `false`: CompiledDefinition[Js.Value] = noParamDefinition("false", CompiledFilter.const(Js.False))
 
   override def length: CompiledDefinition[Js.Value] =
     noParamDefinition(

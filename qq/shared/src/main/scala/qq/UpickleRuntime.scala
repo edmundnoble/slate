@@ -25,12 +25,6 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
 
   override def constString(str: String): CompiledFilter[Js.Value] = _ => Task.now(Js.Str(str) :: Nil)
 
-  override def constTrue: CompiledFilter[Js.Value] = _ => Task.now(Js.True :: Nil)
-
-  override def constFalse: CompiledFilter[Js.Value] = _ => Task.now(Js.False :: Nil)
-
-  override def constNull: CompiledFilter[Js.Value] = _ => Task.now(Js.Null :: Nil)
-
   override def addJsValues(first: Js.Value, second: Js.Value): Task[Js.Value] = (first, second) match {
     case (Js.Num(f), Js.Num(s)) =>
       Task.now(Js.Num(f + s))

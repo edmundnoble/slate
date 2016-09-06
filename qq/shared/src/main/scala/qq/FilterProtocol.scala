@@ -14,8 +14,8 @@ object FilterProtocol {
   import shapeless._
 
   type FilterComponentGenA[A] =
-    AddFilters[A] :+: CallFilter[A] :+: CollectResults[A] :+: ComposeFilters[A] :+: ConstFalse[A] :+: ConstNull[A] :+:
-      ConstNumber[A] :+: ConstString[A] :+: ConstTrue[A]  :+: DivideFilters[A] :+: EnjectFilters[A] :+: EnlistFilter[A] :+:
+    AddFilters[A] :+: CallFilter[A] :+: CollectResults[A] :+: ComposeFilters[A] :+:
+      ConstNumber[A] :+: ConstString[A] :+: DivideFilters[A] :+: EnjectFilters[A] :+: EnlistFilter[A] :+:
       EnsequenceFilters[A] :+: IdFilter[A] :+: ModuloFilters[A] :+: MultiplyFilters[A] :+: SelectIndex[A] :+:
       SelectKey[A] :+: SelectRange[A] :+: SilenceExceptions[A] :+: SubtractFilters[A] :+: CNil
 
@@ -48,8 +48,5 @@ object FilterProtocol {
   implicit def selectRangeDiscriminator[A]: Discriminator[FilterComponentGenA[A], SelectRange[A], Int] = Discriminator(15)
   implicit def constNumberDiscriminator[A]: Discriminator[FilterComponentGenA[A], ConstNumber[A], Int] = Discriminator(16)
   implicit def constStringDiscriminator[A]: Discriminator[FilterComponentGenA[A], ConstString[A], Int] = Discriminator(17)
-  implicit def constTrueDiscriminator[A]: Discriminator[FilterComponentGenA[A], ConstTrue[A], Int] = Discriminator(18)
-  implicit def constFalseDiscriminator[A]: Discriminator[FilterComponentGenA[A], ConstFalse[A], Int] = Discriminator(19)
-  implicit def constNullDiscriminator[A]: Discriminator[FilterComponentGenA[A], ConstNull[A], Int] = Discriminator(20)
 
 }

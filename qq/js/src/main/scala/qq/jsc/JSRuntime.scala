@@ -26,12 +26,6 @@ object JSRuntime extends QQRuntime[Any] {
 
   override def constString(str: String): CompiledFilter[Any] = _ => Task.now(str :: Nil)
 
-  override def constTrue: CompiledFilter[Any] = _ => Task.now(true :: Nil)
-
-  override def constFalse: CompiledFilter[Any] = _ => Task.now(false :: Nil)
-
-  override def constNull: CompiledFilter[Any] = _ => Task.now(null :: Nil)
-
   override def addJsValues(first: Any, second: Any): Task[Any] = (first, second) match {
     case (f: Double, s: Double) =>
       Task.now(f + s)

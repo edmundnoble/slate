@@ -12,6 +12,12 @@ trait PlatformPrelude[AnyTy] extends Prelude[AnyTy] {
     body.applyOrElse(params, ???)
   }
 
+  def `null`: CompiledDefinition[AnyTy]
+
+  def `true`: CompiledDefinition[AnyTy]
+
+  def `false`: CompiledDefinition[AnyTy]
+
   def length: CompiledDefinition[AnyTy]
 
   def keys: CompiledDefinition[AnyTy]
@@ -48,6 +54,7 @@ trait PlatformPrelude[AnyTy] extends Prelude[AnyTy] {
 
   override def all(runtime: QQRuntime[AnyTy]): QQCompilationException \/ IndexedSeq[CompiledDefinition[AnyTy]] = {
     Vector(
+      `null`, `true`, `false`,
       length, keys, replaceAll, arrays, objects, iterables, booleans,
       numbers, strings, nulls, values, scalars, httpDelete, httpGet,
       httpPatch, httpPost, httpPut

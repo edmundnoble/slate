@@ -5,6 +5,7 @@ import java.util.regex.Pattern
 import com.thoughtworks.each.Monadic._
 import monix.eval.Task
 import monix.scalaz._
+import qq.QQCompiler.CompiledFilter
 import qq._
 import qq.ajax.{Ajax, AjaxMethod}
 
@@ -17,6 +18,12 @@ import scalaz.syntax.traverse._
 object JSPrelude extends PlatformPrelude[Any] {
 
   import CompiledDefinition.noParamDefinition
+
+  def `null`: CompiledDefinition[Any] = noParamDefinition("null", CompiledFilter.const(null))
+
+  def `true`: CompiledDefinition[Any] = noParamDefinition("true", CompiledFilter.const(true))
+
+  def `false`: CompiledDefinition[Any] = noParamDefinition("false", CompiledFilter.const(false))
 
   override def length: CompiledDefinition[Any] =
     noParamDefinition(

@@ -265,6 +265,7 @@ object DashboarderBuild {
     .enablePlugins(ScalaJSPlugin)
     .settings((resourceDirectory in Compile) := (resourceDirectory in Compile in ui).value)
     .settings(baseSettings: _*)
+    .settings(disableTests: _*)
     .settings(chromeTasks)
     .settings(jsSettings)
     .settings(commonDeps: _*)

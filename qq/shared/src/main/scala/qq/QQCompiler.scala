@@ -41,6 +41,9 @@ case class WrongNumParams(name: String, correct: Int, you: Int) extends QQCompil
 object QQCompiler {
 
   type CompiledFilter[AnyTy] = AnyTy => Task[List[AnyTy]]
+  object CompiledFilter {
+    @inline final def const[AnyTy](value: AnyTy): CompiledFilter[AnyTy] = _ => Task.now(value :: Nil)
+  }
   type OrCompilationError[T] = QQCompilationException \/ T
 
   def composeFilters[AnyTy](f: CompiledFilter[AnyTy], s: CompiledFilter[AnyTy]): \/[Nothing, (AnyTy) => Task[List[AnyTy]]] = {
