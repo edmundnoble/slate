@@ -13,13 +13,15 @@ import org.scalajs.dom.raw._
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
-import scalacss.{ScalaCssReactFns, StringRenderer}
+import scalacss.ScalaCssReactFns
 import dash.Util._
 import qq.jsc.Json
 import monix.scalaz._
 import qq.Platform.Rec._
 
 import scala.concurrent.duration.FiniteDuration
+import scalacss.defaults.PlatformExports
+import scalacss.internal.StringRenderer
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
@@ -83,7 +85,7 @@ object DashboarderApp extends scalajs.js.JSApp {
       import dash.views._
       val renderer = new StringRenderer.Raw(StringRenderer.formatTiny)
       val aggregateStyles =
-        ScalaCssReactFns.createStyle("html{\noverflow-y:scroll;\n}\n" + Styles.renderA(renderer) + "\n" +
+        PlatformExports.createStyleElement("html{\noverflow-y:scroll;\n}\n" + Styles.renderA(renderer) + "\n" +
           ExpandableContentView.Styles.renderA(renderer) + "\n" +
           TitledContentView.Styles.renderA(renderer))
       dom.document.head appendChild aggregateStyles

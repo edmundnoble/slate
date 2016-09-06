@@ -6,7 +6,8 @@ import japgolly.scalajs.react.{ReactComponentU_, ReactNode}
 
 import scala.concurrent.duration._
 import scalacss.Defaults._
-import scalacss.{FontFace, NonEmptyVector, StyleA}
+import scalacss.StyleA
+import scalacss.internal.{FontFace, NonEmptyVector}
 
 object Styles extends StyleSheet.Inline {
 
@@ -54,7 +55,7 @@ object Styles extends StyleSheet.Inline {
     marginTop(30 px)
   )
 
-  abstract class ReactAnimationStyles(val className: String)(implicit r: scalacss.mutable.Register) extends StyleSheet.Inline()(r) {
+  abstract class ReactAnimationStyles(val className: String)(implicit r: scalacss.internal.mutable.Register) extends StyleSheet.Inline()(r) {
     def enterClassName = className + "-enter"
 
     def leaveClassName = className + "-leave"
@@ -71,7 +72,7 @@ object Styles extends StyleSheet.Inline {
     def apply(children: ReactNode*): ReactComponentU_ = ReactCssTransitionGroup(className)(children: _*)
   }
 
-  class ScrollFadeContainer(className: String)(implicit r: scalacss.mutable.Register) extends ReactAnimationStyles(className)(r) {
+  class ScrollFadeContainer(className: String)(implicit r: scalacss.internal.mutable.Register) extends ReactAnimationStyles(className)(r) {
 
     val enter: StyleA = style(enterClassName)(
       maxHeight.`0`,
