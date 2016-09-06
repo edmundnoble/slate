@@ -12,17 +12,25 @@ trait PlatformPrelude[AnyTy] extends Prelude[AnyTy] {
     body.applyOrElse(params, ???)
   }
 
+  // null constant
   def `null`: CompiledDefinition[AnyTy]
 
+  // true constant
   def `true`: CompiledDefinition[AnyTy]
 
+  // false constant
   def `false`: CompiledDefinition[AnyTy]
 
+  // array/object length
   def length: CompiledDefinition[AnyTy]
 
+  // object keys
   def keys: CompiledDefinition[AnyTy]
 
+  // regex replace
   def replaceAll: CompiledDefinition[AnyTy]
+
+  // filters
 
   def arrays: CompiledDefinition[AnyTy]
 
@@ -41,6 +49,8 @@ trait PlatformPrelude[AnyTy] extends Prelude[AnyTy] {
   def values: CompiledDefinition[AnyTy]
 
   def scalars: CompiledDefinition[AnyTy]
+
+  // ajax
 
   def httpDelete: CompiledDefinition[AnyTy]
 

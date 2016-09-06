@@ -6,6 +6,11 @@ import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
 import scalaz.std.string._
 import scalaz.{==>>, Monad, State, ~>}
 
+// Operations on a Storage[F[_]] with F[_] effects
+// To abstract over storage that has different effects performed by its operations
+// Examples of uses:
+// localStorage, sessionStorage: use F = Task
+// pure: Use F = State[Map[String, String], ?]]
 abstract class Storage[F[_]] {
   def length: F[Int]
   def apply(key: String): F[Option[String]]
@@ -15,6 +20,8 @@ abstract class Storage[F[_]] {
   def keyAtIndex(index: Int): F[Option[String]]
 }
 
+// Finally tagless storage action functor (http://okmij.org/ftp/tagless-final/)
+// Only using this because higher-kinded GADT refinement is broken
 sealed abstract class StorageAction[T] {
   def run[F[_]](storage: Storage[F]): F[T]
 }
@@ -47,6 +54,7 @@ object StorageAction {
 
 }
 
+// DSL methods
 object StorageProgram {
 
   import StorageAction._
@@ -76,6 +84,7 @@ object StorageProgram {
     })
 }
 
+// Implementation for dom.ext.Storage values
 sealed class DomStorage(underlying: SStorage) extends Storage[Task] {
 
   import Task.eval
@@ -93,6 +102,7 @@ object DomStorage {
   case object Session extends DomStorage(SessionStorage)
 }
 
+// Implementation for pure maps
 object PureStorage extends Storage[State[String ==>> String, ?]] {
 
   import State._

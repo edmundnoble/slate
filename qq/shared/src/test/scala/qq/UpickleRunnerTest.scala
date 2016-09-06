@@ -39,4 +39,5 @@ class UpickleRunnerTest extends QQAsyncTestSuite {
   "add null exception" in runTest(addNullException)
   "silenced exception" in runTest(silencedException)
   "empty object" in runTest(emptyObjectProgram)
+  "constants" in runTest(constants)
 }

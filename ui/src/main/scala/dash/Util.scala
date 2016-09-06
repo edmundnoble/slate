@@ -17,12 +17,13 @@ object Util {
     }
   }
 
-  implicit def observableReusability[A]: Reusability[Observable[A]] =
-    Reusability.byRef[Observable[A]]
-
   def callbackToTask: CallbackTo ~> Task = new (CallbackTo ~> Task) {
     override def apply[A](fa: CallbackTo[A]): Task[A] = Task.eval(fa.runNow())
   }
+
+  // an observable can only be equal to another by reference.
+  implicit def observableReusability[A]: Reusability[Observable[A]] =
+    Reusability.byRef[Observable[A]]
 
   implicit final class EitherTaskOps[E <: Throwable, A](val eOrA: E \/ A) extends AnyVal {
     @inline def valueOrThrow: Task[A] = eOrA.fold(Task.raiseError, Task.now)

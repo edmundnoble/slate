@@ -201,5 +201,11 @@ object RunnerTest {
     List(Js.Obj()).right
   )
 
+  val constants = RunnerTest(
+    Js.Null,
+    "true, false, null",
+    List(Js.True, Js.False, Js.Null).right
+  )
+
 
 }

@@ -9,6 +9,8 @@ import qq.jsc.JSRuntime
 
 object DashApp {
 
+  // cache optimized, parsed programs using their hashcode as a key
+  // store them as base64-encoded bytecode
   def getCachedCompiledProgram(qqProgram: String): StorageProgram[OrCompilationError[CompiledFilter[Any]]] = {
 
     import qq.FilterProtocol._
