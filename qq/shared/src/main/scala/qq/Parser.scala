@@ -44,8 +44,7 @@ object Parser {
   val escapedStringLiteral: P[String] = P(
     quote ~/
       ((Terminals.CharLiteral('\\') ~/ (Terminals.CharLiteral('n').map(_ => "\n") | Terminals.CharLiteral('\\').!)) |
-        CharIn(escapedStringLiteralChars: _*).!
-        ).rep.map(_.mkString) ~ quote
+        CharIn(escapedStringLiteralChars: _*).!).rep.map(_.mkString) ~ quote
   )
 
   val numericLiteral: P[Int] = P(
