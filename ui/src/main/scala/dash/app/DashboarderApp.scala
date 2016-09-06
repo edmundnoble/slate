@@ -11,7 +11,6 @@ import monix.reactive.{Notification, Observable, OverflowStrategy}
 import org.scalajs.dom
 import org.scalajs.dom.raw._
 
-import scala.concurrent.duration._
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
 import scalacss.{ScalaCssReactFns, StringRenderer}
@@ -19,6 +18,8 @@ import dash.Util._
 import qq.jsc.Json
 import monix.scalaz._
 import qq.Platform.Rec._
+
+import scala.concurrent.duration.FiniteDuration
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
@@ -41,7 +42,7 @@ object DashboarderApp extends scalajs.js.JSApp {
       Cancelable { () =>
         dom.window.removeEventListener[WheelEvent]("wheel", wheelHandler)
       }
-    }.throttleLast(30.millis)
+    }.throttleLast(new FiniteDuration(30, java.util.concurrent.TimeUnit.MILLISECONDS))
 
   private[this] val logger = LoggerFactory.getLogger("DashboarderApp")
 

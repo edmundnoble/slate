@@ -37,6 +37,9 @@ final case class SelectRange[A](start: Int, end: Int) extends LeafComponent[A]
 sealed abstract class ConstantComponent[A] extends LeafComponent[A]
 final case class ConstNumber[A](value: Double) extends ConstantComponent[A]
 final case class ConstString[A](value: String) extends ConstantComponent[A]
+final case class ConstTrue[A]() extends ConstantComponent[A]
+final case class ConstFalse[A]() extends ConstantComponent[A]
+final case class ConstNull[A]() extends ConstantComponent[A]
 
 object FilterComponent {
 

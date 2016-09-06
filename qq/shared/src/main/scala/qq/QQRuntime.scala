@@ -19,6 +19,9 @@ trait QQRuntime[AnyTy] {
 
   @inline final def evaluateLeaf(component: LeafComponent[AnyTy]): CompiledFilter[AnyTy] = component match {
     case IdFilter() => (jsv: AnyTy) => Task.now(jsv :: Nil)
+    case ConstTrue() => constTrue
+    case ConstFalse() => constFalse
+    case ConstNull() => constNull
     case ConstNumber(num) => constNumber(num)
     case ConstString(str) => constString(str)
     case SelectKey(key) => selectKey(key)
@@ -35,6 +38,12 @@ trait QQRuntime[AnyTy] {
   def constNumber(num: Double): CompiledFilter[AnyTy]
 
   def constString(str: String): CompiledFilter[AnyTy]
+
+  def constTrue: CompiledFilter[AnyTy]
+
+  def constFalse: CompiledFilter[AnyTy]
+
+  def constNull: CompiledFilter[AnyTy]
 
   def addJsValues(first: AnyTy, second: AnyTy): Task[AnyTy]
 
