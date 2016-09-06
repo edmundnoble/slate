@@ -51,8 +51,8 @@ class OptimizerTest extends QQSyncTestSuite {
 
 
   "no stack overflow on large filters" taggedAs StackTest in {
-    def collectRec(f: Filter, i: Int): Filter = if (i == 0) f else collectRec(collectResults(f), i - 1)
-    def enlistRec(f: Filter, i: Int): Filter = if (i == 0) f else enlistRec(enlist(f), i - 1)
+    @annotation.tailrec def collectRec(f: Filter, i: Int): Filter = if (i == 0) f else collectRec(collectResults(f), i - 1)
+    @annotation.tailrec def enlistRec(f: Filter, i: Int): Filter = if (i == 0) f else enlistRec(enlist(f), i - 1)
     optimize(collectRec(enlistRec(id, 1000), 1000)) shouldBe id
   }
 

@@ -28,12 +28,12 @@ final case class SilenceExceptions[A](f: A) extends FilterComponent[A]
 
 // Enlisting a filter entails taking the list of results it returns,
 // and returning that as a single result in a JSON array.
-// Right inverse of CollectResults.
+// Inverse of CollectResults.
 final case class EnlistFilter[A](f: A) extends FilterComponent[A]
 
 // Collecting the results from a filter which returns JSON arrays
 // yields a filter which concatenates the arrays' values into a single list of output values
-// Left inverse of EnlistFilter.
+// Inverse of EnlistFilter.
 final case class CollectResults[A](f: A) extends FilterComponent[A]
 
 // Runs two filters at once, appending their result lists.
