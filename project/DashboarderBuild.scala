@@ -16,8 +16,6 @@ object DashboarderBuild {
       "io.monix" %%% "monix" % "2.0-RC13",
       "io.monix" %%% "monix-scalaz-72" % "2.0-RC13",
       "com.thoughtworks.each" %%% "each" % "0.5.1",
-      "com.github.julien-truffaut" %%% "monocle-core" % "1.2.1",
-      "com.github.julien-truffaut" %%% "monocle-macro" % "1.2.1",
       "com.slamdata" %%% "matryoshka-core" % "0.11.0",
       "org.scodec" %%% "scodec-bits" % "1.1.0",
       "org.scodec" %%% "scodec-core" % "1.10.2"
@@ -294,7 +292,7 @@ object DashboarderBuild {
     })
 
   lazy val root = project.in(file("."))
-    .aggregate(ui, uitests, qqjvm, qqjs)
+    .aggregate(ui, uitests, uibench, qqjvm, qqjs)
     .settings(Defaults.projectCore)
     .settings(baseSettings)
     .settings(ScalaJSPlugin.globalSettings)

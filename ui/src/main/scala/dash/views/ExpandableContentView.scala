@@ -6,12 +6,12 @@ import japgolly.scalajs.react._
 import japgolly.scalajs.react.extra.Reusability
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import monocle.macros.GenLens
 
 import scala.language.higherKinds
 import scalaz.syntax.std.boolean._
 import scalaz.std.list._
 import scalacss.Defaults._
+import Util.observableReusability
 
 object ExpandableContentView {
   object Styles extends StyleSheet.Inline {
@@ -86,7 +86,6 @@ object ExpandableContentView {
   }
 
   object ExpandableState {
-    val expanded = GenLens[ExpandableState](_.expanded)
     implicit val reusability: Reusability[ExpandableState] =
       Reusability.caseClass[ExpandableState]
   }
@@ -100,7 +99,6 @@ object ExpandableContentView {
 
   def builder(implicit sch: Scheduler
              ): ReactComponentB[ExpandableContentProps, ExpandableState, Unit, TopNode] = {
-    import MonocleReact._
     import japgolly.scalajs.react.vdom.all._
     import dash.views.ReactiveReact._
 

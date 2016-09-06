@@ -18,7 +18,7 @@ object ExpandableContentModel {
     override def read0: PartialFunction[Js.Value, ExpandableContentModel] = {
       case o: Js.Obj => ExpandableContentModel(
         o("title").str,
-        Try.apply(o("titleUrl").str).toOption,
+        o.value.toMap.get("titleUrl").map(_.str),
         o("content").arr.flatMap(TitledContentModel.pkl.read.lift(_))(collection.breakOut))
     }
     override def write0: ExpandableContentModel => Js.Value = { m =>

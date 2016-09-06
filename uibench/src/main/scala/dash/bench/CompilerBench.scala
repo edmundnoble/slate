@@ -13,12 +13,12 @@ object CompilerBench {
       Benchmark.setup[Int, Filter] { i =>
         Util.buildRec(FilterDSL.compose(_, FilterDSL.selectKey("key")), i, FilterDSL.id)
       }("select key") { filt =>
-        QQCompiler.compile(JSRuntime, Nil, filt)
+        QQCompiler.compile(JSRuntime, IndexedSeq.empty, filt)
       },
       Benchmark.setup[Int, Filter] { i =>
         Util.buildRec(FilterDSL.compose(_, FilterDSL.id), i, FilterDSL.id)
       }("compose with id") { filt =>
-        QQCompiler.compile(JSRuntime, Nil, filt)
+        QQCompiler.compile(JSRuntime, IndexedSeq.empty, filt)
       }
     ), GuiParams.one(GuiParam.int("filter size", 5, 10, 100, 200))
   )

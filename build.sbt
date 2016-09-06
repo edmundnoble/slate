@@ -10,3 +10,5 @@ val qqjvm = DashboarderBuild.qqjvm
 
 val qqjs = DashboarderBuild.qqjs
 
+val root = DashboarderBuild.root
+

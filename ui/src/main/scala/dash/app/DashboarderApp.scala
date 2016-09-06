@@ -61,7 +61,7 @@ object DashboarderApp extends scalajs.js.JSApp {
     val searchPage =
       DashboardPage
         .makeSearchPage(wheelPosY.map(AppBarState(_)))
-        .build(content.map(SearchPageState(_)))
+        .build(content.map(f => SearchPageState(f.toList)))
     locally {
       import dash.views._
       val renderer = new StringRenderer.Raw(StringRenderer.formatTiny)
