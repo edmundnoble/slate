@@ -13,7 +13,6 @@ import org.scalajs.dom.raw._
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
-import scalacss.ScalaCssReactFns
 import dash.Util._
 import qq.jsc.Json
 import monix.scalaz._

@@ -16,10 +16,12 @@ sealed abstract class LeafComponent[A] extends FilterComponent[A] {
 
 // Identity filter; function taking a value and returning it
 final case class IdFilter[A]() extends LeafComponent[A]
-// compose filters in "pipe" order
+
+// Compose filters in "pipe" order
 // ComposeFilters(first, second) is a filter which executes the parameter filters in named order on the input values.
 // Associative.
 final case class ComposeFilters[A](first: A, second: A) extends FilterComponent[A]
+
 // Makes a new filter Silence the exceptions coming from another filter
 // Idempotent.
 final case class SilenceExceptions[A](f: A) extends FilterComponent[A]
