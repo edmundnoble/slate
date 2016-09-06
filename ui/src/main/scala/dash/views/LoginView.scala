@@ -1,8 +1,6 @@
 package dash
 package views
 
-import dash.Creds
-
 object LoginView {
 
   val responseType = "token"

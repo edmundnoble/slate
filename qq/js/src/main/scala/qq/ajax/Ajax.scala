@@ -134,28 +134,4 @@ object Ajax {
     }
   }
 
-  @inline final def boundConstantPath[PathTy <: PathSegment, queryParams <: HList, Headers <: HList]
-  (binding: Binding[PathTy, queryParams, Headers])
-  (queryParams: queryParams, headers: Headers)
-  (implicit timeout: Timeout, ev: PathToString.Aux[PathTy, HNil]) =
-    bound(binding)(queryParams, headers, HNil: HNil)
-
-  @inline final def bound[PathTy <: PathSegment, PathArgs <: HList, QueryParams <: HList, Headers <: HList]
-  (binding: Binding[PathTy, QueryParams, Headers])
-  (data: QueryParams, headers: Headers, pathArgs: PathArgs)
-  (implicit timeout: Timeout, ev: PathToString.Aux[PathTy, PathArgs]) = {
-    val stringPath = ev.create(binding.path, pathArgs)
-    val queryParamsMap = binding.queryParamsToMap(data).collect { case (k, v) if !js.isUndefined(v) => k -> v.asInstanceOf[Any] }
-    val headerMap = binding.headersToMap(headers)
-    apply(
-      AjaxMethod.asString(binding.method),
-      stringPath,
-      data = null,
-      queryParams = queryParamsMap,
-      headers = headerMap,
-      withCredentials = false,
-      responseType = ""
-    )
-  }
-
 }

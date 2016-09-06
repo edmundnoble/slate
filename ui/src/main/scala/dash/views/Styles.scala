@@ -14,10 +14,10 @@ object Styles extends StyleSheet.Inline {
 
   import scala.language.postfixOps
 
-  val roboto = FontFace("Roboto", src = NonEmptyVector("fonts/roboto-v15-latin-ext_latin-300.woff2"))
-  val robotoLight = FontFace("Roboto", src = NonEmptyVector("fonts/roboto-v15-latin-ext_latin-500.woff2"))
-  val robotoMedium = FontFace("Roboto", src = NonEmptyVector("fonts/roboto-v15-latin-ext_latin-700.woff2"))
-  val robotoHeavy = FontFace("Roboto", src = NonEmptyVector("fonts/roboto-v15-latin-ext_latin-900.woff2"))
+  val sanFrancisco = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-regular-webfont.woff"))
+  val sanFranciscoLight = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-thin-webfont.woff"))
+  val sanFranciscoMedium = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-medium-webfont.woff"))
+  val sanFranciscoHeavy = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-bold-webfont.woff"))
 
   val materialBlue = c"#2196F3"
   val materialGrey = c"#757575"
@@ -35,7 +35,7 @@ object Styles extends StyleSheet.Inline {
   val appBarText: StyleA = style(
     addClassNames("mui--appbar-height", "mui--text-display1"),
     paddingLeft(10 px),
-    fontFamily(robotoLight)
+    fontFamily(sanFranciscoLight)
   )
 
   val innerFilterContainer: StyleA = style(
@@ -49,20 +49,25 @@ object Styles extends StyleSheet.Inline {
   val container: StyleA = style(
     addClassName("mui-container-fluid"),
     width(100 %%),
-    fontFamily(roboto),
+    fontFamily(sanFrancisco),
     color(materialBlue),
     marginTop(30 px)
   )
 
   abstract class ReactAnimationStyles(val className: String)(implicit r: scalacss.mutable.Register) extends StyleSheet.Inline()(r) {
     def enterClassName = className + "-enter"
+
     def leaveClassName = className + "-leave"
+
     def enterActiveClassName = className + "-enter-active"
+
     def leaveActiveClassName = className + "-leave-active"
+
     val enter: StyleA
     val leave: StyleA
     val enterActive: StyleA
     val leaveActive: StyleA
+
     def apply(children: ReactNode*): ReactComponentU_ = ReactCssTransitionGroup(className)(children: _*)
   }
 

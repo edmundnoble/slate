@@ -20,7 +20,7 @@ object DashboardPage {
   import scalacss.ScalaCssReact._
 
   def makeFilterRow(results: Seq[Observable[ExpandableContentModel]])(implicit sch: Scheduler
-  ): ReactElement = {
+  ): ReactElement =
     div(Styles.filterContainer,
       results.map(result =>
         div(Styles.innerFilterContainer,
@@ -28,7 +28,6 @@ object DashboardPage {
         )
       )
     )
-  }
 
   case class AppBarState(scrollY: Double)
 
@@ -57,32 +56,31 @@ object DashboardPage {
   case class SearchPageState(expandableContentModels: Seq[ExpandableContentModel])
 
   object SearchPageState {
-    implicit val reusability = Reusability.by_==[SearchPageState]
+    implicit val reusability = Reusability.caseClass[SearchPageState]
   }
 
   def makeSearchPage(appbarProps: Observable[AppBarState])(implicit sch: Scheduler
-  ): ReactComponentB[Observable[SearchPageState], SearchPageState, Unit, TopNode] = {
+  ): ReactComponentB[Observable[SearchPageState], SearchPageState, Unit, TopNode] =
     ReactComponentB[Observable[SearchPageState]]("Main search page")
-      .initialState(SearchPageState(Seq.empty))
-      .renderS { (_, state) =>
+    .initialState(SearchPageState(Seq.empty))
+    .renderS { (_, state) =>
+      div(
+        id := "react-root",
+        appBar.build(appbarProps),
         div(
-          id := "react-root",
-          appBar.build(appbarProps),
-          div(
-            div(Styles.container,
-              Styles.dashboardContainer(
-                state.expandableContentModels
-                  .iterator
-                  .grouped(2)
-                  .map(exs => makeFilterRow(exs.map(Observable.now))).toSeq: _*
-              )
+          div(Styles.container,
+            Styles.dashboardContainer(
+              state.expandableContentModels
+                .iterator
+                .grouped(2)
+                .map(exs => makeFilterRow(exs.map(Observable.now))).toSeq: _*
             )
           )
         )
-      }
-      .configure(Reusability.shouldComponentUpdate)
-      .reactiveReplace
-  }
+      )
+    }
+    .configure(Reusability.shouldComponentUpdate)
+    .reactiveReplace
 
 }
 

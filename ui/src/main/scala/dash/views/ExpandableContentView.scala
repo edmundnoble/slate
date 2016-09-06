@@ -7,10 +7,8 @@ import japgolly.scalajs.react.extra.Reusability
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import monocle.macros.GenLens
-import dash.Util.observableReusability
 
 import scala.language.higherKinds
-import scala.scalajs.js
 import scalaz.syntax.std.boolean._
 import scalaz.std.list._
 import scalacss.Defaults._
@@ -67,13 +65,14 @@ object ExpandableContentView {
 
     val number = style(
       addClassName("mui--text-headline"),
+      fontFamily(sanFranciscoHeavy),
       paddingRight(10 px),
       display inline
     )
 
     val title = style(
       addClassName("mui--text-headline"),
-      fontFamily(robotoHeavy),
+      fontFamily(sanFranciscoHeavy),
       display inline
       //fontSize(150 %%)
     )
