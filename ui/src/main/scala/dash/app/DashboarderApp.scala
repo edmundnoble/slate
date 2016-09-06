@@ -76,20 +76,18 @@ object DashboarderApp extends scalajs.js.JSApp {
       }.dematerialize
 
   def render(container: Element, wheelPosY: Observable[Double], content: Observable[IndexedSeq[ExpandableContentModel]]) = {
+    import dash.views._
     import monix.execution.Scheduler.Implicits.global
     val searchPage =
       DashboardPage
         .makeSearchPage(wheelPosY.map(AppBarState(_)))
         .build(content.map(f => SearchPageState(f.toList)))
-    locally {
-      import dash.views._
-      val renderer = new StringRenderer.Raw(StringRenderer.formatTiny)
-      val aggregateStyles =
-        PlatformExports.createStyleElement("html{\noverflow-y:scroll;\n}\n" + Styles.renderA(renderer) + "\n" +
-          ExpandableContentView.Styles.renderA(renderer) + "\n" +
-          TitledContentView.Styles.renderA(renderer))
-      dom.document.head appendChild aggregateStyles
-    }
+    val renderer = new StringRenderer.Raw(StringRenderer.formatTiny)
+    val aggregateStyles =
+      PlatformExports.createStyleElement("html{\noverflow-y:scroll;\n}\n" + Styles.renderA(renderer) + "\n" +
+        ExpandableContentView.Styles.renderA(renderer) + "\n" +
+        TitledContentView.Styles.renderA(renderer))
+    dom.document.head appendChild aggregateStyles
     ReactDOM.render(searchPage, container)
   }
 
