@@ -7,7 +7,7 @@ object JIRAApp {
     raw"""
 def authHeaders: { Authorization: "Basic ${Creds.hashedJiraCreds}" };
 
-def extractIssues: .issues[] | print | {
+def extractIssues: .issues[] | {
   url: .self,
   summary: .fields.summary,
   key,
@@ -19,7 +19,7 @@ def extractIssues: .issues[] | print | {
 def issues: httpPost("https://dashboarder.atlassian.net/rest/api/2/search/"; {};
                      { jql: .jql, maxResults: 10 }; authHeaders + { ("Content-Type"): "application/json" }) | extractIssues;
 
-def extractFilters: print | .[] | {
+def extractFilters: .[] | {
   url: .self,
   name,
   owner: .owner.name,
