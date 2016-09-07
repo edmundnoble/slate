@@ -257,6 +257,7 @@ object DashboarderBuild {
     .settings((testOptions in Test) <<= (testOptions in Test).dependsOn(chromeBuildOpt in ui, compile in Test in qqjvm))
     .settings((testQuick in Test) := (test in Test).value)
     .settings(unitTest := ())
+    .settings(stackTest := ())
 
   lazy val uibench = project.in(file("uibench"))
     .dependsOn(ui)
