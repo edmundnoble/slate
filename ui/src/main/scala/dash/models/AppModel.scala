@@ -3,7 +3,7 @@ package models
 
 import japgolly.scalajs.react.extra.Reusability
 
-case class AppModel(title: Option[String], content: List[ExpandableContentModel])
+case class AppModel(content: List[ExpandableContentModel]) extends AnyVal
 
 object AppModel {
 

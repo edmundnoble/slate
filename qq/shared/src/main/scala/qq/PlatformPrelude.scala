@@ -12,6 +12,9 @@ trait PlatformPrelude[JsonTy] extends Prelude[JsonTy] {
     body.applyOrElse(params, ???)
   }
 
+  // x | orElse(y): null coalescing operator
+  def orElse: CompiledDefinition[JsonTy]
+
   // null constant
   def `null`: CompiledDefinition[JsonTy]
 
@@ -64,7 +67,7 @@ trait PlatformPrelude[JsonTy] extends Prelude[JsonTy] {
 
   override def all(runtime: QQRuntime[JsonTy]): QQCompilationException \/ IndexedSeq[CompiledDefinition[JsonTy]] = {
     Vector(
-      `null`, `true`, `false`,
+      `null`, `true`, `false`, orElse,
       length, keys, replaceAll, arrays, objects, iterables, booleans,
       numbers, strings, nulls, values, scalars, httpDelete, httpGet,
       httpPatch, httpPost, httpPut

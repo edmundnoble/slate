@@ -6,7 +6,7 @@ import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
 import scalaz.std.string._
 import scalaz.{==>>, Monad, State, ~>}
 
-// Operations on a Storage[F[_]] with F[_] effects
+// Operations on a Storage with F[_] effects
 // To abstract over storage that has different effects performed by its operations
 // Examples of uses:
 // localStorage, sessionStorage: use F = Task

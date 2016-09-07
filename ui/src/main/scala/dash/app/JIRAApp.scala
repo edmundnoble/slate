@@ -7,19 +7,19 @@ object JIRAApp {
     raw"""
 def authHeaders: { Authorization: "Basic ${Creds.hashedJiraCreds}" };
 
-def extractIssues: .issues[] | {
+def extractIssues: .issues[] | print | {
   url: .self,
   summary: .fields.summary,
   key,
   project: .fields.project.name,
-  description: (.fields.description | replaceAll("\n+\\s*"; " ↪ ")),
+  description: (.fields.description | orElse("") | replaceAll("\n+\\s*"; " ↪ ")),
   status: .fields.status.name
 };
 
 def issues: httpPost("https://dashboarder.atlassian.net/rest/api/2/search/"; {};
                      { jql: .jql, maxResults: 10 }; authHeaders + { ("Content-Type"): "application/json" }) | extractIssues;
 
-def extractFilters: .[] | {
+def extractFilters: print | .[] | {
   url: .self,
   name,
   owner: .owner.name,

@@ -5,6 +5,7 @@ import matryoshka.Fix
 import scala.language.higherKinds
 import scalaz.\/
 
+// smart constructors that make a FilterComponent node including its children
 object FilterDSL {
 
   @inline final def id: Filter = Fix(IdFilter())

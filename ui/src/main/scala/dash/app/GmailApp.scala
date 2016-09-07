@@ -22,7 +22,7 @@ def threadDetails:
   [threadList | httpGet("https://www.googleapis.com/gmail/v1/users/me/threads/" + .; getParams; ""; authHeaders)];
 
 def threadToContent: {
-  title: "Gmail",
+  title: "Unread Threads",
   content: [threadDetails | .[].messages.[0] | {
     title: .payload.headers.[0].value,
     content: .snippet

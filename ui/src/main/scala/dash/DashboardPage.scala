@@ -1,9 +1,8 @@
 package dash
 
 import dash.Util._
-import dash.models.ExpandableContentModel
-import dash.views.ExpandableContentView.ExpandableContentProps
-import dash.views.{ExpandableContentView, Styles}
+import dash.views.AppView.AppProps
+import dash.views.{AppView, Styles}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.extra.Reusability
 import monix.execution.Scheduler
@@ -19,16 +18,15 @@ object DashboardPage {
   import scala.language.implicitConversions
   import scalacss.ScalaCssReact._
 
-  def makeFilterRow(results: Seq[Observable[ExpandableContentModel]])(implicit sch: Scheduler
+  def makeAppRow(results: List[AppProps])(implicit sch: Scheduler
   ): ReactElement =
     div(Styles.filterContainer,
       results.map(result =>
         div(Styles.innerFilterContainer,
-          ExpandableContentView.builder.build(ExpandableContentProps(result, expanded = false))
+          AppView.builder.build(result)
         )
       )
     )
-
   case class AppBarState(scrollY: Double)
 
   object AppBarState {
@@ -53,13 +51,13 @@ object DashboardPage {
       .configure(Reusability.shouldComponentUpdate)
       .reactiveReplace
 
-  case class SearchPageState(expandableContentModels: List[ExpandableContentModel])
+  case class SearchPageState(appProps: List[AppProps])
 
   object SearchPageState {
     implicit val reusability = Reusability.caseClass[SearchPageState]
   }
 
-  def makeSearchPage(appbarProps: Observable[AppBarState])(implicit sch: Scheduler
+  def makeDashboardPage(appbarProps: Observable[AppBarState])(implicit sch: Scheduler
   ): ReactComponentB[Observable[SearchPageState], SearchPageState, Unit, TopNode] =
     ReactComponentB[Observable[SearchPageState]]("Main search page")
     .initialState(SearchPageState(Nil))
@@ -70,10 +68,9 @@ object DashboardPage {
         div(
           div(Styles.container,
             Styles.dashboardContainer(
-              state.expandableContentModels
-                .iterator
+              state.appProps
                 .grouped(2)
-                .map(exs => makeFilterRow(exs.map(Observable.now))).toSeq: _*
+                .map(makeAppRow).toSeq: _*
             )
           )
         )

@@ -81,7 +81,7 @@ object ExpandableContentView {
 
   }
 
-  final case class ExpandableState(expanded: Boolean, model: ExpandableContentModel) {
+  final case class ExpandableState(expanded: Boolean) {
     final def toggleExpanded = copy(expanded = !expanded)
   }
 
@@ -90,7 +90,7 @@ object ExpandableContentView {
       Reusability.caseClass[ExpandableState]
   }
 
-  final case class ExpandableContentProps(models: Observable[ExpandableContentModel], expanded: Boolean)
+  final case class ExpandableContentProps(model: ExpandableContentModel, initiallyExpanded: Boolean)
 
   object ExpandableContentProps {
     implicit val reusability: Reusability[ExpandableContentProps] =
@@ -100,8 +100,6 @@ object ExpandableContentView {
   def builder(implicit sch: Scheduler
              ): ReactComponentB[ExpandableContentProps, ExpandableState, Unit, TopNode] = {
     import japgolly.scalajs.react.vdom.all._
-    import dash.views.ReactiveReact._
-
     import scalacss.ScalaCssReact._
 
     def buttonStyleForState(state: ExpandableState): Seq[TagMod] = {
@@ -112,17 +110,17 @@ object ExpandableContentView {
     val makeContent = scalaz.Memo.mutableHashMapMemo[List[TitledContentModel], List[ReactComponentU[_, _, _, _]]]((_: List[TitledContentModel]).map(TitledContentView.builder.build(_)))
 
     ReactComponentB[ExpandableContentProps]("Expandable content view")
-      .initialState[ExpandableState](ExpandableState(expanded = false, ExpandableContentModel("", None, Nil)))
-      .renderS { ($, state) =>
-        val titleLink = href := state.model.titleUrl
+      .initialState_P[ExpandableState](props => ExpandableState(expanded = props.initiallyExpanded))
+      .renderPS { ($, props, state) =>
+        val titleLink = href := props.model.titleUrl
         div(
           div(Styles.base,
             div(Styles.header,
               div(Styles.headerLeft,
                 div(Styles.number,
-                  a(state.model.content.length.toString(), titleLink)),
+                  a(props.model.content.length.toString(), titleLink)),
                 div(Styles.title,
-                  a(state.model.title, titleLink)
+                  a(props.model.title, titleLink)
                 )
               ),
               button(Styles.filterButton,
@@ -131,13 +129,12 @@ object ExpandableContentView {
               )
             ),
             Styles.animationGroup(
-              state.expanded ?? makeContent(state.model.content): _*
+              state.expanded ?? makeContent(props.model.content): _*
             )
           )
         )
       }
       .configure(Reusability.shouldComponentUpdate)
-      .reactiveReplaceL[ExpandableContentModel](_.models, (st, mod) => st.copy(model = mod))
   }
 
 }

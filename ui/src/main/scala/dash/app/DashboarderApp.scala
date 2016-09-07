@@ -2,7 +2,7 @@ package dash
 package app
 
 import dash.DashboardPage.{AppBarState, SearchPageState}
-import dash.models.ExpandableContentModel
+import dash.models.{AppModel, ExpandableContentModel}
 import japgolly.scalajs.react.{Addons, ReactDOM}
 import monix.eval.Task
 import monix.execution.Cancelable
@@ -14,6 +14,7 @@ import org.scalajs.dom.raw._
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
 import dash.Util._
+import dash.views.AppView.AppProps
 import qq.jsc.Json
 import monix.scalaz._
 import qq.Platform.Rec._
@@ -50,42 +51,47 @@ object DashboarderApp extends scalajs.js.JSApp {
   final class EmptyResponseException extends java.lang.Exception("Empty response")
 
   val programs =
-    List(GmailApp.program, JIRAApp.program)
+    Map("Gmail" -> GmailApp.program, "JIRA" -> JIRAApp.program)
 
-  val compiledPrograms = programs.map(prog =>
-    StorageProgram.runProgram(DomStorage.Local,
-      DashApp.getCachedCompiledProgram(prog))
-      .flatMap(_.valueOrThrow)
-      .flatMap(f => f(js.Object())
-        .map(_.flatMap(i => ExpandableContentModel.pkl.read.lift(Json.jsToUpickleRec(i))))
-      )
-  )
+  val compiledPrograms = programs.map {
+    case (t, prog) =>
+      (t, StorageProgram.runProgram(DomStorage.Local,
+        DashApp.getCachedCompiledProgram(prog))
+        .flatMap(_.valueOrThrow)
+        .flatMap(f => f(js.Object())
+          .map(_.flatMap(i => ExpandableContentModel.pkl.read.lift(Json.jsToUpickleRec(i))))
+        ))
+  }
 
-  def getContent =
-    Observable.fromTask(Task.gatherUnordered(compiledPrograms))
-      .map(_.flatten.toIndexedSeq)
-      .materialize
-      .map { t =>
-        t match {
-          case Notification.OnError(ex) =>
-            logger.error("error while rendering", ex)
-          case _ =>
-        }
-        t
-      }.dematerialize
+  def getContent: SearchPageState =
+    SearchPageState(compiledPrograms.map {
+      case (title, program) =>
+        AppProps(title,
+          Observable.fromTask(
+            program.materialize.map { t =>
+              t.failed.foreach {
+                logger.error("error while retrieving programs", _)
+              }
+              t.map(AppModel(_))
+            }.dematerialize
+          )
+        )
+    }(collection.breakOut))
 
-  def render(container: Element, wheelPosY: Observable[Double], content: Observable[IndexedSeq[ExpandableContentModel]]) = {
+  def render(container: Element, wheelPosY: Observable[Double], content: SearchPageState) = {
     import dash.views._
     import monix.execution.Scheduler.Implicits.global
     val searchPage =
       DashboardPage
-        .makeSearchPage(wheelPosY.map(AppBarState(_)))
-        .build(content.map(f => SearchPageState(f.toList)))
+        .makeDashboardPage(wheelPosY.map(AppBarState(_)))
+        .build(Observable.now(content))
     val renderer = new StringRenderer.Raw(StringRenderer.formatTiny)
     val aggregateStyles =
-      PlatformExports.createStyleElement("html{\noverflow-y:scroll;\n}\n" + Styles.renderA(renderer) + "\n" +
-        ExpandableContentView.Styles.renderA(renderer) + "\n" +
-        TitledContentView.Styles.renderA(renderer))
+      PlatformExports.createStyleElement(
+        "html{\noverflow-y:scroll;\n}\n" + Styles.renderA(renderer) + "\n" +
+          ExpandableContentView.Styles.renderA(renderer) + "\n" +
+          TitledContentView.Styles.renderA(renderer) + "\n" +
+          AppView.Styles.renderA(renderer))
     dom.document.head appendChild aggregateStyles
     ReactDOM.render(searchPage, container)
   }

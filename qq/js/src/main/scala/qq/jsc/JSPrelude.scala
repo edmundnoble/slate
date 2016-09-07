@@ -25,6 +25,13 @@ object JSPrelude extends PlatformPrelude[Any] {
 
   def `false`: CompiledDefinition[Any] = noParamDefinition("false", CompiledFilter.const(false))
 
+  def orElse: CompiledDefinition[Any] = CompiledDefinition[Any]("orElse", 1, {
+    case (default :: Nil) => ({
+      case null => default(null)
+      case k => Task.now(k :: Nil)
+    }: CompiledFilter[Any]).right[QQCompilationException]
+  })
+
   override def length: CompiledDefinition[Any] =
     noParamDefinition(
       "length", {
@@ -32,7 +39,7 @@ object JSPrelude extends PlatformPrelude[Any] {
         case str: String => Task.now(str.length :: Nil)
         case obj: js.Object => Task.now(obj.asInstanceOf[js.Dictionary[js.Any]].toArray.length :: Nil)
         case null => Task.now(0 :: Nil)
-        case k => Task.raiseError(QQRuntimeException("Tried to get length of " + String.valueOf(k)))
+        case k => Task.raiseError(QQRuntimeException("Tried to get length of " + JSRuntime.print(k)))
       }
     )
 
@@ -44,18 +51,18 @@ object JSPrelude extends PlatformPrelude[Any] {
             monadic[Task] {
               val regexes: List[Pattern] = regexFilter(jsv).each.traverse[Task, Pattern] {
                 case string: String => Task.now(Pattern.compile(string))
-                case j => Task.raiseError(NotARegex(String.valueOf(j)))
+                case j => Task.raiseError(NotARegex(JSRuntime.print(j)))
               }.each
               val replacements: List[String] = replacementFilter(jsv).each.traverse[Task, String] {
                 case string: String => Task.now(string)
-                case j => Task.raiseError(QQRuntimeException("can't replace with " + String.valueOf(j)))
+                case j => Task.raiseError(QQRuntimeException("can't replace with " + JSRuntime.print(j)))
               }.each
               val valueRegexReplacementList = (regexes, replacements).zipped.map { (regex, replacement) =>
                 jsv match {
                   case string: String =>
                     Task.now(regex.matcher(string).replaceAll(replacement): Any)
                   case j =>
-                    Task.raiseError(QQRuntimeException("can't replace " + String.valueOf(j)))
+                    Task.raiseError(QQRuntimeException("can't replace " + JSRuntime.print(j)))
                 }
               }.sequence[Task, Any].each
               valueRegexReplacementList
@@ -68,7 +75,7 @@ object JSPrelude extends PlatformPrelude[Any] {
     noParamDefinition(
       "keys", {
         case obj: js.Object => Task.now(js.Object.keys(obj) :: Nil)
-        case k => Task.raiseError(QQRuntimeException("Tried to get keys of " + String.valueOf(k)))
+        case k => Task.raiseError(QQRuntimeException("Tried to get keys of " + JSRuntime.print(k)))
       }
     )
 
@@ -149,20 +156,20 @@ object JSPrelude extends PlatformPrelude[Any] {
       monadic[Task] {
         val url = (urlFilter(jsv).each.head match {
           case s: String => Task.now(s)
-          case k => Task.raiseError(QQRuntimeException(String.valueOf(k) + " is not a URL"))
+          case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not a URL"))
         }).each
         val queryParams = (queryParamsFilter(jsv).each.head match {
           case o: js.Object => Task.now(o)
-          case k => Task.raiseError(QQRuntimeException(String.valueOf(k) + " is not query params/data"))
+          case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not query params/data"))
         }).each.asInstanceOf[js.Dictionary[js.Any]]
         val data = (dataFilter(jsv).each.head match {
           case s: String => Task.now(s)
           case o: js.Object => Task.now(Json.jsToString(o))
-          case k => Task.raiseError(QQRuntimeException(String.valueOf(k) + " is not usable as POST data"))
+          case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not usable as POST data"))
         }).each
         val headers = (headersFilter(jsv).each.head match {
           case o: js.Object => Task.now(o)
-          case k => Task.raiseError(QQRuntimeException(String.valueOf(k) + " is not headers"))
+          case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not headers"))
         }).each.asInstanceOf[js.Dictionary[String]]
         val ajax = (if (ajaxMethod == AjaxMethod.POST) {
           Ajax.post(url, data, queryParams.toMap, headers.toMap)(Ajax.Timeout(1000.millis))
