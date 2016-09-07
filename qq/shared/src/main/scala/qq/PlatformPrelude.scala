@@ -15,6 +15,9 @@ trait PlatformPrelude[JsonTy] extends Prelude[JsonTy] {
   // x | orElse(y): null coalescing operator
   def orElse: CompiledDefinition[JsonTy]
 
+  // base 64 encoding, duh
+  def b64Encode: CompiledDefinition[JsonTy]
+
   // null constant
   def `null`: CompiledDefinition[JsonTy]
 
@@ -67,7 +70,7 @@ trait PlatformPrelude[JsonTy] extends Prelude[JsonTy] {
 
   override def all(runtime: QQRuntime[JsonTy]): QQCompilationException \/ IndexedSeq[CompiledDefinition[JsonTy]] = {
     Vector(
-      `null`, `true`, `false`, orElse,
+      `null`, `true`, `false`, orElse, b64Encode,
       length, keys, replaceAll, arrays, objects, iterables, booleans,
       numbers, strings, nulls, values, scalars, httpDelete, httpGet,
       httpPatch, httpPost, httpPut

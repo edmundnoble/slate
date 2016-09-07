@@ -8,10 +8,11 @@ import monix.scalaz._
 import qq.QQCompiler.CompiledFilter
 import qq._
 import qq.ajax.{Ajax, AjaxMethod}
+import scodec.bits.ByteVector
 
+import scala.concurrent.duration._
 import scala.scalajs.js
 import scalaz.std.list._
-import scala.concurrent.duration._
 import scalaz.syntax.either._
 import scalaz.syntax.traverse._
 
@@ -30,6 +31,11 @@ object JSPrelude extends PlatformPrelude[Any] {
       case null => default(null)
       case k => Task.now(k :: Nil)
     }: CompiledFilter[Any]).right[QQCompilationException]
+  })
+
+  def b64Encode: CompiledDefinition[Any] = noParamDefinition("b64Encode", {
+    case str: String => Task.now(ByteVector.encodeUtf8(str).right.getOrElse(ByteVector.empty).toBase64 :: Nil)
+    case k => Task.raiseError(QQRuntimeException("Tried to get base64 encoding of " + JSRuntime.print(k)))
   })
 
   override def length: CompiledDefinition[Any] =

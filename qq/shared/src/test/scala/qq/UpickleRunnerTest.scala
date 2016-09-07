@@ -40,4 +40,5 @@ class UpickleRunnerTest extends QQAsyncTestSuite {
   "silenced exception" in runTest(silencedException)
   "empty object" in runTest(emptyObjectProgram)
   "constants" in runTest(constants)
+  "base64 encode" in runTest(base64Encode)
 }

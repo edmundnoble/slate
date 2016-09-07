@@ -11,6 +11,7 @@ import scalaz.std.list._
 import com.thoughtworks.each.Monadic._
 import monix.scalaz._
 import qq.QQCompiler.CompiledFilter
+import scodec.bits.ByteVector
 
 object UpicklePrelude extends PlatformPrelude[Js.Value] {
 
@@ -27,6 +28,11 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
       case Js.Null => default(Js.Null)
       case k => Task.now(k :: Nil)
     }: CompiledFilter[Js.Value]).right[QQCompilationException]
+  })
+
+  def b64Encode: CompiledDefinition[Js.Value] = noParamDefinition("b64Encode", {
+    case Js.Str(str) => Task.now(Js.Str(ByteVector.encodeUtf8(str).right.getOrElse(ByteVector.empty).toBase64) :: Nil)
+    case k => Task.raiseError(QQRuntimeException("Tried to get base64 encoding of " + UpickleRuntime.print(k)))
   })
 
   override def length: CompiledDefinition[Js.Value] =

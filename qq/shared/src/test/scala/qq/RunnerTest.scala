@@ -207,5 +207,11 @@ object RunnerTest {
     List(Js.True, Js.False, Js.Null).right
   )
 
+  val base64Encode = RunnerTest(
+    Js.Str("hi"),
+    "b64Encode",
+    List(Js.Str("aGk=")).right
+  )
+
 
 }

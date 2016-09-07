@@ -11,12 +11,7 @@ class JSRunnerTest extends QQAsyncTestSuite {
   import RunnerTest._
 
   def runTest(test: RunnerTest): Future[Assertion] =
-    RunnerTest.runTest(
-      JSRuntime,
-      Json.upickleToJsRec(_: Js.Value),
-      Json.jsToUpickleRec(_: Any),
-      test
-    )
+    RunnerTest.runTest(JSRuntime, Json.upickleToJsRec(_: Js.Value), Json.jsToUpickleRec(_: Any), test)
 
   "identity" in runTest(identityProgram)
   "ensequenced filters" in runTest(ensequencedFilters)
@@ -46,4 +41,5 @@ class JSRunnerTest extends QQAsyncTestSuite {
   "silenced exception" in runTest(silencedException)
   "empty object" in runTest(emptyObjectProgram)
   "constants" in runTest(constants)
+  "base64 encode" in runTest(base64Encode)
 }
