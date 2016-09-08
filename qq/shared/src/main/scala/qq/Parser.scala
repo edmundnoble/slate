@@ -39,7 +39,7 @@ object Parser {
 
   val whitespaceChars: String = " \n\t"
   val whitespace: P0 = P(CharIn(whitespaceChars.toSeq).rep.map(_ => ()))
-  val escapedStringLiteralChars = stringLiteralChars :+ ("(),.:/": Seq[Char]) :+ whitespaceChars.toSeq
+  val escapedStringLiteralChars = stringLiteralChars :+ ("$(),.:/": Seq[Char]) :+ whitespaceChars.toSeq
 
   val escapedStringLiteral: P[String] = P(
     quote ~/
@@ -94,8 +94,24 @@ object Parser {
     stringLiteral
   )
 
-  private lazy val variableIdentifier: P[String] = P(
+  private val variableIdentifier: P[String] = P(
     "$" ~ filterIdentifier
+  )
+
+  val letAsBinding: P[Filter] = P(
+    for {
+      _ <- wspStr("let")
+      _ <- whitespace
+      variable <- variableIdentifier
+      _ <- whitespace
+      _ <- wspStr("as")
+      _ <- whitespace
+      as <- filter
+      _ <- whitespace
+      _ <- wspStr("in")
+      _ <- whitespace
+      in <- filter
+    } yield FilterDSL.letAsBinding(variable, as, in)
   )
 
   val callFilter: P[Filter] = P(
@@ -106,6 +122,7 @@ object Parser {
   )
 
   val constInt: P[Filter] = P(numericLiteral map (FilterDSL.constNumber(_)))
+
   val constString: P[Filter] = P(escapedStringLiteral map FilterDSL.constString)
 
   val smallFilter: P[Filter] = P(constInt | constString | dottedFilter | callFilter)

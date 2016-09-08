@@ -26,5 +26,6 @@ object FilterDSL {
   @inline final def modulo(first: Filter, second: Filter): Filter = Fix(ModuloFilters(first, second))
   @inline final def constNumber(value: Double): Filter = Fix(ConstNumber(value))
   @inline final def constString(value: String): Filter = Fix(ConstString(value))
+  @inline final def letAsBinding(name: String, as: Filter, in: Filter): Filter = Fix(LetAsBinding[Filter](name, as, in))
 
 }

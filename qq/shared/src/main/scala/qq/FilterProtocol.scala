@@ -16,8 +16,8 @@ object FilterProtocol {
   type FilterComponentGenA[A] =
     AddFilters[A] :+: CallFilter[A] :+: CollectResults[A] :+: ComposeFilters[A] :+:
       ConstNumber[A] :+: ConstString[A] :+: DivideFilters[A] :+: EnjectFilters[A] :+: EnlistFilter[A] :+:
-      EnsequenceFilters[A] :+: IdFilter[A] :+: ModuloFilters[A] :+: MultiplyFilters[A] :+: SelectIndex[A] :+:
-      SelectKey[A] :+: SelectRange[A] :+: SilenceExceptions[A] :+: SubtractFilters[A] :+: CNil
+      EnsequenceFilters[A] :+: IdFilter[A] :+: LetAsBinding[A] :+: ModuloFilters[A] :+: MultiplyFilters[A] :+:
+      SelectIndex[A] :+: SelectKey[A] :+: SelectRange[A] :+: SilenceExceptions[A] :+: SubtractFilters[A] :+: CNil
 
   implicit def componentCodec[A](implicit v: Lazy[Codec[A]]): Codec[FilterComponent[A]] =
     deriveGeneric[FilterComponent[A], FilterComponentGenA[A]](Generic.apply[FilterComponent[A]], Lazy(Codec.coproduct[FilterComponentGenA[A]].auto))
@@ -48,5 +48,6 @@ object FilterProtocol {
   implicit def selectRangeDiscriminator[A]: Discriminator[FilterComponentGenA[A], SelectRange[A], Int] = Discriminator(15)
   implicit def constNumberDiscriminator[A]: Discriminator[FilterComponentGenA[A], ConstNumber[A], Int] = Discriminator(16)
   implicit def constStringDiscriminator[A]: Discriminator[FilterComponentGenA[A], ConstString[A], Int] = Discriminator(17)
+  implicit def letAsBindingDiscriminator[A]: Discriminator[FilterComponentGenA[A], LetAsBinding[A], Int] = Discriminator(17)
 
 }

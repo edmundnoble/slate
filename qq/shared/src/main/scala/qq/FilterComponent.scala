@@ -17,6 +17,9 @@ sealed abstract class LeafComponent[A] extends FilterComponent[A] {
 // Identity filter; function taking a value and returning it
 final case class IdFilter[A]() extends LeafComponent[A]
 
+// Let-binding, with raw names
+final case class LetAsBinding[A](name: String, as: A, in: A) extends FilterComponent[A]
+
 // Compose filters in "pipe" order
 // ComposeFilters(first, second) is a filter which executes the parameter filters in named order on the input values.
 // Associative.
@@ -71,6 +74,7 @@ object FilterComponent {
     override def traverseImpl[G[_], A, B](fa: FilterComponent[A])(f: (A) => G[B])(implicit G: Applicative[G]): G[FilterComponent[B]] = {
       fa match {
         case l: LeafComponent[_] => G.point(l.retag[B])
+        case LetAsBinding(name, as, in) => G.apply2(f(as), f(in))(LetAsBinding(name, _, _))
         case CallFilter(name, params) => params.traverse(f).map(CallFilter(name, _))
         case AddFilters(first, second) => G.apply2(f(first), f(second))(AddFilters(_, _))
         case SubtractFilters(first, second) => G.apply2(f(first), f(second))(SubtractFilters(_, _))
