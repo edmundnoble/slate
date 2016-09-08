@@ -7,26 +7,23 @@ object GmailApp {
     raw"""
 def authHeaders: { Authorization: "Bearer " + googleAuth };
 
-def unreadThreadParams: {
+def listUnreadThreadParams: {
   maxResults: 10,
   q: "is:unread"
 };
 
-def getParams: {
+def getThreadDetailsParams: {
   format: "metadata",
   metadataHeaders: "Subject",
   fields: "messages(payload/headers,snippet)"
 };
 
-def listUnreadThreads:
-  httpGet("https://www.googleapis.com/gmail/v1/users/me/threads"; unreadThreadParams; ""; authHeaders) |
-    .threads[].id;
-
 def unreadThreadDetails:
-  listUnreadThreads |
-    httpGet("https://www.googleapis.com/gmail/v1/users/me/threads/" + .; getParams; ""; authHeaders);
+  httpGet("https://www.googleapis.com/gmail/v1/users/me/threads"; listUnreadThreadParams; ""; authHeaders) |
+    .threads[].id |
+    httpGet("https://www.googleapis.com/gmail/v1/users/me/threads/" + .; getThreadDetailsParams; ""; authHeaders);
 
-def unreadThreadsToContent: {
+def unreadThreadDetailsToContent: {
   title: "Unread Threads",
   content: [.[].messages.[0] | {
     title: .payload.headers.[0].value,
@@ -34,7 +31,7 @@ def unreadThreadsToContent: {
   }]
 };
 
-[unreadThreadDetails] | unreadThreadsToContent
+[unreadThreadDetails] | unreadThreadDetailsToContent
     """
 
 }
