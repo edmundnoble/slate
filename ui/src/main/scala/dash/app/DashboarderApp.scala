@@ -18,6 +18,7 @@ import dash.views.AppView.AppProps
 import qq.jsc.Json
 import monix.scalaz._
 import qq.Platform.Rec._
+import upickle.Js
 
 import scala.concurrent.duration.FiniteDuration
 import scalacss.defaults.PlatformExports
@@ -50,15 +51,20 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   final class EmptyResponseException extends java.lang.Exception("Empty response")
 
+  case class DashProgram(title: String, program: String, input: js.Any)
+
   val programs =
-    Map("Gmail" -> GmailApp.program, "JIRA" -> JIRAApp.program)
+    List(
+      DashProgram("Gmail", GmailApp.program, js.Object()),
+      DashProgram("JIRA", JIRAApp.program, js.Object())
+    )
 
   val compiledPrograms = programs.map {
-    case (t, prog) =>
-      (t, StorageProgram.runProgram(DomStorage.Local,
-        DashApp.getCachedCompiledProgram(prog))
+    case DashProgram(title, program, input) =>
+      (title, StorageProgram.runProgram(DomStorage.Local,
+        DashApp.getCachedCompiledProgram(program))
         .flatMap(_.valueOrThrow)
-        .flatMap(f => f(js.Object())
+        .flatMap(f => f(input)
           .map(_.flatMap(i => ExpandableContentModel.pkl.read.lift(Json.jsToUpickleRec(i))))
         ))
   }
