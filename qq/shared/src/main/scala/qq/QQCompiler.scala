@@ -5,7 +5,7 @@ import monix.eval.Task
 import monix.scalaz._
 import qq.FilterComponent._
 
-import scalaz.{EitherT, State, \/}
+import scalaz.{EitherT, State, StateT, \/}
 import scalaz.std.list._
 import scalaz.syntax.either._
 import scalaz.syntax.std.option._
@@ -14,6 +14,7 @@ import scalaz.syntax.applicative._
 import qq.Platform.Rec._
 import qq.Util._
 
+import scalaz.Free.Trampoline
 import scalaz.Tags.Parallel
 
 class QQRuntimeException(val message: String) extends RuntimeException(message) {
@@ -79,12 +80,12 @@ object QQCompiler {
   def compileProgram[JsonTy](runtime: QQRuntime[JsonTy],
                              prelude: IndexedSeq[CompiledDefinition[JsonTy]] = Vector.empty,
                              program: Program): OrCompilationError[CompiledFilter[JsonTy]] = {
-    compileDefinitions(runtime, prelude, program.defns).flatMap(compile(runtime, _, program.main).run.eval(Nil))
+    compileDefinitions(runtime, prelude, program.defns).flatMap(compile(runtime, _, program.main).run.eval(Nil).run)
   }
 
   case class VarBinding()
 
-  type CompileS[+A] = State[List[VarBinding], A@annotation.unchecked.uncheckedVariance]
+  type CompileS[+A] = StateT[Trampoline, List[VarBinding], A@annotation.unchecked.uncheckedVariance]
 
   type OrCompilationErrorT[F[_], +T] = EitherT[F, QQCompilationException, T@annotation.unchecked.uncheckedVariance]
 
@@ -128,7 +129,7 @@ object QQCompiler {
         val paramsAsDefinitions: IndexedSeq[CompiledDefinition[JsonTy]] = (nextDefinition.params, params).zipped.map { (filterName, value) =>
           CompiledDefinition[JsonTy](filterName, 0, (_: List[CompiledFilter[JsonTy]]) => value.right[QQCompilationException])
         }(collection.breakOut)
-        compile(runtime, definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body).run.eval(Nil)
+        compile(runtime, definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body).run.eval(Nil).run
       }) +: definitionsSoFar
     }
 

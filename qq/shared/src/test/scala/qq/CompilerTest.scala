@@ -20,6 +20,7 @@ object CompilerTest {
     case CompilerTest(input, filter, expectedOutput@_*) =>
       QQCompiler
         .compile(UpickleRuntime, IndexedSeq.empty, filter)
+        .run.eval(Nil).run
         .fold[Task[Assertion]](
         err => Task.eval(fail("error occurred during compilation: \n" + err.toString)),
         program => program(input).map { output => output shouldBe expectedOutput.toList })
