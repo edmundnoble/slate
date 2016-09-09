@@ -32,7 +32,7 @@ def contentFromIssue: { title: .status + " - " + .key + " - " + .summary,
                         titleUrl: "https://dashboarder.atlassian.net/browse/" + .key,
                         content: .description };
 
-def contentFromFilter(auth): { title: .name,
+def contentFromFilter: { title: .name,
                          titleUrl: .viewUrl,
                          content: [.issues[] | contentFromIssue] };
 
