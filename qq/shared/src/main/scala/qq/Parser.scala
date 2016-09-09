@@ -127,7 +127,7 @@ object Parser {
 
   val dereference: P[Filter] = P(variableIdentifier.map(FilterDSL.deref))
 
-  val smallFilter: P[Filter] = P(letAsBinding | constInt | constString | dottedFilter | dereference | callFilter)
+  val smallFilter: P[Filter] = P(constInt | constString | dottedFilter | dereference | callFilter)
 
   val enlistedFilter: P[Filter] = P(
     "[" ~/ filter.map(FilterDSL.enlist) ~ "]"
@@ -169,10 +169,11 @@ object Parser {
     P(("(" ~/ sequenced ~ ")") | smallFilter | enjectedFilter | enlistedFilter)
 
   val filter: P[Filter] = P(
-    for {
-      f <- sequenced
-      fun <- "?".!.?.map(_.fold(identity[Filter] _)(_ => FilterDSL.silence))
-    } yield fun(f)
+    letAsBinding |
+      (for {
+        f <- sequenced
+        fun <- "?".!.?.map(_.fold(identity[Filter] _)(_ => FilterDSL.silence))
+      } yield fun(f))
   )
 
   val arguments: P[List[String]] = P(
