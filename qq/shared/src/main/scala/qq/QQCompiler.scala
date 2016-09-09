@@ -143,8 +143,7 @@ object QQCompiler {
       definitions.find(_.name == filterIdentifier).cata(
         { (defn: CompiledDefinition[J]) =>
           if (params.length == defn.numParams) {
-            // wipe let-bindings on calls so the only scope is block-scope
-            defn.body(params).map(b => (_: BindingsByName[J]) => b(Map.empty))
+            defn.body(params)
           } else {
             WrongNumParams(filterIdentifier, defn.numParams, params.length).left
           }

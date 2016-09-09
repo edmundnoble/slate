@@ -56,7 +56,12 @@ object DashboarderApp extends scalajs.js.JSApp {
   val programs =
     List(
       DashProgram("Gmail", GmailApp.program, js.Dictionary[Any]()),
-      DashProgram("JIRA", JIRAApp.program, js.Dictionary[Any]())
+      DashProgram("JIRA", JIRAApp.program,
+        js.Dictionary[Any](
+          "username" -> Creds.jiraUsername,
+          "password" -> Creds.jiraPassword
+        )
+      )
     )
 
   val compiledPrograms = programs.map {
