@@ -8,13 +8,13 @@ import scalaz.syntax.either._
 object SharedPreludes {
 
   object Compiled {
-    def print[JsonTy](runtime: QQRuntime[JsonTy]): CompiledDefinition[JsonTy] = {
-      val body: CompiledFilter[JsonTy] = { (jsv: JsonTy) => println("debug: " + runtime.print(jsv)); Task.now(jsv :: Nil) }
-      CompiledDefinition[JsonTy]("print", 0, body = { _ => body.right[QQCompilationException] })
+    def print[J](runtime: QQRuntime[J]): CompiledDefinition[J] = {
+      val body: CompiledFilter[J] = CompiledFilter.func { (jsv: J) => println("debug: " + runtime.print(jsv)); Task.now(jsv :: Nil) }
+      CompiledDefinition[J]("print", 0, body = { _ => body.right[QQCompilationException] })
     }
 
-    def apply[JsonTy]: Prelude[JsonTy] = new Prelude[JsonTy] {
-      override def all(runtime: QQRuntime[JsonTy]): OrCompilationError[IndexedSeq[CompiledDefinition[JsonTy]]] =
+    def apply[J]: Prelude[J] = new Prelude[J] {
+      override def all(runtime: QQRuntime[J]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
         (print(runtime) +: IndexedSeq.empty).right.map(identity)
     }
   }
@@ -28,17 +28,17 @@ object SharedPreludes {
       )
     }
 
-    def apply[JsonTy]: Prelude[JsonTy] = new Prelude[JsonTy] {
-      override def all(runtime: QQRuntime[JsonTy]): OrCompilationError[IndexedSeq[CompiledDefinition[JsonTy]]] =
+    def apply[J]: Prelude[J] = new Prelude[J] {
+      override def all(runtime: QQRuntime[J]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
         QQCompiler.compileDefinitions(runtime, IndexedSeq.empty, map +: Vector.empty)
     }
   }
 
-  def apply[JsonTy]: Prelude[JsonTy] = new Prelude[JsonTy] {
-    override def all(runtime: QQRuntime[JsonTy]): OrCompilationError[IndexedSeq[CompiledDefinition[JsonTy]]] =
+  def apply[J]: Prelude[J] = new Prelude[J] {
+    override def all(runtime: QQRuntime[J]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
       for {
-        raw <- Raw[JsonTy].all(runtime)
-        compiled <- Compiled[JsonTy].all(runtime)
+        raw <- Raw[J].all(runtime)
+        compiled <- Compiled[J].all(runtime)
       } yield raw ++ compiled
   }
 

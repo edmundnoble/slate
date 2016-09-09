@@ -5,15 +5,20 @@ import monix.eval.Task
 import monix.scalaz._
 import qq.FilterComponent._
 
-import scalaz.{EitherT, State, StateT, \/}
+import scalaz.{ApplicativePlus, EitherT, Kleisli, ListT, Monad, Monoid, Plus, PlusEmpty, Reader, ReaderT, State, StateT, \/}
 import scalaz.std.list._
 import scalaz.syntax.either._
+import scalaz.syntax.kleisli._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.syntax.applicative._
+import scalaz.syntax.plusEmpty._
+import scalaz.std.function._
+import scalaz.syntax.monad._
 import qq.Platform.Rec._
 import qq.Util._
 
+import scala.language.higherKinds
 import scalaz.Free.Trampoline
 import scalaz.Tags.Parallel
 
@@ -46,103 +51,118 @@ case class WrongNumParams(name: String, correct: Int, you: Int) extends QQCompil
 
 object QQCompiler {
 
-  // the type of compiled QQ filters is
-  // a function from a JSON value to an effectful computation returning a list of JSON values
-  type CompiledFilter[JsonTy] = JsonTy => Task[List[JsonTy]]
+  import matryoshka.∘
+
+  type CompiledFilter[J] = List[VarBinding[J]] => FOut[J]
+  type FOut[J] = J => Task[List[J]]
 
   object CompiledFilter {
-    @inline final def const[JsonTy](value: JsonTy): CompiledFilter[JsonTy] = _ => Task.now(value :: Nil)
+    @inline final def const[J](value: J): CompiledFilter[J] =
+      (_: List[VarBinding[J]]) => (j: J) => Task.now(j :: Nil)
+
+    @inline final def func[J](f: FOut[J]): CompiledFilter[J] =
+      (_: List[VarBinding[J]]) => f
+
+  }
+
+  implicit def compiledFilterPlusEmpty = new PlusEmpty[CompiledFilter] {
+    override def plus[A](a: CompiledFilter[A], b: => CompiledFilter[A]): CompiledFilter[A] =
+      composeFilters(a, b)
+
+    override def empty[A]: CompiledFilter[A] =
+      (_: List[VarBinding[A]]) => (j: A) => Task.now(j :: Nil)
   }
 
   type OrCompilationError[T] = QQCompilationException \/ T
 
-  def composeFilters[JsonTy](f: CompiledFilter[JsonTy], s: CompiledFilter[JsonTy]): (JsonTy) => Task[List[JsonTy]] = {
-    f.andThen(_.flatMap(t => Parallel.unwrap(t.traverseM[TaskParallel, JsonTy](s.andThen(Parallel(_))))))
+  def composeFilters[J](f: CompiledFilter[J], s: CompiledFilter[J]): CompiledFilter[J] = {
+    (for {
+      fstFun <- Reader(f)
+      sndFun <- Reader(s)
+    } yield
+      fstFun.andThen(_.flatMap(t => Parallel.unwrap(t.traverseM[TaskParallel, J](sndFun.andThen(Parallel(_))))))).run
   }
 
-  def ensequenceCompiledFilters[JsonTy]
-  (first: CompiledFilter[JsonTy], second: CompiledFilter[JsonTy]): CompiledFilter[JsonTy] = { jsv: JsonTy =>
-    Task.mapBoth(first(jsv), second(jsv)) { (a, b) => a ++ b }
-  }
+  def ensequenceCompiledFilters[J]
+  (first: CompiledFilter[J], second: CompiledFilter[J]): CompiledFilter[J] =
+    (for {fstFun <- Reader(first); sndFun <- Reader(second)} yield { jsv: J =>
+      Task.mapBoth(fstFun(jsv), sndFun(jsv)) { (a, b) => a ++ b }
+    }).run
 
-  def zipFiltersWith[JsonTy]
-  (first: CompiledFilter[JsonTy], second: CompiledFilter[JsonTy], fun: (JsonTy, JsonTy) => Task[JsonTy]): CompiledFilter[JsonTy] = { jsv: JsonTy =>
-    Task.mapBoth(first(jsv), second(jsv)) { (f, s) => (f, s).zipped.map(fun) }.map(_.sequence).flatten
-  }
+  def zipFiltersWith[J]
+  (first: CompiledFilter[J], second: CompiledFilter[J], fun: (J, J) => Task[J]): CompiledFilter[J] =
+    (for {fstFun <- Reader(first); sndFun <- Reader(second)} yield { jsv: J =>
+      Task.mapBoth(fstFun(jsv), sndFun(jsv)) { (f, s) => (f, s).zipped.map(fun) }.map(_.sequence).flatten
+    }).run
 
   @inline
-  def compileDefinitions[JsonTy](runtime: QQRuntime[JsonTy],
-                                 prelude: IndexedSeq[CompiledDefinition[JsonTy]] = Vector.empty,
-                                 definitions: IndexedSeq[Definition]): OrCompilationError[IndexedSeq[CompiledDefinition[JsonTy]]] =
+  def compileDefinitions[J](runtime: QQRuntime[J],
+                            prelude: IndexedSeq[CompiledDefinition[J]] = Vector.empty,
+                            definitions: IndexedSeq[Definition]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
     definitions.foldLeft(prelude.right[QQCompilationException])(compileDefinitionStep(runtime))
 
   @inline
-  def compileProgram[JsonTy](runtime: QQRuntime[JsonTy],
-                             prelude: IndexedSeq[CompiledDefinition[JsonTy]] = Vector.empty,
-                             program: Program): OrCompilationError[CompiledFilter[JsonTy]] = {
-    compileDefinitions(runtime, prelude, program.defns).flatMap(compile(runtime, _, program.main).run.eval(Nil).run)
+  def compileProgram[J](runtime: QQRuntime[J],
+                        prelude: IndexedSeq[CompiledDefinition[J]] = Vector.empty,
+                        program: Program): OrCompilationError[CompiledFilter[J]] = {
+    compileDefinitions(runtime, prelude, program.defns).flatMap(compile(runtime, _, program.main))
   }
 
-  case class VarBinding()
-
-  type CompileS[+A] = StateT[Trampoline, List[VarBinding], A@annotation.unchecked.uncheckedVariance]
-
-  type OrCompilationErrorT[F[_], +T] = EitherT[F, QQCompilationException, T@annotation.unchecked.uncheckedVariance]
-
-  type CompileM[+A] = OrCompilationErrorT[CompileS, A@annotation.unchecked.uncheckedVariance]
+  case class VarBinding[J]()
 
   @inline
-  def compileStep[JsonTy](runtime: QQRuntime[JsonTy],
-                          definitions: IndexedSeq[CompiledDefinition[JsonTy]],
-                          filter: FilterComponent[CompiledFilter[JsonTy]]): CompileM[CompiledFilter[JsonTy]] = filter match {
-    case leaf: LeafComponent[JsonTy@unchecked] => EitherT.right(runtime.evaluateLeaf(leaf).pure[CompileS])
-    case ComposeFilters(f, s) => EitherT.right(composeFilters(f, s).pure[CompileS])
+  def compileStep[J](runtime: QQRuntime[J],
+                     definitions: IndexedSeq[CompiledDefinition[J]],
+                     filter: FilterComponent[CompiledFilter[J]]): OrCompilationError[CompiledFilter[J]] = filter match {
+    case leaf: LeafComponent[J@unchecked] => runtime.evaluateLeaf(leaf).right
+    case ComposeFilters(f, s) => composeFilters(f, s).right
     case LetAsBinding(name, f, s) => ???
-    case EnlistFilter(f) => EitherT.right(runtime.enlistFilter(f).pure[CompileS])
-    case SilenceExceptions(f) => EitherT.right(((jsv: JsonTy) => f(jsv).onErrorRecover { case _: QQRuntimeException => Nil }).pure[CompileS])
-    case CollectResults(f) => EitherT.right(runtime.collectResults(f).pure[CompileS])
-    case EnsequenceFilters(first, second) => EitherT.right(ensequenceCompiledFilters(first, second).pure[CompileS])
-    case EnjectFilters(obj) => EitherT.right(runtime.enjectFilter(obj).pure[CompileS])
-    case AddFilters(first, second) => EitherT.right(zipFiltersWith(first, second, runtime.addJsValues).pure[CompileS])
-    case SubtractFilters(first, second) => EitherT.right(zipFiltersWith(first, second, runtime.subtractJsValues).pure[CompileS])
-    case MultiplyFilters(first, second) => EitherT.right(zipFiltersWith(first, second, runtime.multiplyJsValues).pure[CompileS])
-    case DivideFilters(first, second) => EitherT.right(zipFiltersWith(first, second, runtime.divideJsValues).pure[CompileS])
-    case ModuloFilters(first, second) => EitherT.right(zipFiltersWith(first, second, runtime.moduloJsValues).pure[CompileS])
+    case EnlistFilter(f) => runtime.enlistFilter(f).right
+    case SilenceExceptions(f) => (for {
+      fFun <- Reader(f)
+    } yield (jsv: J) => fFun(jsv).onErrorRecover { case _: QQRuntimeException => Nil }).run.right[QQCompilationException]
+    case CollectResults(f) => runtime.collectResults(f).right
+    case EnsequenceFilters(first, second) => ensequenceCompiledFilters(first, second).right
+    case EnjectFilters(obj) => runtime.enjectFilter(obj).right
+    case AddFilters(first, second) => zipFiltersWith(first, second, runtime.addJsValues).right
+    case SubtractFilters(first, second) => zipFiltersWith(first, second, runtime.subtractJsValues).right
+    case MultiplyFilters(first, second) => zipFiltersWith(first, second, runtime.multiplyJsValues).right
+    case DivideFilters(first, second) => zipFiltersWith(first, second, runtime.divideJsValues).right
+    case ModuloFilters(first, second) => zipFiltersWith(first, second, runtime.moduloJsValues).right
     case CallFilter(filterIdentifier, params) =>
       definitions.find(_.name == filterIdentifier).cata(
-        { (defn: CompiledDefinition[JsonTy]) =>
+        { (defn: CompiledDefinition[J]) =>
           if (params.length == defn.numParams) {
-            EitherT(defn.body(params).pure[CompileS])
+            defn.body(params)
           } else {
-            EitherT.left(WrongNumParams(filterIdentifier, defn.numParams, params.length).pure[CompileS])
+            WrongNumParams(filterIdentifier, defn.numParams, params.length).left
           }
         },
-        EitherT.left(NoSuchMethod(filterIdentifier).pure[CompileS])
+        NoSuchMethod(filterIdentifier).left
       )
   }
 
-  def compileDefinitionStep[JsonTy](runtime: QQRuntime[JsonTy])
-                                   (soFar: OrCompilationError[IndexedSeq[CompiledDefinition[JsonTy]]],
-                                    nextDefinition: Definition): OrCompilationError[IndexedSeq[CompiledDefinition[JsonTy]]] =
-    soFar.map { (definitionsSoFar: IndexedSeq[CompiledDefinition[JsonTy]]) =>
-      CompiledDefinition[JsonTy](nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter[JsonTy]]) => {
-        val paramsAsDefinitions: IndexedSeq[CompiledDefinition[JsonTy]] = (nextDefinition.params, params).zipped.map { (filterName, value) =>
-          CompiledDefinition[JsonTy](filterName, 0, (_: List[CompiledFilter[JsonTy]]) => value.right[QQCompilationException])
+  def compileDefinitionStep[J](runtime: QQRuntime[J])
+                              (soFar: OrCompilationError[IndexedSeq[CompiledDefinition[J]]],
+                               nextDefinition: Definition): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
+    soFar.map { (definitionsSoFar: IndexedSeq[CompiledDefinition[J]]) =>
+      CompiledDefinition[J](nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter[J]]) => {
+        val paramsAsDefinitions: IndexedSeq[CompiledDefinition[J]] = (nextDefinition.params, params).zipped.map { (filterName, value) =>
+          CompiledDefinition[J](filterName, 0, (_: List[CompiledFilter[J]]) => value.right[QQCompilationException])
         }(collection.breakOut)
-        compile(runtime, definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body).run.eval(Nil).run
+        compile(runtime, definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body)
       }) +: definitionsSoFar
     }
 
   @inline
-  def compile[JsonTy](runtime: QQRuntime[JsonTy],
-                      definitions: IndexedSeq[CompiledDefinition[JsonTy]],
-                      filter: Filter): CompileM[CompiledFilter[JsonTy]] =
+  def compile[J](runtime: QQRuntime[J],
+                 definitions: IndexedSeq[CompiledDefinition[J]],
+                 filter: Filter): OrCompilationError[CompiledFilter[J]] =
     for {
-      sharedDefinitions <- EitherT[CompileS, QQCompilationException, IndexedSeq[CompiledDefinition[JsonTy]]](SharedPreludes[JsonTy].all(runtime).pure[CompileS])
-      platformSpecificDefinitions <- EitherT[CompileS, QQCompilationException, IndexedSeq[CompiledDefinition[JsonTy]]](runtime.platformPrelude.all(runtime).pure[CompileS])
+      sharedDefinitions <- SharedPreludes[J].all(runtime)
+      platformSpecificDefinitions <- runtime.platformPrelude.all(runtime)
       allDefinitions = sharedDefinitions ++ platformSpecificDefinitions ++ definitions
-      compiledProgram <-
-      Recursion.cataM[Fix, FilterComponent, CompileM, CompiledFilter[JsonTy]](compileStep(runtime, allDefinitions, _))(Fix.recursive, FilterComponent.qqFilterComponentTraverse, EitherT.eitherTMonad[CompileS, QQCompilationException]).apply(filter)
+      compiledProgram <- Recursion.cataM[Fix, FilterComponent, OrCompilationError, CompiledFilter[J]](compileStep(runtime, allDefinitions, _)).apply(filter)
     } yield compiledProgram
 
 }

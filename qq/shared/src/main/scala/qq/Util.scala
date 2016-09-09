@@ -10,7 +10,7 @@ import scala.util.control.TailCalls
 import scala.util.control.TailCalls.TailRec
 import scalaz.Tags.Parallel
 import scalaz.syntax.either._
-import scalaz.{@@, Applicative, Monad, Tag, \/, ~>}
+import scalaz.{@@, Applicative, Kleisli, Monad, Tag, \/, ~>}
 
 object Util {
 
@@ -59,6 +59,10 @@ object Util {
         }
     }
     Codec(enc, dec)
+  }
+
+  implicit class KleisliOps(val O: Kleisli.type) extends AnyVal {
+    def const[F[_], A, B](out: F[B]): Kleisli[F, A, B] = Kleisli(_ => out)
   }
 
 }

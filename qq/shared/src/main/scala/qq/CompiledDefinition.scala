@@ -3,14 +3,14 @@ package qq
 import qq.QQCompiler.{CompiledFilter, OrCompilationError}
 import scalaz.syntax.either._
 
-final case class CompiledDefinition[JsonTy]
-(name: String, numParams: Int, body: (List[CompiledFilter[JsonTy]] => OrCompilationError[CompiledFilter[JsonTy]]))
+final case class CompiledDefinition[J]
+(name: String, numParams: Int, body: (List[CompiledFilter[J]] => OrCompilationError[CompiledFilter[J]]))
 
 object CompiledDefinition {
-  def undefinedOnPlatform[JsonTy](name: String) = CompiledDefinition[JsonTy](name, 0, body = _ => UndefinedOnPlatform(name).left)
+  def undefinedOnPlatform[J](name: String) = CompiledDefinition[J](name, 0, body = _ => UndefinedOnPlatform(name).left)
 
-  final def noParamDefinition[JsonTy](name: String, fun: CompiledFilter[JsonTy]): CompiledDefinition[JsonTy] = {
-    CompiledDefinition[JsonTy](
+  final def noParamDefinition[J](name: String, fun: CompiledFilter[J]): CompiledDefinition[J] = {
+    CompiledDefinition[J](
       name,
       numParams = 0,
       _ => fun.right[QQCompilationException]

@@ -12,7 +12,7 @@ import qq.QQCompiler.CompiledFilter
 
 object Runner {
 
-  def parseAndCompile[JsonTy](runtime: QQRuntime[JsonTy], program: String, optimize: Boolean = true): \/[QQCompilationException \/ ParseError, CompiledFilter[JsonTy]] = {
+  def parseAndCompile[J](runtime: QQRuntime[J], program: String, optimize: Boolean = true): \/[QQCompilationException \/ ParseError, CompiledFilter[J]] = {
     Parser.program.parse(program) match {
       case Parsed.Success(parsedProgram, _) =>
         val optimized = if (optimize) {
@@ -26,10 +26,10 @@ object Runner {
     }
   }
 
-  def run[JsonTy](runtime: QQRuntime[JsonTy], qqProgram: String, optimize: Boolean = true)(input: List[JsonTy]): Task[List[JsonTy]] = {
+  def run[J](runtime: QQRuntime[J], qqProgram: String, optimize: Boolean = true)(input: List[J]): Task[List[J]] = {
     parseAndCompile(runtime, qqProgram, optimize).fold(
       ex => Task.raiseError(ex.merge[Exception]),
-      input.traverseM(_)
+      f => input.traverseM(f(Nil))
     )
   }
 

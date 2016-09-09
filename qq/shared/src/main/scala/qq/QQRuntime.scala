@@ -2,23 +2,24 @@ package qq
 
 import monix.eval.Task
 import qq.FilterComponent._
+import scalaz.syntax.plusEmpty._
 
 import scalaz.\/
 
-trait QQRuntime[JsonTy] {
+trait QQRuntime[J] {
 
   import QQCompiler._
 
-  def print(value: JsonTy): String
+  def print(value: J): String
 
-  def platformPrelude: PlatformPrelude[JsonTy]
+  def platformPrelude: PlatformPrelude[J]
 
-  def enjectFilter(obj: List[(\/[String, CompiledFilter[JsonTy]], CompiledFilter[JsonTy])]): CompiledFilter[JsonTy]
+  def enjectFilter(obj: List[(\/[String, CompiledFilter[J]], CompiledFilter[J])]): CompiledFilter[J]
 
-  def enlistFilter(filter: CompiledFilter[JsonTy]): CompiledFilter[JsonTy]
+  def enlistFilter(filter: CompiledFilter[J]): CompiledFilter[J]
 
-  @inline final def evaluateLeaf(component: LeafComponent[JsonTy]): CompiledFilter[JsonTy] = component match {
-    case IdFilter() => (jsv: JsonTy) => Task.now(jsv :: Nil)
+  @inline final def evaluateLeaf(component: LeafComponent[J]): CompiledFilter[J] = component match {
+    case IdFilter() => mempty[CompiledFilter, J]
     case ConstNumber(num) => constNumber(num)
     case ConstString(str) => constString(str)
     case SelectKey(key) => selectKey(key)
@@ -26,26 +27,26 @@ trait QQRuntime[JsonTy] {
     case SelectRange(start, end) => selectRange(start, end)
   }
 
-  def selectKey(key: String): CompiledFilter[JsonTy]
+  def selectKey(key: String): CompiledFilter[J]
 
-  def selectIndex(index: Int): CompiledFilter[JsonTy]
+  def selectIndex(index: Int): CompiledFilter[J]
 
-  def selectRange(start: Int, end: Int): CompiledFilter[JsonTy]
+  def selectRange(start: Int, end: Int): CompiledFilter[J]
 
-  def constNumber(num: Double): CompiledFilter[JsonTy]
+  def constNumber(num: Double): CompiledFilter[J]
 
-  def constString(str: String): CompiledFilter[JsonTy]
+  def constString(str: String): CompiledFilter[J]
 
-  def addJsValues(first: JsonTy, second: JsonTy): Task[JsonTy]
+  def addJsValues(first: J, second: J): Task[J]
 
-  def subtractJsValues(first: JsonTy, second: JsonTy): Task[JsonTy]
+  def subtractJsValues(first: J, second: J): Task[J]
 
-  def multiplyJsValues(first: JsonTy, second: JsonTy): Task[JsonTy]
+  def multiplyJsValues(first: J, second: J): Task[J]
 
-  def divideJsValues(first: JsonTy, second: JsonTy): Task[JsonTy]
+  def divideJsValues(first: J, second: J): Task[J]
 
-  def moduloJsValues(first: JsonTy, second: JsonTy): Task[JsonTy]
+  def moduloJsValues(first: J, second: J): Task[J]
 
-  def collectResults(f: CompiledFilter[JsonTy]): CompiledFilter[JsonTy]
+  def collectResults(f: CompiledFilter[J]): CompiledFilter[J]
 
 }

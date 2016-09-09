@@ -2,7 +2,7 @@ package qq
 
 import qq.QQCompiler.OrCompilationError
 
-trait Prelude[JsonTy] {
-  def all(runtime: QQRuntime[JsonTy]): OrCompilationError[IndexedSeq[CompiledDefinition[JsonTy]]]
+trait Prelude[J] {
+  def all(runtime: QQRuntime[J]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]]
 }
 

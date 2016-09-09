@@ -3,7 +3,7 @@ package qq.jsc
 import monix.eval.Task
 import monix.scalaz._
 import qq.{QQRuntime, QQRuntimeException}
-import qq.QQCompiler.CompiledFilter
+import qq.QQCompiler.{CompiledFilter, VarBinding}
 import qq.Util._
 
 import scala.scalajs.js
@@ -13,7 +13,7 @@ import scalaz.std.map._
 import scalaz.syntax.std.list._
 import scalaz.syntax.std.map._
 import scalaz.syntax.traverse._
-import scalaz.{-\/, NonEmptyList, \/, \/-}
+import scalaz.{-\/, NonEmptyList, Reader, \/, \/-}
 import scalaz.Tags.Parallel
 
 // This is a QQ runtime which executes all operations on native JSON values in Javascript
@@ -22,9 +22,9 @@ object JSRuntime extends QQRuntime[Any] {
   val taskOfListOfNull: Task[List[Any]] = Task.now(List(null))
   val emptyArray: js.Array[Any] = new js.Array[Any](0)
 
-  override def constNumber(num: Double): CompiledFilter[Any] = _ => Task.now(num :: Nil)
+  override def constNumber(num: Double): CompiledFilter[Any] = CompiledFilter.const(num)
 
-  override def constString(str: String): CompiledFilter[Any] = _ => Task.now(str :: Nil)
+  override def constString(str: String): CompiledFilter[Any] = CompiledFilter.const(str)
 
   override def addJsValues(first: Any, second: Any): Task[Any] = (first, second) match {
     case (f: Double, s: Double) =>
@@ -80,13 +80,13 @@ object JSRuntime extends QQRuntime[Any] {
       Task.raiseError(QQRuntimeException("can't modulo " + Json.jsToString(f) + " by " + Json.jsToString(s)))
   }
 
-  override def enlistFilter(filter: CompiledFilter[Any]): CompiledFilter[Any] = { jsv: Any =>
+  override def enlistFilter(filter: CompiledFilter[Any]): CompiledFilter[Any] = (for {fFun <- Reader(filter)} yield { jsv: Any =>
     for {
-      results <- filter(jsv)
+      results <- fFun(jsv)
     } yield js.Array(results: _*) :: Nil
-  }
+  }).run
 
-  override def selectKey(key: String): CompiledFilter[Any] = {
+  override def selectKey(key: String): CompiledFilter[Any] = CompiledFilter.func {
     case f: js.Object =>
       f.asInstanceOf[js.Dictionary[Any]].get(key) match {
         case None => taskOfListOfNull
@@ -96,7 +96,7 @@ object JSRuntime extends QQRuntime[Any] {
       Task.raiseError(QQRuntimeException("Tried to select key " + key + " in " + Json.jsToString(v) + " but it's not a dictionary"))
   }
 
-  override def selectIndex(index: Int): CompiledFilter[Any] = {
+  override def selectIndex(index: Int): CompiledFilter[Any] = CompiledFilter.func {
     case f: js.Array[js.Object@unchecked] =>
       if (index >= -f.length) {
         if (index >= 0 && index < f.length) {
@@ -113,7 +113,7 @@ object JSRuntime extends QQRuntime[Any] {
       Task.raiseError(QQRuntimeException("Tried to select index " + Json.jsToString(index) + " in " + Json.jsToString(v) + " but it's not an array"))
   }
 
-  override def selectRange(start: Int, end: Int): CompiledFilter[Any] = {
+  override def selectRange(start: Int, end: Int): CompiledFilter[Any] = CompiledFilter.func {
     case f: js.Array[js.Object@unchecked] =>
       if (start < end && start < f.length) {
         Task.now(f.jsSlice(start, end) :: Nil)
@@ -122,9 +122,9 @@ object JSRuntime extends QQRuntime[Any] {
       }
   }
 
-  override def collectResults(f: CompiledFilter[Any]): CompiledFilter[Any] = { jsv: Any =>
+  override def collectResults(f: CompiledFilter[Any]): CompiledFilter[Any] = (for {fFun <- Reader(f)} yield { jsv: Any =>
     for {
-      out <- f(jsv)
+      out <- fFun(jsv)
       collected <- Parallel.unwrap(out.traverse[TaskParallel, List[Any]] {
         case arr: js.Array[Any@unchecked] =>
           Parallel(Task.now(arr.toList))
@@ -134,32 +134,30 @@ object JSRuntime extends QQRuntime[Any] {
           Parallel(Task.raiseError(QQRuntimeException("Tried to flatten " + Json.jsToString(v) + " but it's not an array")))
       })
     } yield collected.flatten
-  }
+  }).run
 
-  override def enjectFilter(obj: List[(\/[String, CompiledFilter[Any]], CompiledFilter[Any])]): CompiledFilter[Any] = { jsv: Any =>
+  override def enjectFilter(obj: List[(\/[String, CompiledFilter[Any]], CompiledFilter[Any])]): CompiledFilter[Any] = {
     if (obj.isEmpty) {
-      Task.now(js.Object() :: Nil)
-    } else {
-      for {
-        kvPairs <- Task.gatherUnordered(obj.map {
-          case (\/-(filterKey), filterValue) =>
-            for {
-              keyResults <- filterKey(jsv)
-              valueResults <- filterValue(jsv)
-              keyValuePairs <- keyResults.traverse[Task, List[(String, Any)]] {
-                case keyString: String =>
-                  Task.now(valueResults.map(keyString -> _))
-                case k =>
-                  Task.raiseError(QQRuntimeException("Tried to use " + Json.jsToString(k) + " as a key for an object but it's not a string"))
-              }
-            } yield keyValuePairs
-          case (-\/(filterName), filterValue) =>
-            for {
-              valueResults <- filterValue(jsv)
-            } yield valueResults.map(filterName -> _) :: Nil
-        })
-        kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => foldWithPrefixes(h, l.toList: _*) }
-      } yield kvPairsProducts.map(js.Dictionary[Any](_: _*))
+      CompiledFilter.func[Any](_ => Task.now(js.Object() :: Nil))
+    } else { bindings: List[VarBinding[Any]] => { jsv: Any => for {
+      kvPairs <- obj.traverse[Task, List[List[(String, Any)]]] {
+        case (\/-(filterKey), filterValue) =>
+          for {
+            keyResults <- filterKey(bindings)(jsv)
+            valueResults <- filterValue(bindings)(jsv)
+            keyValuePairs <- keyResults.traverse[Task, List[(String, Any)]] {
+              case (keyString: String) =>
+                Task.now(valueResults.map(keyString -> _))
+              case k =>
+                Task.raiseError(QQRuntimeException("Tried to use " + Json.jsToString(k) + " as a key for an object but it's not a string"))
+            }
+          } yield keyValuePairs
+        case (-\/(filterName), filterValue) =>
+          filterValue(bindings)(jsv).map(_.map(filterName -> _) :: Nil)
+      }
+      kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => foldWithPrefixes(h, l.toList: _*) }
+    } yield kvPairsProducts.map(js.Dictionary[Any](_: _ *))
+    }
     }
   }
 

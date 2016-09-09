@@ -5,70 +5,70 @@ import qq.QQCompiler.{CompiledFilter, OrCompilationError}
 import scalaz.\/
 import scalaz.syntax.either._
 
-trait PlatformPrelude[JsonTy] extends Prelude[JsonTy] {
+trait PlatformPrelude[J] extends Prelude[J] {
 
-  final def sealPartialBody(body: PartialFunction[List[CompiledFilter[JsonTy]], OrCompilationError[CompiledFilter[JsonTy]]]
-                           )(params: List[CompiledFilter[JsonTy]]): OrCompilationError[CompiledFilter[JsonTy]] = {
+  final def sealPartialBody(body: PartialFunction[List[CompiledFilter[J]], OrCompilationError[CompiledFilter[J]]]
+                           )(params: List[CompiledFilter[J]]): OrCompilationError[CompiledFilter[J]] = {
     body.applyOrElse(params, ???)
   }
 
   // x | orElse(y): null coalescing operator
-  def orElse: CompiledDefinition[JsonTy]
+  def orElse: CompiledDefinition[J]
 
   // base 64 encoding, duh
-  def b64Encode: CompiledDefinition[JsonTy]
+  def b64Encode: CompiledDefinition[J]
 
   // null constant
-  def `null`: CompiledDefinition[JsonTy]
+  def `null`: CompiledDefinition[J]
 
   // true constant
-  def `true`: CompiledDefinition[JsonTy]
+  def `true`: CompiledDefinition[J]
 
   // false constant
-  def `false`: CompiledDefinition[JsonTy]
+  def `false`: CompiledDefinition[J]
 
   // array/object length
-  def length: CompiledDefinition[JsonTy]
+  def length: CompiledDefinition[J]
 
   // object keys
-  def keys: CompiledDefinition[JsonTy]
+  def keys: CompiledDefinition[J]
 
   // regex replace
-  def replaceAll: CompiledDefinition[JsonTy]
+  def replaceAll: CompiledDefinition[J]
 
   // filters
 
-  def arrays: CompiledDefinition[JsonTy]
+  def arrays: CompiledDefinition[J]
 
-  def objects: CompiledDefinition[JsonTy]
+  def objects: CompiledDefinition[J]
 
-  def iterables: CompiledDefinition[JsonTy]
+  def iterables: CompiledDefinition[J]
 
-  def booleans: CompiledDefinition[JsonTy]
+  def booleans: CompiledDefinition[J]
 
-  def numbers: CompiledDefinition[JsonTy]
+  def numbers: CompiledDefinition[J]
 
-  def strings: CompiledDefinition[JsonTy]
+  def strings: CompiledDefinition[J]
 
-  def nulls: CompiledDefinition[JsonTy]
+  def nulls: CompiledDefinition[J]
 
-  def values: CompiledDefinition[JsonTy]
+  def values: CompiledDefinition[J]
 
-  def scalars: CompiledDefinition[JsonTy]
+  def scalars: CompiledDefinition[J]
 
   // ajax
 
-  def httpDelete: CompiledDefinition[JsonTy]
+  def httpDelete: CompiledDefinition[J]
 
-  def httpGet: CompiledDefinition[JsonTy]
+  def httpGet: CompiledDefinition[J]
 
-  def httpPatch: CompiledDefinition[JsonTy]
+  def httpPatch: CompiledDefinition[J]
 
-  def httpPost: CompiledDefinition[JsonTy]
+  def httpPost: CompiledDefinition[J]
 
-  def httpPut: CompiledDefinition[JsonTy]
+  def httpPut: CompiledDefinition[J]
 
-  override def all(runtime: QQRuntime[JsonTy]): QQCompilationException \/ IndexedSeq[CompiledDefinition[JsonTy]] = {
+  override def all(runtime: QQRuntime[J]): QQCompilationException \/ IndexedSeq[CompiledDefinition[J]] = {
     Vector(
       `null`, `true`, `false`, orElse, b64Encode,
       length, keys, replaceAll, arrays, objects, iterables, booleans,

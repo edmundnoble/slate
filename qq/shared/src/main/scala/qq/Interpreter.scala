@@ -41,7 +41,7 @@ object Interpreter {
     Interpreter("program " + source + ", input:", {
       case input =>
         val inputJs = json read input
-        val outputTask = program(inputJs)
+        val outputTask = program(Nil)(inputJs)
         outputTask.map { outputs =>
           (outputs.mkString(", "), programInterpreterOf(source, program))
         }.right
@@ -61,7 +61,7 @@ object Interpreter {
             val () = Console.err.println("Error: " + err.merge[Exception].getMessage)
             ("", programInterpreter)
           },
-          (compiledFilter: CompiledFilter[Js.Value]) => compiledFilter(input).map { outputs =>
+          (compiledFilter: CompiledFilter[Js.Value]) => compiledFilter(Nil)(input).map { outputs =>
             (outputs.mkString(", "), inputInterpreterOf(source, input))
           }
         ).right

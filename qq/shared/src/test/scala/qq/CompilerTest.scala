@@ -15,15 +15,14 @@ object CompilerTest {
   import org.scalatest.Matchers._
   import FilterDSL._
 
-  def runTest[JsonTy](runtime: QQRuntime[JsonTy], qqCompilerTest: CompilerTest)
+  def runTest[J](runtime: QQRuntime[J], qqCompilerTest: CompilerTest)
                     (implicit sch: Scheduler): Future[Assertion] = qqCompilerTest match {
     case CompilerTest(input, filter, expectedOutput@_*) =>
       QQCompiler
         .compile(UpickleRuntime, IndexedSeq.empty, filter)
-        .run.eval(Nil).run
         .fold[Task[Assertion]](
         err => Task.eval(fail("error occurred during compilation: \n" + err.toString)),
-        program => program(input).map { output => output shouldBe expectedOutput.toList })
+        program => program(Nil)(input).map { output => output shouldBe expectedOutput.toList })
         .runAsync
   }
 
