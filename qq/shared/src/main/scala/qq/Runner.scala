@@ -29,7 +29,7 @@ object Runner {
   def run[J](runtime: QQRuntime[J], qqProgram: String, optimize: Boolean = true)(input: List[J]): Task[List[J]] = {
     parseAndCompile(runtime, qqProgram, optimize).fold(
       ex => Task.raiseError(ex.merge[Exception]),
-      f => input.traverseM(f(Nil))
+      f => input.traverseM(f(Map.empty))
     )
   }
 

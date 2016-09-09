@@ -20,6 +20,9 @@ final case class IdFilter[A]() extends LeafComponent[A]
 // Let-binding, with raw names
 final case class LetAsBinding[A](name: String, as: A, in: A) extends FilterComponent[A]
 
+// Access let-bindings
+final case class Dereference[A](name: String) extends ConstantComponent[A]
+
 // Compose filters in "pipe" order
 // ComposeFilters(first, second) is a filter which executes the parameter filters in named order on the input values.
 // Associative.

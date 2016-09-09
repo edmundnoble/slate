@@ -16,13 +16,13 @@ object CompilerTest {
   import FilterDSL._
 
   def runTest[J](runtime: QQRuntime[J], qqCompilerTest: CompilerTest)
-                    (implicit sch: Scheduler): Future[Assertion] = qqCompilerTest match {
+                (implicit sch: Scheduler): Future[Assertion] = qqCompilerTest match {
     case CompilerTest(input, filter, expectedOutput@_*) =>
       QQCompiler
         .compile(UpickleRuntime, IndexedSeq.empty, filter)
         .fold[Task[Assertion]](
         err => Task.eval(fail("error occurred during compilation: \n" + err.toString)),
-        program => program(Nil)(input).map { output => output shouldBe expectedOutput.toList })
+        program => program(Map.empty)(input).map { output => output shouldBe expectedOutput.toList })
         .runAsync
   }
 
@@ -79,5 +79,11 @@ object CompilerTest {
       CompilerTest(Js.False, fun(id, 1000), Js.False)
     )
   }
+
+  val variableTests: List[CompilerTest] =
+    List(
+      CompilerTest(Js.Str("input"), letAsBinding("hello", id, deref("hello")), Js.Str("input")),
+      CompilerTest(Js.Str("input"), letAsBinding("hello", add(id, constString("hi")), deref("hello")), Js.Str("inputhi"))
+    )
 
 }

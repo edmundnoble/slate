@@ -16,16 +16,20 @@ object Parser {
   implicit object ParserMonad extends Monad[Parser] {
     override def point[A](a: => A): Parser[A] =
       parsers.Transformers.Mapper(parsers.Terminals.Pass, (_: Unit) => a)
+
     override def bind[A, B](fa: Parser[A])(f: (A) => Parser[B]): Parser[B] =
       parsers.Transformers.FlatMapped(fa, f)
   }
 
   implicit def listRepeater[T]: Implicits.Repeater[T, List[T]] = new Implicits.Repeater[T, List[T]] {
     type Acc = mutable.ListBuffer[T]
+
     def initial: Acc = new mutable.ListBuffer[T]()
+
     def accumulate(t: T, acc: Acc): Unit = {
       val _ = acc += t
     }
+
     def result(acc: Acc): List[T] = acc.result()
   }
 
@@ -33,6 +37,7 @@ object Parser {
   val quote: P0 = P("\"")
 
   def isStringLiteralChar(c: Char): Boolean = Character.isAlphabetic(c) || Character.isDigit(c)
+
   val stringLiteralChars = Seq(('a' to 'z') ++ ('A' to 'Z') ++ ('0' to '9'), "↪+*-_": Seq[Char])
   val stringLiteralChar = CharIn(stringLiteralChars: _*)
   val stringLiteral: P[String] = P(stringLiteralChar.rep(min = 1).!)
@@ -90,7 +95,7 @@ object Parser {
   )
 
   private val filterIdentifier: P[String] = P(
-//    CharIn('a' to 'z', 'A' to 'Z').rep(min = 1).!
+    //    CharIn('a' to 'z', 'A' to 'Z').rep(min = 1).!
     stringLiteral
   )
 
@@ -100,16 +105,11 @@ object Parser {
 
   val letAsBinding: P[Filter] = P(
     for {
-      _ <- wspStr("let")
-      _ <- whitespace
+      _ <- wspStr("let") ~ whitespace
       variable <- variableIdentifier
-      _ <- whitespace
-      _ <- wspStr("as")
-      _ <- whitespace
+      _ <- whitespace ~ wspStr("as") ~ whitespace
       as <- filter
-      _ <- whitespace
-      _ <- wspStr("in")
-      _ <- whitespace
+      _ <- whitespace ~ wspStr("in") ~ whitespace
       in <- filter
     } yield FilterDSL.letAsBinding(variable, as, in)
   )
@@ -125,7 +125,9 @@ object Parser {
 
   val constString: P[Filter] = P(escapedStringLiteral map FilterDSL.constString)
 
-  val smallFilter: P[Filter] = P(constInt | constString | dottedFilter | callFilter)
+  val dereference: P[Filter] = P(variableIdentifier.map(FilterDSL.deref))
+
+  val smallFilter: P[Filter] = P(letAsBinding | constInt | constString | dottedFilter | dereference | callFilter)
 
   val enlistedFilter: P[Filter] = P(
     "[" ~/ filter.map(FilterDSL.enlist) ~ "]"

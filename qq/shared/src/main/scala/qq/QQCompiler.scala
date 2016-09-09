@@ -8,12 +8,10 @@ import qq.FilterComponent._
 import scalaz.{ApplicativePlus, EitherT, Kleisli, ListT, Monad, Monoid, Plus, PlusEmpty, Reader, ReaderT, State, StateT, \/}
 import scalaz.std.list._
 import scalaz.syntax.either._
-import scalaz.syntax.kleisli._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 import scalaz.syntax.applicative._
 import scalaz.syntax.plusEmpty._
-import scalaz.std.function._
 import scalaz.syntax.monad._
 import qq.Platform.Rec._
 import qq.Util._
@@ -53,15 +51,15 @@ object QQCompiler {
 
   import matryoshka.∘
 
-  type CompiledFilter[J] = List[VarBinding[J]] => FOut[J]
+  type CompiledFilter[J] = BindingsByName[J] => FOut[J]
   type FOut[J] = J => Task[List[J]]
 
   object CompiledFilter {
     @inline final def const[J](value: J): CompiledFilter[J] =
-      (_: List[VarBinding[J]]) => (j: J) => Task.now(j :: Nil)
+      (_: BindingsByName[J]) => (j: J) => Task.now(value :: Nil)
 
     @inline final def func[J](f: FOut[J]): CompiledFilter[J] =
-      (_: List[VarBinding[J]]) => f
+      (_: BindingsByName[J]) => f
 
   }
 
@@ -70,7 +68,7 @@ object QQCompiler {
       composeFilters(a, b)
 
     override def empty[A]: CompiledFilter[A] =
-      (_: List[VarBinding[A]]) => (j: A) => Task.now(j :: Nil)
+      (_: BindingsByName[A]) => (j: A) => Task.now(j :: Nil)
   }
 
   type OrCompilationError[T] = QQCompilationException \/ T
@@ -95,6 +93,16 @@ object QQCompiler {
       Task.mapBoth(fstFun(jsv), sndFun(jsv)) { (f, s) => (f, s).zipped.map(fun) }.map(_.sequence).flatten
     }).run
 
+  def letBinding[J](name: String, as: CompiledFilter[J], in: CompiledFilter[J]): CompiledFilter[J] = {
+    (bindings: BindingsByName[J]) => (v: J) => {
+      val res = as(bindings)(v)
+      val newBindings = res.map(_.map(VarBinding[J](name, _)))
+      val allBindings = newBindings.map(_.map(b => bindings + (b.name -> b)))
+      val o = allBindings.map(_.map(in(_)(v)))
+      o.flatMap((ltl: List[Task[List[J]]]) => ltl.sequence[Task, List[J]].map(_.flatten))
+    }
+  }
+
   @inline
   def compileDefinitions[J](runtime: QQRuntime[J],
                             prelude: IndexedSeq[CompiledDefinition[J]] = Vector.empty,
@@ -108,7 +116,9 @@ object QQCompiler {
     compileDefinitions(runtime, prelude, program.defns).flatMap(compile(runtime, _, program.main))
   }
 
-  case class VarBinding[J]()
+  case class VarBinding[J](name: String, value: J)
+
+  type BindingsByName[J] = Map[String, VarBinding[J]]
 
   @inline
   def compileStep[J](runtime: QQRuntime[J],
@@ -116,7 +126,7 @@ object QQCompiler {
                      filter: FilterComponent[CompiledFilter[J]]): OrCompilationError[CompiledFilter[J]] = filter match {
     case leaf: LeafComponent[J@unchecked] => runtime.evaluateLeaf(leaf).right
     case ComposeFilters(f, s) => composeFilters(f, s).right
-    case LetAsBinding(name, f, s) => ???
+    case LetAsBinding(name, as, in) => letBinding(name, as, in).right
     case EnlistFilter(f) => runtime.enlistFilter(f).right
     case SilenceExceptions(f) => (for {
       fFun <- Reader(f)
@@ -133,7 +143,8 @@ object QQCompiler {
       definitions.find(_.name == filterIdentifier).cata(
         { (defn: CompiledDefinition[J]) =>
           if (params.length == defn.numParams) {
-            defn.body(params)
+            // wipe let-bindings on calls so the only scope is block-scope
+            defn.body(params).map(b => (_: BindingsByName[J]) => b(Map.empty))
           } else {
             WrongNumParams(filterIdentifier, defn.numParams, params.length).left
           }

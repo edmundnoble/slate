@@ -17,5 +17,6 @@ class UpickleCompilerTest extends QQAsyncTestSuite {
   "select range" in Future.traverse(selectRangeTests)(runTest)
   "collect results" in Future.traverse(collectResultsTests)(runTest)
   "fat stack" taggedAs StackTest in Future.traverse(fatStackTests)(runTest)
+  "variables" in Future.traverse(variableTests)(runTest)
 
 }

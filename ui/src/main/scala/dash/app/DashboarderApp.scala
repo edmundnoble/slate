@@ -64,7 +64,7 @@ object DashboarderApp extends scalajs.js.JSApp {
       (title, StorageProgram.runProgram(DomStorage.Local,
         DashApp.getCachedCompiledProgram(program))
         .flatMap(_.valueOrThrow)
-        .flatMap(f => f(input)
+        .flatMap(f => f(Map.empty)(input)
           .map(_.flatMap(i => ExpandableContentModel.pkl.read.lift(Json.jsToUpickleRec(i))))
         ))
   }

@@ -3,6 +3,8 @@ package qq
 import monix.eval.Task
 import qq.FilterComponent._
 import scalaz.syntax.plusEmpty._
+import scalaz.syntax.std.option._
+import scalaz.syntax.either._
 
 import scalaz.\/
 
@@ -20,6 +22,12 @@ trait QQRuntime[J] {
 
   @inline final def evaluateLeaf(component: LeafComponent[J]): CompiledFilter[J] = component match {
     case IdFilter() => mempty[CompiledFilter, J]
+    case Dereference(name) =>
+      (bindings: BindingsByName[J]) =>
+        bindings.get(name).cata(
+          p => (_: J) => Task.now(p.value :: Nil),
+          (_: J) => Task.raiseError(QQRuntimeException(s"Variable $name not bound"))
+        )
     case ConstNumber(num) => constNumber(num)
     case ConstString(str) => constString(str)
     case SelectKey(key) => selectKey(key)

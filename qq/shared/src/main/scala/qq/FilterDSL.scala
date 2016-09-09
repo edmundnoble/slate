@@ -27,5 +27,6 @@ object FilterDSL {
   @inline final def constNumber(value: Double): Filter = Fix(ConstNumber(value))
   @inline final def constString(value: String): Filter = Fix(ConstString(value))
   @inline final def letAsBinding(name: String, as: Filter, in: Filter): Filter = Fix(LetAsBinding[Filter](name, as, in))
+  @inline final def deref(name: String): Filter = Fix(Dereference[Filter](name))
 
 }

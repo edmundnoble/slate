@@ -139,4 +139,14 @@ class ParserTest extends QQSyncTestSuite {
     Parser.filter.parse(""". * . + . | ., .""").get.value shouldBe ensequence(compose(add(multiply(id, id), id), id), id)
   }
 
+  "dereference variables" - {
+    "literal parsing" in (Parser.dereference.parse("$hello").get.value shouldBe deref("hello"))
+    "in a filter call" in (Parser.filter.parse("f($hello)").get.value shouldBe call("f", List(deref("hello"))))
+  }
+
+  "let bindings" - {
+    "plain binding" in (Parser.letAsBinding.parse("let $d as . in .").get.value shouldBe (letAsBinding("d", id, id)))
+    "in a filter" in (Parser.filter.parse(". | let $d as . in .").get.value shouldBe (compose(id, letAsBinding("d", id, id))))
+  }
+
 }

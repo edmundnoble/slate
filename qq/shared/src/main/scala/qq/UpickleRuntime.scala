@@ -4,7 +4,7 @@ import monix.eval.Task
 import monix.scalaz._
 import qq.FilterComponent._
 import upickle.Js
-import qq.QQCompiler.{CompiledFilter, FOut, VarBinding}
+import qq.QQCompiler.{BindingsByName, CompiledFilter, FOut, VarBinding}
 
 import scalaz.{-\/, NonEmptyList, Reader, \/, \/-}
 import scalaz.std.list._
@@ -140,7 +140,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
   override def enjectFilter(obj: List[(\/[String, CompiledFilter[Js.Value]], CompiledFilter[Js.Value])]): CompiledFilter[Js.Value] = {
     if (obj.isEmpty) {
       CompiledFilter.func[Js.Value](_ => Task.now(Js.Obj() :: Nil))
-    } else { bindings: List[VarBinding[Js.Value]] => { jsv: Js.Value => for {
+    } else { bindings: BindingsByName[Js.Value] => { jsv: Js.Value => for {
       kvPairs <- obj.traverse[Task, List[List[(String, Js.Value)]]] {
         case (\/-(filterKey), filterValue) =>
           for {

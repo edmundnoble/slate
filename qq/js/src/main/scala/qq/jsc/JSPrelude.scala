@@ -5,7 +5,7 @@ import java.util.regex.Pattern
 import com.thoughtworks.each.Monadic._
 import monix.eval.Task
 import monix.scalaz._
-import qq.QQCompiler.{CompiledFilter, FOut, VarBinding}
+import qq.QQCompiler.{BindingsByName, CompiledFilter, FOut, VarBinding}
 import qq._
 import qq.ajax.{Ajax, AjaxMethod}
 import scodec.bits.ByteVector
@@ -30,7 +30,7 @@ object JSPrelude extends PlatformPrelude[Any] {
   def `false`: CompiledDefinition[Any] = noParamDefinition("false", CompiledFilter.const(false))
 
   def orElse: CompiledDefinition[Any] = CompiledDefinition[Any]("orElse", 1, {
-    case (default :: Nil) => ((bindings: List[VarBinding[Any]]) => {
+    case (default :: Nil) => ((bindings: BindingsByName[Any]) => {
       case null => default(bindings)(null)
       case k => Task.now(k :: Nil)
     }: FOut[Any]).right[QQCompilationException]
@@ -55,7 +55,7 @@ object JSPrelude extends PlatformPrelude[Any] {
   override def replaceAll: CompiledDefinition[Any] =
     CompiledDefinition[Any](name = "replaceAll", numParams = 2,
       body = {
-        case (regexFilter :: replacementFilter :: Nil) => ((bindings: List[VarBinding[Any]]) => {
+        case (regexFilter :: replacementFilter :: Nil) => ((bindings: BindingsByName[Any]) => {
           (jsv: Any) =>
             monadic[Task] {
               val regexes: List[Pattern] = regexFilter(bindings)(jsv).each.traverse[Task, Pattern] {
@@ -162,7 +162,7 @@ object JSPrelude extends PlatformPrelude[Any] {
 
   private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition[Any](name, 4, {
     case List(urlFilter, queryParamsFilter, dataFilter, headersFilter) => (
-      (bindings: List[VarBinding[Any]]) => (jsv: Any) =>
+      (bindings: BindingsByName[Any]) => (jsv: Any) =>
         monadic[Task] {
           val url = (urlFilter(bindings)(jsv).each.head match {
             case s: String => Task.now(s)
