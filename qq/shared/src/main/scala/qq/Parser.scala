@@ -166,14 +166,13 @@ object Parser {
     P(binaryOperators[Filter](factor, "*" -> FilterDSL.multiply _, "/" -> FilterDSL.divide _, "%" -> FilterDSL.modulo _))
 
   val factor: P[Filter] =
-    P(("(" ~/ sequenced ~ ")") | smallFilter | enjectedFilter | enlistedFilter)
+    P(("(" ~/ sequenced ~ ")") | letAsBinding | smallFilter | enjectedFilter | enlistedFilter)
 
   val filter: P[Filter] = P(
-    letAsBinding |
-      (for {
+      for {
         f <- sequenced
         fun <- "?".!.?.map(_.fold(identity[Filter] _)(_ => FilterDSL.silence))
-      } yield fun(f))
+      } yield fun(f)
   )
 
   val arguments: P[List[String]] = P(

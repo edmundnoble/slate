@@ -1,5 +1,7 @@
 package qq
 
+import fastparse.parsers.Terminals.End
+
 import scalaz.\/
 import scalaz.std.list._
 
@@ -145,8 +147,8 @@ class ParserTest extends QQSyncTestSuite {
   }
 
   "let bindings" - {
-    "plain binding" in (Parser.letAsBinding.parse("let $d as . in .").get.value shouldBe (letAsBinding("d", id, id)))
-    "in a filter" in (Parser.filter.parse(". | let $d as . in .").get.value shouldBe (compose(id, letAsBinding("d", id, id))))
+    "plain binding" in (Parser.letAsBinding.parse("let $d as . in .").get.value shouldBe letAsBinding("d", id, id))
+    "in a filter" in (Parser.filter.parse(". | let $d as . in .").get.value shouldBe compose(id, letAsBinding("d", id, id)))
   }
 
 }

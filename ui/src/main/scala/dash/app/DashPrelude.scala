@@ -2,6 +2,7 @@ package dash
 package app
 
 import monix.eval.Task
+import monix.scalaz._
 import qq.QQCompiler.BindingsByName
 import qq.{CompiledDefinition, QQRuntimeException}
 import qq.ajax.{Ajax, AjaxMethod}

@@ -65,24 +65,11 @@ trait PlatformPrelude[J] extends Prelude[J] {
 
   def scalars: CompiledDefinition[J]
 
-  // ajax
-
-  def httpDelete: CompiledDefinition[J]
-
-  def httpGet: CompiledDefinition[J]
-
-  def httpPatch: CompiledDefinition[J]
-
-  def httpPost: CompiledDefinition[J]
-
-  def httpPut: CompiledDefinition[J]
-
   override def all(runtime: QQRuntime[J]): QQCompilationException \/ IndexedSeq[CompiledDefinition[J]] = {
     Vector(
-      `null`, `true`, `false`, orElse, b64Encode, includes, exists, forall,
+      `null`, `true`, `false`, orElse, b64Encode, includes, // exists, forall,
       length, keys, replaceAll, arrays, objects, iterables, booleans,
-      numbers, strings, nulls, values, scalars, httpDelete, httpGet,
-      httpPatch, httpPost, httpPut
+      numbers, strings, nulls, values, scalars
     ).right[QQCompilationException]
   }
 
