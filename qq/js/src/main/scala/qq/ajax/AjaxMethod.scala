@@ -1,6 +1,6 @@
 package qq.ajax
 
-sealed trait AjaxMethod
+sealed abstract class AjaxMethod
 
 object AjaxMethod {
   case object PUT extends AjaxMethod

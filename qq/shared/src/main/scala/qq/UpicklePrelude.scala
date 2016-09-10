@@ -148,15 +148,6 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
         case k => Task.now(k :: Nil)
       })
 
-
-  override def httpDelete: CompiledDefinition[Js.Value] = CompiledDefinition.undefinedOnPlatform("httpDelete")
-
-  override def httpGet: CompiledDefinition[Js.Value] = CompiledDefinition.undefinedOnPlatform("httpGet")
-
-  override def httpPatch: CompiledDefinition[Js.Value] = CompiledDefinition.undefinedOnPlatform("httpPatch")
-
-  override def httpPost: CompiledDefinition[Js.Value] = CompiledDefinition.undefinedOnPlatform("httpPost")
-
-  override def httpPut: CompiledDefinition[Js.Value] = CompiledDefinition.undefinedOnPlatform("httpPut")
-
+  // array or object includes
+  override def includes: CompiledDefinition[Js.Value] = CompiledDefinition.undefinedOnPlatform("includes")
 }

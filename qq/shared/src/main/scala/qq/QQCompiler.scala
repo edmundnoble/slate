@@ -31,6 +31,9 @@ object QQRuntimeException {
   def apply(message: String): QQRuntimeException = new QQRuntimeException(message)
 }
 
+case class TypeError(expectedType: String, actualValueRepr: String)
+  extends QQRuntimeException(message = "Expected a/an " + expectedType + ", but got " + actualValueRepr)
+
 case class NotARegex(asStr: String) extends QQRuntimeException(
   "tried to use this as a regex: " + asStr
 )

@@ -160,46 +160,28 @@ object JSPrelude extends PlatformPrelude[Any] {
         case k => Task.now(k :: Nil)
       })
 
-  private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition[Any](name, 4, {
-    case List(urlFilter, queryParamsFilter, dataFilter, headersFilter) => (
-      (bindings: BindingsByName[Any]) => (jsv: Any) =>
-        monadic[Task] {
-          val url = (urlFilter(bindings)(jsv).each.head match {
-            case s: String => Task.now(s)
-            case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not a URL"))
-          }).each
-          val queryParams = (queryParamsFilter(bindings)(jsv).each.head match {
-            case o: js.Object => Task.now(o)
-            case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not query params/data"))
-          }).each.asInstanceOf[js.Dictionary[js.Any]]
-          val data = (dataFilter(bindings)(jsv).each.head match {
-            case s: String => Task.now(s)
-            case o: js.Object => Task.now(Json.jsToString(o))
-            case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not usable as POST data"))
-          }).each
-          val headers = (headersFilter(bindings)(jsv).each.head match {
-            case o: js.Object => Task.now(o)
-            case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not headers"))
-          }).each.asInstanceOf[js.Dictionary[String]]
-          val ajax = (if (ajaxMethod == AjaxMethod.POST) {
-            Ajax.post(url, data, queryParams.toMap, headers.toMap)(Ajax.Timeout(1000.millis))
-          } else {
-            Ajax(ajaxMethod, url, data, queryParams.toMap, headers.toMap, false, "")(Ajax.Timeout(1000.millis))
-          }).each
-          List(Json.stringToJs(ajax.responseText).fold(Task.raiseError, Task.now).each)
-        }
-    ).right
-  })
+  override def includes: CompiledDefinition[Any] =
+    CompiledDefinition[Any]("includes", 1, { case List(elem) =>
+      ((bindings: BindingsByName[Any]) => (v: Any) => v match {
+        case arr: js.Array[_] => elem(bindings)(v).map(f => f.map(v => java.lang.Boolean.valueOf(arr.contains(v))))
+        case obj: js.Object => elem(bindings)(v).map(f => f.map(v => java.lang.Boolean.valueOf(obj.asInstanceOf[js.Dictionary[Any]].values.exists(_ == v))))
+        case k => Task.raiseError(TypeError("array|object", String.valueOf(k)))
+      }).right
+    })
 
-  override def httpDelete: CompiledDefinition[Any] = makeAjaxDefinition("httpDelete", AjaxMethod.DELETE)
+  // array/object existential predicate transformer
+//  override def exists: CompiledDefinition[Any] =
+//  CompiledDefinition[Any]("exists", 1, { case List(pred) =>
+//    ((bindings: BindingsByName[Any]) => (v: Any) => v match {
+//      case arr: js.Array[_] => pred(bindings)(v).map(f => f.map(v => if (v.isInstanceOfjava.lang.Boolean.valueOf(arr.xs(v))))
+//      case obj: js.Object => pred(bindings)(v).map(f => f.map(v => java.lang.Boolean.valueOf(obj.asInstanceOf[js.Dictionary[Any]].values.exists(_ == v))))
+//      case k => Task.raiseError(TypeError("array|object", String.valueOf(k)))
+//    }).right
+//  })
 
-  override def httpGet: CompiledDefinition[Any] = makeAjaxDefinition("httpGet", AjaxMethod.GET)
+//   array/object universal predicate transformer
+//  override def forall: CompiledDefinition[Any]
 
-  override def httpPost: CompiledDefinition[Any] = makeAjaxDefinition("httpPost", AjaxMethod.POST)
-
-  override def httpPatch: CompiledDefinition[Any] = makeAjaxDefinition("httpPatch", AjaxMethod.PATCH)
-
-  override def httpPut: CompiledDefinition[Any] = makeAjaxDefinition("httpPut", AjaxMethod.PUT)
 
 }
 
