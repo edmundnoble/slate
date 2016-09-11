@@ -22,15 +22,15 @@ object RuntimeBench {
     Suite[(QQRuntimeParams, Int)]("QQ Runtime Benchmarks")(
       runtimeSetup(size => (Util.buildRec(FilterDSL.compose(_, FilterDSL.id), size, FilterDSL.id), "[]")
       )("compose with id") {
-        params => params.filt(params.in)
+        params => params.filt(Map.empty)(params.in)
       },
       runtimeSetup(size => (FilterDSL.selectKey(s"k$size"), "{" + Stream.tabulate(size)(i => raw""""k$i":"$i"""").mkString(",") + "}")
       )("select key") {
-        params => params.filt(params.in)
+        params => params.filt(Map.empty)(params.in)
       },
       runtimeSetup(size => (Util.buildRec(FilterDSL.add(_, FilterDSL.constNumber(1)), size, FilterDSL.id), s"$size")
       )("plus") {
-        params => params.filt(params.in)
+        params => params.filt(Map.empty)(params.in)
       }
     ),
     GuiParams.two(

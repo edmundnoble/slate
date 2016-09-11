@@ -41,11 +41,8 @@ object DashPrelude {
             case o: js.Object => Task.now(o)
             case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not headers"))
           }).each.asInstanceOf[js.Dictionary[String]]
-          val ajax = (if (ajaxMethod == AjaxMethod.POST) {
-            Ajax.post(url, data, queryParams.toMap, headers.toMap)(Ajax.Timeout(1000.millis))
-          } else {
-            Ajax(ajaxMethod, url, data, queryParams.toMap, headers.toMap, false, "")(Ajax.Timeout(1000.millis))
-          }).each
+          val ajax =
+            Ajax(ajaxMethod, url, data, queryParams.toMap, headers.toMap, false, "")(Ajax.Timeout(1000.millis)).each
           List(Json.stringToJs(ajax.responseText).fold(Task.raiseError, Task.now).each)
         }
       ).right
