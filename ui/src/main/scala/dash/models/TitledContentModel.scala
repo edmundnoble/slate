@@ -13,7 +13,8 @@ object TitledContentModel {
   implicit val reusability: Reusability[TitledContentModel] =
     Reusability.caseClass[TitledContentModel]
 
-  implicit val pkl = new upickle.default.Reader[TitledContentModel] with upickle.default.Writer[TitledContentModel] {
+  implicit val pkl: upickle.default.Reader[TitledContentModel] with upickle.default.Writer[TitledContentModel] =
+    new upickle.default.Reader[TitledContentModel] with upickle.default.Writer[TitledContentModel] {
     override def read0: PartialFunction[Js.Value, TitledContentModel] = {
       case o: Js.Obj => TitledContentModel(
         o("title").str,

@@ -27,10 +27,12 @@ object DashboardPage {
         )
       )
     )
+
   case class AppBarState(scrollY: Double)
 
   object AppBarState {
-    implicit val reusability = Reusability.byRefOr_==[AppBarState]
+    implicit val reusability: Reusability[AppBarState] =
+      Reusability.byRefOr_==[AppBarState]
   }
 
   def appBar(implicit sch: Scheduler
@@ -54,30 +56,31 @@ object DashboardPage {
   case class SearchPageState(appProps: List[AppProps])
 
   object SearchPageState {
-    implicit val reusability = Reusability.caseClass[SearchPageState]
+    implicit val reusability: Reusability[SearchPageState] =
+      Reusability.caseClass[SearchPageState]
   }
 
   def makeDashboardPage(appbarProps: Observable[AppBarState])(implicit sch: Scheduler
   ): ReactComponentB[Observable[SearchPageState], SearchPageState, Unit, TopNode] =
     ReactComponentB[Observable[SearchPageState]]("Main search page")
-    .initialState(SearchPageState(Nil))
-    .renderS { (_, state) =>
-      div(
-        id := "react-root",
-        appBar.build(appbarProps),
+      .initialState(SearchPageState(Nil))
+      .renderS { (_, state) =>
         div(
-          div(Styles.container,
-            Styles.dashboardContainer(
-              state.appProps
-                .grouped(2)
-                .map(makeAppRow).toSeq: _*
+          id := "react-root",
+          appBar.build(appbarProps),
+          div(
+            div(Styles.container,
+              Styles.dashboardContainer(
+                state.appProps
+                  .grouped(2)
+                  .map(makeAppRow).toSeq: _*
+              )
             )
           )
         )
-      )
-    }
-    .configure(Reusability.shouldComponentUpdate)
-    .reactiveReplace
+      }
+      .configure(Reusability.shouldComponentUpdate)
+      .reactiveReplace
 
 }
 
