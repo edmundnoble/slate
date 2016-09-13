@@ -3,9 +3,9 @@ package qq
 import matryoshka._
 import qq.FilterDSL._
 
-class OptimizerTest extends QQSyncTestSuite {
+class LocalOptimizerTest extends QQSyncTestSuite {
 
-  import Optimizer.optimizeFilter
+  import LocalOptimizer.optimizeFilter
 
   "optimize simple compositions" in {
     optimizeFilter(compose(id, selectKey("key"))) shouldBe selectKey("key")

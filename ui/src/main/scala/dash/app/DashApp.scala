@@ -1,7 +1,7 @@
 package dash
 package app
 
-import qq.{Optimizer, Parser, Program, QQCompiler}
+import qq.{LocalOptimizer, Parser, Program, QQCompiler}
 import qq.QQCompiler.{CompiledFilter, OrCompilationError}
 import scodec.bits.BitVector
 
@@ -22,7 +22,7 @@ object DashApp {
       decodedOptimizedProgram <- programInStorage match {
         case None =>
           val parsedQQProgram = Parser.program.parse(qqProgram).get.value
-          val optimizedProgram = Optimizer.optimizeProgram(parsedQQProgram)
+          val optimizedProgram = LocalOptimizer.optimizeProgram(parsedQQProgram)
           val encodedOptimizedProgram = programCodec.encode(optimizedProgram).require
           val out = encodedOptimizedProgram.toBase64
           update(hash, out).map(_ => optimizedProgram)

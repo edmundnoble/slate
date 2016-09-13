@@ -9,7 +9,7 @@ import scalaz.syntax.functor._
 import scalaz.{Functor, NonEmptyList}
 import qq.Platform.Rec._
 
-object Optimizer {
+object LocalOptimizer {
 
   import FilterComponent._
 
