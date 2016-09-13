@@ -3,8 +3,8 @@ package qq.jsc
 import monix.eval.Task
 import monix.scalaz._
 import qq.{QQRuntime, QQRuntimeException}
-import qq.QQCompiler.{BindingsByName, CompiledFilter, VarBinding}
-import qq.Util._
+import qq.QQCompiler.{VarBindings, CompiledFilter, VarBinding}
+import qq.util._
 
 import scala.scalajs.js
 import scala.scalajs.js.{Array, Dictionary, Object}
@@ -139,7 +139,7 @@ object JSRuntime extends QQRuntime[Any] {
   override def enjectFilter(obj: List[(\/[String, CompiledFilter[Any]], CompiledFilter[Any])]): CompiledFilter[Any] = {
     if (obj.isEmpty) {
       CompiledFilter.func[Any](_ => Task.now(js.Object() :: Nil))
-    } else { bindings: BindingsByName[Any] => { jsv: Any => for {
+    } else { bindings: VarBindings[Any] => { jsv: Any => for {
       kvPairs <- obj.traverse[Task, List[List[(String, Any)]]] {
         case (\/-(filterKey), filterValue) =>
           for {

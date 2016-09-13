@@ -4,13 +4,13 @@ import monix.eval.Task
 import monix.scalaz._
 import qq.FilterComponent._
 import upickle.Js
-import qq.QQCompiler.{BindingsByName, CompiledFilter, FOut, VarBinding}
+import qq.QQCompiler.{VarBindings, CompiledFilter, CompiledProgram, VarBinding}
 
 import scalaz.{-\/, NonEmptyList, Reader, \/, \/-}
 import scalaz.std.list._
 import scalaz.syntax.std.list._
 import scalaz.syntax.traverse._
-import qq.Util._
+import qq.util._
 
 import scalaz.syntax.std.map._
 import scalaz.std.map._
@@ -82,7 +82,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
     } yield Js.Arr(results: _*) :: Nil
   }).run
 
-  override def selectKey(key: String): CompiledFilter[Js.Value] = CompiledFilter.func {
+  override def selectKey(key: String): CompiledFilter[Js.Value] = CompiledFilter.func[Js.Value] {
     case f: Js.Obj =>
       f.value.find(_._1 == key) match {
         case None => taskOfListOfNull
@@ -140,7 +140,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
   override def enjectFilter(obj: List[(\/[String, CompiledFilter[Js.Value]], CompiledFilter[Js.Value])]): CompiledFilter[Js.Value] = {
     if (obj.isEmpty) {
       CompiledFilter.func[Js.Value](_ => Task.now(Js.Obj() :: Nil))
-    } else { bindings: BindingsByName[Js.Value] => { jsv: Js.Value => for {
+    } else { bindings: VarBindings[Js.Value] => { jsv: Js.Value => for {
       kvPairs <- obj.traverse[Task, List[List[(String, Js.Value)]]] {
         case (\/-(filterKey), filterValue) =>
           for {

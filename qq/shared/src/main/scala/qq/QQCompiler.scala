@@ -14,7 +14,7 @@ import scalaz.syntax.applicative._
 import scalaz.syntax.plusEmpty._
 import scalaz.syntax.monad._
 import qq.Platform.Rec._
-import qq.Util._
+import qq.util._
 
 import scala.language.higherKinds
 import scalaz.Free.Trampoline
@@ -52,17 +52,17 @@ case class WrongNumParams(name: String, correct: Int, you: Int) extends QQCompil
 
 object QQCompiler {
 
-  import matryoshka.∘
-
-  type CompiledFilter[J] = BindingsByName[J] => FOut[J]
-  type FOut[J] = J => Task[List[J]]
+  case class VarBinding[J](name: String, value: J)
+  type VarBindings[J] = Map[String, VarBinding[J]]
+  type CompiledFilter[J] = VarBindings[J] => CompiledProgram[J]
+  type CompiledProgram[J] = J => Task[List[J]]
 
   object CompiledFilter {
     @inline final def const[J](value: J): CompiledFilter[J] =
-      (_: BindingsByName[J]) => (j: J) => Task.now(value :: Nil)
+      (_: VarBindings[J]) => (_: J) => Task.now(value :: Nil)
 
-    @inline final def func[J](f: FOut[J]): CompiledFilter[J] =
-      (_: BindingsByName[J]) => f
+    @inline final def func[J](f: CompiledProgram[J]): CompiledFilter[J] =
+      (_: VarBindings[J]) => f
 
   }
 
@@ -71,7 +71,7 @@ object QQCompiler {
       composeFilters(a, b)
 
     override def empty[A]: CompiledFilter[A] =
-      (_: BindingsByName[A]) => (j: A) => Task.now(j :: Nil)
+      (_: VarBindings[A]) => (j: A) => Task.now(j :: Nil)
   }
 
   type OrCompilationError[T] = QQCompilationException \/ T
@@ -97,7 +97,7 @@ object QQCompiler {
     }).run
 
   def letBinding[J](name: String, as: CompiledFilter[J], in: CompiledFilter[J]): CompiledFilter[J] = {
-    (bindings: BindingsByName[J]) => (v: J) => {
+    (bindings: VarBindings[J]) => (v: J) => {
       val res = as(bindings)(v)
       val newBindings = res.map(_.map(VarBinding[J](name, _)))
       val allBindings = newBindings.map(_.map(b => bindings + (b.name -> b)))
@@ -109,8 +109,8 @@ object QQCompiler {
   @inline
   def compileDefinitions[J](runtime: QQRuntime[J],
                             prelude: IndexedSeq[CompiledDefinition[J]] = Vector.empty,
-                            definitions: IndexedSeq[Definition]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
-    definitions.foldLeft(prelude.right[QQCompilationException])(compileDefinitionStep(runtime))
+                            definitions: Program.Definitions): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
+    definitions.values.foldLeft(prelude.right[QQCompilationException])(compileDefinitionStep(runtime))
 
   @inline
   def compileProgram[J](runtime: QQRuntime[J],
@@ -118,10 +118,6 @@ object QQCompiler {
                         program: Program): OrCompilationError[CompiledFilter[J]] = {
     compileDefinitions(runtime, prelude, program.defns).flatMap(compile(runtime, _, program.main))
   }
-
-  case class VarBinding[J](name: String, value: J)
-
-  type BindingsByName[J] = Map[String, VarBinding[J]]
 
   @inline
   def compileStep[J](runtime: QQRuntime[J],

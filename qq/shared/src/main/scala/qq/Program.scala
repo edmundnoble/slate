@@ -1,4 +1,8 @@
 package qq
 
-case class Program(defns: Vector[Definition], main: Filter)
+object Program {
+  type Definitions = Map[String, Definition]
+}
+
+case class Program(defns: Program.Definitions, main: Filter)
 

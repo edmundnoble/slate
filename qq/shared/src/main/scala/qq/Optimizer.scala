@@ -58,7 +58,7 @@ object Optimizer {
     Recursion.transCataT(localOptimizationsƒ).apply(filter)
 
   def optimizeProgram(program: Program): Program =
-    program.copy(defns = program.defns.map(optimizeDefinition), main = optimizeFilter(program.main))
+    program.copy(defns = program.defns.mapValues(optimizeDefinition), main = optimizeFilter(program.main))
 
   def optimizeDefinition(defn: Definition): Definition =
     defn.copy(body = optimizeFilter(defn.body))

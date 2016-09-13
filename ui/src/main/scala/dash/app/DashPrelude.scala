@@ -3,7 +3,7 @@ package app
 
 import monix.eval.Task
 import monix.scalaz._
-import qq.QQCompiler.BindingsByName
+import qq.QQCompiler.VarBindings
 import qq.{CompiledDefinition, QQRuntimeException}
 import qq.ajax.{Ajax, AjaxMethod}
 import qq.jsc.{JSRuntime, Json}
@@ -22,7 +22,7 @@ object DashPrelude {
 
   private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition[Any](name, 4, {
     case List(urlFilter, queryParamsFilter, dataFilter, headersFilter) => (
-      (bindings: BindingsByName[Any]) => (jsv: Any) =>
+      (bindings: VarBindings[Any]) => (jsv: Any) =>
         monadic[Task] {
           val url = (urlFilter(bindings)(jsv).each.head match {
             case s: String => Task.now(s)

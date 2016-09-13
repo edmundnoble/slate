@@ -147,8 +147,10 @@ object Parser {
   // binary operators with the same precedence level
   def binaryOperators[A](rec: P[A], op1: (String, (A, A) => A), ops: (String, (A, A) => A)*): P[A] = {
     def makeParser(text: String, function: (A, A) => A): P[(A, A) => A] = wspStr(text) >| function
+
     def foldOperators(begin: A, operators: List[((A, A) => A, A)]): A =
       operators.foldLeft(begin) { case (f, (combFun, nextF)) => combFun(f, nextF) }
+
     val op = NonEmptyList(op1, ops: _*).map((makeParser _).tupled).foldLeft1(_ | _)
     (rec ~ whitespace ~ (op ~/ whitespace ~ rec).rep).map((foldOperators _).tupled)
   }
@@ -169,10 +171,10 @@ object Parser {
     P(("(" ~/ sequenced ~ ")") | letAsBinding | smallFilter | enjectedFilter | enlistedFilter)
 
   val filter: P[Filter] = P(
-      for {
-        f <- sequenced
-        fun <- "?".!.?.map(_.fold(identity[Filter] _)(_ => FilterDSL.silence))
-      } yield fun(f)
+    for {
+      f <- sequenced
+      fun <- "?".!.?.map(_.fold(identity[Filter] _)(_ => FilterDSL.silence))
+    } yield fun(f)
   )
 
   val arguments: P[List[String]] = P(
@@ -184,7 +186,11 @@ object Parser {
   )
 
   val program: P[Program] = P(
-    (whitespace ~ (definition.rep(min = 1, sep = whitespace) ~ whitespace).?.map(_.map(_.toVector).getOrElse(Vector.empty)) ~ filter ~ Terminals.End).map((Program.apply _).tupled)
+    (whitespace ~
+      (definition.rep(min = 1, sep = whitespace) ~ whitespace)
+        .?.map(_.map(_.toDefinitions).getOrElse(Map.empty)) ~
+      filter ~ Terminals.End)
+      .map((Program.apply _).tupled)
   )
 
 }

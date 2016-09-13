@@ -5,7 +5,7 @@ import java.util.regex.Pattern
 import com.thoughtworks.each.Monadic._
 import monix.eval.Task
 import monix.scalaz._
-import qq.QQCompiler.{BindingsByName, CompiledFilter, FOut, VarBinding}
+import qq.QQCompiler.{VarBindings, CompiledFilter, CompiledProgram, VarBinding}
 import qq._
 import qq.ajax.{Ajax, AjaxMethod}
 import scodec.bits.ByteVector
@@ -30,10 +30,10 @@ object JSPrelude extends PlatformPrelude[Any] {
   def `false`: CompiledDefinition[Any] = noParamDefinition("false", CompiledFilter.const(false))
 
   def orElse: CompiledDefinition[Any] = CompiledDefinition[Any]("orElse", 1, {
-    case (default :: Nil) => ((bindings: BindingsByName[Any]) => {
+    case (default :: Nil) => ((bindings: VarBindings[Any]) => {
       case null => default(bindings)(null)
       case k => Task.now(k :: Nil)
-    }: FOut[Any]).right[QQCompilationException]
+    }: CompiledProgram[Any]).right[QQCompilationException]
   })
 
   def b64Encode: CompiledDefinition[Any] = noParamDefinition("b64Encode", CompiledFilter.func {
@@ -55,7 +55,7 @@ object JSPrelude extends PlatformPrelude[Any] {
   override def replaceAll: CompiledDefinition[Any] =
     CompiledDefinition[Any](name = "replaceAll", numParams = 2,
       body = {
-        case (regexFilter :: replacementFilter :: Nil) => ((bindings: BindingsByName[Any]) => {
+        case (regexFilter :: replacementFilter :: Nil) => ((bindings: VarBindings[Any]) => {
           (jsv: Any) =>
             monadic[Task] {
               val regexes: List[Pattern] = regexFilter(bindings)(jsv).each.traverse[Task, Pattern] {
@@ -162,7 +162,7 @@ object JSPrelude extends PlatformPrelude[Any] {
 
   override def includes: CompiledDefinition[Any] =
     CompiledDefinition[Any]("includes", 1, { case List(elem) =>
-      ((bindings: BindingsByName[Any]) => (v: Any) => v match {
+      ((bindings: VarBindings[Any]) => (v: Any) => v match {
         case arr: js.Array[_] => elem(bindings)(v).map(f => f.map(v => java.lang.Boolean.valueOf(arr.contains(v))))
         case obj: js.Object => elem(bindings)(v).map(f => f.map(v => java.lang.Boolean.valueOf(obj.asInstanceOf[js.Dictionary[Any]].values.exists(_ == v))))
         case k => Task.raiseError(TypeError("array|object", String.valueOf(k)))
@@ -172,7 +172,7 @@ object JSPrelude extends PlatformPrelude[Any] {
   // array/object existential predicate transformer
 //  override def exists: CompiledDefinition[Any] =
 //  CompiledDefinition[Any]("exists", 1, { case List(pred) =>
-//    ((bindings: BindingsByName[Any]) => (v: Any) => v match {
+//    ((bindings: VarBindings[Any]) => (v: Any) => v match {
 //      case arr: js.Array[_] => pred(bindings)(v).map(f => f.map(v => if (v.isInstanceOfjava.lang.Boolean.valueOf(arr.xs(v))))
 //      case obj: js.Object => pred(bindings)(v).map(f => f.map(v => java.lang.Boolean.valueOf(obj.asInstanceOf[js.Dictionary[Any]].values.exists(_ == v))))
 //      case k => Task.raiseError(TypeError("array|object", String.valueOf(k)))

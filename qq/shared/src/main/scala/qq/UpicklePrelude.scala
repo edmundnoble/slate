@@ -10,7 +10,7 @@ import scalaz.syntax.traverse._
 import scalaz.std.list._
 import com.thoughtworks.each.Monadic._
 import monix.scalaz._
-import qq.QQCompiler.{BindingsByName, CompiledFilter, VarBinding}
+import qq.QQCompiler.{VarBindings, CompiledFilter, VarBinding}
 import scodec.bits.ByteVector
 
 import scalaz.Reader
@@ -59,7 +59,7 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
   override def replaceAll: CompiledDefinition[Js.Value] =
     CompiledDefinition[Js.Value](name = "replaceAll", numParams = 2,
       body = {
-        case (regexFilter :: replacementFilter :: Nil) => ((bindings: BindingsByName[Js.Value]) => {
+        case (regexFilter :: replacementFilter :: Nil) => ((bindings: VarBindings[Js.Value]) => {
           (jsv: Js.Value) =>
             monadic[Task] {
               val regexes: List[Pattern] = regexFilter(bindings)(jsv).each.traverse[Task, Pattern] {
