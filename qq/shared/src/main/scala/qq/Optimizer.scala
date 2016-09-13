@@ -21,19 +21,19 @@ object Optimizer {
     case Some(e) => repeatedly(f)(e)
   }
 
-  type Optimization = PartialFunction[Filter, Filter]
+  type LocalOptimization = PartialFunction[Filter, Filter]
 
-  def idCompose: Optimization = {
+  def idCompose: LocalOptimization = {
     case Fix(ComposeFilters(Fix(IdFilter()), s)) => s
     case Fix(ComposeFilters(f, Fix(IdFilter()))) => f
   }
 
-  def collectEnlist: Optimization = {
+  def collectEnlist: LocalOptimization = {
     case Fix(EnlistFilter(Fix(CollectResults(f)))) => f
     case Fix(CollectResults(Fix(EnlistFilter(f)))) => f
   }
 
-  def constFuse: Optimization = {
+  def constFuse: LocalOptimization = {
     case Fix(ComposeFilters(
     Fix(_: ConstantComponent[Fix[FilterComponent]]),
     nextConst@Fix(_: ConstantComponent[Fix[FilterComponent]])
@@ -41,7 +41,7 @@ object Optimizer {
   }
 
   object MathOptimizations {
-    def constReduce: Optimization = {
+    def constReduce: LocalOptimization = {
       case Fix(AddFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f + s))
       case Fix(SubtractFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f - s))
       case Fix(MultiplyFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f * s))
@@ -50,12 +50,12 @@ object Optimizer {
     }
   }
 
-  val allOptimizations: NonEmptyList[Optimization] =
+  val localOptimizations: NonEmptyList[LocalOptimization] =
     NonEmptyList(constFuse, idCompose, collectEnlist, MathOptimizations.constReduce)
-  val allOptimizationsƒ: Filter => Filter = repeatedly(allOptimizations.foldLeft1(_ orElse _).lift)
+  val localOptimizationsƒ: Filter => Filter = repeatedly(localOptimizations.foldLeft1(_ orElse _).lift)
 
   def optimizeFilter(filter: Filter): Filter =
-    Recursion.transCataT(allOptimizationsƒ).apply(filter)
+    Recursion.transCataT(localOptimizationsƒ).apply(filter)
 
   def optimizeProgram(program: Program): Program =
     program.copy(defns = program.defns.map(optimizeDefinition), main = optimizeFilter(program.main))
