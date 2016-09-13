@@ -5,26 +5,26 @@ import qq.FilterDSL._
 
 class OptimizerTest extends QQSyncTestSuite {
 
-  import Optimizer.optimize
+  import Optimizer.optimizeFilter
 
   "optimize simple compositions" in {
-    optimize(compose(id, selectKey("key"))) shouldBe selectKey("key")
-    optimize(compose(id, compose(selectKey("key"), id))) shouldBe selectKey("key")
+    optimizeFilter(compose(id, selectKey("key"))) shouldBe selectKey("key")
+    optimizeFilter(compose(id, compose(selectKey("key"), id))) shouldBe selectKey("key")
   }
 
   "optimize collectresults and enlist duality" in {
-    optimize(collectResults(enlist(id))) shouldBe id
-    optimize(enlist(collectResults(id))) shouldBe id
+    optimizeFilter(collectResults(enlist(id))) shouldBe id
+    optimizeFilter(enlist(collectResults(id))) shouldBe id
   }
 
   "do nested optimizations" in {
-    optimize(
+    optimizeFilter(
       collectResults(compose(id, compose(id, enlist(id))))
     ) shouldBe id
   }
 
   "optimize all math in constant expressions" in {
-    optimize(
+    optimizeFilter(
       add(
         multiply(
           constNumber(5.4),
@@ -44,7 +44,7 @@ class OptimizerTest extends QQSyncTestSuite {
   }
 
   "optimize constant chains" in {
-    optimize(
+    optimizeFilter(
       compose(constNumber(20), constNumber(30))
     ) shouldBe constNumber(30)
   }
@@ -53,7 +53,7 @@ class OptimizerTest extends QQSyncTestSuite {
   "no stack overflow on large filters" taggedAs StackTest in {
     @annotation.tailrec def collectRec(f: Filter, i: Int): Filter = if (i == 0) f else collectRec(collectResults(f), i - 1)
     @annotation.tailrec def enlistRec(f: Filter, i: Int): Filter = if (i == 0) f else enlistRec(enlist(f), i - 1)
-    optimize(collectRec(enlistRec(id, 1000), 1000)) shouldBe id
+    optimizeFilter(collectRec(enlistRec(id, 1000), 1000)) shouldBe id
   }
 
 }

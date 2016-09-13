@@ -22,7 +22,7 @@ object DashApp {
       decodedOptimizedProgram <- programInStorage match {
         case None =>
           val parsedQQProgram = Parser.program.parse(qqProgram).get.value
-          val optimizedProgram = Optimizer.optimize(parsedQQProgram)
+          val optimizedProgram = Optimizer.optimizeProgram(parsedQQProgram)
           val encodedOptimizedProgram = programCodec.encode(optimizedProgram).require
           val out = encodedOptimizedProgram.toBase64
           update(hash, out).map(_ => optimizedProgram)

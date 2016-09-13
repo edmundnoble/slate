@@ -53,10 +53,14 @@ object Optimizer {
   val allOptimizations: NonEmptyList[Optimization] =
     NonEmptyList(constFuse, idCompose, collectEnlist, MathOptimizations.constReduce)
   val allOptimizationsƒ: Filter => Filter = repeatedly(allOptimizations.foldLeft1(_ orElse _).lift)
-  def optimize(filter: Filter): Filter =
+
+  def optimizeFilter(filter: Filter): Filter =
     Recursion.transCataT(allOptimizationsƒ).apply(filter)
-  def optimize(program: Program): Program =
-    program.copy(defns = program.defns.map(optimize), main = optimize(program.main))
-  def optimize(defn: Definition): Definition = defn.copy(body = optimize(defn.body))
+
+  def optimizeProgram(program: Program): Program =
+    program.copy(defns = program.defns.map(optimizeDefinition), main = optimizeFilter(program.main))
+
+  def optimizeDefinition(defn: Definition): Definition =
+    defn.copy(body = optimizeFilter(defn.body))
 
 }

@@ -16,7 +16,7 @@ object Runner {
     Parser.program.parse(program) match {
       case Parsed.Success(parsedProgram, _) =>
         val optimized = if (optimize) {
-          Optimizer.optimize(parsedProgram)
+          Optimizer.optimizeProgram(parsedProgram)
         } else {
           parsedProgram
         }
