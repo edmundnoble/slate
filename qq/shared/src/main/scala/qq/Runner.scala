@@ -12,22 +12,18 @@ import qq.QQCompiler.CompiledFilter
 
 object Runner {
 
-  def parseAndCompile[J](runtime: QQRuntime[J], program: String, optimize: Boolean = true): \/[QQCompilationException \/ ParseError, CompiledFilter[J]] = {
+  def parseAndCompile[J](runtime: QQRuntime[J], program: String): \/[QQCompilationException \/ ParseError, CompiledFilter[J]] = {
     Parser.program.parse(program) match {
       case Parsed.Success(parsedProgram, _) =>
-        val optimized = if (optimize) {
-          Optimizer.optimizeProgram(parsedProgram)
-        } else {
-          parsedProgram
-        }
+        val optimized = Optimizer.optimizeProgram(parsedProgram)
         QQCompiler.compileProgram(runtime, IndexedSeq.empty, optimized).leftMap(_.left)
       case f@Parsed.Failure(_, _, _) =>
         new ParseError(f).right[QQCompilationException].left
     }
   }
 
-  def run[J](runtime: QQRuntime[J], qqProgram: String, optimize: Boolean = true)(input: List[J]): Task[List[J]] = {
-    parseAndCompile(runtime, qqProgram, optimize).fold(
+  def run[J](runtime: QQRuntime[J], qqProgram: String)(input: List[J]): Task[List[J]] = {
+    parseAndCompile(runtime, qqProgram).fold(
       ex => Task.raiseError(ex.merge[Exception]),
       f => input.traverseM(f(Map.empty))
     )

@@ -26,7 +26,7 @@ object Interpreter {
   def programInterpreter: Interpreter = taskSwitch orElse
     Interpreter("program:", {
       case program =>
-        Runner.parseAndCompile(UpickleRuntime, program, optimize = true).fold(
+        Runner.parseAndCompile(UpickleRuntime, program).fold(
           err => Task.eval {
             val () = Console.err.println("Error: " + err.merge[Exception].getMessage)
             ("", programInterpreter)
@@ -56,7 +56,7 @@ object Interpreter {
   def inputInterpreterOf(source: String, input: Js.Value): Interpreter = taskSwitch orElse
     Interpreter("input " + source + ", program:", {
       case program =>
-        Runner.parseAndCompile(UpickleRuntime, program, optimize = true).fold(
+        Runner.parseAndCompile(UpickleRuntime, program).fold(
           err => Task.eval {
             val () = Console.err.println("Error: " + err.merge[Exception].getMessage)
             ("", programInterpreter)
