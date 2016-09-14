@@ -3,9 +3,7 @@ package qq
 object FilterProtocol {
 
   import scodec._
-  import scodec.bits._
   import codecs._
-  import scalaz.syntax.either._
   import qq.util._
 
   import scodec.codecs.implicits._
@@ -21,7 +19,7 @@ object FilterProtocol {
       SelectIndex[A] :+: SelectKey[A] :+: SelectRange[A] :+: SilenceExceptions[A] :+: SubtractFilters[A] :+: CNil
 
   implicit def componentCodec[A](implicit v: Lazy[Codec[A]]): Codec[FilterComponent[A]] =
-    deriveGeneric[FilterComponent[A], FilterComponentGenA[A]](Generic.apply[FilterComponent[A]], Lazy(Codec.coproduct[FilterComponentGenA[A]].auto))
+    deriveGeneric(implicitly[Generic.Aux[FilterComponent[A], FilterComponentGenA[A]]], Lazy(Codec.coproduct[FilterComponentGenA[A]].auto))
 
   def filterCodec: Codec[Filter] = implicitly
 
