@@ -109,13 +109,13 @@ object QQCompiler {
   @inline
   def compileDefinitions[J](runtime: QQRuntime[J],
                             prelude: IndexedSeq[CompiledDefinition[J]] = Vector.empty,
-                            definitions: Program.Definitions): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
+                            definitions: Program.Definitions[Filter]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
     definitions.values.foldLeft(prelude.right[QQCompilationException])(compileDefinitionStep(runtime))
 
   @inline
   def compileProgram[J](runtime: QQRuntime[J],
                         prelude: IndexedSeq[CompiledDefinition[J]] = Vector.empty,
-                        program: Program): OrCompilationError[CompiledFilter[J]] = {
+                        program: Program[Filter]): OrCompilationError[CompiledFilter[J]] = {
     compileDefinitions(runtime, prelude, program.defns).flatMap(compile(runtime, _, program.main))
   }
 
@@ -153,7 +153,7 @@ object QQCompiler {
 
   def compileDefinitionStep[J](runtime: QQRuntime[J])
                               (soFar: OrCompilationError[IndexedSeq[CompiledDefinition[J]]],
-                               nextDefinition: Definition): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
+                               nextDefinition: Definition[Filter]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
     soFar.map { (definitionsSoFar: IndexedSeq[CompiledDefinition[J]]) =>
       CompiledDefinition[J](nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter[J]]) => {
         val paramsAsDefinitions: IndexedSeq[CompiledDefinition[J]] = (nextDefinition.params, params).zipped.map { (filterName, value) =>

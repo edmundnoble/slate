@@ -57,10 +57,10 @@ object LocalOptimizer {
   def optimizeFilter(filter: Filter): Filter =
     Recursion.transCataT(localOptimizationsƒ).apply(filter)
 
-  def optimizeProgram(program: Program): Program =
+  def optimizeProgram(program: Program[Filter]): Program[Filter] =
     program.copy(defns = program.defns.mapValues(optimizeDefinition), main = optimizeFilter(program.main))
 
-  def optimizeDefinition(defn: Definition): Definition =
+  def optimizeDefinition(defn: Definition[Filter]): Definition[Filter] =
     defn.copy(body = optimizeFilter(defn.body))
 
 }

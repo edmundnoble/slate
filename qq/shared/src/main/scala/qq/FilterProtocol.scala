@@ -25,7 +25,14 @@ object FilterProtocol {
 
   def filterCodec: Codec[Filter] = implicitly
 
-  def programCodec: Codec[Program] = Codec[(List[Definition], Filter)]
+  def definitionsCodec: Codec[Program.Definitions[Filter]] = Codec[List[Definition[Filter]]]
+    .xmap({ defns =>
+      defns.map(d => d.name -> d)(collection.breakOut)
+    }, { defnMap =>
+      defnMap.values.toList
+    })
+
+  def programCodec: Codec[Program[Filter]] = Codec[(List[Definition[Filter]], Filter)]
     .xmap({ case (defns, main) =>
       Program(defns.map(d => d.name -> d)(collection.breakOut), main)
     }, {

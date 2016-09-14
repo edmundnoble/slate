@@ -1,8 +1,8 @@
 package qq
 
 object Program {
-  type Definitions = Map[String, Definition]
+  type Definitions[F] = Map[String, Definition[F]]
 }
 
-case class Program(defns: Program.Definitions, main: Filter)
+case class Program[F](defns: Program.Definitions[F], main: Filter)
 
