@@ -5,10 +5,10 @@ import scalaz.std.list._
 import scalaz.syntax.traverse._
 import scalaz.{Applicative, Traverse, \/}
 
-// A single node of the QQ AST. Type parameter used for child nodes.
+// A single node of the QQ AST. Type parameter is used for child nodes.
 sealed abstract class FilterComponent[A]
 
-// AST nodes with no child nodes. These are thus Phantom Functors.
+// AST nodes with no child nodes. Phantom-variant functors.
 sealed abstract class LeafComponent[A] extends FilterComponent[A] {
   @inline
   final def retag[B]: LeafComponent[B] = this.asInstanceOf[LeafComponent[B]]
@@ -28,7 +28,7 @@ final case class Dereference[A](name: String) extends ConstantComponent[A]
 // Associative.
 final case class ComposeFilters[A](first: A, second: A) extends FilterComponent[A]
 
-// Makes a new filter Silence the exceptions coming from another filter
+// Makes a new filter silence the exceptions coming from another filter
 // Idempotent.
 final case class SilenceExceptions[A](f: A) extends FilterComponent[A]
 
