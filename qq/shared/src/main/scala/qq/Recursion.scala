@@ -18,7 +18,7 @@ object Recursion {
 
     def run(in: I, loop: I => Trampoline[O]): Trampoline[O]
 
-    final def apply(in: I)(implicit engine: RecursionEngine) = engine match {
+    final def apply(in: I)(implicit engine: RecursionEngine): O = engine match {
       case Safe.Trampoline => Safe.recTrampoline(this, in)
       case Unsafe.Direct => Unsafe.recDirect(this, in)
       case Unsafe.LimitStack(limit) => Unsafe.recLimitStack(this, limit, in)
