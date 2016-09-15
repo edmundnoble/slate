@@ -79,6 +79,12 @@ object Recursion {
       tf.project.traverse[Trampoline, M[A]](loop) map (_.sequence[M, A].flatMap(destroy))
   }
 
+  @inline final def transAnaT[T[_[_]] : TraverseT, F[_] : Traverse]
+  (rewrite: T[F] => T[F]): RecursiveFunction[T[F], T[F]] = new RecursiveFunction[T[F], T[F]] {
+    override def run(tf: T[F], loop: T[F] => Trampoline[T[F]]) =
+      tf.traverse[Trampoline, F](ftf => ftf.traverse[Trampoline, T[F]](tf => loop(rewrite(tf))))
+  }
+
   @inline final def transCataT[T[_[_]] : TraverseT, F[_] : Traverse]
   (rewrite: T[F] => T[F]): RecursiveFunction[T[F], T[F]] = new RecursiveFunction[T[F], T[F]] {
     override def run(tf: T[F], loop: T[F] => Trampoline[T[F]]) =

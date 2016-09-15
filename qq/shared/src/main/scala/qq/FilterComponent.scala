@@ -1,5 +1,7 @@
 package qq
 
+import matryoshka.Corecursive
+
 import scala.language.higherKinds
 import scalaz.std.list._
 import scalaz.syntax.traverse._
@@ -54,20 +56,28 @@ final case class CallFilter[A](name: String, params: List[A]) extends FilterComp
 
 // Math, lots of JS-ish special cases for certain types.
 final case class AddFilters[A](first: A, second: A) extends FilterComponent[A]
+
 final case class SubtractFilters[A](first: A, second: A) extends FilterComponent[A]
+
 final case class MultiplyFilters[A](first: A, second: A) extends FilterComponent[A]
+
 final case class DivideFilters[A](first: A, second: A) extends FilterComponent[A]
+
 final case class ModuloFilters[A](first: A, second: A) extends FilterComponent[A]
 
 // Select key, index or range in JSON object or array.
 // Return null if asked for something not contained in the target.
 final case class SelectKey[A](key: String) extends LeafComponent[A]
+
 final case class SelectIndex[A](index: Int) extends LeafComponent[A]
+
 final case class SelectRange[A](start: Int, end: Int) extends LeafComponent[A]
 
 // AST nodes that represent filters ignoring their input.
 sealed abstract class ConstantComponent[A] extends LeafComponent[A]
+
 final case class ConstNumber[A](value: Double) extends ConstantComponent[A]
+
 final case class ConstString[A](value: String) extends ConstantComponent[A]
 
 object FilterComponent {
@@ -94,4 +104,8 @@ object FilterComponent {
     }
   }
 
+  // Partially apply FilterComponent parameter of C.embed
+  @inline final def embed[T[_[_]]]
+  (v: FilterComponent[T[FilterComponent]])(implicit C: Corecursive[T]): T[FilterComponent] = C.embed[FilterComponent](v)
 }
+

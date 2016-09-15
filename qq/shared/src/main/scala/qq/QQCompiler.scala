@@ -109,13 +109,13 @@ object QQCompiler {
   @inline
   def compileDefinitions[T[_[_]]: Recursive: Corecursive, J](runtime: QQRuntime[J],
                             prelude: IndexedSeq[CompiledDefinition[J]] = Vector.empty,
-                            definitions: Program.Definitions[FilterRec[T]]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
+                            definitions: Program.Definitions[T[FilterComponent]]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
     definitions.values.foldLeft(prelude.right[QQCompilationException])(compileDefinitionStep[T, J](runtime))
 
   @inline
   def compileProgram[T[_[_]]: Recursive: Corecursive, J](runtime: QQRuntime[J],
                         prelude: IndexedSeq[CompiledDefinition[J]] = Vector.empty,
-                        program: Program[FilterRec[T]]): OrCompilationError[CompiledFilter[J]] = {
+                        program: Program[T[FilterComponent]]): OrCompilationError[CompiledFilter[J]] = {
     compileDefinitions(runtime, prelude, program.defns).flatMap(compile(runtime, _, program.main))
   }
 
@@ -153,7 +153,7 @@ object QQCompiler {
 
   def compileDefinitionStep[T[_[_]]: Recursive: Corecursive, J](runtime: QQRuntime[J])
                               (soFar: OrCompilationError[IndexedSeq[CompiledDefinition[J]]],
-                               nextDefinition: Definition[FilterRec[T]]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
+                               nextDefinition: Definition[T[FilterComponent]]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
     soFar.map { (definitionsSoFar: IndexedSeq[CompiledDefinition[J]]) =>
       CompiledDefinition[J](nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter[J]]) => {
         val paramsAsDefinitions: IndexedSeq[CompiledDefinition[J]] = (nextDefinition.params, params).zipped.map { (filterName, value) =>
@@ -166,7 +166,7 @@ object QQCompiler {
   @inline
   def compile[T[_[_]]: Recursive: Corecursive, J](runtime: QQRuntime[J],
                  definitions: IndexedSeq[CompiledDefinition[J]],
-                 filter: FilterRec[T]): OrCompilationError[CompiledFilter[J]] =
+                 filter: T[FilterComponent]): OrCompilationError[CompiledFilter[J]] =
     for {
       sharedDefinitions <- SharedPreludes[J].all(runtime)
       platformSpecificDefinitions <- runtime.platformPrelude.all(runtime)

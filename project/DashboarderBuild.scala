@@ -271,7 +271,7 @@ object DashboarderBuild {
     .settings(jsSettings)
     .settings(commonDeps: _*)
     .settings(uiDeps: _*)
-    .settings(libraryDependencies += "com.github.japgolly.scalajs-benchmark" %%% "benchmark" % "0.2.3")
+    .settings(libraryDependencies += "com.github.japgolly.scalajs-benchmark" %%% "benchmark" % "0.2.4-SNAPSHOT")
     // otherwise scalajs-benchmark doesn't work
     .settings(jsManifestFilter := {
       import org.scalajs.core.tools.jsdep.{JSDependencyManifest, JSDependency}

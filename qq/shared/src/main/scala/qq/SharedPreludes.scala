@@ -21,7 +21,7 @@ object SharedPreludes {
 
   object Raw {
     val map: Definition[ConcreteFilter] = {
-      import FilterDSL._
+      import FilterDSL.fix._
       Definition("map",
         params = List("x"),
         body = compose(collectResults(id), call("x"))

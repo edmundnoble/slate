@@ -8,12 +8,13 @@ import upickle.Js.Value
 
 import scala.concurrent.Future
 
+// data representation of a compiler test case
 case class CompilerTest(input: Value, program: ConcreteFilter, expectedOutput: Value*)
 
 object CompilerTest {
 
   import org.scalatest.Matchers._
-  import FilterDSL._
+  import FilterDSL.fix._
 
   def runTest[J](runtime: QQRuntime[J], qqCompilerTest: CompilerTest)
                 (implicit sch: Scheduler): Future[Assertion] = qqCompilerTest match {
@@ -83,7 +84,7 @@ object CompilerTest {
   val variableTests: List[CompilerTest] =
     List(
       CompilerTest(Js.Str("input"), letAsBinding("hello", id, deref("hello")), Js.Str("input")),
-      CompilerTest(Js.Str("input"), letAsBinding("hello", add(id, constString("hi")), deref("hello")), Js.Str("inputhi"))
+      CompilerTest(Js.Str("input"), letAsBinding("hello", add(id, constString("hi")), add(constString("hey"), deref("hello"))), Js.Str("heyinputhi"))
     )
 
 }

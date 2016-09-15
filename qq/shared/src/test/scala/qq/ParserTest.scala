@@ -7,7 +7,7 @@ import scalaz.std.list._
 
 class ParserTest extends QQSyncTestSuite {
 
-  import FilterDSL._
+  import FilterDSL.fix._
 
   val emptySized: List[String] = Nil
 

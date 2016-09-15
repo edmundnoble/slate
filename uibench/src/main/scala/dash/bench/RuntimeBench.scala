@@ -4,6 +4,7 @@ package bench
 import dash.bench.BenchmarkApp.{BenchParams, JSRuntimeParams, QQRuntimeParams, UpickleRuntimeParams}
 import japgolly.scalajs.benchmark._
 import japgolly.scalajs.benchmark.gui.{GuiParam, GuiParams, GuiSuite}
+import matryoshka.Fix
 import monocle.Iso
 import qq._
 
@@ -20,15 +21,15 @@ object RuntimeBench {
 
   val qqRuntimeSuite = GuiSuite.apply[(QQRuntimeParams, Int)](
     Suite[(QQRuntimeParams, Int)]("QQ Runtime Benchmarks")(
-      runtimeSetup(size => (Util.buildRec(FilterDSL.compose(_, FilterDSL.id), size, FilterDSL.id), "[]")
+      runtimeSetup(size => (Util.buildRec[Fix](FilterDSL.fix.compose(_, FilterDSL.fix.id), size, FilterDSL.fix.id), "[]")
       )("compose with id") {
         params => params.filt(Map.empty)(params.in)
       },
-      runtimeSetup(size => (FilterDSL.selectKey(s"k$size"), "{" + Stream.tabulate(size)(i => raw""""k$i":"$i"""").mkString(",") + "}")
+      runtimeSetup(size => (FilterDSL.fix.selectKey(s"k$size"), "{" + Stream.tabulate(size)(i => raw""""k$i":"$i"""").mkString(",") + "}")
       )("select key") {
         params => params.filt(Map.empty)(params.in)
       },
-      runtimeSetup(size => (Util.buildRec(FilterDSL.add(_, FilterDSL.constNumber(1)), size, FilterDSL.id), s"$size")
+      runtimeSetup(size => (Util.buildRec[Fix](FilterDSL.fix.add(_, FilterDSL.fix.constNumber(1)), size, FilterDSL.fix.id), s"$size")
       )("plus") {
         params => params.filt(Map.empty)(params.in)
       }

@@ -1,14 +1,15 @@
 package dash
 package bench
 
-import qq.ConcreteFilter
+import matryoshka.{Corecursive, Recursive}
+import qq.FilterComponent
 
 import scala.annotation.tailrec
 
 object Util {
 
   @tailrec
-  def buildRec(transform: ConcreteFilter => ConcreteFilter, count: Int, start: ConcreteFilter): ConcreteFilter = {
+  def buildRec[T[_[_]]: Recursive: Corecursive](transform: T[FilterComponent] => T[FilterComponent], count: Int, start: T[FilterComponent]): T[FilterComponent] = {
     if (count == 0) start
     else buildRec(transform, count - 1, transform(start))
   }
