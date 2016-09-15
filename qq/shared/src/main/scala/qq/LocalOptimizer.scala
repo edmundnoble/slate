@@ -21,19 +21,19 @@ object LocalOptimizer {
     case Some(e) => repeatedly(f)(e)
   }
 
-  type LocalOptimization = PartialFunction[ConcreteFilter, ConcreteFilter]
+  type LocalOptimization[F] = PartialFunction[F, F]
 
-  def idCompose: LocalOptimization = {
+  def idCompose: LocalOptimization[ConcreteFilter] = {
     case Fix(ComposeFilters(Fix(IdFilter()), s)) => s
     case Fix(ComposeFilters(f, Fix(IdFilter()))) => f
   }
 
-  def collectEnlist: LocalOptimization = {
+  def collectEnlist: LocalOptimization[ConcreteFilter] = {
     case Fix(EnlistFilter(Fix(CollectResults(f)))) => f
     case Fix(CollectResults(Fix(EnlistFilter(f)))) => f
   }
 
-  def constFuse: LocalOptimization = {
+  def constFuse: LocalOptimization[ConcreteFilter] = {
     case Fix(ComposeFilters(
     Fix(_: ConstantComponent[Fix[FilterComponent]]),
     nextConst@Fix(_: ConstantComponent[Fix[FilterComponent]])
@@ -41,7 +41,7 @@ object LocalOptimizer {
   }
 
   object MathOptimizations {
-    def constReduce: LocalOptimization = {
+    def constReduce: LocalOptimization[ConcreteFilter] = {
       case Fix(AddFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f + s))
       case Fix(SubtractFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f - s))
       case Fix(MultiplyFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f * s))
@@ -50,7 +50,7 @@ object LocalOptimizer {
     }
   }
 
-  val localOptimizations: NonEmptyList[LocalOptimization] =
+  val localOptimizations: NonEmptyList[LocalOptimization[ConcreteFilter]] =
     NonEmptyList(constFuse, idCompose, collectEnlist, MathOptimizations.constReduce)
   val localOptimizationsƒ: ConcreteFilter => ConcreteFilter = repeatedly(localOptimizations.foldLeft1(_ orElse _).lift)
 
