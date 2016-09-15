@@ -3,7 +3,7 @@ package app
 
 object GmailApp {
 
-  val program =
+  val program: String =
     raw"""
 def authHeaders: { Authorization: "Bearer " + googleAuth };
 

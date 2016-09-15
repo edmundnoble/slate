@@ -1,8 +1,6 @@
 package dash
 package app
 
-import scala.scalajs.js.UndefOr
-
 object JIRAApp {
 
   val program =
