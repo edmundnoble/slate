@@ -32,8 +32,8 @@ object LocalOptimizer {
 
   def idCompose[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = { fr =>
     fr.project.map(_.project) match {
-      case ComposeFilters((IdFilter()), s) => Some(embed(s))
-      case ComposeFilters(f, (IdFilter())) => Some(embed(f))
+      case ComposeFilters(IdFilter(), s) => Some(embed(s))
+      case ComposeFilters(f, IdFilter()) => Some(embed(f))
       case _ => None
     }
   }
@@ -48,10 +48,8 @@ object LocalOptimizer {
 
   def constFuse[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = { fr =>
     fr.project.map(_.project) match {
-      case (ComposeFilters(
-      (_: ConstantComponent[T[FilterComponent]]),
-      nextConst@(_: ConstantComponent[T[FilterComponent]])
-      )) => Some(embed(nextConst))
+      case ComposeFilters((_: ConstantComponent[T[FilterComponent]]), nextConst@(_: ConstantComponent[T[FilterComponent]])) =>
+        Some(embed(nextConst))
       case _ => None
     }
   }
