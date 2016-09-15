@@ -64,18 +64,22 @@ object DashboarderApp extends scalajs.js.JSApp {
       )
     )
 
-  val compiledPrograms = programs.map {
-    case DashProgram(title, program, input) =>
-      (title, StorageProgram.runProgram(DomStorage.Local,
-        DashApp.getCachedCompiledProgram(program))
-        .flatMap(_.valueOrThrow)
-        .flatMap(f => f(Map.empty)(input)
-          .map(_.flatMap(i => ExpandableContentModel.pkl.read.lift(Json.jsToUpickleRec(i))))
-        ))
-  }
+  private def getCompiledPrograms: List[(String, Task[List[ExpandableContentModel]])] =
+    programs.map {
+      case DashProgram(title, program, input) =>
+        (
+          title,
+          StorageProgram.runProgram(DomStorage.Local,
+            DashApp.getCachedCompiledProgram(program))
+            .flatMap(_.valueOrThrow)
+            .flatMap(f => f(Map.empty)(input)
+              .map(_.flatMap(i => ExpandableContentModel.pkl.read.lift(Json.jsToUpickleRec(i))))
+            )
+        )
+    }
 
   def getContent: SearchPageState =
-    SearchPageState(compiledPrograms.map {
+    SearchPageState(getCompiledPrograms.map {
       case (title, program) =>
         AppProps(title,
           Observable.fromTask(
