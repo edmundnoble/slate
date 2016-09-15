@@ -2,12 +2,16 @@ package qq
 
 import matryoshka._
 import FunctorT.ops._
+import Recursive.ops._
+import Corecursive.ops._
 
 import scala.util.control.TailCalls.TailRec
 import scalaz.syntax.foldable1._
 import scalaz.syntax.functor._
 import scalaz.{Functor, NonEmptyList}
 import qq.Platform.Rec._
+
+import scala.language.higherKinds
 
 object LocalOptimizer {
 
@@ -21,46 +25,65 @@ object LocalOptimizer {
     case Some(e) => repeatedly(f)(e)
   }
 
-  type LocalOptimization[F] = PartialFunction[F, F]
+  type LocalOptimization[F] = F => Option[F]
 
-  def idCompose: LocalOptimization[ConcreteFilter] = {
-    case Fix(ComposeFilters(Fix(IdFilter()), s)) => s
-    case Fix(ComposeFilters(f, Fix(IdFilter()))) => f
-  }
+  @inline final def embed[T[_[_]]](v: FilterComponent[T[FilterComponent]])(implicit C: Corecursive[T]): T[FilterComponent] =
+    C.embed[FilterComponent](v)
 
-  def collectEnlist: LocalOptimization[ConcreteFilter] = {
-    case Fix(EnlistFilter(Fix(CollectResults(f)))) => f
-    case Fix(CollectResults(Fix(EnlistFilter(f)))) => f
-  }
-
-  def constFuse: LocalOptimization[ConcreteFilter] = {
-    case Fix(ComposeFilters(
-    Fix(_: ConstantComponent[Fix[FilterComponent]]),
-    nextConst@Fix(_: ConstantComponent[Fix[FilterComponent]])
-    )) => nextConst
-  }
-
-  object MathOptimizations {
-    def constReduce: LocalOptimization[ConcreteFilter] = {
-      case Fix(AddFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f + s))
-      case Fix(SubtractFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f - s))
-      case Fix(MultiplyFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f * s))
-      case Fix(DivideFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f / s))
-      case Fix(ModuloFilters(Fix(ConstNumber(f)), Fix(ConstNumber(s)))) => Fix(ConstNumber(f % s))
+  def idCompose[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = { fr =>
+    fr.project.map(_.project) match {
+      case ComposeFilters((IdFilter()), s) => Some(embed(s))
+      case ComposeFilters(f, (IdFilter())) => Some(embed(f))
+      case _ => None
     }
   }
 
-  val localOptimizations: NonEmptyList[LocalOptimization[ConcreteFilter]] =
-    NonEmptyList(constFuse, idCompose, collectEnlist, MathOptimizations.constReduce)
-  val localOptimizationsƒ: ConcreteFilter => ConcreteFilter = repeatedly(localOptimizations.foldLeft1(_ orElse _).lift)
+  def collectEnlist[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = { fr =>
+    fr.project.map(_.project) match {
+      case EnlistFilter(CollectResults(f)) => Some(f)
+      case CollectResults(EnlistFilter(f)) => Some(f)
+      case _ => None
+    }
+  }
 
-  def optimizeFilter(filter: ConcreteFilter): ConcreteFilter =
+  def constFuse[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = { fr =>
+    fr.project.map(_.project) match {
+      case (ComposeFilters(
+      (_: ConstantComponent[T[FilterComponent]]),
+      nextConst@(_: ConstantComponent[T[FilterComponent]])
+      )) => Some(embed(nextConst))
+      case _ => None
+    }
+  }
+
+  object MathOptimizations {
+    def constReduce[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = { fr =>
+      fr.project.map(_.project) match {
+        case AddFilters(ConstNumber(f), ConstNumber(s)) => Some(embed(ConstNumber(f + s)))
+        case SubtractFilters(ConstNumber(f), ConstNumber(s)) => Some(embed(ConstNumber(f - s)))
+        case MultiplyFilters(ConstNumber(f), ConstNumber(s)) => Some(embed(ConstNumber(f * s)))
+        case DivideFilters(ConstNumber(f), ConstNumber(s)) => Some(embed(ConstNumber(f / s)))
+        case ModuloFilters(ConstNumber(f), ConstNumber(s)) => Some(embed(ConstNumber(f % s)))
+        case _ => None
+      }
+    }
+  }
+
+  def localOptimizations[T[_[_]] : Recursive : Corecursive]: NonEmptyList[LocalOptimization[T[FilterComponent]]] =
+    NonEmptyList(constFuse[T], idCompose[T], collectEnlist[T], MathOptimizations.constReduce[T])
+
+  def localOptimizationsƒ[T[_[_]] : Recursive : Corecursive]: T[FilterComponent] => T[FilterComponent] =
+    repeatedly[T[FilterComponent]](localOptimizations[T].foldLeft1((f1, f2) =>
+      (Function.unlift(f1) orElse Function.unlift(f2)).lift
+    ))
+
+  def optimizeFilter[T[_[_]] : Recursive : Corecursive](filter: T[FilterComponent]): T[FilterComponent] =
     Recursion.transCataT(localOptimizationsƒ).apply(filter)
 
-  def optimizeProgram(program: Program[ConcreteFilter]): Program[ConcreteFilter] =
-    program.copy(defns = program.defns.mapValues(optimizeDefinition), main = optimizeFilter(program.main))
+  def optimizeProgram[T[_[_]] : Recursive : Corecursive](program: Program[T[FilterComponent]]): Program[T[FilterComponent]] =
+    program.copy(defns = program.defns.mapValues(optimizeDefinition[T]), main = optimizeFilter(program.main))
 
-  def optimizeDefinition(defn: Definition[ConcreteFilter]): Definition[ConcreteFilter] =
+  def optimizeDefinition[T[_[_]] : Recursive : Corecursive](defn: Definition[T[FilterComponent]]): Definition[T[FilterComponent]] =
     defn.copy(body = optimizeFilter(defn.body))
 
 }
