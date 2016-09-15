@@ -10,7 +10,7 @@ import qq.jsc.JSRuntime
 
 object CompilerBench {
 
-  val qqCompilerSuite = GuiSuite(
+  val qqCompilerSuite: GuiSuite[Int] = GuiSuite(
     Suite("QQ Compiler Benchmarks")(
       Benchmark.setup[Int, ConcreteFilter] { i =>
         Util.buildRec[Fix](FilterDSL.fix.compose(_, FilterDSL.fix.selectKey("key")), i, FilterDSL.fix.id)
