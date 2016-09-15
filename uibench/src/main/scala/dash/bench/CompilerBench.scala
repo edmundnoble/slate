@@ -10,12 +10,12 @@ object CompilerBench {
 
   val qqCompilerSuite = GuiSuite(
     Suite("QQ Compiler Benchmarks")(
-      Benchmark.setup[Int, Filter] { i =>
+      Benchmark.setup[Int, ConcreteFilter] { i =>
         Util.buildRec(FilterDSL.compose(_, FilterDSL.selectKey("key")), i, FilterDSL.id)
       }("select key") { filt =>
         QQCompiler.compile(JSRuntime, IndexedSeq.empty, filt)
       },
-      Benchmark.setup[Int, Filter] { i =>
+      Benchmark.setup[Int, ConcreteFilter] { i =>
         Util.buildRec(FilterDSL.compose(_, FilterDSL.id), i, FilterDSL.id)
       }("compose with id") { filt =>
         QQCompiler.compile(JSRuntime, IndexedSeq.empty, filt)

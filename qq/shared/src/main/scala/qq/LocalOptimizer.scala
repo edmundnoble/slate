@@ -21,7 +21,7 @@ object LocalOptimizer {
     case Some(e) => repeatedly(f)(e)
   }
 
-  type LocalOptimization = PartialFunction[Filter, Filter]
+  type LocalOptimization = PartialFunction[ConcreteFilter, ConcreteFilter]
 
   def idCompose: LocalOptimization = {
     case Fix(ComposeFilters(Fix(IdFilter()), s)) => s
@@ -52,15 +52,15 @@ object LocalOptimizer {
 
   val localOptimizations: NonEmptyList[LocalOptimization] =
     NonEmptyList(constFuse, idCompose, collectEnlist, MathOptimizations.constReduce)
-  val localOptimizationsƒ: Filter => Filter = repeatedly(localOptimizations.foldLeft1(_ orElse _).lift)
+  val localOptimizationsƒ: ConcreteFilter => ConcreteFilter = repeatedly(localOptimizations.foldLeft1(_ orElse _).lift)
 
-  def optimizeFilter(filter: Filter): Filter =
+  def optimizeFilter(filter: ConcreteFilter): ConcreteFilter =
     Recursion.transCataT(localOptimizationsƒ).apply(filter)
 
-  def optimizeProgram(program: Program[Filter]): Program[Filter] =
+  def optimizeProgram(program: Program[ConcreteFilter]): Program[ConcreteFilter] =
     program.copy(defns = program.defns.mapValues(optimizeDefinition), main = optimizeFilter(program.main))
 
-  def optimizeDefinition(defn: Definition[Filter]): Definition[Filter] =
+  def optimizeDefinition(defn: Definition[ConcreteFilter]): Definition[ConcreteFilter] =
     defn.copy(body = optimizeFilter(defn.body))
 
 }

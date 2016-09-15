@@ -1,7 +1,7 @@
 package dash
 package app
 
-import qq.{Filter, LocalOptimizer, Parser, Program, QQCompiler}
+import qq.{ConcreteFilter, LocalOptimizer, Parser, Program, QQCompiler}
 import qq.QQCompiler.{CompiledFilter, OrCompilationError}
 import scodec.bits.BitVector
 import qq.jsc.JSRuntime
@@ -26,7 +26,7 @@ object DashApp {
           val out = encodedOptimizedProgram.toBase64
           update(hash, out).map(_ => optimizedProgram)
         case Some(encodedProgram) =>
-          Util.pureFC[StorageAction, Program[Filter]](programCodec.decode(BitVector.fromBase64(encodedProgram).get).require.value)
+          Util.pureFC[StorageAction, Program[ConcreteFilter]](programCodec.decode(BitVector.fromBase64(encodedProgram).get).require.value)
       }
     } yield QQCompiler.compileProgram(JSRuntime, prelude = DashPrelude.all, decodedOptimizedProgram)
   }

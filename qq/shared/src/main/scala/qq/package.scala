@@ -1,7 +1,11 @@
-import matryoshka.Fix
+import matryoshka.{Fix, Mu}
+
+import scala.language.higherKinds
 
 package object qq {
-  type Filter = Fix[FilterComponent]
+  type FilterRec[T[_[_]]] = T[FilterComponent]
+
+  type ConcreteFilter = FilterRec[Fix]
 
   implicit class ToDefinitions[F](defs: Seq[Definition[F]]) {
     @inline def toDefinitions: Program.Definitions[F] =

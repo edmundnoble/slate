@@ -21,12 +21,12 @@ object FilterProtocol {
   implicit def componentCodec[A](implicit v: Lazy[Codec[A]]): Codec[FilterComponent[A]] =
     deriveGeneric(implicitly[Generic.Aux[FilterComponent[A], FilterComponentGenA[A]]], Lazy(Codec.coproduct[FilterComponentGenA[A]].auto))
 
-  def filterCodec: Codec[Filter] = implicitly
+  def filterCodec: Codec[ConcreteFilter] = implicitly
 
-  def definitionsCodec: Codec[Program.Definitions[Filter]] = Codec[List[Definition[Filter]]]
+  def definitionsCodec: Codec[Program.Definitions[ConcreteFilter]] = Codec[List[Definition[ConcreteFilter]]]
     .xmap(_.map(d => d.name -> d)(collection.breakOut), _.values.toList)
 
-  def programCodec: Codec[Program[Filter]] = Codec[(List[Definition[Filter]], Filter)]
+  def programCodec: Codec[Program[ConcreteFilter]] = Codec[(List[Definition[ConcreteFilter]], ConcreteFilter)]
     .xmap({ case (defns, main) =>
       Program(defns.map(d => d.name -> d)(collection.breakOut), main)
     }, {

@@ -61,37 +61,37 @@ object Parser {
     numericLiteral.map(_.toDouble)
   )
 
-  val selectKey: P[Filter] = P(
+  val selectKey: P[ConcreteFilter] = P(
     (escapedStringLiteral | stringLiteral) map FilterDSL.selectKey
   )
 
-  val selectIndex: P[Filter] = P(
+  val selectIndex: P[ConcreteFilter] = P(
     for {
       fun <- wspStr("-").!.? map (_.cata(_ => (i: Int) => -i, identity[Int] _))
       number <- numericLiteral
     } yield FilterDSL.selectIndex(fun(number))
   )
 
-  val selectRange: P[Filter] = P(
+  val selectRange: P[ConcreteFilter] = P(
     (numericLiteral ~ ":" ~/ numericLiteral) map (FilterDSL.selectRange _).tupled
   )
 
-  val dottableSimpleFilter: P[Filter] = P(
+  val dottableSimpleFilter: P[ConcreteFilter] = P(
     ("[" ~/ ((escapedStringLiteral map FilterDSL.selectKey) | selectRange | selectIndex) ~ "]") | selectKey | selectIndex
   )
 
-  val dottableFilter: P[Filter] = P(
+  val dottableFilter: P[ConcreteFilter] = P(
     for {
       s <- dottableSimpleFilter
-      f <- "[]".!.?.map(_.cata(_ => FilterDSL.collectResults _, identity[Filter] _))
+      f <- "[]".!.?.map(_.cata(_ => FilterDSL.collectResults _, identity[ConcreteFilter] _))
     } yield f(s)
   )
 
-  val dottedFilter: P[Filter] = P(
+  val dottedFilter: P[ConcreteFilter] = P(
     dot ~
       (wspStr("[]") >| FilterDSL.collectResults(FilterDSL.id) | dottableFilter)
         .rep(sep = dot)
-        .map(_.foldLeft[Filter](FilterDSL.id)(FilterDSL.compose))
+        .map(_.foldLeft[ConcreteFilter](FilterDSL.id)(FilterDSL.compose))
   )
 
   private val filterIdentifier: P[String] = P(
@@ -103,7 +103,7 @@ object Parser {
     "$" ~ filterIdentifier
   )
 
-  val letAsBinding: P[Filter] = P(
+  val letAsBinding: P[ConcreteFilter] = P(
     for {
       _ <- wspStr("let") ~ whitespace
       variable <- variableIdentifier
@@ -114,33 +114,33 @@ object Parser {
     } yield FilterDSL.letAsBinding(variable, as, in)
   )
 
-  val callFilter: P[Filter] = P(
+  val callFilter: P[ConcreteFilter] = P(
     for {
       identifier <- filterIdentifier
       params <- ("(" ~/ whitespace ~ filter.rep(min = 1, sep = whitespace ~ ";" ~ whitespace) ~ whitespace ~ ")").?.map(_.getOrElse(Nil))
     } yield FilterDSL.call(identifier, params)
   )
 
-  val constInt: P[Filter] = P(numericLiteral map (FilterDSL.constNumber(_)))
+  val constInt: P[ConcreteFilter] = P(numericLiteral map (FilterDSL.constNumber(_)))
 
-  val constString: P[Filter] = P(escapedStringLiteral map FilterDSL.constString)
+  val constString: P[ConcreteFilter] = P(escapedStringLiteral map FilterDSL.constString)
 
-  val dereference: P[Filter] = P(variableIdentifier.map(FilterDSL.deref))
+  val dereference: P[ConcreteFilter] = P(variableIdentifier.map(FilterDSL.deref))
 
-  val smallFilter: P[Filter] = P(constInt | constString | dottedFilter | dereference | callFilter)
+  val smallFilter: P[ConcreteFilter] = P(constInt | constString | dottedFilter | dereference | callFilter)
 
-  val enlistedFilter: P[Filter] = P(
+  val enlistedFilter: P[ConcreteFilter] = P(
     "[" ~/ filter.map(FilterDSL.enlist) ~ "]"
   )
 
   // The reason I avoid using basicFilter is to avoid a parsing ambiguity with ensequencedFilters
-  val enjectPair: P[(String \/ Filter, Filter)] = P(
+  val enjectPair: P[(String \/ ConcreteFilter, ConcreteFilter)] = P(
     ((("(" ~/ filter ~ ")").map(_.right[String]) |
-      filterIdentifier.map(_.left[Filter])) ~ ":" ~ whitespace ~ piped) |
+      filterIdentifier.map(_.left[ConcreteFilter])) ~ ":" ~ whitespace ~ piped) |
       filterIdentifier.map(id => -\/(id) -> FilterDSL.selectKey(id))
   )
 
-  val enjectedFilter: P[Filter] = P(
+  val enjectedFilter: P[ConcreteFilter] = P(
     "{" ~/ whitespace ~ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(FilterDSL.enject) ~ whitespace ~ "}"
   )
 
@@ -155,25 +155,25 @@ object Parser {
     (rec ~ whitespace ~ (op ~/ whitespace ~ rec).rep).map((foldOperators _).tupled)
   }
 
-  val sequenced: P[Filter] =
-    P(binaryOperators[Filter](piped, "," -> FilterDSL.ensequence _))
+  val sequenced: P[ConcreteFilter] =
+    P(binaryOperators[ConcreteFilter](piped, "," -> FilterDSL.ensequence _))
 
-  val piped: P[Filter] =
-    P(binaryOperators[Filter](expr, "|" -> FilterDSL.compose _))
+  val piped: P[ConcreteFilter] =
+    P(binaryOperators[ConcreteFilter](expr, "|" -> FilterDSL.compose _))
 
-  val expr: P[Filter] =
-    P(binaryOperators[Filter](term, "+" -> FilterDSL.add _, "-" -> FilterDSL.subtract))
+  val expr: P[ConcreteFilter] =
+    P(binaryOperators[ConcreteFilter](term, "+" -> FilterDSL.add _, "-" -> FilterDSL.subtract))
 
-  val term: P[Filter] =
-    P(binaryOperators[Filter](factor, "*" -> FilterDSL.multiply _, "/" -> FilterDSL.divide _, "%" -> FilterDSL.modulo _))
+  val term: P[ConcreteFilter] =
+    P(binaryOperators[ConcreteFilter](factor, "*" -> FilterDSL.multiply _, "/" -> FilterDSL.divide _, "%" -> FilterDSL.modulo _))
 
-  val factor: P[Filter] =
+  val factor: P[ConcreteFilter] =
     P(("(" ~/ sequenced ~ ")") | letAsBinding | smallFilter | enjectedFilter | enlistedFilter)
 
-  val filter: P[Filter] = P(
+  val filter: P[ConcreteFilter] = P(
     for {
       f <- sequenced
-      fun <- "?".!.?.map(_.fold(identity[Filter] _)(_ => FilterDSL.silence))
+      fun <- "?".!.?.map(_.fold(identity[ConcreteFilter] _)(_ => FilterDSL.silence))
     } yield fun(f)
   )
 
@@ -181,16 +181,16 @@ object Parser {
     "(" ~/ filterIdentifier.rep(min = 1, sep = whitespace ~ "," ~/ whitespace) ~ ")"
   )
 
-  val definition: P[Definition[Filter]] = P(
-    ("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~/ whitespace ~ filter ~ ";") map (Definition[Filter](_, _, _)).tupled
+  val definition: P[Definition[ConcreteFilter]] = P(
+    ("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~/ whitespace ~ filter ~ ";") map (Definition[ConcreteFilter](_, _, _)).tupled
   )
 
-  val program: P[Program[Filter]] = P(
+  val program: P[Program[ConcreteFilter]] = P(
     (whitespace ~
       (definition.rep(min = 1, sep = whitespace) ~ whitespace)
         .?.map(_.map(_.toDefinitions).getOrElse(Map.empty)) ~
       filter ~ Terminals.End)
-      .map((Program.apply[Filter] _).tupled)
+      .map((Program.apply[ConcreteFilter] _).tupled)
   )
 
 }

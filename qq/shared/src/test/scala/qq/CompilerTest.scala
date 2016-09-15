@@ -8,7 +8,7 @@ import upickle.Js.Value
 
 import scala.concurrent.Future
 
-case class CompilerTest(input: Value, program: Filter, expectedOutput: Value*)
+case class CompilerTest(input: Value, program: ConcreteFilter, expectedOutput: Value*)
 
 object CompilerTest {
 
@@ -74,7 +74,7 @@ object CompilerTest {
   val fatStackTests: List[CompilerTest] = {
     // tail recursive builder, giving you (i * 2) compositions of id with f.
     @annotation.tailrec
-    def fun(f: Filter, i: Int): Filter = if (i == 0) f else fun(compose(compose(id, f), id), i - 1)
+    def fun(f: ConcreteFilter, i: Int): ConcreteFilter = if (i == 0) f else fun(compose(compose(id, f), id), i - 1)
     List(
       CompilerTest(Js.False, fun(id, 1000), Js.False)
     )
