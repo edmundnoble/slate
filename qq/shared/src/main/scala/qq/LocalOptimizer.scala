@@ -76,7 +76,7 @@ object LocalOptimizer {
     ))
 
   def optimizeFilter[T[_[_]] : Recursive : Corecursive](filter: T[FilterComponent]): T[FilterComponent] =
-    Recursion.transCataT(localOptimizationsƒ).apply(filter)
+    Recursion.transCataT(localOptimizationsƒ[T]).apply(filter)
 
   def optimizeProgram[T[_[_]] : Recursive : Corecursive](program: Program[T[FilterComponent]]): Program[T[FilterComponent]] =
     program.copy(defns = program.defns.mapValues(optimizeDefinition[T]), main = optimizeFilter(program.main))
