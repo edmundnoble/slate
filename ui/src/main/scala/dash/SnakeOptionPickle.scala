@@ -4,8 +4,7 @@ import upickle._
 
 object SnakeOptionPickle extends AttributeTagged {
   def camelToSnake(s: String) = {
-    val res = s.split("(?=[A-Z])", -1).map(_.toLowerCase).mkString("_")
-    res
+    s.split("(?=[A-Z])", -1).map(_.toLowerCase).mkString("_")
   }
 
   override def CaseR[T: this.Reader, V]
