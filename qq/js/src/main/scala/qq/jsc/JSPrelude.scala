@@ -46,7 +46,7 @@ object JSPrelude extends PlatformPrelude[Any] {
       "length", CompiledFilter.func {
         case arr: js.Array[js.Any@unchecked] => Task.now(arr.length :: Nil)
         case str: String => Task.now(str.length :: Nil)
-        case obj: js.Object => Task.now(obj.asInstanceOf[js.Dictionary[js.Any]].toArray.length :: Nil)
+        case obj: js.Object => Task.now(obj.toDictionary.size :: Nil)
         case null => Task.now(0 :: Nil)
         case k => Task.raiseError(QQRuntimeException("Tried to get length of " + JSRuntime.print(k)))
       }
@@ -163,9 +163,12 @@ object JSPrelude extends PlatformPrelude[Any] {
   override def includes: CompiledDefinition[Any] =
     CompiledDefinition[Any]("includes", 1, { case List(elem) =>
       ((bindings: VarBindings[Any]) => (v: Any) => v match {
-        case arr: js.Array[_] => elem(bindings)(v).map(f => f.map(v => java.lang.Boolean.valueOf(arr.contains(v))))
-        case obj: js.Object => elem(bindings)(v).map(f => f.map(v => java.lang.Boolean.valueOf(obj.asInstanceOf[js.Dictionary[Any]].values.exists(_ == v))))
-        case k => Task.raiseError(TypeError("array|object", String.valueOf(k)))
+        case arr: js.Array[_] =>
+          elem(bindings)(v).map(f => f.map(v => java.lang.Boolean.valueOf(arr.contains(v))))
+        case obj: js.Object =>
+          elem(bindings)(v).map(f => f.map(v => java.lang.Boolean.valueOf(obj.toDictionary.values.exists(_ == v))))
+        case k =>
+          Task.raiseError(TypeError("array|object", String.valueOf(k)))
       }).right
     })
 
@@ -174,7 +177,7 @@ object JSPrelude extends PlatformPrelude[Any] {
 //  CompiledDefinition[Any]("exists", 1, { case List(pred) =>
 //    ((bindings: VarBindings[Any]) => (v: Any) => v match {
 //      case arr: js.Array[_] => pred(bindings)(v).map(f => f.map(v => if (v.isInstanceOfjava.lang.Boolean.valueOf(arr.xs(v))))
-//      case obj: js.Object => pred(bindings)(v).map(f => f.map(v => java.lang.Boolean.valueOf(obj.asInstanceOf[js.Dictionary[Any]].values.exists(_ == v))))
+//      case obj: js.Object => pred(bindings)(v).map(f => f.map(v => java.lang.Boolean.valueOf(obj.toDictionary.values.exists(_ == v))))
 //      case k => Task.raiseError(TypeError("array|object", String.valueOf(k)))
 //    }).right
 //  })

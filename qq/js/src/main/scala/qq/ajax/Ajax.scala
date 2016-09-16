@@ -63,7 +63,7 @@ object Ajax {
 
   @inline final def get(url: String,
                         data: PostData = null,
-                        queryParams: Map[String, js.Any] = Map.empty,
+                        queryParams: Map[String, Any] = Map.empty,
                         headers: Map[String, String] = Map.empty,
                         withCredentials: Boolean = false,
                         responseType: String = "")(implicit timeout: Timeout) = {
@@ -72,7 +72,7 @@ object Ajax {
 
   @inline final def post(url: String,
                          data: PostData = null,
-                         queryParams: Map[String, js.Any] = Map.empty,
+                         queryParams: Map[String, Any] = Map.empty,
                          headers: Map[String, String] = Map.empty,
                          withCredentials: Boolean = false,
                          responseType: String = "")(implicit timeout: Timeout) = {
@@ -81,7 +81,7 @@ object Ajax {
 
   @inline final def put(url: String,
                         data: PostData = null,
-                        queryParams: Map[String, js.Any] = Map.empty,
+                        queryParams: Map[String, Any] = Map.empty,
                         headers: Map[String, String] = Map.empty,
                         withCredentials: Boolean = false,
                         responseType: String = "")(implicit timeout: Timeout) = {
@@ -90,7 +90,7 @@ object Ajax {
 
   @inline final def delete(url: String,
                            data: PostData = null,
-                           queryParams: Map[String, js.Any] = Map.empty,
+                           queryParams: Map[String, Any] = Map.empty,
                            headers: Map[String, String] = Map.empty,
                            withCredentials: Boolean = false,
                            responseType: String = "")(implicit timeout: Timeout) = {
@@ -100,7 +100,7 @@ object Ajax {
   def apply(method: String,
             url: String,
             data: PostData,
-            queryParams: Map[String, js.Any],
+            queryParams: Map[String, Any],
             headers: Map[String, String],
             withCredentials: Boolean,
             responseType: String)(implicit timeout: Timeout): Task[dom.XMLHttpRequest] = {
@@ -137,7 +137,7 @@ object Ajax {
   def apply(method: AjaxMethod,
             url: String,
             data: PostData,
-            queryParams: Map[String, js.Any],
+            queryParams: Map[String, Any],
             headers: Map[String, String],
             withCredentials: Boolean,
             responseType: String)(implicit timeout: Timeout): Task[dom.XMLHttpRequest] =

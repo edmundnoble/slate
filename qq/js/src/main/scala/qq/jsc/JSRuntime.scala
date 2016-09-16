@@ -2,19 +2,19 @@ package qq.jsc
 
 import monix.eval.Task
 import monix.scalaz._
-import qq.{QQRuntime, QQRuntimeException}
-import qq.QQCompiler.{VarBindings, CompiledFilter, VarBinding}
+import qq.QQCompiler.{CompiledFilter, VarBindings}
 import qq.util._
+import qq.{QQRuntime, QQRuntimeException}
 
 import scala.scalajs.js
-import scala.scalajs.js.{Array, Dictionary, Object}
+import scala.scalajs.js.Dictionary
+import scalaz.Tags.Parallel
 import scalaz.std.list._
 import scalaz.std.map._
 import scalaz.syntax.std.list._
 import scalaz.syntax.std.map._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, NonEmptyList, Reader, \/, \/-}
-import scalaz.Tags.Parallel
 
 // This is a QQ runtime which executes all operations on native JSON values in Javascript
 object JSRuntime extends QQRuntime[Any] {
@@ -34,8 +34,8 @@ object JSRuntime extends QQRuntime[Any] {
     case (f: js.Array[Any@unchecked], s: js.Array[Any@unchecked]) =>
       Task.now(f.concat(s))
     case (f: js.Object, s: js.Object) =>
-      val firstMap = f.asInstanceOf[js.Dictionary[Any]].toMap
-      val secondMap = s.asInstanceOf[js.Dictionary[Any]].toMap
+      val firstMap = f.toDictionary.toMap
+      val secondMap = s.toDictionary.toMap
       Task.now(js.Dictionary((firstMap ++ secondMap).toSeq: _*))
     case (f, s) =>
       Task.raiseError(QQRuntimeException("can't add " + Json.jsToString(f) + " and " + Json.jsToString(s)))
@@ -47,7 +47,7 @@ object JSRuntime extends QQRuntime[Any] {
     case (f: js.Array[Any@unchecked], s: js.Array[Any@unchecked]) =>
       Task.now(f.filter(!s.contains(_)))
     case (f: js.Object, s: js.Object) =>
-      val contents: Seq[(String, Any)] = (f.asInstanceOf[Dictionary[Any]].toMap -- s.asInstanceOf[Dictionary[Any]].toMap.keySet).toSeq
+      val contents: Seq[(String, Any)] = (f.asInstanceOf[js.Dictionary[Any]].toMap -- s.asInstanceOf[js.Dictionary[Any]].toMap.keySet).toSeq
       Task.now(js.Dictionary(contents: _*))
     case (f, s) =>
       Task.raiseError(QQRuntimeException("can't subtract " + Json.jsToString(f) + " and " + Json.jsToString(s)))
@@ -59,8 +59,8 @@ object JSRuntime extends QQRuntime[Any] {
     case (f: String, s: Int) =>
       Task.now(if (s < 0) null else f * s)
     case (f: js.Object, s: js.Object) =>
-      val firstMap = f.asInstanceOf[js.Dictionary[Any]].toMap.mapValues(Task.now)
-      val secondMap = s.asInstanceOf[Dictionary[Any]].toMap.mapValues(Task.now)
+      val firstMap = f.toDictionary.toMap.mapValues(Task.now)
+      val secondMap = s.toDictionary.toMap.mapValues(Task.now)
       firstMap.unionWith(secondMap) { (f, s) => Task.mapBoth(f, s)(addJsValues).flatten }.sequence.map(o => js.Dictionary(o.toSeq: _*))
     case (f, s) =>
       Task.raiseError(QQRuntimeException("can't multiply " + Json.jsToString(f) + " and " + Json.jsToString(s)))
@@ -88,7 +88,7 @@ object JSRuntime extends QQRuntime[Any] {
 
   override def selectKey(key: String): CompiledFilter[Any] = CompiledFilter.func {
     case f: js.Object =>
-      f.asInstanceOf[js.Dictionary[Any]].get(key) match {
+      f.toDictionary.get(key) match {
         case None => taskOfListOfNull
         case Some(v) => Task.now(v :: Nil)
       }

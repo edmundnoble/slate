@@ -41,7 +41,7 @@ object Json {
             .map(Js.Arr(_: _*))
         case s: js.Object =>
           Unsafe.mapTraverse[String]
-            .traverse[Trampoline, Any, Js.Value](js.Any.wrapDictionary(s.asInstanceOf[js.Dictionary[Any]]).toMap)(loop)
+            .traverse[Trampoline, Any, Js.Value](s.toDictionary.toMap)(loop)
             .map(m => Js.Obj(m.toSeq: _*))
       }
   }
