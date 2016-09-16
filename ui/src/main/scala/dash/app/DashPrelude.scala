@@ -3,15 +3,15 @@ package app
 
 import monix.eval.Task
 import monix.scalaz._
-import qq.QQCompiler.{CompiledFilter, VarBindings}
-import qq.{CompiledDefinition, QQCompiler, QQRuntimeException}
+import qq.QQCompiler.VarBindings
 import qq.ajax.{Ajax, AjaxMethod}
 import qq.jsc._
-import com.thoughtworks.each.Monadic._
+import qq.{CompiledDefinition, QQRuntimeException}
 
 import scala.concurrent.duration._
-import scalaz.syntax.either._
 import scala.scalajs.js
+import scalaz.syntax.apply._
+import scalaz.syntax.either._
 
 object DashPrelude {
 
@@ -52,11 +52,13 @@ object DashPrelude {
             case o: js.Object => Task.now(o.toDictionary.asInstanceOf[js.Dictionary[String]])
             case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not headers"))
           })
-          monadic[Task] {
-            val ajax =
-              Ajax(ajaxMethod, url.each, data.each, queryParams.each.toMap, headers.each.toMap, false, "")(Ajax.Timeout(1000.millis)).each
-            List(Json.stringToJs(ajax.responseText).fold(Task.raiseError, Task.now).each)
-          }
+          val ajax =
+            (url |@| data |@| queryParams.map(_.toMap) |@| headers.map(_.toMap)) (
+              Ajax(ajaxMethod, _, _, _, _, withCredentials = false, "")(Ajax.Timeout(1000.millis))
+            ).flatten
+          ajax.map(resp =>
+            List(Json.stringToJs(resp.responseText).fold(Task.raiseError, Task.now))
+          )
     }.right
   })
 
