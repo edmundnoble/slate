@@ -14,4 +14,3 @@ trait TestUtil {
     Recursion.Unsafe.Direct
 }
 
-object TestUtil extends TestUtil

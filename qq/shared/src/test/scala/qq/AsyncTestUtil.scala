@@ -14,4 +14,3 @@ trait AsyncTestUtil extends TestUtil {
 
 }
 
-object AsyncTestUtil extends AsyncTestUtil

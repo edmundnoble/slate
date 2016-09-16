@@ -8,7 +8,6 @@ import scalaz.\/
 import scalaz.syntax.either._
 import scalaz.syntax.std.`try`._
 import monix.execution.Scheduler
-import AsyncTestUtil._
 
 case class RunnerTest(input: Js.Value, program: String, expectedOutputOrException: Exception \/ List[Js.Value])
 
