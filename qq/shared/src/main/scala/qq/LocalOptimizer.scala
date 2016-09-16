@@ -66,7 +66,7 @@ object LocalOptimizer {
     }
   }
 
-  // a polymorphic list of all of the local optimizations available
+  // a list of all of the local optimizations available
   @inline final def localOptimizations[T[_[_]] : Recursive : Corecursive]: NonEmptyList[LocalOptimization[T[FilterComponent]]] =
   NonEmptyList(idCompose[T], collectEnlist[T], MathOptimizations.constReduce[T])
 
