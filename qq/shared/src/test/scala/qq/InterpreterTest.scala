@@ -44,11 +44,9 @@ class InterpreterTest extends QQAsyncTestSuite {
         output <- runInterpreter(mainMenu, ":p", ".", "[]", "1").runAsync
       } yield output._1 should be("1")
     }
-
   }
 
   "input interpreter" - {
-
     "accessible from main menu" in {
       for {
         inputMenu <- runInterpreter(mainMenu, ":i").runAsync
@@ -68,7 +66,6 @@ class InterpreterTest extends QQAsyncTestSuite {
         output <- runInterpreter(mainMenu, ":i", "0", ". + 1", ". + 2").runAsync
       } yield output._1 should be("2")
     }
-
   }
 
 }
