@@ -3,14 +3,14 @@ package app
 
 import monix.eval.Task
 import monix.scalaz._
-import qq.QQCompiler.VarBindings
+import qq.QQCompiler.{CompiledFilter, VarBindings}
 import qq.{CompiledDefinition, QQRuntimeException}
 import qq.ajax.{Ajax, AjaxMethod}
 import qq.jsc.{JSRuntime, Json}
 import com.thoughtworks.each.Monadic._
+
 import scala.concurrent.duration._
 import scalaz.syntax.either._
-
 import scala.scalajs.js
 
 object DashPrelude {
@@ -19,6 +19,17 @@ object DashPrelude {
 
   def googleAuth: CompiledDefinition[Any] =
     noParamDefinition("googleAuth", _ => _ => identify.getAuthToken(interactive = false).map(_ :: Nil))
+
+  def launchAuth: CompiledDefinition[Any] =
+    CompiledDefinition[Any]("launchAuth", 1, { case List(urlFilter) =>
+      ((bindings: VarBindings[Any]) => (jsv: Any) =>
+        monadic[Task] {
+          urlFilter(bindings)(jsv).each.head match {
+            case s: String => identify.launchWebAuthFlow(interactive = false, s).map(_ :: Nil).each
+            case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not a URL")).each
+          }
+        }).right
+    })
 
   private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition[Any](name, 4, {
     case List(urlFilter, queryParamsFilter, dataFilter, headersFilter) => (
