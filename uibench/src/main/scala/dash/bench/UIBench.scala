@@ -1,4 +1,5 @@
-package dash.bench
+package dash
+package bench
 
 import dash.DashboardPage.SearchPageState
 import dash.app.DashboarderApp

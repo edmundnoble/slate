@@ -1,4 +1,5 @@
-package qq.ajax
+package qq
+package ajax
 
 sealed abstract class AjaxMethod
 

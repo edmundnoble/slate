@@ -68,21 +68,21 @@ object LocalOptimizer {
 
   // a polymorphic list of all of the local optimizations available
   @inline final def localOptimizations[T[_[_]] : Recursive : Corecursive]: NonEmptyList[LocalOptimization[T[FilterComponent]]] =
-    NonEmptyList(idCompose[T], collectEnlist[T], MathOptimizations.constReduce[T])
+  NonEmptyList(idCompose[T], collectEnlist[T], MathOptimizations.constReduce[T])
 
   // a function applying each of the local optimizations available, in rounds,
   // until none of the optimizations applies anymore
   @inline final def localOptimizationsƒ[T[_[_]] : Recursive : Corecursive]: T[FilterComponent] => T[FilterComponent] =
-    repeatedly(localOptimizations[T].foldLeft1(_ <+> _))
+  repeatedly(localOptimizations[T].foldLeft1(_ <+> _))
 
   // recursively applied localOptimizationsƒ deep into a filter
   @inline final def optimizeFilter[T[_[_]] : Recursive : Corecursive](filter: T[FilterComponent]): T[FilterComponent] =
-    Recursion.transCataT(localOptimizationsƒ[T]).apply(filter)
+  Recursion.transCataT(localOptimizationsƒ[T]).apply(filter)
 
   @inline final def optimizeDefinition[T[_[_]] : Recursive : Corecursive](defn: Definition[T[FilterComponent]]): Definition[T[FilterComponent]] =
     defn.copy(body = optimizeFilter(defn.body))
 
   @inline final def optimizeProgram[T[_[_]] : Recursive : Corecursive](program: Program[T[FilterComponent]]): Program[T[FilterComponent]] =
-    program.copy(defns = program.defns.mapValues(optimizeDefinition[T]), main = optimizeFilter(program.main))
+    program.copy(defns = program.defns.map(optimizeDefinition[T]), main = optimizeFilter(program.main))
 
 }

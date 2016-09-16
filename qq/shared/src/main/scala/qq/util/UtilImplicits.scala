@@ -1,4 +1,5 @@
-package qq.util
+package qq
+package util
 
 import monix.eval.Task
 import scodec._

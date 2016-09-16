@@ -1,4 +1,5 @@
-package qq.ajax
+package qq
+package ajax
 
 import java.nio.ByteBuffer
 

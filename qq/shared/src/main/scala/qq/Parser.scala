@@ -182,15 +182,16 @@ object Parser {
   )
 
   val definition: P[Definition[ConcreteFilter]] = P(
-    ("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~/ whitespace ~ filter ~ ";") map (Definition[ConcreteFilter](_, _, _)).tupled
+    ("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~/ whitespace ~ filter ~ ";") map (
+      Definition[ConcreteFilter] _).tupled
   )
 
   val program: P[Program[ConcreteFilter]] = P(
     (whitespace ~
       (definition.rep(min = 1, sep = whitespace) ~ whitespace)
-        .?.map(_.map(_.toDefinitions).getOrElse(Map.empty)) ~
+        .?.map(_.getOrElse(Nil)) ~
       filter ~ Terminals.End)
-      .map((Program.apply[ConcreteFilter] _).tupled)
+      .map((Program[ConcreteFilter] _).tupled)
   )
 
 }

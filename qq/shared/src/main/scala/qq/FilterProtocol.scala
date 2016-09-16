@@ -23,20 +23,14 @@ object FilterProtocol {
 
   def filterCodec: Codec[ConcreteFilter] = implicitly
 
-  def definitionsCodec: Codec[Program.Definitions[ConcreteFilter]] = Codec[List[Definition[ConcreteFilter]]]
-    .xmap(_.map(d => d.name -> d)(collection.breakOut), _.values.toList)
+  def definitionsCodec: Codec[Program.Definitions[ConcreteFilter]] = implicitly
 
-  def programCodec: Codec[Program[ConcreteFilter]] = Codec[(List[Definition[ConcreteFilter]], ConcreteFilter)]
-    .xmap({ case (defns, main) =>
-      Program(defns.map(d => d.name -> d)(collection.breakOut), main)
-    }, {
-      case Program(defnMap, main) => (defnMap.values.toList, main)
-    })
+  def programCodec: Codec[Program[ConcreteFilter]] = implicitly
 
   def deriveGeneric[A, Rec](implicit lgen: Generic.Aux[A, Rec], auto: Lazy[Codec[Rec]]): Codec[A] =
     auto.value.xmap(lgen.from, lgen.to)
 
-  implicit def discriminated[A]: Discriminated[FilterComponentGenA[A], Int] = Discriminated(uint8)
+  implicit def discriminated[A]: Discriminated[FilterComponentGenA[A], Int] = Discriminated(uint(5))
 
   implicit def idDiscriminator[A]: Discriminator[FilterComponentGenA[A], IdFilter[A], Int] = Discriminator(0)
 

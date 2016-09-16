@@ -66,7 +66,8 @@ object BenchmarkApp extends scalajs.js.JSApp {
     BenchmarkGUI.renderMenu(body, layout = configureLayout)(
       CompilerBench.qqCompilerSuite,
       RuntimeBench.qqRuntimeSuite,
-      UIBench.startupSuite
+      UIBench.startupSuite,
+      SerializationBench.serializationBenchSuite
     )
   }
 
