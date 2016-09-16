@@ -20,8 +20,8 @@ object LocalOptimizer {
 
   import FilterComponent._
 
+  // runs a function until it returns none
   // like in Matryoshka but tail recursive
-  // runs a function until it returns none.
   @annotation.tailrec
   final def repeatedly[A](f: A => Option[A])(expr: A): A =
   f(expr) match {
