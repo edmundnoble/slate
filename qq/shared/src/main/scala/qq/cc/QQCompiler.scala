@@ -1,7 +1,7 @@
 package qq
 package cc
 
-import matryoshka.{Corecursive, Recursive}
+import matryoshka.Recursive
 import qq.data._
 import qq.util._
 
@@ -13,12 +13,12 @@ import qq.Platform.Rec._
 
 object QQCompiler {
 
-  def compileDefinitions[T[_[_]] : Recursive : Corecursive, J](runtime: QQRuntime[J],
+  def compileDefinitions[T[_[_]] : Recursive, J](runtime: QQRuntime[J],
                                                                prelude: IndexedSeq[CompiledDefinition[J]] = Vector.empty,
                                                                definitions: Program.Definitions[T[FilterComponent]]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
     definitions.foldLeft(prelude.right[QQCompilationException])(compileDefinitionStep[T, J](runtime))
 
-  def compileProgram[T[_[_]] : Recursive : Corecursive, J](runtime: QQRuntime[J],
+  def compileProgram[T[_[_]] : Recursive, J](runtime: QQRuntime[J],
                                                            prelude: IndexedSeq[CompiledDefinition[J]] = Vector.empty,
                                                            program: Program[T[FilterComponent]]): OrCompilationError[CompiledFilter[J]] = {
     compileDefinitions(runtime, prelude, program.defns).flatMap(compileFilter(runtime, _, program.main))
@@ -55,7 +55,7 @@ object QQCompiler {
       )
   }
 
-  def compileDefinitionStep[T[_[_]] : Recursive : Corecursive, J](runtime: QQRuntime[J])
+  def compileDefinitionStep[T[_[_]] : Recursive, J](runtime: QQRuntime[J])
                                                                  (soFar: OrCompilationError[IndexedSeq[CompiledDefinition[J]]],
                                                                   nextDefinition: Definition[T[FilterComponent]]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
     soFar.map { (definitionsSoFar: IndexedSeq[CompiledDefinition[J]]) =>
@@ -67,7 +67,7 @@ object QQCompiler {
       }) +: definitionsSoFar
     }
 
-  def compileFilter[T[_[_]] : Recursive : Corecursive, J](runtime: QQRuntime[J],
+  def compileFilter[T[_[_]] : Recursive, J](runtime: QQRuntime[J],
                                                           definitions: IndexedSeq[CompiledDefinition[J]],
                                                           filter: T[FilterComponent]): OrCompilationError[CompiledFilter[J]] =
     for {
