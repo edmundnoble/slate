@@ -14,7 +14,7 @@ object RuntimeBench {
   def runtimeSetup(filt: Int => (ConcreteFilter, String)) = Benchmark.setup[(QQRuntimeParams, Int), BenchParams] {
     case (params, size) =>
       val (filter, input) = filt(size)
-      val ready = BenchParams[params.T](QQCompiler.compile(params.runtime, IndexedSeq.empty, filter).valueOr(s => sys.error(s.toString)), params.iso(input))
+      val ready = BenchParams[params.T](QQCompiler.compileFilter(params.runtime, IndexedSeq.empty, filter).valueOr(s => sys.error(s.toString)), params.iso(input))
       ready
   }
 

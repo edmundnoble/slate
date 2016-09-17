@@ -16,37 +16,37 @@ object CompilerBench {
       Benchmark.setup[Int, ConcreteFilter] { i =>
         Util.buildRec[Fix](FilterDSL.fix.compose(_, FilterDSL.fix.selectKey("key")), i, FilterDSL.fix.id)
       }("fix select key") { filt =>
-        QQCompiler.compile(JSRuntime, IndexedSeq.empty, filt)
+        QQCompiler.compileFilter(JSRuntime, IndexedSeq.empty, filt)
       },
 
       Benchmark.setup[Int, ConcreteFilter] { i =>
         Util.buildRec[Fix](FilterDSL.fix.compose(_, FilterDSL.fix.id), i, FilterDSL.fix.id)
       }("fix compose with id") { filt =>
-        QQCompiler.compile(JSRuntime, IndexedSeq.empty, filt)
+        QQCompiler.compileFilter(JSRuntime, IndexedSeq.empty, filt)
       },
 
       Benchmark.setup[Int, Mu[FilterComponent]] { i =>
         Util.buildRec[Fix](FilterDSL.fix.compose(_, FilterDSL.fix.selectKey("key")), i, FilterDSL.fix.id).convertTo[Mu]
       }("mu select key") { filt =>
-        QQCompiler.compile(JSRuntime, IndexedSeq.empty, filt)
+        QQCompiler.compileFilter(JSRuntime, IndexedSeq.empty, filt)
       },
 
       Benchmark.setup[Int, Mu[FilterComponent]] { i =>
         Util.buildRec[Fix](FilterDSL.fix.compose(_, FilterDSL.fix.id), i, FilterDSL.fix.id).convertTo[Mu]
       }("mu compose with id") { filt =>
-        QQCompiler.compile(JSRuntime, IndexedSeq.empty, filt)
+        QQCompiler.compileFilter(JSRuntime, IndexedSeq.empty, filt)
       },
 
       Benchmark.setup[Int, Nu[FilterComponent]] { i =>
         Util.buildRec[Fix](FilterDSL.fix.compose(_, FilterDSL.fix.selectKey("key")), i, FilterDSL.fix.id).convertTo[Nu]
       }("nu select key") { filt =>
-        QQCompiler.compile(JSRuntime, IndexedSeq.empty, filt)
+        QQCompiler.compileFilter(JSRuntime, IndexedSeq.empty, filt)
       },
 
       Benchmark.setup[Int, Nu[FilterComponent]] { i =>
         Util.buildRec[Fix](FilterDSL.fix.compose(_, FilterDSL.fix.id), i, FilterDSL.fix.id).convertTo[Nu]
       }("nu compose with id") { filt =>
-        QQCompiler.compile(JSRuntime, IndexedSeq.empty, filt)
+        QQCompiler.compileFilter(JSRuntime, IndexedSeq.empty, filt)
       }
     ), GuiParams.one(GuiParam.int("filter size", 5, 10, 50))
   )
