@@ -2,7 +2,6 @@ package qq
 package cc
 
 import matryoshka.{Corecursive, Recursive}
-import qq.data.FilterComponent._
 import qq.data._
 import qq.util._
 

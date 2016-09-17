@@ -3,18 +3,16 @@ package cc
 
 import matryoshka.Recursive.ops._
 import matryoshka._
+import qq.Platform.Rec._
 import qq.data._
 import qq.util.Recursion
 
 import scala.language.higherKinds
+import scalaz.std.option._
 import scalaz.syntax.foldable1._
 import scalaz.syntax.functor._
-import scalaz.std.option._
-import scalaz.{Kleisli, NonEmptyList}
 import scalaz.syntax.plus._
-import qq.Platform.Rec._
-
-import scala.language.higherKinds
+import scalaz.{Kleisli, NonEmptyList}
 
 // QQ's local optimizer; not a whole-program optimizer, but optimizes a single filter.
 object LocalOptimizer {
