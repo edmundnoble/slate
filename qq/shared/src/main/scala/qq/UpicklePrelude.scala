@@ -3,17 +3,16 @@ package qq
 import java.util.regex.Pattern
 
 import monix.eval.Task
+import monix.scalaz._
+import qq.QQCompiler.{CompiledFilter, VarBindings}
+import scodec.bits.ByteVector
 import upickle.Js
 
+import scalaz.Reader
+import scalaz.std.list._
 import scalaz.syntax.apply._
 import scalaz.syntax.either._
 import scalaz.syntax.traverse._
-import scalaz.std.list._
-import monix.scalaz._
-import qq.QQCompiler.{VarBindings, CompiledFilter, VarBinding}
-import scodec.bits.ByteVector
-
-import scalaz.Reader
 
 object UpicklePrelude extends PlatformPrelude[Js.Value] {
 
@@ -88,14 +87,14 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
     noParamDefinition(
       "arrays", CompiledFilter.func {
         case arr: Js.Arr => Task.now(arr :: Nil)
-        case k => Task.now(Nil)
+        case _ => Task.now(Nil)
       })
 
   override def objects: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "objects", CompiledFilter.func {
         case obj: Js.Obj => Task.now(obj :: Nil)
-        case k => Task.now(Nil)
+        case _ => Task.now(Nil)
       })
 
   override def iterables: CompiledDefinition[Js.Value] =
@@ -103,35 +102,35 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
       "iterables", CompiledFilter.func {
         case arr: Js.Arr => Task.now(arr :: Nil)
         case obj: Js.Obj => Task.now(obj :: Nil)
-        case k => Task.now(Nil)
+        case _ => Task.now(Nil)
       })
 
   override def booleans: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "booleans", CompiledFilter.func {
         case bool@(Js.True | Js.False) => Task.now(bool :: Nil)
-        case k => Task.now(Nil)
+        case _ => Task.now(Nil)
       })
 
   override def numbers: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "numbers", CompiledFilter.func {
         case num: Js.Num => Task.now(num :: Nil)
-        case k => Task.now(Nil)
+        case _ => Task.now(Nil)
       })
 
   override def strings: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "strings", CompiledFilter.func {
         case str: Js.Str => Task.now(str :: Nil)
-        case k => Task.now(Nil)
+        case _ => Task.now(Nil)
       })
 
   override def nulls: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "nulls", CompiledFilter.func {
         case Js.Null => Task.now(Js.Null :: Nil)
-        case k => Task.now(Nil)
+        case _ => Task.now(Nil)
       })
 
   override def values: CompiledDefinition[Js.Value] =
@@ -144,8 +143,8 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
   override def scalars: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "scalars", CompiledFilter.func {
-        case arr: Js.Arr => Task.now(Nil)
-        case obj: Js.Obj => Task.now(Nil)
+        case _: Js.Arr => Task.now(Nil)
+        case _: Js.Obj => Task.now(Nil)
         case k => Task.now(k :: Nil)
       })
 
