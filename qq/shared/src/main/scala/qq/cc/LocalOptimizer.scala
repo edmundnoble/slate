@@ -72,7 +72,7 @@ object LocalOptimizer {
   // a function applying each of the local optimizations available, in rounds,
   // until none of the optimizations applies anymore
   @inline final def localOptimizationsƒ[T[_[_]] : Recursive : Corecursive]: T[FilterComponent] => T[FilterComponent] =
-  repeatedly(localOptimizations[T].foldLeft1(_ <+> _))
+  repeatedly(localOptimizations[T].foldLeft1(_ <+> _).run)
 
   // recursively applied localOptimizationsƒ deep into a filter
   @inline final def optimizeFilter[T[_[_]] : Recursive : Corecursive](filter: T[FilterComponent]): T[FilterComponent] =
