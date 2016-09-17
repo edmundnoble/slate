@@ -1,20 +1,16 @@
-package qq.cc
+package qq
+package cc
 
 import matryoshka.{Corecursive, Recursive}
-import monix.eval.Task
-import monix.scalaz._
-import qq.cc.QQRuntime
 import qq.data.FilterComponent._
 import qq.data._
 import qq.util._
 
 import scala.language.higherKinds
-import scalaz.Tags.Parallel
-import scalaz.std.list._
 import scalaz.syntax.either._
 import scalaz.syntax.std.option._
-import scalaz.syntax.traverse._
-import scalaz.{PlusEmpty, Reader, \/}
+import scalaz.Reader
+import qq.Platform.Rec._
 
 object QQCompiler {
 

@@ -1,12 +1,12 @@
-package qq.jsc
+package qq
+package jsc
 
 import java.util.regex.Pattern
 
 import monix.eval.Task
 import monix.scalaz._
-import qq.QQCompiler.{CompiledFilter, CompiledProgram, VarBindings}
 import qq._
-import qq.cc.PlatformPrelude
+import qq.cc._
 import qq.data.CompiledDefinition
 import scodec.bits.ByteVector
 

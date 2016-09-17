@@ -1,4 +1,5 @@
-package qq.cc
+package qq
+package cc
 
 import monix.eval.Task
 import qq.data._
@@ -18,7 +19,7 @@ trait QQRuntime[J] {
   def enlistFilter(filter: CompiledFilter[J]): CompiledFilter[J]
 
   @inline final def evaluateLeaf(component: LeafComponent[J]): CompiledFilter[J] = component match {
-    case IdFilter() => mempty[CompiledFilter, J]
+    case IdFilter() => _ => j => Task.now(j :: Nil)
     case Dereference(name) =>
       (bindings: VarBindings[J]) =>
         bindings.get(name).cata(

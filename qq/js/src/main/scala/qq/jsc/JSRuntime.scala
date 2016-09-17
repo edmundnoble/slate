@@ -1,10 +1,9 @@
-package qq.jsc
+package qq
+package jsc
 
 import monix.eval.Task
 import monix.scalaz._
-import qq.QQCompiler.{CompiledFilter, VarBindings}
-import qq.QQRuntimeException
-import qq.cc.QQRuntime
+import qq.cc._
 import qq.util._
 
 import scala.scalajs.js

@@ -1,4 +1,5 @@
-package qq.cc
+package qq
+package cc
 
 import fastparse.all._
 import fastparse.parsers.Terminals

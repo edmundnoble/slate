@@ -2,7 +2,7 @@ package qq
 
 import monix.execution.Scheduler
 import org.scalatest.Assertion
-import qq.cc.{QQRuntime, Runner}
+import qq.cc.{QQRuntime, QQRuntimeException, Runner}
 import upickle.Js
 
 import scala.concurrent.Future

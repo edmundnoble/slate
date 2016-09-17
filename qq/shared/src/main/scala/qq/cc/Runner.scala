@@ -1,4 +1,5 @@
-package qq.cc
+package qq
+package cc
 
 import fastparse.core.{ParseError, Parsed}
 import monix.eval.Task

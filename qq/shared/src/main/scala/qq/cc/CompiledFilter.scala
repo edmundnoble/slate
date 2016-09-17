@@ -1,8 +1,10 @@
-package qq.cc
+package qq
+package cc
 
 import monix.eval.Task
+import monix.scalaz._
 import qq.data.VarBinding
-import qq.util.TaskParallel
+import qq.util._
 
 import scalaz.Tags.Parallel
 import scalaz.std.list._

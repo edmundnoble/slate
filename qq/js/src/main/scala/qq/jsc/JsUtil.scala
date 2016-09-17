@@ -1,4 +1,5 @@
-package qq.jsc
+package qq
+package jsc
 
 import scala.scalajs.js
 import scalaz.syntax.apply._

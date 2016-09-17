@@ -1,4 +1,5 @@
-package qq.cc
+package qq
+package cc
 
 import monix.eval.Task
 import qq.data.{CompiledDefinition, ConcreteFilter, Definition, FilterDSL}

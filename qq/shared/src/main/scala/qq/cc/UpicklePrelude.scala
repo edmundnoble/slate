@@ -1,4 +1,5 @@
-package qq.cc
+package qq
+package cc
 
 import java.util.regex.Pattern
 

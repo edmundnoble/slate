@@ -2,11 +2,12 @@ package dash
 package views
 
 import dash.models.AppModel
-import dash.views.ExpandableContentView.ExpandableContentProps
 import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.{ReactComponentB, TopNode}
 import monix.execution.Scheduler
 import monix.reactive.Observable
+import dash.Util.observableReusability
+import dash.views.ExpandableContentView.ExpandableContentProps
 
 import scalacss.Defaults._
 

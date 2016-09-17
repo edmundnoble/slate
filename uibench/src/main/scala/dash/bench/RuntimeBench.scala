@@ -6,7 +6,7 @@ import japgolly.scalajs.benchmark._
 import japgolly.scalajs.benchmark.gui.{GuiParam, GuiParams, GuiSuite}
 import matryoshka.Fix
 import monocle.Iso
-import qq._
+import qq.cc.QQCompiler
 import qq.data.{ConcreteFilter, FilterDSL}
 
 object RuntimeBench {

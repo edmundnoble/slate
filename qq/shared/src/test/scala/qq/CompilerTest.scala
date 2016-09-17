@@ -3,7 +3,7 @@ package qq
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.Assertion
-import qq.cc.{QQRuntime, UpickleRuntime}
+import qq.cc.{QQCompiler, QQRuntime, UpickleRuntime}
 import qq.data.ConcreteFilter
 import upickle.Js
 import upickle.Js.Value

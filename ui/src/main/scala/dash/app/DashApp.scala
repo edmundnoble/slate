@@ -1,11 +1,9 @@
 package dash
 package app
 
-import qq.QQCompiler.{CompiledFilter, OrCompilationError}
-import qq.cc.{LocalOptimizer, Parser}
+import qq.cc._
 import qq.data.{ConcreteFilter, Program}
 import qq.jsc.JSRuntime
-import qq.{Parser, QQCompiler}
 import scodec.bits.BitVector
 
 object DashApp {

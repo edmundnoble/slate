@@ -1,4 +1,5 @@
-package qq.util
+package qq
+package util
 
 import matryoshka.Recursive.ops._
 import matryoshka.TraverseT.ops._

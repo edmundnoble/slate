@@ -1,4 +1,5 @@
-package qq.cc
+package qq
+package cc
 
 class QQCompilationException(message: String) extends RuntimeException(message)
 

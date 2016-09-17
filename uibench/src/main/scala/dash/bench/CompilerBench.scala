@@ -4,7 +4,8 @@ package bench
 import japgolly.scalajs.benchmark._
 import japgolly.scalajs.benchmark.gui.{GuiParam, GuiParams, GuiSuite}
 import matryoshka.{Fix, Mu, Nu}
-import qq._
+import matryoshka.Recursive.ops._
+import qq.cc.QQCompiler
 import qq.data.{ConcreteFilter, FilterComponent, FilterDSL}
 import qq.jsc.JSRuntime
 
