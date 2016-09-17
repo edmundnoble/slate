@@ -1,21 +1,23 @@
 import net.lullabyte.Chrome
-import org.scalajs.sbtplugin.ScalaJSPlugin
+import org.scalajs.sbtplugin.{AbstractJSDep, ScalaJSPlugin}
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
-import sbt._, Keys._
+import sbt._
+import Keys._
+import chrome.Manifest
+import org.scalajs.sbtplugin.cross.CrossProject
 import sbt.complete.Parser
 import scoverage.ScoverageKeys.coverageExcludedPackages
 import upickle.Js
 
 object DashboarderBuild {
 
-  lazy val commonDeps = Seq(
+  lazy val commonDeps: Seq[Setting[_]] = Seq(
     libraryDependencies ++= Seq(
       "org.scalatest" %%% "scalatest" % "3.0.0" % "test",
       "com.lihaoyi" %%% "upickle" % "0.4.1",
       "com.lihaoyi" %%% "fastparse" % "0.3.7",
       "io.monix" %%% "monix" % "2.0-RC13",
       "io.monix" %%% "monix-scalaz-72" % "2.0-RC13",
-      "com.thoughtworks.each" %%% "each" % "0.5.1",
       "com.slamdata" %%% "matryoshka-core" % "0.11.0",
       "org.scodec" %%% "scodec-bits" % "1.1.0",
       "org.scodec" %%% "scodec-core" % "1.10.2"
@@ -23,7 +25,7 @@ object DashboarderBuild {
     resolvers += Resolver.sonatypeRepo("releases"),
     resolvers += "Sonatype Public" at "https://oss.sonatype.org/content/groups/public/")
 
-  lazy val uiDeps = libraryDependencies ++= Seq(
+  lazy val uiDeps: Setting[Seq[ModuleID]] = libraryDependencies ++= Seq(
     "net.lullabyte" %%% "scala-js-chrome" % "0.2.1",
     "org.scala-js" %%% "scalajs-dom" % "0.9.0",
     "com.github.japgolly.scalajs-react" %%% "core" % "0.11.1",
@@ -33,7 +35,7 @@ object DashboarderBuild {
   )
 
   //   React JS itself (Note the filenames, adjust as needed, eg. to remove addons.)
-  lazy val jsDeps = jsDependencies ++= Seq(
+  lazy val jsDeps: Setting[Seq[AbstractJSDep]] = jsDependencies ++= Seq(
     "org.webjars.bower" % "react" % "15.0.1"
       / "react-with-addons.js"
       minified "react-with-addons.min.js"
@@ -50,30 +52,30 @@ object DashboarderBuild {
       minified "Chart.min.js"
   )
 
-  val chromePackageContent = SettingKey[File]("chromePackageContent",
+  val chromePackageContent: SettingKey[File] = SettingKey[File]("chromePackageContent",
     "The contents of this directory get copied to the into the chrome extension")
-  val chromeBuildOpt = TaskKey[File]("chromeBuildOpt")
-  val chromeBuildFast = TaskKey[File]("chromeBuildFast")
-  val chromeBuildUnopt = TaskKey[File]("chromeBuildUnopt")
-  val chromePackage = TaskKey[File]("chromePackage")
-  val chromeGenerateManifest = TaskKey[File]("chromeGenerateManifest")
-  val chromeManifest = TaskKey[chrome.Manifest]("chromeManifest")
-  val repl = TaskKey[Unit]("repl")
+  val chromeBuildOpt: TaskKey[File] = TaskKey[File]("chromeBuildOpt")
+  val chromeBuildFast: TaskKey[File] = TaskKey[File]("chromeBuildFast")
+  val chromeBuildUnopt: TaskKey[File] = TaskKey[File]("chromeBuildUnopt")
+  val chromePackage: TaskKey[File] = TaskKey[File]("chromePackage")
+  val chromeGenerateManifest: TaskKey[File] = TaskKey[File]("chromeGenerateManifest")
+  val chromeManifest: TaskKey[Manifest] = TaskKey[chrome.Manifest]("chromeManifest")
+  val repl: TaskKey[Unit] = TaskKey[Unit]("repl")
 
   object SnakeOptionPickle extends upickle.AttributeTagged {
-    def camelToSnake(s: String) = {
+    def camelToSnake(s: String): String = {
       s.split("(?=[A-Z])", -1).map(_.toLowerCase).mkString("_")
     }
     override def CaseR[T: this.Reader, V]
     (f: T => V,
      names: Array[String],
-     defaults: Array[Js.Value]) = {
+     defaults: Array[Js.Value]): SnakeOptionPickle.Reader[V] = {
       super.CaseR[T, V](f, names.map(camelToSnake), defaults)
     }
     override def CaseW[T: this.Writer, V]
     (f: V => Option[T],
      names: Array[String],
-     defaults: Array[Js.Value]) = {
+     defaults: Array[Js.Value]): SnakeOptionPickle.Writer[V] = {
       super.CaseW[T, V](f, names.map(camelToSnake), defaults)
     }
     override implicit def OptionW[T: Writer]: Writer[Option[T]] = Writer {
@@ -92,7 +94,7 @@ object DashboarderBuild {
     out
   }
 
-  def copyResources(sourceMap: sbt.File, suffices: Seq[String]) = Def.task {
+  def copyResources(sourceMap: sbt.File, suffices: Seq[String]): Def.Initialize[Task[File]] = Def.task {
     val file = (resourceDirectory in Compile).value
     val targetValue = target.value
     val unpacked = suffices.foldLeft(targetValue)(_ / _)
@@ -110,7 +112,7 @@ object DashboarderBuild {
     unpacked
   }
 
-  def defineChromeBuildTask(folderName: String, buildTaskKey: TaskKey[Attributed[sbt.File]]) = Def.taskDyn {
+  def defineChromeBuildTask(folderName: String, buildTaskKey: TaskKey[Attributed[sbt.File]]): Def.Initialize[Task[File]] = Def.taskDyn {
     val r = (buildTaskKey in Compile).value
     val unpacked = Def.task { copyResources(r.get(scalaJSSourceMap).get, Seq("chrome", folderName)).value }
     Def.task {
@@ -159,12 +161,12 @@ object DashboarderBuild {
 
   )
 
-  lazy val replMain =
+  lazy val replMain: Setting[Task[Option[String]]] =
     mainClass in(Compile, run) := Some("qq.InterpreterMain")
 
-  val unitTest = TaskKey[Unit]("unitTest")
-  val itTest = TaskKey[Unit]("itTest")
-  val stackTest = TaskKey[Unit]("stackTest")
+  val unitTest: TaskKey[Unit] = TaskKey[Unit]("unitTest")
+  val itTest: TaskKey[Unit] = TaskKey[Unit]("itTest")
+  val stackTest: TaskKey[Unit] = TaskKey[Unit]("stackTest")
   //val unitTestQuick = TaskKey[Unit]("unitTestQuick")
   //val itTestQuick = TaskKey[Unit]("itTestQuick")
 
@@ -224,7 +226,7 @@ object DashboarderBuild {
   def dependOnChrome[T](chromeKey: TaskKey[sbt.File], taskKey: TaskKey[T]): Def.Setting[Task[T]] =
     taskKey <<= taskKey.dependsOn(chromeKey in ui)
 
-  lazy val qq = crossProject.in(file("qq"))
+  lazy val qq: CrossProject = crossProject.in(file("qq"))
     .settings(baseSettings: _*)
     .settings(commonDeps: _*)
     .settings(replMain: _*)
@@ -232,10 +234,10 @@ object DashboarderBuild {
     .jsSettings(ScalaJSPlugin.projectSettings: _*)
     .jsSettings(libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.0")
 
-  lazy val qqjvm = qq.jvm
-  lazy val qqjs = qq.js
+  lazy val qqjvm: Project = qq.jvm
+  lazy val qqjs: Project = qq.js
 
-  lazy val ui = project.in(file("ui"))
+  lazy val ui: Project = project.in(file("ui"))
     .dependsOn(qqjs)
     .settings(ScalaJSPlugin.projectSettings)
     .enablePlugins(ScalaJSPlugin)
@@ -246,7 +248,7 @@ object DashboarderBuild {
     .settings(uiDeps)
     .settings(disableTests)
 
-  lazy val uitests = project.in(file("uitests"))
+  lazy val uitests: Project = project.in(file("uitests"))
     .dependsOn(ui)
     .dependsOn(qqjvm)
     .settings(libraryDependencies += "org.seleniumhq.selenium" % "selenium-java" % "2.35.0" % "test")
@@ -259,7 +261,7 @@ object DashboarderBuild {
     .settings(unitTest := ())
     .settings(stackTest := ())
 
-  lazy val uibench = project.in(file("uibench"))
+  lazy val uibench: Project = project.in(file("uibench"))
     .dependsOn(ui)
     .dependsOn(qqjs)
     .settings(ScalaJSPlugin.projectSettings)
@@ -293,7 +295,7 @@ object DashboarderBuild {
       }
     })
 
-  lazy val root = project.in(file("."))
+  lazy val root: Project = project.in(file("."))
     .aggregate(ui, uitests, uibench, qqjvm, qqjs)
     .settings(Defaults.projectCore)
     .settings(baseSettings)

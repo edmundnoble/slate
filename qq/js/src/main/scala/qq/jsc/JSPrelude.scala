@@ -2,7 +2,6 @@ package qq.jsc
 
 import java.util.regex.Pattern
 
-import com.thoughtworks.each.Monadic._
 import monix.eval.Task
 import monix.scalaz._
 import qq.QQCompiler.{VarBindings, CompiledFilter, CompiledProgram, VarBinding}
@@ -57,25 +56,24 @@ object JSPrelude extends PlatformPrelude[Any] {
       body = {
         case (regexFilter :: replacementFilter :: Nil) => ((bindings: VarBindings[Any]) => {
           (jsv: Any) =>
-            monadic[Task] {
-              val regexes: List[Pattern] = regexFilter(bindings)(jsv).each.traverse[Task, Pattern] {
-                case string: String => Task.now(Pattern.compile(string))
-                case j => Task.raiseError(NotARegex(JSRuntime.print(j)))
-              }.each
-              val replacements: List[String] = replacementFilter(bindings)(jsv).each.traverse[Task, String] {
-                case string: String => Task.now(string)
-                case j => Task.raiseError(QQRuntimeException("can't replace with " + JSRuntime.print(j)))
-              }.each
-              val valueRegexReplacementList = (regexes, replacements).zipped.map { (regex, replacement) =>
-                jsv match {
-                  case string: String =>
-                    Task.now(regex.matcher(string).replaceAll(replacement): Any)
-                  case j =>
-                    Task.raiseError(QQRuntimeException("can't replace " + JSRuntime.print(j)))
-                }
-              }.sequence[Task, Any].each
-              valueRegexReplacementList
-            }
+            val regexesFilter: Task[List[Pattern]] = regexFilter(bindings)(jsv).flatMap(_.traverse[Task, Pattern] {
+              case string: String => Task.now(Pattern.compile(string))
+              case j => Task.raiseError(NotARegex(JSRuntime.print(j)))
+            })
+            val replacementsFilter: Task[List[String]] = replacementFilter(bindings)(jsv).flatMap(_.traverse[Task, String] {
+              case string: String => Task.now(string)
+              case j => Task.raiseError(QQRuntimeException("can't replace with " + JSRuntime.print(j)))
+            })
+            val valueRegexReplacementList = (regexesFilter |@| replacementsFilter) { (regexes, replacements) =>
+              jsv match {
+                case string: String =>
+                  Task.now(for {regex <- regexes; replacement <- replacements}
+                    yield regex.matcher(string).replaceAll(replacement))
+                case j =>
+                  Task.raiseError(QQRuntimeException("can't replace " + JSRuntime.print(j)))
+              }
+            }.flatten
+            valueRegexReplacementList
         }).right[QQCompilationException]
       }
     )
@@ -173,17 +171,17 @@ object JSPrelude extends PlatformPrelude[Any] {
     })
 
   // array/object existential predicate transformer
-//  override def exists: CompiledDefinition[Any] =
-//  CompiledDefinition[Any]("exists", 1, { case List(pred) =>
-//    ((bindings: VarBindings[Any]) => (v: Any) => v match {
-//      case arr: js.Array[_] => pred(bindings)(v).map(f => f.map(v => if (v.isInstanceOfjava.lang.Boolean.valueOf(arr.xs(v))))
-//      case obj: js.Object => pred(bindings)(v).map(f => f.map(v => java.lang.Boolean.valueOf(obj.toDictionary.values.exists(_ == v))))
-//      case k => Task.raiseError(TypeError("array|object", String.valueOf(k)))
-//    }).right
-//  })
+  //  override def forsome: CompiledDefinition[Any] =
+  //  CompiledDefinition[Any]("forsome", 1, { case List(pred) =>
+  //    ((bindings: VarBindings[Any]) => (v: Any) => v match {
+  //      case arr: js.Array[_] => pred(bindings)(v).map(f => f.map(v => if (v.isInstanceOfjava.lang.Boolean.valueOf(arr.xs(v))))
+  //      case obj: js.Object => pred(bindings)(v).map(f => f.map(v => java.lang.Boolean.valueOf(obj.toDictionary.values.exists(_ == v))))
+  //      case k => Task.raiseError(TypeError("array|object", String.valueOf(k)))
+  //    }).right
+  //  })
 
-//   array/object universal predicate transformer
-//  override def forall: CompiledDefinition[Any]
+  //   array/object universal predicate transformer
+  //  override def forall: CompiledDefinition[Any]
 
 
 }

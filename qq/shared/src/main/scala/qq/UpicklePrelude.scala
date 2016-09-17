@@ -5,10 +5,10 @@ import java.util.regex.Pattern
 import monix.eval.Task
 import upickle.Js
 
+import scalaz.syntax.apply._
 import scalaz.syntax.either._
 import scalaz.syntax.traverse._
 import scalaz.std.list._
-import com.thoughtworks.each.Monadic._
 import monix.scalaz._
 import qq.QQCompiler.{VarBindings, CompiledFilter, VarBinding}
 import scodec.bits.ByteVector
@@ -61,22 +61,23 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
       body = {
         case (regexFilter :: replacementFilter :: Nil) => ((bindings: VarBindings[Js.Value]) => {
           (jsv: Js.Value) =>
-            monadic[Task] {
-              val regexes: List[Pattern] = regexFilter(bindings)(jsv).each.traverse[Task, Pattern] {
+            {
+              val regexesFilter: Task[List[Pattern]] = regexFilter(bindings)(jsv).flatMap(_.traverse[Task, Pattern] {
                 case Js.Str(string) => Task.now(Pattern.compile(string))
                 case j => Task.raiseError(NotARegex(UpickleRuntime.print(j)))
-              }.each
-              val replacements: List[String] = replacementFilter(bindings)(jsv).each.traverse[Task, String] {
+              })
+              val replacementsFilter: Task[List[String]] = replacementFilter(bindings)(jsv).flatMap(_.traverse[Task, String] {
                 case Js.Str(string) => Task.now(string)
                 case j => Task.raiseError(QQRuntimeException("can't replace with " + UpickleRuntime.print(j)))
-              }.each
-              val valueRegexReplacementList = (regexes, replacements).zipped.map { case (regex, replacement) =>
+              })
+              val valueRegexReplacementList = (regexesFilter |@| replacementsFilter) { (regexes, replacements) =>
                 jsv match {
                   case Js.Str(string) =>
-                    Task.now(Js.Str(regex.matcher(string).replaceAll(replacement)): Js.Value)
+                    Task.now(for {regex <- regexes; replacement <- replacements}
+                      yield Js.Str(regex.matcher(string).replaceAll(replacement)))
                   case j => Task.raiseError(QQRuntimeException("can't replace " + UpickleRuntime.print(j)))
                 }
-              }.sequence[Task, Js.Value].each
+              }.flatten
               valueRegexReplacementList
             }
         }).right[QQCompilationException]
