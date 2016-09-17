@@ -4,7 +4,6 @@ package models
 import japgolly.scalajs.react.extra.Reusability
 import upickle.Js
 
-import scala.util.Try
 import scalaz.syntax.std.option._
 
 case class ExpandableContentModel(title: String, titleUrl: Option[String], content: List[TitledContentModel])

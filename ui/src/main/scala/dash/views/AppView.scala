@@ -2,12 +2,11 @@ package dash
 package views
 
 import dash.models.AppModel
-import japgolly.scalajs.react.{ReactComponentB, TopNode}
+import dash.views.ExpandableContentView.ExpandableContentProps
 import japgolly.scalajs.react.extra.Reusability
+import japgolly.scalajs.react.{ReactComponentB, TopNode}
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import dash.Util.observableReusability
-import dash.views.ExpandableContentView.ExpandableContentProps
 
 import scalacss.Defaults._
 
@@ -39,8 +38,9 @@ object AppView {
 
   def builder(implicit sch: Scheduler
              ): ReactComponentB[AppProps, AppState, Unit, TopNode] = {
-    import japgolly.scalajs.react.vdom.all._
     import dash.views.ReactiveReact._
+    import japgolly.scalajs.react.vdom.all._
+
     import scalacss.ScalaCssReact._
 
     ReactComponentB[AppProps]("Expandable content view")

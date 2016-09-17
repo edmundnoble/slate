@@ -1,15 +1,16 @@
-package qq
+package qq.cc
 
 import fastparse.all._
 import fastparse.parsers.Terminals
 import fastparse.{Implicits, parsers}
+import qq.data.{ConcreteFilter, Definition, FilterDSL, Program}
 
-import scalaz.{-\/, Monad, NonEmptyList, \/}
-import scalaz.syntax.either._
-import scalaz.syntax.monad._
-import scalaz.syntax.foldable1._
-import scalaz.syntax.std.option._
 import scala.collection.mutable
+import scalaz.syntax.either._
+import scalaz.syntax.foldable1._
+import scalaz.syntax.monad._
+import scalaz.syntax.std.option._
+import scalaz.{-\/, Monad, NonEmptyList, \/}
 
 object Parser {
 

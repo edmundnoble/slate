@@ -3,11 +3,11 @@ package qq.jsc
 import monix.eval.Task
 import monix.scalaz._
 import qq.QQCompiler.{CompiledFilter, VarBindings}
+import qq.QQRuntimeException
+import qq.cc.QQRuntime
 import qq.util._
-import qq.{QQRuntime, QQRuntimeException}
 
 import scala.scalajs.js
-import scala.scalajs.js.Dictionary
 import scalaz.Tags.Parallel
 import scalaz.std.list._
 import scalaz.std.map._

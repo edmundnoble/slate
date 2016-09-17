@@ -1,13 +1,13 @@
 package qq
 
-import fastparse.parsers.Terminals.End
+import qq.cc.Parser
+import qq.data.{ConcreteFilter, Definition, Program}
 
 import scalaz.\/
-import scalaz.std.list._
 
 class ParserTest extends QQSyncTestSuite {
 
-  import FilterDSL.fix._
+  import qq.data.FilterDSL.fix._
 
   val emptySized: List[String] = Nil
 

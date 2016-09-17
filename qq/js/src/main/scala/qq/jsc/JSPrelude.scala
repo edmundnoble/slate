@@ -4,16 +4,14 @@ import java.util.regex.Pattern
 
 import monix.eval.Task
 import monix.scalaz._
-import qq.QQCompiler.{VarBindings, CompiledFilter, CompiledProgram, VarBinding}
+import qq.QQCompiler.{CompiledFilter, CompiledProgram, VarBindings}
 import qq._
-import qq.ajax.{Ajax, AjaxMethod}
+import qq.cc.PlatformPrelude
+import qq.data.CompiledDefinition
 import scodec.bits.ByteVector
 
-import scala.concurrent.duration._
 import scala.scalajs.js
-import scalaz.Reader
 import scalaz.std.list._
-import scalaz.std.function._
 import scalaz.syntax.either._
 import scalaz.syntax.monadPlus._
 import scalaz.syntax.traverse._

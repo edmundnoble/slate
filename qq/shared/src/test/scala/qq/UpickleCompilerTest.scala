@@ -1,6 +1,7 @@
 package qq
 
 import org.scalatest.Assertion
+import qq.cc.UpickleRuntime
 
 import scala.concurrent.Future
 

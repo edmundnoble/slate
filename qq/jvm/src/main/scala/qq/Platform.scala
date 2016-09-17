@@ -1,6 +1,7 @@
 package qq
 
-import qq.Recursion.RecursionEngine
+import qq.util.Recursion
+import qq.util.Recursion.RecursionEngine
 
 object Platform {
   object Rec {

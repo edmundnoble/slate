@@ -1,16 +1,13 @@
-package qq
+package qq.cc
 
 import monix.eval.Task
-import qq.FilterComponent._
-import scalaz.syntax.plusEmpty._
-import scalaz.syntax.std.option._
-import scalaz.syntax.either._
+import qq.data._
 
 import scalaz.\/
+import scalaz.syntax.plusEmpty._
+import scalaz.syntax.std.option._
 
 trait QQRuntime[J] {
-
-  import QQCompiler._
 
   def print(value: J): String
 

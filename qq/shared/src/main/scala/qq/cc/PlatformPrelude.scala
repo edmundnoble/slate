@@ -1,16 +1,11 @@
-package qq
+package qq.cc
 
-import qq.QQCompiler.{CompiledFilter, OrCompilationError}
+import qq.data.CompiledDefinition
 
 import scalaz.\/
 import scalaz.syntax.either._
 
 trait PlatformPrelude[J] extends Prelude[J] {
-
-  final def sealPartialBody(body: PartialFunction[List[CompiledFilter[J]], OrCompilationError[CompiledFilter[J]]]
-                           )(params: List[CompiledFilter[J]]): OrCompilationError[CompiledFilter[J]] = {
-    body.applyOrElse(params, ???)
-  }
 
   // x | orElse(y): null coalescing operator
   def orElse: CompiledDefinition[J]

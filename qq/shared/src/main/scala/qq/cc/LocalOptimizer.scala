@@ -1,19 +1,14 @@
-package qq
+package qq.cc
 
+import matryoshka.Recursive.ops._
 import matryoshka._
-import FunctorT.ops._
-import Recursive.ops._
-import Corecursive.ops._
-
-import scala.util.control.TailCalls.TailRec
-import scalaz.syntax.foldable1._
-import scalaz.syntax.functor._
-import scalaz.std.option._
-import scalaz.{Functor, Kleisli, NonEmptyList, Plus}
-import scalaz.syntax.plus._
-import qq.Platform.Rec._
+import qq.data._
+import qq.util.Recursion
 
 import scala.language.higherKinds
+import scalaz.syntax.foldable1._
+import scalaz.syntax.functor._
+import scalaz.{Kleisli, NonEmptyList}
 
 // QQ's local optimizer; not a whole-program optimizer, but optimizes a single filter.
 object LocalOptimizer {

@@ -1,13 +1,14 @@
 package qq
 
+import monix.execution.Scheduler
 import org.scalatest.Assertion
+import qq.cc.{QQRuntime, Runner}
 import upickle.Js
 
 import scala.concurrent.Future
 import scalaz.\/
 import scalaz.syntax.either._
 import scalaz.syntax.std.`try`._
-import monix.execution.Scheduler
 
 case class RunnerTest(input: Js.Value, program: String, expectedOutputOrException: Exception \/ List[Js.Value])
 

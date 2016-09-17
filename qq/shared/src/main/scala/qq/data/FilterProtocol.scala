@@ -1,14 +1,13 @@
-package qq
+package qq.data
 
 object FilterProtocol {
 
   import scodec._
   import codecs._
-  import qq.util._
-
-  import scodec.codecs.implicits._
   import CoproductBuilderAuto._
   import CoproductBuilderAutoDiscriminators._
+  import qq.util._
+  import scodec.codecs.implicits._
   import shapeless._
 
   type FilterComponentGenA[A] =
@@ -21,11 +20,11 @@ object FilterProtocol {
   implicit def componentCodec[A](implicit v: Lazy[Codec[A]]): Codec[FilterComponent[A]] =
     deriveGeneric(implicitly[Generic.Aux[FilterComponent[A], FilterComponentGenA[A]]], Lazy(Codec.coproduct[FilterComponentGenA[A]].auto))
 
-  def filterCodec: Codec[ConcreteFilter] = implicitly
+  def filterCodec: Codec[ConcreteFilter] = implicitly[Codec[ConcreteFilter]]
 
-  def definitionsCodec: Codec[Program.Definitions[ConcreteFilter]] = implicitly
+  def definitionsCodec: Codec[Program.Definitions[ConcreteFilter]] = implicitly[Codec[Program.Definitions[ConcreteFilter]]]
 
-  def programCodec: Codec[Program[ConcreteFilter]] = implicitly
+  def programCodec: Codec[Program[ConcreteFilter]] = implicitly[Codec[Program[ConcreteFilter]]]
 
   def deriveGeneric[A, Rec](implicit lgen: Generic.Aux[A, Rec], auto: Lazy[Codec[Rec]]): Codec[A] =
     auto.value.xmap(lgen.from, lgen.to)

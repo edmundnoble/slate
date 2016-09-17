@@ -1,11 +1,12 @@
 package qq
 
 import matryoshka._
-import qq.FilterDSL.fix._
+import qq.data.FilterDSL.fix._
+import qq.data.ConcreteFilter
 
 class LocalOptimizerTest extends QQSyncTestSuite {
 
-  import LocalOptimizer.optimizeFilter
+  import qq.cc.LocalOptimizer.optimizeFilter
 
   "optimize simple compositions" in {
     optimizeFilter[Fix](compose(id, selectKey("key"))) shouldBe selectKey("key")

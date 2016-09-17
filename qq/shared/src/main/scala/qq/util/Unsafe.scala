@@ -1,4 +1,4 @@
-package qq
+package qq.util
 
 import scala.collection.mutable
 import scala.language.higherKinds

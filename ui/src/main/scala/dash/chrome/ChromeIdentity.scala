@@ -2,10 +2,8 @@ package dash
 package chrome
 
 import scala.scalajs.js
-import scala.scalajs.js.UndefOr
 import scala.scalajs.js.annotation.{JSName, ScalaJSDefined}
-import scala.scalajs.js.undefined
-import scala.scalajs.js.native
+import scala.scalajs.js.{UndefOr, native, undefined}
 
 @ScalaJSDefined
 class GetAuthTokenOptions(val interactive: UndefOr[Boolean] = undefined,

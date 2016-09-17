@@ -2,7 +2,7 @@ package dash
 package bench
 
 import matryoshka.{Corecursive, Recursive}
-import qq.{FilterComponent, FilterDSL}
+import qq.data.FilterDSL
 
 import scala.annotation.tailrec
 

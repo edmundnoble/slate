@@ -1,6 +1,7 @@
 package qq
 
 import monix.eval.Task
+import qq.util.{Interpreter, InterpreterExitException}
 
 import scalaz.syntax.either._
 

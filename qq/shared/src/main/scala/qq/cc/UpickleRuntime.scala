@@ -1,20 +1,17 @@
-package qq
+package qq.cc
 
 import monix.eval.Task
 import monix.scalaz._
-import qq.FilterComponent._
-import upickle.Js
-import qq.QQCompiler.{VarBindings, CompiledFilter, CompiledProgram, VarBinding}
-
-import scalaz.{-\/, NonEmptyList, Reader, \/, \/-}
-import scalaz.std.list._
-import scalaz.syntax.std.list._
-import scalaz.syntax.traverse._
 import qq.util._
+import upickle.Js
 
-import scalaz.syntax.std.map._
-import scalaz.std.map._
 import scala.collection.immutable.Nil
+import scalaz.std.list._
+import scalaz.std.map._
+import scalaz.syntax.std.list._
+import scalaz.syntax.std.map._
+import scalaz.syntax.traverse._
+import scalaz.{-\/, NonEmptyList, Reader, \/, \/-}
 
 object UpickleRuntime extends QQRuntime[Js.Value] {
 

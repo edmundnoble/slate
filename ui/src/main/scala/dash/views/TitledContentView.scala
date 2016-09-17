@@ -2,20 +2,19 @@ package dash
 package views
 
 import dash.models.TitledContentModel
-import japgolly.scalajs.react.ReactComponentB
-import japgolly.scalajs.react.ReactComponentB.PSB
+import japgolly.scalajs.react.{ReactComponentB, _}
+import japgolly.scalajs.react.extra.Reusability
 
 import scalacss.Defaults._
-import japgolly.scalajs.react._
-import japgolly.scalajs.react.extra.Reusability
 
 object TitledContentView {
 
   object Styles extends StyleSheet.Inline {
 
     import dsl._
-    import scala.language.postfixOps
     import dash.views.Styles._
+
+    import scala.language.postfixOps
 
     val base = style(
       display contents,
@@ -65,6 +64,7 @@ object TitledContentView {
 
   def builder: ReactComponentB[TitledContentModel, Unit, Unit, TopNode] = {
     import japgolly.scalajs.react.vdom.all._
+
     import scalacss.ScalaCssReact._
 
     ReactComponentB[TitledContentModel]("Issue")

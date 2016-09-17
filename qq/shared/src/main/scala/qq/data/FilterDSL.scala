@@ -1,6 +1,6 @@
-package qq
+package qq.data
 
-import matryoshka.{Corecursive, Fix, Mu, Nu, Recursive}
+import matryoshka.{Corecursive, Fix, Mu, Nu}
 
 import scala.language.higherKinds
 import scalaz.\/

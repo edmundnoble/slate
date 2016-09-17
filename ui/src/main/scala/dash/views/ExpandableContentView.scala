@@ -5,13 +5,11 @@ import dash.models.{ExpandableContentModel, TitledContentModel}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.extra.Reusability
 import monix.execution.Scheduler
-import monix.reactive.Observable
 
 import scala.language.higherKinds
-import scalaz.syntax.std.boolean._
-import scalaz.std.list._
 import scalacss.Defaults._
-import Util.observableReusability
+import scalaz.std.list._
+import scalaz.syntax.std.boolean._
 
 object ExpandableContentView {
   object Styles extends StyleSheet.Inline {
@@ -100,6 +98,7 @@ object ExpandableContentView {
   def builder(implicit sch: Scheduler
              ): ReactComponentB[ExpandableContentProps, ExpandableState, Unit, TopNode] = {
     import japgolly.scalajs.react.vdom.all._
+
     import scalacss.ScalaCssReact._
 
     def buttonStyleForState(state: ExpandableState): Seq[TagMod] = {

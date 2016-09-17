@@ -1,4 +1,4 @@
-package qq
+package qq.data
 
 import scalaz.Functor
 

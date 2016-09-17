@@ -5,6 +5,7 @@ import japgolly.scalajs.benchmark.gui.BenchmarkGUI
 import org.scalajs.dom
 import qq.QQCompiler.CompiledFilter
 import qq._
+import qq.cc.{QQRuntime, UpickleRuntime}
 import qq.jsc.JSRuntime
 import upickle.Js
 

@@ -1,8 +1,6 @@
 package dash
 package bindings
 
-import dash.Logger
-
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSName
 

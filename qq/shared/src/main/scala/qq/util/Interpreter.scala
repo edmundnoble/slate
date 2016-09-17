@@ -1,7 +1,8 @@
-package qq
+package qq.util
 
 import monix.eval.Task
 import qq.QQCompiler.CompiledFilter
+import qq.cc.{Runner, UpickleRuntime}
 import upickle.{Js, json}
 
 import scalaz.\/

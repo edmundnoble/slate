@@ -3,6 +3,7 @@ package qq
 import monix.eval.Task
 import monix.execution.CancelableFuture
 import monix.execution.Scheduler.Implicits.global
+import qq.util.Interpreter
 
 import scala.concurrent.Await
 import scala.concurrent.duration._

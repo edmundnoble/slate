@@ -1,8 +1,8 @@
 package qq.jsc
 
 import qq.Platform.Rec._
-import qq.Recursion.RecursiveFunction
-import qq.Unsafe
+import qq.util.Recursion.RecursiveFunction
+import qq.util.Unsafe
 import upickle.{Invalid, Js}
 
 import scala.scalajs.js

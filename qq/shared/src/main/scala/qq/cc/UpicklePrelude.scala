@@ -1,10 +1,10 @@
-package qq
+package qq.cc
 
 import java.util.regex.Pattern
 
 import monix.eval.Task
 import monix.scalaz._
-import qq.QQCompiler.{CompiledFilter, VarBindings}
+import qq.data.CompiledDefinition
 import scodec.bits.ByteVector
 import upickle.Js
 

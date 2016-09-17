@@ -1,12 +1,13 @@
 package qq
 
-import qq.Recursion.RecursionEngine
-import qq.Unsafe.{GenericBuilderFactory, Liskov1}
+import qq.util.Recursion
+import qq.util.Recursion.RecursionEngine
+import qq.util.Unsafe.{GenericBuilderFactory, Liskov1}
 
 import scala.scalajs.js
 import scala.scalajs.js.UndefOr
-import scalaz.{Applicative, Functor, Liskov, Traverse}
 import scalaz.Liskov.<~<
+import scalaz.{Functor, Liskov}
 
 object Platform {
   object Rec {

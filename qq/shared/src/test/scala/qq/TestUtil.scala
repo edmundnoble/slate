@@ -1,10 +1,11 @@
 package qq
 
-import scalaz.\/
 import org.scalatest.OptionValues._
-import qq.Recursion.RecursionEngine
+import qq.util.Recursion
+import qq.util.Recursion.RecursionEngine
 
 import scala.language.implicitConversions
+import scalaz.\/
 
 trait TestUtil {
   implicit def convertDisjunctionToValuable[E, A](dis: E \/ A)(implicit pos: org.scalactic.source.Position): Valuable[A] =

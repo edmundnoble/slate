@@ -1,10 +1,10 @@
-import net.lullabyte.Chrome
-import org.scalajs.sbtplugin.{AbstractJSDep, ScalaJSPlugin}
-import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
-import sbt._
-import Keys._
 import chrome.Manifest
+import net.lullabyte.Chrome
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import org.scalajs.sbtplugin.cross.CrossProject
+import org.scalajs.sbtplugin.{AbstractJSDep, ScalaJSPlugin}
+import sbt.Keys._
+import sbt._
 import sbt.complete.Parser
 import scoverage.ScoverageKeys.coverageExcludedPackages
 import upickle.Js
@@ -276,7 +276,7 @@ object DashboarderBuild {
     .settings(libraryDependencies += "com.github.japgolly.scalajs-benchmark" %%% "benchmark" % "0.2.4-SNAPSHOT")
     // otherwise scalajs-benchmark doesn't work
     .settings(jsManifestFilter := {
-      import org.scalajs.core.tools.jsdep.{JSDependencyManifest, JSDependency}
+      import org.scalajs.core.tools.jsdep.{JSDependency, JSDependencyManifest}
 
       (seq: Traversable[JSDependencyManifest]) => {
         seq map { manifest =>

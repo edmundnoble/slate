@@ -1,10 +1,12 @@
 package dash
 package app
 
-import qq.{ConcreteFilter, LocalOptimizer, Parser, Program, QQCompiler}
 import qq.QQCompiler.{CompiledFilter, OrCompilationError}
-import scodec.bits.BitVector
+import qq.cc.{LocalOptimizer, Parser}
+import qq.data.{ConcreteFilter, Program}
 import qq.jsc.JSRuntime
+import qq.{Parser, QQCompiler}
+import scodec.bits.BitVector
 
 object DashApp {
 
@@ -12,8 +14,8 @@ object DashApp {
   // store them as base64-encoded bytecode
   def getCachedCompiledProgram(qqProgram: String): StorageProgram[OrCompilationError[CompiledFilter[Any]]] = {
 
-    import qq.FilterProtocol._
     import StorageProgram._
+    import qq.data.FilterProtocol._
 
     val hash = qqProgram.hashCode.toString
     for {

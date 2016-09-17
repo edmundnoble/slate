@@ -1,8 +1,8 @@
-package qq
+package qq.data
 
 import scala.language.higherKinds
-import scalaz.std.list._
 import scalaz.Functor
+import scalaz.std.list._
 
 object Program {
   type Definitions[F] = List[Definition[F]]

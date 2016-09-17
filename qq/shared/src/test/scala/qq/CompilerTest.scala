@@ -1,9 +1,11 @@
 package qq
 
 import monix.eval.Task
-import org.scalatest.Assertion
-import upickle.Js
 import monix.execution.Scheduler
+import org.scalatest.Assertion
+import qq.cc.{QQRuntime, UpickleRuntime}
+import qq.data.ConcreteFilter
+import upickle.Js
 import upickle.Js.Value
 
 import scala.concurrent.Future
@@ -13,8 +15,8 @@ case class CompilerTest(input: Value, program: ConcreteFilter, expectedOutput: V
 
 object CompilerTest {
 
+  import qq.data.FilterDSL.fix._
   import org.scalatest.Matchers._
-  import FilterDSL.fix._
 
   def runTest[J](runtime: QQRuntime[J], qqCompilerTest: CompilerTest)
                 (implicit sch: Scheduler): Future[Assertion] = qqCompilerTest match {

@@ -1,7 +1,7 @@
-package qq
+package qq.cc
 
 import monix.eval.Task
-import qq.QQCompiler.{CompiledFilter, OrCompilationError}
+import qq.data.{CompiledDefinition, ConcreteFilter, Definition, FilterDSL}
 
 import scalaz.syntax.either._
 

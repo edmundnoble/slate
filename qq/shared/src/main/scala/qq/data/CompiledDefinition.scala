@@ -1,13 +1,15 @@
-package qq
+package qq.data
 
-import qq.QQCompiler.{CompiledFilter, OrCompilationError}
+import qq.cc.{CompiledFilter, OrCompilationError, QQCompilationException, UndefinedOnPlatform}
+
 import scalaz.syntax.either._
 
 final case class CompiledDefinition[J]
 (name: String, numParams: Int, body: (List[CompiledFilter[J]] => OrCompilationError[CompiledFilter[J]]))
 
 object CompiledDefinition {
-  def undefinedOnPlatform[J](name: String) = CompiledDefinition[J](name, 0, body = _ => UndefinedOnPlatform(name).left)
+  def undefinedOnPlatform[J](name: String): CompiledDefinition[J] =
+    CompiledDefinition[J](name, 0, body = _ => UndefinedOnPlatform(name).left)
 
   final def noParamDefinition[J](name: String, fun: CompiledFilter[J]): CompiledDefinition[J] = {
     CompiledDefinition[J](

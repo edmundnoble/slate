@@ -1,8 +1,8 @@
 package qq.jsc
 
 import scala.scalajs.js
-import scalaz.{Applicative, Traverse}
 import scalaz.syntax.apply._
+import scalaz.{Applicative, Traverse}
 
 object JsUtil {
 

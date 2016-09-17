@@ -1,10 +1,10 @@
 package dash
 package bench
 
-import japgolly.scalajs.benchmark.gui._
 import japgolly.scalajs.benchmark._
+import japgolly.scalajs.benchmark.gui._
 import matryoshka._
-import qq.{ConcreteFilter, FilterDSL, FilterProtocol}
+import qq.data.{ConcreteFilter, FilterDSL, FilterProtocol}
 import scodec.bits.BitVector
 
 object SerializationBench {

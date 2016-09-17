@@ -2,25 +2,23 @@ package dash
 package app
 
 import dash.DashboardPage.{AppBarState, SearchPageState}
+import dash.Util._
 import dash.models.{AppModel, ExpandableContentModel}
+import dash.views.AppView.AppProps
 import japgolly.scalajs.react.{Addons, ReactDOM}
 import monix.eval.Task
 import monix.execution.Cancelable
 import monix.reactive.observers.Subscriber.Sync
-import monix.reactive.{Notification, Observable, OverflowStrategy}
+import monix.reactive.{Observable, OverflowStrategy}
+import monix.scalaz._
 import org.scalajs.dom
 import org.scalajs.dom.raw._
-
-import scala.scalajs.js
-import scala.scalajs.js.annotation.JSExport
-import dash.Util._
-import dash.views.AppView.AppProps
-import qq.jsc.Json
-import monix.scalaz._
 import qq.Platform.Rec._
-import upickle.Js
+import qq.jsc.Json
 
 import scala.concurrent.duration.FiniteDuration
+import scala.scalajs.js
+import scala.scalajs.js.annotation.JSExport
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
 

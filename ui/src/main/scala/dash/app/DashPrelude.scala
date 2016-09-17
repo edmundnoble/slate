@@ -4,9 +4,10 @@ package app
 import monix.eval.Task
 import monix.scalaz._
 import qq.QQCompiler.VarBindings
+import qq.QQRuntimeException
 import qq.ajax.{Ajax, AjaxMethod}
+import qq.data.CompiledDefinition
 import qq.jsc._
-import qq.{CompiledDefinition, QQRuntimeException}
 
 import scala.concurrent.duration._
 import scala.scalajs.js
