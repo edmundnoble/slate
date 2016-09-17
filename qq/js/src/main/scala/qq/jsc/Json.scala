@@ -28,8 +28,8 @@ object Json {
 
   import qq.Platform.Js.Unsafe._
 
-  final val jsToUpickleRec = new RecursiveFunction[Any, Js.Value] {
-    override def run(value: Any, loop: Any => Trampoline[Js.Value]) =
+  final val jsToUpickleRec: RecursiveFunction[Any, Js.Value] = new RecursiveFunction[Any, Js.Value] {
+    override def run(value: Any, loop: Any => Trampoline[Js.Value]): Trampoline[Js.Value] =
       value match {
         case s: String => Trampoline.done(Js.Str(s))
         case n: Double => Trampoline.done(Js.Num(n))
@@ -51,8 +51,8 @@ object Json {
     stringToJs(s).map(jsToUpickleRec(_))
   }
 
-  @inline final val upickleToJsRec = new RecursiveFunction[Js.Value, js.Any] {
-    override def run(value: Js.Value, loop: Js.Value => Trampoline[js.Any]) =
+  @inline final val upickleToJsRec: RecursiveFunction[Js.Value, js.Any] = new RecursiveFunction[Js.Value, js.Any] {
+    override def run(value: Js.Value, loop: Js.Value => Trampoline[js.Any]): Trampoline[js.Any] =
       value match {
         case Js.Str(s) => Trampoline.done(js.Any.fromString(s))
         case Js.Num(n) => Trampoline.done(js.Any.fromDouble(n))
