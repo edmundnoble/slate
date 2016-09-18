@@ -71,7 +71,7 @@ object StorageProgram {
   @inline final def get(key: String): StorageProgram[Option[String]] =
     liftFC(Get(key))
 
-  @inline final def atIndex(index: Int): StorageProgram[Option[String]] =
+  @inline final def keyAtIndex(index: Int): StorageProgram[Option[String]] =
     liftFC(KeyAtIndex(index))
 
   @inline final def update(key: String, value: String): StorageProgram[Unit] =
