@@ -3,7 +3,7 @@ package app
 
 import monix.eval.Task
 import monix.scalaz._
-import qq.ajax.{Ajax, AjaxMethod}
+import dash.ajax.{Ajax, AjaxMethod}
 import qq.cc.{QQRuntimeException, VarBindings}
 import qq.data.CompiledDefinition
 import qq.jsc._
