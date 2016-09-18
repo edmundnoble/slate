@@ -28,47 +28,43 @@ object Json {
 
   import qq.Platform.Js.Unsafe._
 
-  final val jsToUpickleRec: RecursiveFunction[Any, Js.Value] = new RecursiveFunction[Any, Js.Value] {
-    override def run(value: Any, loop: Any => Trampoline[Js.Value]): Trampoline[Js.Value] =
-      value match {
-        case s: String => Trampoline.done(Js.Str(s))
-        case n: Double => Trampoline.done(Js.Num(n))
-        case true => Trampoline.done(Js.True)
-        case false => Trampoline.done(Js.False)
-        case null => Trampoline.done(Js.Null)
-        case s: js.Array[Any@unchecked] =>
-          Unsafe.builderTraverse[js.WrappedArray]
-            .traverse[Trampoline, Any, Js.Value](new js.WrappedArray[Any](s))((a: Any) => loop(a))
-            .map(Js.Arr(_: _*))
-        case s: js.Object =>
-          Unsafe.mapTraverse[String]
-            .traverse[Trampoline, Any, Js.Value](s.toDictionary.toMap)(loop)
-            .map(m => Js.Obj(m.toSeq: _*))
-      }
-  }
+  final val jsToUpickleRec: RecursiveFunction[Any, Js.Value] =
+    (value: Any, loop: Any => Trampoline[Js.Value]) => value match {
+      case s: String => Trampoline.done(Js.Str(s))
+      case n: Double => Trampoline.done(Js.Num(n))
+      case true => Trampoline.done(Js.True)
+      case false => Trampoline.done(Js.False)
+      case null => Trampoline.done(Js.Null)
+      case s: js.Array[Any@unchecked] =>
+        Unsafe.builderTraverse[js.WrappedArray]
+          .traverse[Trampoline, Any, Js.Value](new js.WrappedArray[Any](s))((a: Any) => loop(a))
+          .map(Js.Arr(_: _*))
+      case s: js.Object =>
+        Unsafe.mapTraverse[String]
+          .traverse[Trampoline, Any, Js.Value](s.toDictionary.toMap)(loop)
+          .map(m => Js.Obj(m.toSeq: _*))
+    }
 
   @inline final def stringToUpickle(s: String): Invalid.Json \/ Js.Value = {
     stringToJs(s).map(jsToUpickleRec(_))
   }
 
-  @inline final val upickleToJsRec: RecursiveFunction[Js.Value, js.Any] = new RecursiveFunction[Js.Value, js.Any] {
-    override def run(value: Js.Value, loop: Js.Value => Trampoline[js.Any]): Trampoline[js.Any] =
-      value match {
-        case Js.Str(s) => Trampoline.done(js.Any.fromString(s))
-        case Js.Num(n) => Trampoline.done(js.Any.fromDouble(n))
-        case Js.True => Trampoline.done(js.Any.fromBoolean(true))
-        case Js.False => Trampoline.done(js.Any.fromBoolean(false))
-        case Js.Null => Trampoline.done(null)
-        case Js.Arr(children@_*) =>
-          Unsafe.builderTraverse[Seq]
-            .traverse[Trampoline, Js.Value, js.Any](children)(loop)
-            .map(js.Array(_: _*))
-        case obj: Js.Obj =>
-          Unsafe.builderTraverse[Seq]
-            .traverse[Trampoline, (String, Js.Value), (String, js.Any)](obj.value) { case (s, d) => loop(d) map (r => (s, r)) }
-            .map(js.Dictionary[Any](_: _*))
-      }
-  }
+  @inline final val upickleToJsRec: RecursiveFunction[Js.Value, js.Any] =
+    (value: Js.Value, loop: Js.Value => Trampoline[js.Any]) => value match {
+      case Js.Str(s) => Trampoline.done(js.Any.fromString(s))
+      case Js.Num(n) => Trampoline.done(js.Any.fromDouble(n))
+      case Js.True => Trampoline.done(js.Any.fromBoolean(true))
+      case Js.False => Trampoline.done(js.Any.fromBoolean(false))
+      case Js.Null => Trampoline.done(null)
+      case Js.Arr(children@_*) =>
+        Unsafe.builderTraverse[Seq]
+          .traverse[Trampoline, Js.Value, js.Any](children)(loop)
+          .map(js.Array(_: _*))
+      case obj: Js.Obj =>
+        Unsafe.builderTraverse[Seq]
+          .traverse[Trampoline, (String, Js.Value), (String, js.Any)](obj.value) { case (s, d) => loop(d) map (r => (s, r)) }
+          .map(js.Dictionary[Any](_: _*))
+    }
 
   @inline final def upickleToString(upickle: Js.Value, indent: Int = 0): String = {
     js.JSON.stringify(
