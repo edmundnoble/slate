@@ -40,11 +40,11 @@ object QQCompiler {
     case CollectResults(f) => runtime.collectResults(f).right
     case EnsequenceFilters(first, second) => CompiledFilter.ensequenceCompiledFilters(first, second).right
     case EnjectFilters(obj) => runtime.enjectFilter(obj).right
-    case AddFilters(first, second) => CompiledFilter.zipFiltersWith(first, second, runtime.addJsValues).right
-    case SubtractFilters(first, second) => CompiledFilter.zipFiltersWith(first, second, runtime.subtractJsValues).right
-    case MultiplyFilters(first, second) => CompiledFilter.zipFiltersWith(first, second, runtime.multiplyJsValues).right
-    case DivideFilters(first, second) => CompiledFilter.zipFiltersWith(first, second, runtime.divideJsValues).right
-    case ModuloFilters(first, second) => CompiledFilter.zipFiltersWith(first, second, runtime.moduloJsValues).right
+    case FilterMath(first, second, Add) => CompiledFilter.zipFiltersWith(first, second, runtime.addJsValues).right
+    case FilterMath(first, second, Subtract) => CompiledFilter.zipFiltersWith(first, second, runtime.subtractJsValues).right
+    case FilterMath(first, second, Multiply) => CompiledFilter.zipFiltersWith(first, second, runtime.multiplyJsValues).right
+    case FilterMath(first, second, Divide) => CompiledFilter.zipFiltersWith(first, second, runtime.divideJsValues).right
+    case FilterMath(first, second, Modulo) => CompiledFilter.zipFiltersWith(first, second, runtime.moduloJsValues).right
     case CallFilter(filterIdentifier, params) =>
       definitions.find(_.name == filterIdentifier).cata(
         { (defn: CompiledDefinition[J]) =>

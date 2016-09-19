@@ -64,19 +64,19 @@ object QQDSL {
       embed[T](SelectRange(start, end))
 
     @inline final def add(first: T[FilterComponent], second: T[FilterComponent]): T[FilterComponent] =
-      embed[T](AddFilters(first, second))
+      embed[T](FilterMath(first, second, Add))
 
     @inline final def subtract(first: T[FilterComponent], second: T[FilterComponent]): T[FilterComponent] =
-      embed[T](SubtractFilters(first, second))
+      embed[T](FilterMath(first, second, Subtract))
 
     @inline final def multiply(first: T[FilterComponent], second: T[FilterComponent]): T[FilterComponent] =
-      embed[T](MultiplyFilters(first, second))
+      embed[T](FilterMath(first, second, Multiply))
 
     @inline final def divide(first: T[FilterComponent], second: T[FilterComponent]): T[FilterComponent] =
-      embed[T](DivideFilters(first, second))
+      embed[T](FilterMath(first, second, Divide))
 
     @inline final def modulo(first: T[FilterComponent], second: T[FilterComponent]): T[FilterComponent] =
-      embed[T](ModuloFilters(first, second))
+      embed[T](FilterMath(first, second, Modulo))
 
     @inline final def constNumber(value: Double): T[FilterComponent] =
       embed[T](ConstNumber(value))

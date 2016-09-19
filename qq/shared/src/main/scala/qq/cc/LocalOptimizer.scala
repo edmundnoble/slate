@@ -55,11 +55,13 @@ object LocalOptimizer {
     // reduces constant math filters to their results
     final def constReduce[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = Kleisli { fr =>
       fr.project.map(_.project) match {
-        case AddFilters(ConstNumber(f), ConstNumber(s)) => Some(embed[T](ConstNumber(f + s)))
-        case SubtractFilters(ConstNumber(f), ConstNumber(s)) => Some(embed[T](ConstNumber(f - s)))
-        case MultiplyFilters(ConstNumber(f), ConstNumber(s)) => Some(embed[T](ConstNumber(f * s)))
-        case DivideFilters(ConstNumber(f), ConstNumber(s)) => Some(embed[T](ConstNumber(f / s)))
-        case ModuloFilters(ConstNumber(f), ConstNumber(s)) => Some(embed[T](ConstNumber(f % s)))
+        case FilterMath(ConstNumber(f), ConstNumber(s), op) => op match {
+          case Add => Some(embed[T](ConstNumber(f + s)))
+          case Subtract => Some(embed[T](ConstNumber(f - s)))
+          case Multiply => Some(embed[T](ConstNumber(f * s)))
+          case Divide => Some(embed[T](ConstNumber(f / s)))
+          case Modulo => Some(embed[T](ConstNumber(f % s)))
+        }
         case _ => None
       }
     }

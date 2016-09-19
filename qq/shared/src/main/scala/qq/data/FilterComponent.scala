@@ -56,15 +56,14 @@ final case class EnjectFilters[A](obj: List[((String \/ A), A)]) extends FilterC
 final case class CallFilter[A](name: String, params: List[A]) extends FilterComponent[A]
 
 // Math, lots of JS-ish special cases for certain types.
-final case class AddFilters[A](first: A, second: A) extends FilterComponent[A]
+final case class FilterMath[A](first: A, second: A, op: MathOperator) extends FilterComponent[A]
 
-final case class SubtractFilters[A](first: A, second: A) extends FilterComponent[A]
-
-final case class MultiplyFilters[A](first: A, second: A) extends FilterComponent[A]
-
-final case class DivideFilters[A](first: A, second: A) extends FilterComponent[A]
-
-final case class ModuloFilters[A](first: A, second: A) extends FilterComponent[A]
+sealed trait MathOperator
+case object Add extends MathOperator
+case object Subtract extends MathOperator
+case object Multiply extends MathOperator
+case object Divide extends MathOperator
+case object Modulo extends MathOperator
 
 // Select key, index or range in JSON object or array.
 // Return null if asked for something not contained in the target.
@@ -90,11 +89,7 @@ object FilterComponent {
         case l: LeafComponent[_] => G.point(l.retag[B])
         case LetAsBinding(name, as, in) => G.apply2(f(as), f(in))(LetAsBinding(name, _, _))
         case CallFilter(name, params) => params.traverse(f).map(CallFilter(name, _))
-        case AddFilters(first, second) => G.apply2(f(first), f(second))(AddFilters(_, _))
-        case SubtractFilters(first, second) => G.apply2(f(first), f(second))(SubtractFilters(_, _))
-        case MultiplyFilters(first, second) => G.apply2(f(first), f(second))(MultiplyFilters(_, _))
-        case DivideFilters(first, second) => G.apply2(f(first), f(second))(DivideFilters(_, _))
-        case ModuloFilters(first, second) => G.apply2(f(first), f(second))(ModuloFilters(_, _))
+        case FilterMath(first, second, op) => G.apply2(f(first), f(second))(FilterMath(_, _, op))
         case ComposeFilters(first, second) => G.apply2(f(first), f(second))(ComposeFilters(_, _))
         case SilenceExceptions(a) => G.map(f(a))(SilenceExceptions(_))
         case EnlistFilter(a) => G.map(f(a))(EnlistFilter(_))
