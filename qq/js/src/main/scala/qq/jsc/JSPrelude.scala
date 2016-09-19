@@ -61,7 +61,7 @@ object JSPrelude extends PlatformPrelude[Any] {
             case string: String => Task.now(string)
             case k => Task.raiseError(QQRuntimeException("can't replace with " + JSRuntime.print(k)))
           }
-          val valueRegexReplacementList = Task.mapBoth(regexTask, replacementTask) { (regex, replacement) =>
+          val valueRegexReplacementList = (regexTask |@| replacementTask) { (regex, replacement) =>
             j match {
               case string: String =>
                 Task.now(regex.matcher(string).replaceAll(replacement))

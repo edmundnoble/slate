@@ -4,15 +4,18 @@ package app
 import dash.ajax.{Ajax, AjaxMethod}
 import monix.eval.Task
 import org.scalajs.dom.XMLHttpRequest
-import qq.cc.QQRuntimeException
+import qq.cc.{OrCompilationError, Prelude, QQRuntime, QQRuntimeException}
 import qq.data.CompiledDefinition
 import qq.jsc._
 import qq.util._
 
 import scala.concurrent.duration._
 import scala.scalajs.js
+import scalaz.syntax.either._
+import scalaz.syntax.apply._
+import monix.scalaz._
 
-object DashPrelude {
+object DashPrelude extends Prelude[Any] {
 
   import CompiledDefinition.noParamDefinition
 
@@ -50,8 +53,8 @@ object DashPrelude {
           case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not headers"))
         }
         val ajaxs: Task[XMLHttpRequest] =
-          Task.zipMap4(urlTask, dataTask, queryParamsTask, headersTask)((url, data, queryParams, headers) =>
-            Ajax(ajaxMethod, url, data, queryParams, headers, withCredentials = false, "")
+          (urlTask |@| dataTask |@| queryParamsTask |@| headersTask)(
+            Ajax(ajaxMethod, _, _, _, _, withCredentials = false, "")
           ).flatten
         ajaxs.flatMap(
           resp => Json.stringToJs(resp.responseText).fold(Task.raiseError(_), Task.now)
@@ -68,5 +71,6 @@ object DashPrelude {
 
   def httpPut: CompiledDefinition[Any] = makeAjaxDefinition("httpPut", AjaxMethod.PUT)
 
-  val all = Vector(googleAuth, httpDelete, httpGet, httpPost, httpPatch, httpPut)
+  override def all(runtime: QQRuntime[Any]): OrCompilationError[IndexedSeq[CompiledDefinition[Any]]] =
+    Vector(googleAuth, httpDelete, httpGet, httpPost, httpPatch, httpPut).right
 }

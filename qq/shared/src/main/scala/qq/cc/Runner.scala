@@ -17,7 +17,7 @@ object Runner {
     Parser.program.parse(program) match {
       case Parsed.Success(parsedProgram, _) =>
         val optimized = LocalOptimizer.optimizeProgram(parsedProgram)
-        QQCompiler.compileProgram(runtime, IndexedSeq.empty, optimized).leftMap(_.left)
+        QQCompiler.compileProgram(runtime, None, optimized).leftMap(_.left)
       case f@Parsed.Failure(_, _, _) =>
         new ParseError(f).right[QQCompilationException].left
     }

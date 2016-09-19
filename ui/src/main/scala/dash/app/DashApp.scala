@@ -28,7 +28,7 @@ object DashApp {
         case Some(encodedProgram) =>
           Util.pureFC[StorageAction, Program[ConcreteFilter]](programCodec.decode(BitVector.fromBase64(encodedProgram).get).require.value)
       }
-    } yield QQCompiler.compileProgram(JSRuntime, prelude = DashPrelude.all, decodedOptimizedProgram)
+    } yield QQCompiler.compileProgram(JSRuntime, prelude = Some(DashPrelude), decodedOptimizedProgram)
   }
 
 }
