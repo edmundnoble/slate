@@ -7,7 +7,7 @@ import japgolly.scalajs.benchmark.gui.{GuiParam, GuiParams, GuiSuite}
 import matryoshka.Fix
 import monocle.Iso
 import qq.cc.QQCompiler
-import qq.data.{ConcreteFilter, FilterDSL}
+import qq.data.{ConcreteFilter, QQDSL}
 
 object RuntimeBench {
 
@@ -22,15 +22,15 @@ object RuntimeBench {
 
   val qqRuntimeSuite = GuiSuite.apply[(QQRuntimeParams, Int)](
     Suite[(QQRuntimeParams, Int)]("QQ Runtime Benchmarks")(
-      runtimeSetup(size => (Util.buildRec[Fix](FilterDSL.fix.compose(_, FilterDSL.fix.id), size, FilterDSL.fix.id), "[]")
+      runtimeSetup(size => (Util.buildRec[Fix](QQDSL.fix.compose(_, QQDSL.fix.id), size, QQDSL.fix.id), "[]")
       )("compose with id") {
         params => params.filt(Map.empty)(params.in)
       },
-      runtimeSetup(size => (FilterDSL.fix.selectKey(s"k$size"), "{" + Stream.tabulate(size)(i => raw""""k$i":"$i"""").mkString(",") + "}")
+      runtimeSetup(size => (QQDSL.fix.selectKey(s"k$size"), "{" + Stream.tabulate(size)(i => raw""""k$i":"$i"""").mkString(",") + "}")
       )("select key") {
         params => params.filt(Map.empty)(params.in)
       },
-      runtimeSetup(size => (Util.buildRec[Fix](FilterDSL.fix.add(_, FilterDSL.fix.constNumber(1)), size, FilterDSL.fix.id), s"$size")
+      runtimeSetup(size => (Util.buildRec[Fix](QQDSL.fix.add(_, QQDSL.fix.constNumber(1)), size, QQDSL.fix.id), s"$size")
       )("plus") {
         params => params.filt(Map.empty)(params.in)
       }

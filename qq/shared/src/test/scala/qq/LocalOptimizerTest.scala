@@ -1,7 +1,7 @@
 package qq
 
 import matryoshka._
-import qq.data.FilterDSL.fix._
+import qq.data.QQDSL.fix._
 import qq.data.ConcreteFilter
 
 class LocalOptimizerTest extends QQSyncTestSuite {

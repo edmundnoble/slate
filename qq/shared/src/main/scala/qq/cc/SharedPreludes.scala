@@ -2,7 +2,7 @@ package qq
 package cc
 
 import monix.eval.Task
-import qq.data.{CompiledDefinition, ConcreteFilter, Definition, FilterDSL}
+import qq.data.{CompiledDefinition, ConcreteFilter, Definition, QQDSL}
 import scalaz.syntax.plusEmpty._
 
 import scalaz.syntax.either._
@@ -23,7 +23,7 @@ object SharedPreludes {
 
   object Raw {
     val map: Definition[ConcreteFilter] = {
-      import FilterDSL.fix._
+      import QQDSL.fix._
       Definition("map",
         params = List("x"),
         body = compose(collectResults(id), call("x"))

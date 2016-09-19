@@ -15,7 +15,7 @@ case class CompilerTest(input: Value, program: ConcreteFilter, expectedOutput: V
 
 object CompilerTest {
 
-  import qq.data.FilterDSL.fix._
+  import qq.data.QQDSL.fix._
   import org.scalatest.Matchers._
 
   def runTest[J](runtime: QQRuntime[J], qqCompilerTest: CompilerTest)
