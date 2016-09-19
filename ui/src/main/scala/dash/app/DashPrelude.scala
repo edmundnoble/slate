@@ -34,7 +34,7 @@ object DashPrelude extends Prelude[Any] {
   private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition[Any](name, 4,
     CompiledDefinition.standardEffectDistribution[Any] {
       case List(urlRaw, queryParamsRaw, dataRaw, headersRaw) => _ =>
-        implicit val ajaxTimeout = Ajax.Timeout(1000.millis)
+        implicit val ajaxTimeout = Ajax.Timeout(2000.millis)
         val urlTask = urlRaw match {
           case s: String => Task.now(s)
           case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not a URL"))
@@ -54,7 +54,7 @@ object DashPrelude extends Prelude[Any] {
         }
         val ajaxs: Task[XMLHttpRequest] =
           (urlTask |@| dataTask |@| queryParamsTask |@| headersTask)(
-            Ajax(ajaxMethod, _, _, _, _, withCredentials = false, "")
+            Ajax(ajaxMethod, _, _, _, _, withCredentials = false, "").onErrorRestart(2)
           ).flatten
         ajaxs.flatMap(
           resp => Json.stringToJs(resp.responseText).fold(Task.raiseError(_), Task.now)
