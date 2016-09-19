@@ -21,7 +21,7 @@ object DashPrelude {
 
   def launchAuth: CompiledDefinition[Any] =
     CompiledDefinition[Any]("launchAuth", 1, CompiledDefinition.standardEffectDistribution[Any] {
-      case List(url) =>
+      case List(url) => _ =>
         url match {
           case s: String => identify.launchWebAuthFlow(interactive = false, s).map(_ :: Nil)
           case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not a URL"))
@@ -30,7 +30,7 @@ object DashPrelude {
 
   private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition[Any](name, 4,
     CompiledDefinition.standardEffectDistribution[Any] {
-      case List(urlRaw, queryParamsRaw, dataRaw, headersRaw) =>
+      case List(urlRaw, queryParamsRaw, dataRaw, headersRaw) => _ =>
         implicit val ajaxTimeout = Ajax.Timeout(1000.millis)
         val urlTask = urlRaw match {
           case s: String => Task.now(s)

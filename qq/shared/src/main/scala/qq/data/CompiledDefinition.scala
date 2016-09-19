@@ -14,10 +14,10 @@ object CompiledDefinition {
     CompiledDefinition[J](name, 0, body = _ => UndefinedOnPlatform(name).left)
 
   // this is responsible for QQ's function application semantics
-  def standardEffectDistribution[J](func: List[J] => Task[J]): List[CompiledFilter[J]] => OrCompilationError[CompiledFilter[J]] =
+  def standardEffectDistribution[J](func: List[J] => J => Task[J]): List[CompiledFilter[J]] => OrCompilationError[CompiledFilter[J]] =
     args =>
       ((b: VarBindings[J]) => (j: J) =>
-        Task.gather(args.map(_ (b)(j))).flatMap(llj => Task.gather(util.foldWithPrefixes(llj.head, llj.tail: _*).map(l => func(l.reverse))))).right
+        Task.gather(args.map(_ (b)(j))).flatMap(llj => Task.gather(util.foldWithPrefixes(llj.head, llj.tail: _*).map(l => func(l.reverse)(j))))).right
 
   final def noParamDefinition[J](name: String, fun: CompiledFilter[J]): CompiledDefinition[J] = {
     CompiledDefinition[J](

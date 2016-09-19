@@ -21,7 +21,7 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
 
   def `null`: CompiledDefinition[Js.Value] = noParamDefinition("null", CompiledFilter.const(Js.Null))
 
-  def `true`: CompiledDefinition[Js.Value]  = noParamDefinition("true", CompiledFilter.const(Js.True))
+  def `true`: CompiledDefinition[Js.Value] = noParamDefinition("true", CompiledFilter.const(Js.True))
 
   def `false`: CompiledDefinition[Js.Value] = noParamDefinition("false", CompiledFilter.const(Js.False))
 
@@ -58,31 +58,25 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
 
   override def replaceAll: CompiledDefinition[Js.Value] =
     CompiledDefinition[Js.Value](name = "replaceAll", numParams = 2,
-      body = {
-        case (regexFilter :: replacementFilter :: Nil) => ((bindings: VarBindings[Js.Value]) => {
-          (jsv: Js.Value) =>
-            {
-              val regexesFilter: Task[List[Pattern]] = regexFilter(bindings)(jsv).flatMap(_.traverse[Task, Pattern] {
-                case Js.Str(string) => Task.now(Pattern.compile(string))
-                case j => Task.raiseError(NotARegex(UpickleRuntime.print(j)))
-              })
-              val replacementsFilter: Task[List[String]] = replacementFilter(bindings)(jsv).flatMap(_.traverse[Task, String] {
-                case Js.Str(string) => Task.now(string)
-                case j => Task.raiseError(QQRuntimeException("can't replace with " + UpickleRuntime.print(j)))
-              })
-              val valueRegexReplacementList = (regexesFilter |@| replacementsFilter) { (regexes, replacements) =>
-                jsv match {
-                  case Js.Str(string) =>
-                    Task.now(for {regex <- regexes; replacement <- replacements}
-                      yield Js.Str(regex.matcher(string).replaceAll(replacement)))
-                  case j => Task.raiseError(QQRuntimeException("can't replace " + UpickleRuntime.print(j)))
-                }
-              }.flatten
-              valueRegexReplacementList
+      body = CompiledDefinition.standardEffectDistribution[Js.Value] {
+        case (regexRaw :: replacementRaw :: Nil) => (j: Js.Value) =>
+          val regexTask: Task[Pattern] = regexRaw match {
+            case Js.Str(string) => Task.now(Pattern.compile(string))
+            case k => Task.raiseError(NotARegex(UpickleRuntime.print(k)))
+          }
+          val replacementTask: Task[String] = replacementRaw match {
+            case Js.Str(string) => Task.now(string)
+            case k => Task.raiseError(QQRuntimeException("can't replace with " + UpickleRuntime.print(k)))
+          }
+          val valueRegexReplacementList = Task.mapBoth(regexTask, replacementTask) { (regex, replacement) =>
+            j match {
+              case Js.Str(string) =>
+                Task.now(Js.Str(regex.matcher(string).replaceAll(replacement)))
+              case k => Task.raiseError(QQRuntimeException("can't replace " + UpickleRuntime.print(k)))
             }
-        }).right[QQCompilationException]
-      }
-    )
+          }.flatten
+          valueRegexReplacementList
+      })
 
   override def arrays: CompiledDefinition[Js.Value] =
     noParamDefinition(

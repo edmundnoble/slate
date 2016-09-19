@@ -51,30 +51,25 @@ object JSPrelude extends PlatformPrelude[Any] {
 
   override def replaceAll: CompiledDefinition[Any] =
     CompiledDefinition[Any](name = "replaceAll", numParams = 2,
-      body = {
-        case (regexFilter :: replacementFilter :: Nil) => ((bindings: VarBindings[Any]) => {
-          (jsv: Any) =>
-            val regexesFilter: Task[List[Pattern]] = regexFilter(bindings)(jsv).flatMap(_.traverse[Task, Pattern] {
-              case string: String => Task.now(Pattern.compile(string))
-              case j => Task.raiseError(NotARegex(JSRuntime.print(j)))
-            })
-            val replacementsFilter: Task[List[String]] = replacementFilter(bindings)(jsv).flatMap(_.traverse[Task, String] {
-              case string: String => Task.now(string)
-              case j => Task.raiseError(QQRuntimeException("can't replace with " + JSRuntime.print(j)))
-            })
-            val valueRegexReplacementList = (regexesFilter |@| replacementsFilter) { (regexes, replacements) =>
-              jsv match {
-                case string: String =>
-                  Task.now(for {regex <- regexes; replacement <- replacements}
-                    yield regex.matcher(string).replaceAll(replacement))
-                case j =>
-                  Task.raiseError(QQRuntimeException("can't replace " + JSRuntime.print(j)))
-              }
-            }.flatten
-            valueRegexReplacementList
-        }).right[QQCompilationException]
-      }
-    )
+      body = CompiledDefinition.standardEffectDistribution[Any] {
+        case (regexRaw :: replacementRaw :: Nil) => (j: Any) =>
+          val regexTask: Task[Pattern] = regexRaw match {
+            case string: String => Task.now(Pattern.compile(string))
+            case k => Task.raiseError(NotARegex(JSRuntime.print(k)))
+          }
+          val replacementTask: Task[String] = replacementRaw match {
+            case string: String => Task.now(string)
+            case k => Task.raiseError(QQRuntimeException("can't replace with " + JSRuntime.print(k)))
+          }
+          val valueRegexReplacementList = Task.mapBoth(regexTask, replacementTask) { (regex, replacement) =>
+            j match {
+              case string: String =>
+                Task.now(regex.matcher(string).replaceAll(replacement))
+              case k => Task.raiseError(QQRuntimeException("can't replace " + JSRuntime.print(k)))
+            }
+          }.flatten
+          valueRegexReplacementList
+      })
 
   override def keys: CompiledDefinition[Any] =
     noParamDefinition(
