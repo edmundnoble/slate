@@ -9,10 +9,7 @@ import qq.util.Recursion
 
 import scala.language.higherKinds
 import scalaz.std.option._
-import scalaz.syntax.foldable1._
 import scalaz.syntax.functor._
-import scalaz.syntax.plus._
-import scalaz.{Kleisli, NonEmptyList}
 
 // QQ's local optimizer; not a whole-program optimizer, but optimizes a single filter.
 object LocalOptimizer {
@@ -31,10 +28,14 @@ object LocalOptimizer {
   // an optimization is a function with type Filter => Option[Filter] with return values meaning:
   // None => The optimization does not apply to this filter structure
   // Some(newFilter) => The optimization produced newFilter from this filter
-  type LocalOptimization[F] = Kleisli[Option, F, F]
+  type LocalOptimization[F] = F => Option[F]
+
+  implicit class localOptOps[F](val localOptimization: LocalOptimization[F]) extends AnyVal {
+    @inline final def or(other: LocalOptimization[F]): LocalOptimization[F] = (f: F) => localOptimization(f).orElse(other(f))
+  }
 
   // The identity filter is an identity with respect to composition of filters
-  final def idCompose[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = Kleisli { fr =>
+  final def idCompose[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = { fr =>
     fr.project.map(_.project) match {
       case ComposeFilters(IdFilter(), s) => Some(embed[T](s))
       case ComposeFilters(f, IdFilter()) => Some(embed[T](f))
@@ -43,7 +44,7 @@ object LocalOptimizer {
   }
 
   // The collect and enlist operations are inverses
-  final def collectEnlist[T[_[_]] : Recursive]: LocalOptimization[T[FilterComponent]] = Kleisli { fr =>
+  final def collectEnlist[T[_[_]] : Recursive]: LocalOptimization[T[FilterComponent]] = { fr =>
     fr.project.map(_.project) match {
       case EnlistFilter(CollectResults(f)) => Some(f)
       case CollectResults(EnlistFilter(f)) => Some(f)
@@ -53,7 +54,7 @@ object LocalOptimizer {
 
   object MathOptimizations {
     // reduces constant math filters to their results
-    final def constReduce[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = Kleisli { fr =>
+    final def constReduce[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = { fr =>
       fr.project.map(_.project) match {
         case FilterMath(ConstNumber(f), ConstNumber(s), op) => op match {
           case Add => Some(embed[T](ConstNumber(f + s)))
@@ -67,14 +68,10 @@ object LocalOptimizer {
     }
   }
 
-  // a list of all of the local optimizations available
-  @inline final def localOptimizations[T[_[_]] : Recursive : Corecursive]: NonEmptyList[LocalOptimization[T[FilterComponent]]] =
-  NonEmptyList(idCompose[T], collectEnlist[T], MathOptimizations.constReduce[T])
-
   // a function applying each of the local optimizations available, in rounds,
   // until none of the optimizations applies anymore
   @inline final def localOptimizationsƒ[T[_[_]] : Recursive : Corecursive]: T[FilterComponent] => T[FilterComponent] =
-  repeatedly(localOptimizations[T].foldLeft1(_ <+> _).run)
+  repeatedly(idCompose[T] or collectEnlist[T] or MathOptimizations.constReduce)
 
   // recursively applied localOptimizationsƒ deep into a filter
   @inline final def optimizeFilter[T[_[_]] : Recursive : Corecursive](filter: T[FilterComponent]): T[FilterComponent] =
