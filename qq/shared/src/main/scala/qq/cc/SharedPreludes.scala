@@ -3,7 +3,7 @@ package cc
 
 import monix.eval.Task
 import qq.data.{CompiledDefinition, ConcreteFilter, Definition, FilterDSL}
-import scalaz.syntax.monoid._
+import scalaz.syntax.plusEmpty._
 
 import scalaz.syntax.either._
 
@@ -36,6 +36,6 @@ object SharedPreludes {
     }
   }
 
-  def apply[J]: Prelude[J] = Raw[J] |+| Compiled[J]
+  def apply[J]: Prelude[J] = Raw[J] <+> Compiled[J]
 
 }
