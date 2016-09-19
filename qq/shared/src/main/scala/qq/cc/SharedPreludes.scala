@@ -3,6 +3,7 @@ package cc
 
 import monix.eval.Task
 import qq.data.{CompiledDefinition, ConcreteFilter, Definition, FilterDSL}
+import scalaz.syntax.monoid._
 
 import scalaz.syntax.either._
 
@@ -16,7 +17,7 @@ object SharedPreludes {
 
     def apply[J]: Prelude[J] = new Prelude[J] {
       override def all(runtime: QQRuntime[J]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
-        (print(runtime) +: IndexedSeq.empty).right.map(identity)
+        IndexedSeq(print(runtime)).right
     }
   }
 
@@ -35,12 +36,6 @@ object SharedPreludes {
     }
   }
 
-  def apply[J]: Prelude[J] = new Prelude[J] {
-    override def all(runtime: QQRuntime[J]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
-      for {
-        raw <- Raw[J].all(runtime)
-        compiled <- Compiled[J].all(runtime)
-      } yield raw ++ compiled
-  }
+  def apply[J]: Prelude[J] = Raw[J] |+| Compiled[J]
 
 }

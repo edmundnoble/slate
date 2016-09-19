@@ -10,6 +10,7 @@ import scalaz.syntax.either._
 import scalaz.syntax.std.option._
 import scalaz.Reader
 import qq.Platform.Rec._
+import scalaz.syntax.monoid._
 
 object QQCompiler {
 
@@ -73,9 +74,8 @@ object QQCompiler {
                                             definitions: IndexedSeq[CompiledDefinition[J]],
                                             filter: T[FilterComponent]): OrCompilationError[CompiledFilter[J]] =
     for {
-      sharedDefinitions <- SharedPreludes[J].all(runtime)
-      platformSpecificDefinitions <- runtime.platformPrelude.all(runtime)
-      allDefinitions = sharedDefinitions ++ platformSpecificDefinitions ++ definitions
+      builtinDefinitions <- (SharedPreludes[J] |+| runtime.platformPrelude).all(runtime)
+      allDefinitions = builtinDefinitions ++ definitions
       compiledProgram <-
       Recursion.cataM[T, FilterComponent, OrCompilationError, CompiledFilter[J]](
         compileStep(runtime, allDefinitions, _)
