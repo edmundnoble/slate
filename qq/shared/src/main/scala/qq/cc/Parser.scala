@@ -141,7 +141,7 @@ object Parser {
   // The reason I avoid using basicFilter is to avoid a parsing ambiguity with ensequencedFilters
   val enjectPair: P[(String \/ ConcreteFilter, ConcreteFilter)] = P(
     ((("(" ~/ filter ~ ")").map(_.right[String]) |
-      filterIdentifier.map(_.left[ConcreteFilter])) ~ ":" ~ whitespace ~ piped) |
+      (stringLiteral | escapedStringLiteral).map(_.left[ConcreteFilter])) ~ ":" ~ whitespace ~ piped) |
       filterIdentifier.map(id => -\/(id) -> dsl.selectKey(id))
   )
 

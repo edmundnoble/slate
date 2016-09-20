@@ -93,6 +93,7 @@ class ParserTest extends QQSyncTestSuite {
 
   "parse enjected pairs" - {
     "string key" in (Parser.enjectPair.parse("hello: id").get.value shouldBe \/.left("hello") -> call("id"))
+    "escaped string key" in (Parser.enjectPair.parse("\"hello\": id").get.value shouldBe \/.left("hello") -> call("id"))
     "filter key" in (Parser.enjectPair.parse("(hello): id").get.value shouldBe \/.right(call("hello")) -> call("id"))
     "sugar" in (Parser.enjectPair.parse("user").get.value shouldBe \/.left("user") -> selectKey("user"))
   }
