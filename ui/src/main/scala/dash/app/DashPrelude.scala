@@ -23,11 +23,18 @@ object DashPrelude extends Prelude[Any] {
     noParamDefinition("googleAuth", _ => _ => identify.getAuthToken(interactive = false).map(_ :: Nil))
 
   def launchAuth: CompiledDefinition[Any] =
-    CompiledDefinition[Any]("launchAuth", 1, CompiledDefinition.standardEffectDistribution[Any] {
-      case List(url) => _ =>
-        url match {
-          case s: String => identify.launchWebAuthFlow(interactive = false, s).map(_ :: Nil)
+    CompiledDefinition[Any]("launchAuth", 2, CompiledDefinition.standardEffectDistribution[Any] {
+      case List(urlRaw, queryParamsRaw) => _ =>
+        val urlTask = urlRaw match {
+          case s: String => Task.now(s)
           case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not a URL"))
+        }
+        val queryParamsTask = queryParamsRaw match {
+          case o: js.Object => Task.now(o.toDictionary.toMap)
+          case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not a query params object"))
+        }
+        (urlTask |@| queryParamsTask) { (url, queryParams) =>
+          identify.launchWebAuthFlow(interactive = false, Ajax.addQueryParams(url, queryParams))
         }
     })
 
@@ -53,7 +60,7 @@ object DashPrelude extends Prelude[Any] {
           case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not headers"))
         }
         val ajaxs: Task[XMLHttpRequest] =
-          (urlTask |@| dataTask |@| queryParamsTask |@| headersTask)(
+          (urlTask |@| dataTask |@| queryParamsTask |@| headersTask) (
             Ajax(ajaxMethod, _, _, _, _, withCredentials = false, "").onErrorRestart(2)
           ).flatten
         ajaxs.flatMap(

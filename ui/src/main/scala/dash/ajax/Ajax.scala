@@ -6,7 +6,7 @@ import java.nio.ByteBuffer
 import monix.eval.Task
 import monix.execution.Cancelable
 import org.scalajs.dom
-import org.scalajs.dom.FormData
+import org.scalajs.dom.{Event, FormData, XMLHttpRequest}
 import org.scalajs.dom.raw.Blob
 
 import scala.concurrent.duration._
@@ -66,7 +66,7 @@ object Ajax {
                         queryParams: Map[String, Any] = Map.empty,
                         headers: Map[String, String] = Map.empty,
                         withCredentials: Boolean = false,
-                        responseType: String = "")(implicit timeout: Timeout) = {
+                        responseType: String = "")(implicit timeout: Timeout): Task[XMLHttpRequest] = {
     apply("GET", url, data, queryParams, headers, withCredentials, responseType)
   }
 
@@ -75,7 +75,7 @@ object Ajax {
                          queryParams: Map[String, Any] = Map.empty,
                          headers: Map[String, String] = Map.empty,
                          withCredentials: Boolean = false,
-                         responseType: String = "")(implicit timeout: Timeout) = {
+                         responseType: String = "")(implicit timeout: Timeout): Task[XMLHttpRequest] = {
     apply("POST", url, data, queryParams, headers, withCredentials, responseType)
   }
 
@@ -84,7 +84,7 @@ object Ajax {
                         queryParams: Map[String, Any] = Map.empty,
                         headers: Map[String, String] = Map.empty,
                         withCredentials: Boolean = false,
-                        responseType: String = "")(implicit timeout: Timeout) = {
+                        responseType: String = "")(implicit timeout: Timeout): Task[XMLHttpRequest] = {
     apply("PUT", url, data, queryParams, headers, withCredentials, responseType)
   }
 
@@ -93,7 +93,7 @@ object Ajax {
                            queryParams: Map[String, Any] = Map.empty,
                            headers: Map[String, String] = Map.empty,
                            withCredentials: Boolean = false,
-                           responseType: String = "")(implicit timeout: Timeout) = {
+                           responseType: String = "")(implicit timeout: Timeout): Task[XMLHttpRequest] = {
     apply("DELETE", url, data, queryParams, headers, withCredentials, responseType)
   }
 
@@ -107,7 +107,7 @@ object Ajax {
     Task.create[dom.XMLHttpRequest] { (_, callback) =>
       val req = new dom.XMLHttpRequest()
 
-      req.onreadystatechange = { (e: dom.Event) =>
+      req.onreadystatechange = { (e: Event) =>
         if (req.readyState == 4) {
           if ((req.status >= 200 && req.status < 300) || req.status == 304)
             callback.onSuccess(req)
@@ -116,10 +116,7 @@ object Ajax {
         }
       }
 
-      val queryString =
-        queryParams.map { case (k, v) => k + "=" + v }.mkString("&")
-
-      val urlWithQuery = if (queryParams.isEmpty) url else url + "?" + queryString
+      val urlWithQuery = addQueryParams(url, queryParams)
       req.open(method, urlWithQuery)
       req.responseType = responseType
       req.timeout = if (timeout.value.isFinite()) timeout.value.toMillis else 0
@@ -132,6 +129,14 @@ object Ajax {
 
       Cancelable(() => req.abort())
     }
+  }
+
+  def addQueryParams(url: String, queryParams: Map[String, Any]): String = {
+    val queryString =
+      queryParams.map { case (k, v) => k + "=" + v }.mkString("&")
+
+    val urlWithQuery = if (queryParams.isEmpty) url else url + "?" + queryString
+    urlWithQuery
   }
 
   def apply(method: AjaxMethod,
