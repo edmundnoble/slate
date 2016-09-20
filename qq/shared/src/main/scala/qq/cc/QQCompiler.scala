@@ -32,6 +32,17 @@ object QQCompiler {
                      filter: FilterComponent[CompiledFilter[J]]): OrCompilationError[CompiledFilter[J]] = filter match {
     case leaf: LeafComponent[J@unchecked] => runtime.evaluateLeaf(leaf).right
     case ComposeFilters(f, s) => CompiledFilter.composeFilters(f, s).right
+    case CallFilter(filterIdentifier, params) =>
+      definitions.find(_.name == filterIdentifier).cata(
+        { (defn: CompiledDefinition[J]) =>
+          if (params.length == defn.numParams) {
+            defn.body(params)
+          } else {
+            WrongNumParams(filterIdentifier, defn.numParams, params.length).left
+          }
+        },
+        NoSuchMethod(filterIdentifier).left
+      )
     case LetAsBinding(name, as, in) => CompiledFilter.letBinding(name, as, in).right
     case EnlistFilter(f) => runtime.enlistFilter(f).right
     case SilenceExceptions(f) => (for {
@@ -44,17 +55,6 @@ object QQCompiler {
     case FilterMath(first, second, Multiply) => CompiledFilter.zipFiltersWith(first, second, runtime.multiplyJsValues).right
     case FilterMath(first, second, Divide) => CompiledFilter.zipFiltersWith(first, second, runtime.divideJsValues).right
     case FilterMath(first, second, Modulo) => CompiledFilter.zipFiltersWith(first, second, runtime.moduloJsValues).right
-    case CallFilter(filterIdentifier, params) =>
-      definitions.find(_.name == filterIdentifier).cata(
-        { (defn: CompiledDefinition[J]) =>
-          if (params.length == defn.numParams) {
-            defn.body(params)
-          } else {
-            WrongNumParams(filterIdentifier, defn.numParams, params.length).left
-          }
-        },
-        NoSuchMethod(filterIdentifier).left
-      )
   }
 
   def compileDefinitionStep[T[_[_]] : Recursive, J](runtime: QQRuntime[J])
