@@ -3,7 +3,7 @@ package app
 
 object JIRAApp {
 
-  val program =
+  val program: String =
     """
 def authHeaders: (.username + ":" + .password | b64Encode) | { Authorization: "Basic " + . };
 

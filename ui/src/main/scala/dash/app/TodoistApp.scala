@@ -2,8 +2,8 @@ package dash
 package app
 
 object TodoistApp {
-val program =
-  raw"""
+  val program: String =
+raw"""
 
 """
 
