@@ -15,13 +15,14 @@ class LocalOptimizerTest extends QQSyncTestSuite {
   }
 
   "optimize collectresults and enlist duality" in {
-    optimizeFilter[Fix](collectResults | enlist(id)) shouldBe id
     optimizeFilter[Fix](enlist(collectResults)) shouldBe id
+    optimizeFilter[Fix](enlist(collectResults | id)) shouldBe id
+    optimizeFilter[Fix](enlist(id | collectResults)) shouldBe id
   }
 
   "do nested optimizations" in {
     optimizeFilter[Fix](
-      collectResults | id | id | enlist(id)
+      enlist(id | collectResults | id | id | id)
     ) shouldBe id
   }
 

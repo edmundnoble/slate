@@ -48,9 +48,8 @@ object LocalOptimizer {
   final def collectEnlist[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = { fr =>
     fr.project.map(_.project.map(_.project)) match {
       case EnlistFilter(Compose(f, CollectResults())) => Some(embed[T](f))
+      case EnlistFilter(Compose(CollectResults(), f)) => Some(embed[T](f))
       case EnlistFilter(CollectResults()) => Some(embed[T](IdFilter()))
-      case Compose(CollectResults(), EnlistFilter(f)) => Some(embed[T](f))
-      case Compose(EnlistFilter(f), CollectResults()) => Some(embed[T](f))
       case _ => None
     }
   }
@@ -74,7 +73,7 @@ object LocalOptimizer {
   // a function applying each of the local optimizations available, in rounds,
   // until none of the optimizations applies anymore
   @inline final def localOptimizationsƒ[T[_[_]] : Recursive : Corecursive]: T[FilterComponent] => T[FilterComponent] =
-  repeatedly[T[FilterComponent]](idCompose[T] or collectEnlist[T] or MathOptimizations.constReduce)
+  repeatedly[T[FilterComponent]](collectEnlist[T] or idCompose[T] or MathOptimizations.constReduce)
 
   // localOptimizationsƒ recursively applied deep into a filter
   @inline final def optimizeFilter[T[_[_]] : Recursive : Corecursive](filter: T[FilterComponent]): T[FilterComponent] =
