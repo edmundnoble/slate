@@ -37,7 +37,7 @@ object JSRuntime extends QQRuntime[Any] {
       val secondMap = s.toDictionary.toMap
       Task.now(js.Dictionary((firstMap ++ secondMap).toSeq: _*))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't add " + Json.jsToString(f) + " and " + Json.jsToString(s)))
+      Task.raiseError(QQRuntimeException("can't add " + print(f) + " and " + print(s)))
   }
 
   override def subtractJsValues(first: Any, second: Any): Task[Any] = (first, second) match {
@@ -49,7 +49,7 @@ object JSRuntime extends QQRuntime[Any] {
       val contents: Seq[(String, Any)] = (f.asInstanceOf[js.Dictionary[Any]].toMap -- s.asInstanceOf[js.Dictionary[Any]].toMap.keySet).toSeq
       Task.now(js.Dictionary(contents: _*))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't subtract " + Json.jsToString(f) + " and " + Json.jsToString(s)))
+      Task.raiseError(QQRuntimeException("can't subtract " + print(f) + " and " + print(s)))
   }
 
   override def multiplyJsValues(first: Any, second: Any): Task[Any] = (first, second) match {
@@ -62,21 +62,21 @@ object JSRuntime extends QQRuntime[Any] {
       val secondMap = s.toDictionary.toMap.mapValues(Task.now)
       firstMap.unionWith(secondMap) { (f, s) => Task.mapBoth(f, s)(addJsValues).flatten }.sequence.map(o => js.Dictionary(o.toSeq: _*))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't multiply " + Json.jsToString(f) + " and " + Json.jsToString(s)))
+      Task.raiseError(QQRuntimeException("can't multiply " + print(f) + " and " + print(s)))
   }
 
   override def divideJsValues(first: Any, second: Any): Task[Any] = (first, second) match {
     case (f: Double, s: Double) =>
       Task.now(f / s)
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't divide " + Json.jsToString(f) + " by " + Json.jsToString(s)))
+      Task.raiseError(QQRuntimeException("can't divide " + print(f) + " by " + print(s)))
   }
 
   override def moduloJsValues(first: Any, second: Any): Task[Any] = (first, second) match {
     case (f: Double, s: Double) =>
       Task.now(f % s)
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't modulo " + Json.jsToString(f) + " by " + Json.jsToString(s)))
+      Task.raiseError(QQRuntimeException("can't modulo " + print(f) + " by " + print(s)))
   }
 
   override def enlistFilter(filter: CompiledFilter[Any]): CompiledFilter[Any] = (for {fFun <- Reader(filter)} yield { jsv: Any =>
@@ -92,7 +92,7 @@ object JSRuntime extends QQRuntime[Any] {
         case Some(v) => Task.now(v :: Nil)
       }
     case v =>
-      Task.raiseError(QQRuntimeException("Tried to select key " + key + " in " + Json.jsToString(v) + " but it's not a dictionary"))
+      Task.raiseError(QQRuntimeException("Tried to select key " + key + " in " + print(v) + " but it's not a dictionary"))
   }
 
   override def selectIndex(index: Int): CompiledFilter[Any] = CompiledFilter.func {
@@ -109,7 +109,7 @@ object JSRuntime extends QQRuntime[Any] {
         taskOfListOfNull
       }
     case v =>
-      Task.raiseError(QQRuntimeException("Tried to select index " + Json.jsToString(index) + " in " + Json.jsToString(v) + " but it's not an array"))
+      Task.raiseError(QQRuntimeException("Tried to select index " + print(index) + " in " + print(v) + " but it's not an array"))
   }
 
   override def selectRange(start: Int, end: Int): CompiledFilter[Any] = CompiledFilter.func {
@@ -121,19 +121,14 @@ object JSRuntime extends QQRuntime[Any] {
       }
   }
 
-  override def collectResults(f: CompiledFilter[Any]): CompiledFilter[Any] = (for {fFun <- Reader(f)} yield { jsv: Any =>
-    for {
-      out <- fFun(jsv)
-      collected <- Parallel.unwrap(out.traverse[TaskParallel, List[Any]] {
-        case arr: js.Array[Any@unchecked] =>
-          Parallel(Task.now(arr.toList))
-        case dict: js.Object =>
-          Parallel(Task.now(dict.asInstanceOf[js.Dictionary[js.Object]].map[js.Object, List[js.Object]](_._2)(collection.breakOut)))
-        case v =>
-          Parallel(Task.raiseError(QQRuntimeException("Tried to flatten " + Json.jsToString(v) + " but it's not an array")))
-      })
-    } yield collected.flatten
-  }).run
+  override def collectResults: CompiledFilter[Any] = _ => {
+    case arr: js.Array[Any@unchecked] =>
+      Task.now(arr.toList)
+    case dict: js.Object =>
+      Task.now(dict.toDictionary.values.toList)
+    case v =>
+      Task.raiseError(QQRuntimeException("Tried to flatten " + print(v) + " but it's not an array"))
+  }
 
   override def enjectFilter(obj: List[(\/[String, CompiledFilter[Any]], CompiledFilter[Any])]): CompiledFilter[Any] = {
     if (obj.isEmpty) {
@@ -148,7 +143,7 @@ object JSRuntime extends QQRuntime[Any] {
               case (keyString: String) =>
                 Task.now(valueResults.map(keyString -> _))
               case k =>
-                Task.raiseError(QQRuntimeException("Tried to use " + Json.jsToString(k) + " as a key for an object but it's not a string"))
+                Task.raiseError(QQRuntimeException("Tried to use " + print(k) + " as a key for an object but it's not a string"))
             }
           } yield keyValuePairs
         case (-\/(filterName), filterValue) =>
@@ -162,7 +157,7 @@ object JSRuntime extends QQRuntime[Any] {
 
   override def platformPrelude = JSPrelude
 
-  override def print(value: Any) = Json.jsToString(value)
+  override def print(value: Any) = print(value)
 
 }
 

@@ -14,11 +14,17 @@ object QQDSL {
     import qq.data.FilterComponent.embed
 
     implicit class extraOps(val f: T[FilterComponent]) {
-      def |(next: T[FilterComponent]): T[FilterComponent] = compose(f, next)
+      final def |(next: T[FilterComponent]): T[FilterComponent] = compose(f, next)
 
-      def +(next: T[FilterComponent]): T[FilterComponent] = add(f, next)
+      final def +(next: T[FilterComponent]): T[FilterComponent] = add(f, next)
 
-      def -(next: T[FilterComponent]): T[FilterComponent] = subtract(f, next)
+      final def -(next: T[FilterComponent]): T[FilterComponent] = subtract(f, next)
+
+      final def *(next: T[FilterComponent]): T[FilterComponent] = multiply(f, next)
+
+      final def /(next: T[FilterComponent]): T[FilterComponent] = divide(f, next)
+
+      final def %(next: T[FilterComponent]): T[FilterComponent] = modulo(f, next)
     }
 
     implicit def embedStr(s: String): T[FilterComponent] = constString(s)
@@ -42,8 +48,8 @@ object QQDSL {
     @inline final def enlist(f: T[FilterComponent]): T[FilterComponent] =
       embed[T](EnlistFilter(f))
 
-    @inline final def collectResults(f: T[FilterComponent]): T[FilterComponent] =
-      embed[T](CollectResults(f))
+    @inline final def collectResults: T[FilterComponent] =
+      embed[T](CollectResults())
 
     @inline final def ensequence(first: T[FilterComponent], second: T[FilterComponent]): T[FilterComponent] =
       embed[T](EnsequenceFilters(first, second))

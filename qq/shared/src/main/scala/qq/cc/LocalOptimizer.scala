@@ -4,7 +4,7 @@ package cc
 import matryoshka.Recursive.ops._
 import matryoshka._
 import qq.Platform.Rec._
-import qq.data._
+import qq.data.{ComposeFilters => Compose, _}
 import qq.util.Recursion
 
 import scala.language.higherKinds
@@ -31,23 +31,26 @@ object LocalOptimizer {
   type LocalOptimization[F] = F => Option[F]
 
   implicit class localOptOps[F](val localOptimization: LocalOptimization[F]) extends AnyVal {
-    @inline final def or(other: LocalOptimization[F]): LocalOptimization[F] = (f: F) => localOptimization(f).orElse(other(f))
+    @inline final def or(other: LocalOptimization[F]): LocalOptimization[F] =
+      (f: F) => localOptimization(f).orElse(other(f))
   }
 
   // The identity filter is an identity with respect to composition of filters
   final def idCompose[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = { fr =>
     fr.project.map(_.project) match {
-      case ComposeFilters(IdFilter(), s) => Some(embed[T](s))
-      case ComposeFilters(f, IdFilter()) => Some(embed[T](f))
+      case Compose(IdFilter(), s) => Some(embed[T](s))
+      case Compose(f, IdFilter()) => Some(embed[T](f))
       case _ => None
     }
   }
 
   // The collect and enlist operations are inverses
-  final def collectEnlist[T[_[_]] : Recursive]: LocalOptimization[T[FilterComponent]] = { fr =>
-    fr.project.map(_.project) match {
-      case EnlistFilter(CollectResults(f)) => Some(f)
-      case CollectResults(EnlistFilter(f)) => Some(f)
+  final def collectEnlist[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = { fr =>
+    fr.project.map(_.project.map(_.project)) match {
+      case EnlistFilter(Compose(f, CollectResults())) => Some(embed[T](f))
+      case EnlistFilter(CollectResults()) => Some(embed[T](IdFilter()))
+      case Compose(CollectResults(), EnlistFilter(f)) => Some(embed[T](f))
+      case Compose(EnlistFilter(f), CollectResults()) => Some(embed[T](f))
       case _ => None
     }
   }
@@ -71,9 +74,9 @@ object LocalOptimizer {
   // a function applying each of the local optimizations available, in rounds,
   // until none of the optimizations applies anymore
   @inline final def localOptimizationsƒ[T[_[_]] : Recursive : Corecursive]: T[FilterComponent] => T[FilterComponent] =
-  repeatedly(idCompose[T] or collectEnlist[T] or MathOptimizations.constReduce)
+  repeatedly[T[FilterComponent]](idCompose[T] or collectEnlist[T] or MathOptimizations.constReduce)
 
-  // recursively applied localOptimizationsƒ deep into a filter
+  // localOptimizationsƒ recursively applied deep into a filter
   @inline final def optimizeFilter[T[_[_]] : Recursive : Corecursive](filter: T[FilterComponent]): T[FilterComponent] =
   Recursion.transCataT(localOptimizationsƒ[T]).apply(filter)
 

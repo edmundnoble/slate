@@ -32,16 +32,15 @@ class ParserTest extends QQSyncTestSuite {
 
   "parse dotted filters" in {
     Parser.dottedFilter.parse(".").get.value shouldBe id
-    Parser.dottedFilter.parse(".[]").get.value shouldBe compose(id, collectResults(id))
-    Parser.dottedFilter.parse(".key").get.value shouldBe compose(id, selectKey("key"))
-    Parser.dottedFilter.parse(".[1]").get.value shouldBe compose(id, selectIndex(1))
-    Parser.dottedFilter.parse(".[-1]").get.value shouldBe compose(id, selectIndex(-1))
-    Parser.dottedFilter.parse(".[1][]").get.value shouldBe compose(id, collectResults(selectIndex(1)))
-    Parser.dottedFilter.parse(".key[]").get.value shouldBe compose(id, collectResults(selectKey("key")))
-    Parser.dottedFilter.parse(".key.otherkey.1.[1][].[1:3].[\"this key\"]").get.value shouldBe
-      compose(compose(compose(compose(compose(compose(
-        id, selectKey("key")), selectKey("otherkey")), selectKey("1")),
-        collectResults(selectIndex(1))), selectRange(1, 3)), selectKey("this key"))
+    Parser.dottedFilter.parse(".[]").get.value shouldBe collectResults
+    Parser.dottedFilter.parse(".key").get.value shouldBe selectKey("key")
+    Parser.dottedFilter.parse(".[1]").get.value shouldBe selectIndex(1)
+    Parser.dottedFilter.parse(".[-1]").get.value shouldBe selectIndex(-1)
+    Parser.dottedFilter.parse(".[1][]").get.value shouldBe (selectIndex(1) | collectResults)
+    Parser.dottedFilter.parse(".key[]").get.value shouldBe (selectKey("key") | collectResults)
+    Parser.dottedFilter.parse(""".key.otherkey.1.[1][].[1:3].["this key"]""").get.value shouldBe
+      (selectKey("key") | selectKey("otherkey") | selectKey("1") |
+        (selectIndex(1) | collectResults)) | selectRange(1, 3) | selectKey("this key")
   }
 
   "parse called filters" in {
@@ -52,23 +51,21 @@ class ParserTest extends QQSyncTestSuite {
 
   "parse piped filters" in {
     Parser.filter.parse(".key | .dang").get.value shouldBe
-      compose(compose(id, selectKey("key")), compose(id, selectKey("dang")))
+      (selectKey("key") | selectKey("dang"))
     Parser.filter.parse("(.key) | (.dang)").get.value shouldBe
-      compose(compose(id, selectKey("key")), compose(id, selectKey("dang")))
+      (selectKey("key") | selectKey("dang"))
     Parser.filter.parse("(.key) | (dang)").get.value shouldBe
-      compose(compose(id, selectKey("key")), call("dang"))
+      (selectKey("key") | call("dang"))
   }
 
   "parse ensequenced filters" in {
     Parser.filter.parse(".key, .dang").get.value shouldBe
-      ensequence(compose(id, selectKey("key")), compose(id, selectKey("dang"))
-      )
+      ensequence(selectKey("key"), selectKey("dang"))
   }
 
   "parse enlisted filters" in {
     Parser.enlistedFilter.parse("[.key, .dang]").get.value shouldBe
-      enlist(ensequence(compose(id, selectKey("key")), compose(id, selectKey("dang")))
-      )
+      enlist(ensequence(selectKey("key"), selectKey("dang")))
   }
 
   "parse definitions" in {
@@ -106,7 +103,7 @@ class ParserTest extends QQSyncTestSuite {
         List(
           \/.left("sugar") -> selectKey("sugar"),
           \/.left("user") -> constString("user"),
-          \/.left("title") -> compose(id, collectResults(selectKey("titles")))
+          \/.left("title") -> (selectKey("titles") | collectResults)
         )
       )
   }

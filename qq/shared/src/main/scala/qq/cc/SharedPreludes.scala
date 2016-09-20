@@ -26,7 +26,7 @@ object SharedPreludes {
       import QQDSL.fix._
       Definition("map",
         params = List("x"),
-        body = compose(collectResults(id), call("x"))
+        body = compose(collectResults, call("x"))
       )
     }
 

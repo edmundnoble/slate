@@ -4,7 +4,7 @@ package cc
 import fastparse.all._
 import fastparse.parsers.Terminals
 import fastparse.{Implicits, parsers}
-import qq.data.{ConcreteFilter, Definition, QQDSL, Program}
+import qq.data.{ConcreteFilter, Definition, Program, QQDSL}
 
 import scala.collection.mutable
 import scalaz.syntax.either._
@@ -35,6 +35,9 @@ object Parser {
     def result(acc: Acc): List[T] = acc.result()
   }
 
+  import QQDSL.{fix => dsl}
+  import dsl.extraOps
+
   val dot: P0 = P(".")
   val quote: P0 = P("\"")
 
@@ -64,36 +67,36 @@ object Parser {
   )
 
   val selectKey: P[ConcreteFilter] = P(
-    (escapedStringLiteral | stringLiteral) map QQDSL.fix.selectKey
+    (escapedStringLiteral | stringLiteral) map dsl.selectKey
   )
 
   val selectIndex: P[ConcreteFilter] = P(
     for {
       fun <- wspStr("-").!.? map (_.cata(_ => (i: Int) => -i, identity[Int] _))
       number <- numericLiteral
-    } yield QQDSL.fix.selectIndex(fun(number))
+    } yield dsl.selectIndex(fun(number))
   )
 
   val selectRange: P[ConcreteFilter] = P(
-    (numericLiteral ~ ":" ~/ numericLiteral) map (QQDSL.fix.selectRange _).tupled
+    (numericLiteral ~ ":" ~/ numericLiteral) map (dsl.selectRange _).tupled
   )
 
   val dottableSimpleFilter: P[ConcreteFilter] = P(
-    ("[" ~/ ((escapedStringLiteral map QQDSL.fix.selectKey) | selectRange | selectIndex) ~ "]") | selectKey | selectIndex
+    ("[" ~/ ((escapedStringLiteral map dsl.selectKey) | selectRange | selectIndex) ~ "]") | selectKey | selectIndex
   )
 
   val dottableFilter: P[ConcreteFilter] = P(
     for {
       s <- dottableSimpleFilter
-      f <- "[]".!.?.map(_.cata(_ => QQDSL.fix.collectResults _, identity[ConcreteFilter] _))
+      f <- "[]".!.?.map(_.cata(_ => (_: ConcreteFilter) | dsl.collectResults, identity[ConcreteFilter] _))
     } yield f(s)
   )
 
   val dottedFilter: P[ConcreteFilter] = P(
     dot ~
-      (wspStr("[]") >| QQDSL.fix.collectResults(QQDSL.fix.id) | dottableFilter)
+      (wspStr("[]") >| dsl.collectResults | dottableFilter)
         .rep(sep = dot)
-        .map(_.foldLeft[ConcreteFilter](QQDSL.fix.id)(QQDSL.fix.compose))
+        .map(_.toNel.fold(dsl.id)(_.foldLeft1(dsl.compose)))
   )
 
   private val filterIdentifier: P[String] = P(
@@ -113,37 +116,37 @@ object Parser {
       as <- filter
       _ <- whitespace ~ wspStr("in") ~ whitespace
       in <- filter
-    } yield QQDSL.fix.letAsBinding(variable, as, in)
+    } yield dsl.letAsBinding(variable, as, in)
   )
 
   val callFilter: P[ConcreteFilter] = P(
     for {
       identifier <- filterIdentifier
       params <- ("(" ~/ whitespace ~ filter.rep(min = 1, sep = whitespace ~ ";" ~ whitespace) ~ whitespace ~ ")").?.map(_.getOrElse(Nil))
-    } yield QQDSL.fix.call(identifier, params)
+    } yield dsl.call(identifier, params)
   )
 
-  val constInt: P[ConcreteFilter] = P(numericLiteral map (QQDSL.fix.constNumber(_)))
+  val constInt: P[ConcreteFilter] = P(numericLiteral map (dsl.constNumber(_)))
 
-  val constString: P[ConcreteFilter] = P(escapedStringLiteral map QQDSL.fix.constString)
+  val constString: P[ConcreteFilter] = P(escapedStringLiteral map dsl.constString)
 
-  val dereference: P[ConcreteFilter] = P(variableIdentifier.map(QQDSL.fix.deref))
+  val dereference: P[ConcreteFilter] = P(variableIdentifier.map(dsl.deref))
 
   val smallFilter: P[ConcreteFilter] = P(constInt | constString | dottedFilter | dereference | callFilter)
 
   val enlistedFilter: P[ConcreteFilter] = P(
-    "[" ~/ filter.map(QQDSL.fix.enlist) ~ "]"
+    "[" ~/ filter.map(dsl.enlist) ~ "]"
   )
 
   // The reason I avoid using basicFilter is to avoid a parsing ambiguity with ensequencedFilters
   val enjectPair: P[(String \/ ConcreteFilter, ConcreteFilter)] = P(
     ((("(" ~/ filter ~ ")").map(_.right[String]) |
       filterIdentifier.map(_.left[ConcreteFilter])) ~ ":" ~ whitespace ~ piped) |
-      filterIdentifier.map(id => -\/(id) -> QQDSL.fix.selectKey(id))
+      filterIdentifier.map(id => -\/(id) -> dsl.selectKey(id))
   )
 
   val enjectedFilter: P[ConcreteFilter] = P(
-    "{" ~/ whitespace ~ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(QQDSL.fix.enject) ~ whitespace ~ "}"
+    "{" ~/ whitespace ~ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(dsl.enject) ~ whitespace ~ "}"
   )
 
   // binary operators with the same precedence level
@@ -158,16 +161,16 @@ object Parser {
   }
 
   val sequenced: P[ConcreteFilter] =
-    P(binaryOperators[ConcreteFilter](piped, "," -> QQDSL.fix.ensequence _))
+    P(binaryOperators[ConcreteFilter](piped, "," -> dsl.ensequence _))
 
   val piped: P[ConcreteFilter] =
-    P(binaryOperators[ConcreteFilter](expr, "|" -> QQDSL.fix.compose _))
+    P(binaryOperators[ConcreteFilter](expr, "|" -> dsl.compose _))
 
   val expr: P[ConcreteFilter] =
-    P(binaryOperators[ConcreteFilter](term, "+" -> QQDSL.fix.add _, "-" -> QQDSL.fix.subtract))
+    P(binaryOperators[ConcreteFilter](term, "+" -> dsl.add _, "-" -> dsl.subtract))
 
   val term: P[ConcreteFilter] =
-    P(binaryOperators[ConcreteFilter](factor, "*" -> QQDSL.fix.multiply _, "/" -> QQDSL.fix.divide _, "%" -> QQDSL.fix.modulo _))
+    P(binaryOperators[ConcreteFilter](factor, "*" -> dsl.multiply _, "/" -> dsl.divide _, "%" -> dsl.modulo _))
 
   val factor: P[ConcreteFilter] =
     P(("(" ~/ sequenced ~ ")") | letAsBinding | smallFilter | enjectedFilter | enlistedFilter)
@@ -175,7 +178,7 @@ object Parser {
   val filter: P[ConcreteFilter] = P(
     for {
       f <- sequenced
-      fun <- "?".!.?.map(_.fold(identity[ConcreteFilter] _)(_ => QQDSL.fix.silence))
+      fun <- "?".!.?.map(_.fold(identity[ConcreteFilter] _)(_ => dsl.silence))
     } yield fun(f)
   )
 
@@ -184,8 +187,7 @@ object Parser {
   )
 
   val definition: P[Definition[ConcreteFilter]] = P(
-    ("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~/ whitespace ~ filter ~ ";") map (
-      Definition[ConcreteFilter] _).tupled
+    ("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~/ whitespace ~ filter ~ ";") map (Definition[ConcreteFilter] _).tupled
   )
 
   val program: P[Program[ConcreteFilter]] = P(

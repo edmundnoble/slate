@@ -16,8 +16,6 @@ trait QQRuntime[J] {
 
   def enjectFilter(obj: List[(\/[String, CompiledFilter[J]], CompiledFilter[J])]): CompiledFilter[J]
 
-  def enlistFilter(filter: CompiledFilter[J]): CompiledFilter[J]
-
   @inline final def evaluateLeaf(component: LeafComponent[J]): CompiledFilter[J] = component match {
     case IdFilter() => _ => j => Task.now(j :: Nil)
     case Dereference(name) =>
@@ -26,6 +24,7 @@ trait QQRuntime[J] {
           p => (_: J) => Task.now(p.value :: Nil),
           (_: J) => Task.raiseError(QQRuntimeException(s"Variable $name not bound"))
         )
+    case CollectResults() => collectResults
     case ConstNumber(num) => constNumber(num)
     case ConstString(str) => constString(str)
     case SelectKey(key) => selectKey(key)
@@ -53,6 +52,8 @@ trait QQRuntime[J] {
 
   def moduloJsValues(first: J, second: J): Task[J]
 
-  def collectResults(f: CompiledFilter[J]): CompiledFilter[J]
+  def collectResults: CompiledFilter[J]
+
+  def enlistFilter(filter: CompiledFilter[J]): CompiledFilter[J]
 
 }

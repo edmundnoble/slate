@@ -69,15 +69,15 @@ object CompilerTest {
 
   val collectResultsTests: List[CompilerTest] = {
     List(
-      CompilerTest(Js.Arr(Js.Num(1), Js.Num(2), Js.Num(3), Js.Num(4)), collectResults(id), Js.Num(1), Js.Num(2), Js.Num(3), Js.Num(4)),
-      CompilerTest(Js.Obj("a" -> Js.Num(1), "b" -> Js.Str("c")), collectResults(id), Js.Num(1), Js.Str("c"))
+      CompilerTest(Js.Arr(Js.Num(1), Js.Num(2), Js.Num(3), Js.Num(4)), collectResults, Js.Num(1), Js.Num(2), Js.Num(3), Js.Num(4)),
+      CompilerTest(Js.Obj("a" -> Js.Num(1), "b" -> Js.Str("c")), collectResults, Js.Num(1), Js.Str("c"))
     )
   }
 
   val fatStackTests: List[CompilerTest] = {
     // tail recursive builder, giving you (i * 2) compositions of id with f.
     @annotation.tailrec
-    def fun(f: ConcreteFilter, i: Int): ConcreteFilter = if (i == 0) f else fun(compose(compose(id, f), id), i - 1)
+    def fun(f: ConcreteFilter, i: Int): ConcreteFilter = if (i == 0) f else fun(id | f | id, i - 1)
     List(
       CompilerTest(Js.False, fun(id, 1000), Js.False)
     )

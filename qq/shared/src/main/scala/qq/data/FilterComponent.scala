@@ -1,7 +1,7 @@
 package qq
 package data
 
-import matryoshka.Corecursive
+import matryoshka.{Corecursive, Fix}
 
 import scala.language.higherKinds
 import scalaz.std.list._
@@ -43,7 +43,7 @@ final case class EnlistFilter[A](f: A) extends FilterComponent[A]
 // Collecting the results from a filter which returns JSON arrays
 // yields a filter which concatenates the arrays' values into a single list of output values
 // Inverse of EnlistFilter.
-final case class CollectResults[A](f: A) extends FilterComponent[A]
+final case class CollectResults[A]() extends LeafComponent[A]
 
 // Runs two filters at once, appending their result lists.
 // Associative.
@@ -59,10 +59,15 @@ final case class CallFilter[A](name: String, params: List[A]) extends FilterComp
 final case class FilterMath[A](first: A, second: A, op: MathOperator) extends FilterComponent[A]
 
 sealed trait MathOperator
+
 case object Add extends MathOperator
+
 case object Subtract extends MathOperator
+
 case object Multiply extends MathOperator
+
 case object Divide extends MathOperator
+
 case object Modulo extends MathOperator
 
 // Select key, index or range in JSON object or array.
@@ -93,7 +98,6 @@ object FilterComponent {
         case ComposeFilters(first, second) => G.apply2(f(first), f(second))(ComposeFilters(_, _))
         case SilenceExceptions(a) => G.map(f(a))(SilenceExceptions(_))
         case EnlistFilter(a) => G.map(f(a))(EnlistFilter(_))
-        case CollectResults(a) => G.map(f(a))(CollectResults(_))
         case EnsequenceFilters(first, second) => G.apply2(f(first), f(second))(EnsequenceFilters(_, _))
         case EnjectFilters(obj) => obj.traverse[G, (String \/ B, B)] { case (k, v) => G.tuple2(k.traverse(f), f(v)) }.map(EnjectFilters(_))
       }

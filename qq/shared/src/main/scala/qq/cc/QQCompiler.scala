@@ -37,7 +37,6 @@ object QQCompiler {
     case SilenceExceptions(f) => (for {
       fFun <- Reader(f)
     } yield (jsv: J) => fFun(jsv).onErrorRecover { case _: QQRuntimeException => Nil }).run.right[QQCompilationException]
-    case CollectResults(f) => runtime.collectResults(f).right
     case EnsequenceFilters(first, second) => CompiledFilter.ensequenceCompiledFilters(first, second).right
     case EnjectFilters(obj) => runtime.enjectFilter(obj).right
     case FilterMath(first, second, Add) => CompiledFilter.zipFiltersWith(first, second, runtime.addJsValues).right
