@@ -33,9 +33,10 @@ object DashPrelude extends Prelude[Any] {
           case o: js.Object => Task.now(o.toDictionary.toMap)
           case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not a query params object"))
         }
-        (urlTask |@| queryParamsTask) { (url, queryParams) =>
-          identify.launchWebAuthFlow(interactive = false, Ajax.addQueryParams(url, queryParams))
-        }
+        for {
+          url <- urlTask
+          queryParams <- queryParamsTask
+        } yield identify.launchWebAuthFlow(interactive = true, Ajax.addQueryParams(url, queryParams)).delayExecution(5.seconds)
     })
 
   private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition[Any](name, 4,
@@ -79,5 +80,5 @@ object DashPrelude extends Prelude[Any] {
   def httpPut: CompiledDefinition[Any] = makeAjaxDefinition("httpPut", AjaxMethod.PUT)
 
   override def all(runtime: QQRuntime[Any]): OrCompilationError[IndexedSeq[CompiledDefinition[Any]]] =
-    Vector(googleAuth, httpDelete, httpGet, httpPost, httpPatch, httpPut).right
+    Vector(googleAuth, launchAuth, httpDelete, httpGet, httpPost, httpPatch, httpPut).right
 }

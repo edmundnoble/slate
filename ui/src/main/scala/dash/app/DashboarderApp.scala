@@ -51,6 +51,8 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   case class DashProgram(title: String, program: String, input: js.Any)
 
+  val todoistState = scala.util.Random.nextString(6)
+
   val programs =
     List(
       DashProgram("Gmail", GmailApp.program, js.Dictionary[Any]()),
@@ -59,25 +61,29 @@ object DashboarderApp extends scalajs.js.JSApp {
           "username" -> Creds.jiraUsername,
           "password" -> Creds.jiraPassword
         )
+      ),
+      DashProgram("Todoist", ".",
+        js.Dictionary[Any](
+          "client_id" -> Creds.todoistClientId,
+          "tok" -> todoistState
+        )
       )
     )
 
-  private def getCompiledPrograms: List[(String, Task[List[ExpandableContentModel]])] =
+  private def runCompiledPrograms: List[(String, Task[List[ExpandableContentModel]])] =
     programs.map {
       case DashProgram(title, program, input) =>
-        (
-          title,
+        (title,
           StorageProgram.runProgram(DomStorage.Local,
-            DashApp.getCachedCompiledProgram(program))
+            ProgramCache.getCachedCompiledProgram(program))
             .flatMap(_.valueOrThrow)
             .flatMap(f => f(Map.empty)(input)
               .map(_.flatMap(i => ExpandableContentModel.pkl.read.lift(Json.jsToUpickleRec(i))))
-            )
-        )
+            ))
     }
 
   def getContent: SearchPageState =
-    SearchPageState(getCompiledPrograms.map {
+    SearchPageState(runCompiledPrograms.map {
       case (title, program) =>
         AppProps(title,
           Observable.fromTask(
