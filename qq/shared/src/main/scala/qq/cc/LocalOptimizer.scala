@@ -4,7 +4,7 @@ package cc
 import matryoshka.Recursive.ops._
 import matryoshka._
 import qq.Platform.Rec._
-import qq.data.{ComposeFilters => Compose, _}
+import qq.data._
 import qq.util.Recursion
 
 import scala.language.higherKinds
@@ -29,7 +29,7 @@ object LocalOptimizer {
   // Some(newFilter) => The optimization produced newFilter from this filter
   type LocalOptimization[F] = F => Option[F]
 
-  implicit class localOptOps[F](val localOptimization: LocalOptimization[F]) extends AnyVal {
+  implicit class localOptimizationOrOps[F](val localOptimization: LocalOptimization[F]) extends AnyVal {
     @inline final def or(other: LocalOptimization[F]): LocalOptimization[F] =
       (f: F) => localOptimization(f).orElse(other(f))
   }
@@ -37,8 +37,8 @@ object LocalOptimizer {
   // The identity filter is an identity with respect to composition of filters
   final def idCompose[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = { fr =>
     fr.project.map(_.project) match {
-      case Compose(PathOperation(List(), PathGet()), s) => Some(embed[T](s))
-      case Compose(f, PathOperation(List(), PathGet())) => Some(embed[T](f))
+      case ComposeFilters(PathOperation(List(), PathGet()), s) => Some(embed[T](s))
+      case ComposeFilters(f, PathOperation(List(), PathGet())) => Some(embed[T](f))
       case _ => None
     }
   }
@@ -46,33 +46,30 @@ object LocalOptimizer {
   // The collect and enlist operations are inverses
   final def collectEnlist[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = { fr =>
     fr.project.map(_.project.map(_.project)) match {
-      case EnlistFilter(Compose(f, PathOperation(List(CollectResults), PathGet()))) => Some(embed[T](f))
-      case EnlistFilter(Compose(PathOperation(List(CollectResults), PathGet()), f)) => Some(embed[T](f))
+      case EnlistFilter(ComposeFilters(f, PathOperation(List(CollectResults), PathGet()))) => Some(embed[T](f))
       case EnlistFilter(PathOperation(List(CollectResults), PathGet())) => Some(embed[T](PathOperation(List(), PathGet())))
       case _ => None
     }
   }
 
-  object MathOptimizations {
-    // reduces constant math filters to their results
-    final def constReduce[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = { fr =>
-      fr.project.map(_.project) match {
-        case FilterMath(ConstNumber(f), ConstNumber(s), op) => op match {
-          case Add => Some(embed[T](ConstNumber(f + s)))
-          case Subtract => Some(embed[T](ConstNumber(f - s)))
-          case Multiply => Some(embed[T](ConstNumber(f * s)))
-          case Divide => Some(embed[T](ConstNumber(f / s)))
-          case Modulo => Some(embed[T](ConstNumber(f % s)))
-        }
-        case _ => None
+  // reduces constant math filters to their results
+  final def constMathReduce[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = { fr =>
+    fr.project.map(_.project) match {
+      case FilterMath(ConstNumber(f), ConstNumber(s), op) => op match {
+        case Add => Some(embed[T](ConstNumber(f + s)))
+        case Subtract => Some(embed[T](ConstNumber(f - s)))
+        case Multiply => Some(embed[T](ConstNumber(f * s)))
+        case Divide => Some(embed[T](ConstNumber(f / s)))
+        case Modulo => Some(embed[T](ConstNumber(f % s)))
       }
+      case _ => None
     }
   }
 
   // a function applying each of the local optimizations available, in rounds,
   // until none of the optimizations applies anymore
   @inline final def localOptimizationsƒ[T[_[_]] : Recursive : Corecursive]: T[FilterComponent] => T[FilterComponent] =
-  repeatedly[T[FilterComponent]](collectEnlist[T] or idCompose[T] or MathOptimizations.constReduce[T])
+  repeatedly[T[FilterComponent]](collectEnlist[T] or idCompose[T] or constMathReduce[T])
 
   // localOptimizationsƒ recursively applied deep into a filter
   @inline final def optimizeFilter[T[_[_]] : Recursive : Corecursive](filter: T[FilterComponent]): T[FilterComponent] =

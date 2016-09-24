@@ -80,6 +80,7 @@ object FilterComponent {
     override def traverseImpl[G[_], A, B](fa: FilterComponent[A])(f: (A) => G[B])(implicit G: Applicative[G]): G[FilterComponent[B]] = {
       fa match {
         case l: LeafComponent[_] => G.point(l.retag[B])
+        case PathOperation(components, operationF) => operationF.traverse(f).map(PathOperation(components, _))
         case LetAsBinding(name, as, in) => G.apply2(f(as), f(in))(LetAsBinding(name, _, _))
         case CallFilter(name, params) => params.traverse(f).map(CallFilter(name, _))
         case FilterMath(first, second, op) => G.apply2(f(first), f(second))(FilterMath(_, _, op))

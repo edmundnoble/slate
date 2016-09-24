@@ -9,8 +9,8 @@ class LocalOptimizerTest extends QQSyncTestSuite {
   import qq.cc.LocalOptimizer.optimizeFilter
 
   "optimize simple compositions" in {
-    optimizeFilter(id | selectKey("key")) shouldBe selectKey("key")
-    optimizeFilter(id | selectKey("key") | id) shouldBe selectKey("key")
+    optimizeFilter(id | selectKey("key")) shouldBe getPathS(selectKey("key"))
+    optimizeFilter(id | selectKey("key") | id) shouldBe getPathS(selectKey("key"))
   }
 
   "optimize collectresults and enlist duality" in {

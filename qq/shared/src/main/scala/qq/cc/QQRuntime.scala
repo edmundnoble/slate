@@ -35,12 +35,12 @@ trait QQRuntime[J] {
     case SelectRange(start, end) => selectRange(start, end)
   }
 
-  @inline final def evaluatePath(component: PathOperation[J]): CompiledFilter[J] = component match {
-    case PathOperation(components, PathGet()) =>
+  @inline final def evaluatePath(components: List[PathComponent], operation: PathOperationF[CompiledFilter[J]]): CompiledFilter[J] = operation match {
+    case PathGet() =>
       components.map(evaluateGetPathComponent)
         .nelFoldLeft1(CompiledFilter.id[J])(CompiledFilter.composeFilters[J])
-    case PathOperation(components, PathSet(set)) => ???
-    case PathOperation(components, PathModify(modify)) => ???
+    case PathSet(set) => ???
+    case PathModify(modify) => ???
   }
 
   def selectKey(key: String): CompiledFilter[J]

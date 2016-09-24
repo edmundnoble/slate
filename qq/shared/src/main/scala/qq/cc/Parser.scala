@@ -65,10 +65,6 @@ object Parser {
     numericLiteral.map(_.toDouble)
   )
 
-  val selectKey: P[PathComponent] = P(
-    (escapedStringLiteral | stringLiteral) map dsl.selectKey
-  )
-
   val selectIndex: P[PathComponent] = P(
     for {
       fun <- wspStr("-").!.? map (_.cata(_ => (i: Int) => -i, identity[Int] _))
@@ -81,14 +77,14 @@ object Parser {
   )
 
   val dottableSimpleFilter: P[PathComponent] = P(
-    ("[" ~/ ((escapedStringLiteral map dsl.selectKey) | selectRange | selectIndex) ~ "]") | selectKey | selectIndex
+    ("[" ~/ ((escapedStringLiteral map dsl.selectKey) | selectRange | selectIndex) ~ "]") | (stringLiteral map dsl.selectKey) | selectIndex
   )
 
   val pathComponent: P[List[PathComponent]] = P(
     for {
       s <- dottableSimpleFilter
       f <- "[]".!.?.map(_.cata(_ => dsl.collectResults :: Nil, Nil))
-    } yield f :+ s
+    } yield s :: f
   )
 
   val fullPath: P[List[PathComponent]] = P(

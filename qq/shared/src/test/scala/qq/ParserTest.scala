@@ -17,8 +17,8 @@ class ParserTest extends QQSyncTestSuite {
 
   "parse selections" - {
     "select key" in {
-      Parser.selectKey.parse("key").get.value shouldBe selectKey("key")
-      Parser.selectKey.parse("viewUrl").get.value shouldBe selectKey("viewUrl")
+      Parser.fullPath.parse(".key").get.value shouldBe List(selectKey("key"))
+      Parser.fullPath.parse(".viewUrl").get.value shouldBe List(selectKey("viewUrl"))
     }
     "select index" in {
       Parser.selectIndex.parse("1").get.value shouldBe selectIndex(1)
@@ -34,11 +34,11 @@ class ParserTest extends QQSyncTestSuite {
     Parser.fullPath.parse(".").get.value shouldBe Nil
     Parser.fullPath.parse(".[]").get.value shouldBe List(collectResults)
     Parser.fullPath.parse(".key").get.value shouldBe List(selectKey("key"))
-      Parser.fullPath.parse(".[1]").get.value shouldBe List(selectIndex(1))
-      Parser.fullPath.parse(".[-1]").get.value shouldBe List(selectIndex(-1))
-      Parser.fullPath.parse(".[1][]").get.value shouldBe List(selectIndex(1), collectResults)
-      Parser.fullPath.parse(".key[]").get.value shouldBe List(selectKey("key"), collectResults)
-      Parser.fullPath.parse(""".key.otherkey.1.[1][].[1:3].["this key"]""").get.value shouldBe
+    Parser.fullPath.parse(".[1]").get.value shouldBe List(selectIndex(1))
+    Parser.fullPath.parse(".[-1]").get.value shouldBe List(selectIndex(-1))
+    Parser.fullPath.parse(".[1][]").get.value shouldBe List(selectIndex(1), collectResults)
+    Parser.fullPath.parse(".key[]").get.value shouldBe List(selectKey("key"), collectResults)
+    Parser.fullPath.parse(""".key.otherkey.1.[1][].[1:3].["this key"]""").get.value shouldBe
       List(selectKey("key"), selectKey("otherkey"), selectKey("1"),
         selectIndex(1), collectResults, selectRange(1, 3), selectKey("this key"))
   }
@@ -95,16 +95,16 @@ class ParserTest extends QQSyncTestSuite {
     "string key" in (Parser.enjectPair.parse("hello: id").get.value shouldBe \/.left("hello") -> call("id"))
     "escaped string key" in (Parser.enjectPair.parse("\"hello\": id").get.value shouldBe \/.left("hello") -> call("id"))
     "filter key" in (Parser.enjectPair.parse("(hello): id").get.value shouldBe \/.right(call("hello")) -> call("id"))
-    "sugar" in (Parser.enjectPair.parse("user").get.value shouldBe \/.left("user") -> selectKey("user"))
+    "sugar" in (Parser.enjectPair.parse("user").get.value shouldBe \/.left("user") -> getPathS(selectKey("user")))
   }
 
   "parse enjected filters" in {
-    Parser.enjectedFilter.parse("{ sugar, user: \"user\", title: .titles[] }").get.value shouldBe
+    Parser.filter.parse("{ sugar, user: \"user\", title: .titles[] }").get.value shouldBe
       enject(
         List(
-          \/.left("sugar") -> selectKey("sugar"),
+          \/.left("sugar") -> getPathS(selectKey("sugar")),
           \/.left("user") -> constString("user"),
-          \/.left("title") -> (getPathS(selectKey("titles")) | collectResults)
+          \/.left("title") -> getPath(List(selectKey("titles"), collectResults))
         )
       )
   }

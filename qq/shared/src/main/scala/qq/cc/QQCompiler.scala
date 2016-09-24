@@ -31,6 +31,7 @@ object QQCompiler {
                      definitions: IndexedSeq[CompiledDefinition[J]],
                      filter: FilterComponent[CompiledFilter[J]]): OrCompilationError[CompiledFilter[J]] = filter match {
     case leaf: LeafComponent[J@unchecked] => runtime.evaluateLeaf(leaf).right
+    case PathOperation(components, operationF) => runtime.evaluatePath(components, operationF).right
     case ComposeFilters(f, s) => CompiledFilter.composeFilters(f, s).right
     case CallFilter(filterIdentifier, params) =>
       definitions.find(_.name == filterIdentifier).cata(
