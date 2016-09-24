@@ -17,8 +17,11 @@ sealed abstract class LeafComponent[A] extends FilterComponent[A] {
   final def retag[B]: LeafComponent[B] = this.asInstanceOf[LeafComponent[B]]
 }
 
-// Identity filter; function taking a value and returning it
-final case class IdFilter[A]() extends LeafComponent[A]
+// AST nodes that represent filters ignoring their input.
+sealed abstract class ConstantComponent[A] extends LeafComponent[A]
+
+// AST node containing a path selector subtree and an operation
+final case class PathOperation[A](pathComponents: List[PathComponent], operation: PathOperationF[A]) extends FilterComponent[A]
 
 // Let-binding, with raw names
 final case class LetAsBinding[A](name: String, as: A, in: A) extends FilterComponent[A]
@@ -40,11 +43,6 @@ final case class SilenceExceptions[A](f: A) extends FilterComponent[A]
 // Inverse of CollectResults.
 final case class EnlistFilter[A](f: A) extends FilterComponent[A]
 
-// Collecting the results from a filter which returns JSON arrays
-// yields a filter which concatenates the arrays' values into a single list of output values
-// Inverse of EnlistFilter.
-final case class CollectResults[A]() extends LeafComponent[A]
-
 // Runs two filters at once, appending their result lists.
 // Associative.
 final case class EnsequenceFilters[A](first: A, second: A) extends FilterComponent[A]
@@ -55,7 +53,12 @@ final case class EnjectFilters[A](obj: List[((String \/ A), A)]) extends FilterC
 // Calls another filter or filter operator.
 final case class CallFilter[A](name: String, params: List[A]) extends FilterComponent[A]
 
-// Math, lots of JS-ish special cases for certain types.
+// constants!
+final case class ConstNumber[A](value: Double) extends ConstantComponent[A]
+
+final case class ConstString[A](value: String) extends ConstantComponent[A]
+
+// Math, with operator as its own type
 final case class FilterMath[A](first: A, second: A, op: MathOperator) extends FilterComponent[A]
 
 sealed trait MathOperator
@@ -69,21 +72,6 @@ case object Multiply extends MathOperator
 case object Divide extends MathOperator
 
 case object Modulo extends MathOperator
-
-// Select key, index or range in JSON object or array.
-// Return null if asked for something not contained in the target.
-final case class SelectKey[A](key: String) extends LeafComponent[A]
-
-final case class SelectIndex[A](index: Int) extends LeafComponent[A]
-
-final case class SelectRange[A](start: Int, end: Int) extends LeafComponent[A]
-
-// AST nodes that represent filters ignoring their input.
-sealed abstract class ConstantComponent[A] extends LeafComponent[A]
-
-final case class ConstNumber[A](value: Double) extends ConstantComponent[A]
-
-final case class ConstString[A](value: String) extends ConstantComponent[A]
 
 object FilterComponent {
 
@@ -104,7 +92,7 @@ object FilterComponent {
     }
   }
 
-  // Partially apply FilterComponent parameter of C.embed
+  // Partially apply F[_] parameter as FilterComponent for Corecursive.embed
   @inline final def embed[T[_[_]]]
   (v: FilterComponent[T[FilterComponent]])(implicit C: Corecursive[T]): T[FilterComponent] = C.embed[FilterComponent](v)
 }

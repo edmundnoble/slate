@@ -4,7 +4,8 @@ package bench
 import japgolly.scalajs.benchmark._
 import japgolly.scalajs.benchmark.gui._
 import matryoshka._
-import qq.data.{ConcreteFilter, QQDSL, FilterProtocol}
+import qq.data.{ConcreteFilter, QQDSL}
+import qq.protocol.FilterProtocol
 import scodec.bits.BitVector
 
 object SerializationBench {

@@ -4,7 +4,7 @@ package cc
 import fastparse.all._
 import fastparse.parsers.Terminals
 import fastparse.{Implicits, parsers}
-import qq.data.{ConcreteFilter, Definition, Program, QQDSL}
+import qq.data._
 
 import scala.collection.mutable
 import scalaz.syntax.either._
@@ -36,7 +36,6 @@ object Parser {
   }
 
   import QQDSL.{fix => dsl}
-  import dsl.extraOps
 
   val dot: P0 = P(".")
   val quote: P0 = P("\"")
@@ -66,37 +65,49 @@ object Parser {
     numericLiteral.map(_.toDouble)
   )
 
-  val selectKey: P[ConcreteFilter] = P(
+  val selectKey: P[PathComponent] = P(
     (escapedStringLiteral | stringLiteral) map dsl.selectKey
   )
 
-  val selectIndex: P[ConcreteFilter] = P(
+  val selectIndex: P[PathComponent] = P(
     for {
       fun <- wspStr("-").!.? map (_.cata(_ => (i: Int) => -i, identity[Int] _))
       number <- numericLiteral
     } yield dsl.selectIndex(fun(number))
   )
 
-  val selectRange: P[ConcreteFilter] = P(
+  val selectRange: P[PathComponent] = P(
     (numericLiteral ~ ":" ~/ numericLiteral) map (dsl.selectRange _).tupled
   )
 
-  val dottableSimpleFilter: P[ConcreteFilter] = P(
+  val dottableSimpleFilter: P[PathComponent] = P(
     ("[" ~/ ((escapedStringLiteral map dsl.selectKey) | selectRange | selectIndex) ~ "]") | selectKey | selectIndex
   )
 
-  val dottableFilter: P[ConcreteFilter] = P(
+  val pathComponent: P[List[PathComponent]] = P(
     for {
       s <- dottableSimpleFilter
-      f <- "[]".!.?.map(_.cata(_ => (_: ConcreteFilter) | dsl.collectResults, identity[ConcreteFilter] _))
-    } yield f(s)
+      f <- "[]".!.?.map(_.cata(_ => dsl.collectResults :: Nil, Nil))
+    } yield f :+ s
   )
 
-  val dottedFilter: P[ConcreteFilter] = P(
+  val fullPath: P[List[PathComponent]] = P(
     dot ~
-      (wspStr("[]") >| dsl.collectResults | dottableFilter)
+      ((wspStr("[]") >| (dsl.collectResults :: Nil)) | pathComponent)
         .rep(sep = dot)
-        .map(_.toNel.fold(dsl.id)(_.foldLeft1(dsl.compose)))
+        .map(_.nelFoldLeft1(Nil)(_ ++ _))
+  )
+
+  val getPathFilter: P[ConcreteFilter] = P(
+    fullPath.map(dsl.getPath)
+  )
+
+  val setPathFilter: P[ConcreteFilter] = P(
+    (fullPath ~ whitespace ~ "=" ~ whitespace ~ filter).map((dsl.setPath _).tupled)
+  )
+
+  val modifyPathFilter: P[ConcreteFilter] = P(
+    (fullPath ~ whitespace ~ "|=" ~ whitespace ~ filter).map((dsl.modifyPath _).tupled)
   )
 
   private val filterIdentifier: P[String] = P(
@@ -132,7 +143,7 @@ object Parser {
 
   val dereference: P[ConcreteFilter] = P(variableIdentifier.map(dsl.deref))
 
-  val smallFilter: P[ConcreteFilter] = P(constInt | constString | dottedFilter | dereference | callFilter)
+  val smallFilter: P[ConcreteFilter] = P(constInt | constString | getPathFilter | dereference | callFilter)
 
   val enlistedFilter: P[ConcreteFilter] = P(
     "[" ~/ filter.map(dsl.enlist) ~ "]"
@@ -142,7 +153,7 @@ object Parser {
   val enjectPair: P[(String \/ ConcreteFilter, ConcreteFilter)] = P(
     ((("(" ~/ filter ~ ")").map(_.right[String]) |
       (stringLiteral | escapedStringLiteral).map(_.left[ConcreteFilter])) ~ ":" ~ whitespace ~ piped) |
-      filterIdentifier.map(id => -\/(id) -> dsl.selectKey(id))
+      filterIdentifier.map(id => -\/(id) -> dsl.getPath(List(dsl.selectKey(id))))
   )
 
   val enjectedFilter: P[ConcreteFilter] = P(

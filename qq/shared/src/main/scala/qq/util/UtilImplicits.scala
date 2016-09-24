@@ -9,22 +9,25 @@ import shapeless.Lazy
 import scala.language.{higherKinds, implicitConversions}
 import scalaz.Tags.Parallel
 import scalaz.syntax.either._
-import scalaz.{Monad, \/}
+import scalaz.syntax.tag._
+import scalaz.{@@, Monad, \/}
 
 trait UtilImplicits {
+
+  implicit def taskParallelOpsConv[A](task: Task[A]): taskParallelOps[A] = new taskParallelOps(task)
 
   // Monad with ap inconsistent with bind, for parallel operations on Tasks
   // (used for task-parallelism in QQ's compiler)
   implicit val TaskParMonad: Monad[TaskParallel] =
   new Monad[TaskParallel] {
-    override def point[A](a: => A): TaskParallel[A] = Parallel(Task.now(a))
+    override def point[A](a: => A): TaskParallel[A] = Task.now(a).parallel
 
     override def ap[A, B](fa: => TaskParallel[A])(f: => TaskParallel[(A) => B]): TaskParallel[B] = {
-      Parallel(Task.mapBoth(Parallel.unwrap(fa), Parallel.unwrap(f))((a, f) => f(a)))
+      Task.mapBoth(fa.unwrap, f.unwrap)((a, f) => f(a)).parallel
     }
 
     override def bind[A, B](fa: TaskParallel[A])(f: (A) => TaskParallel[B]): TaskParallel[B] =
-      Parallel(Parallel.unwrap(fa).flatMap(a => Parallel.unwrap(f(a))))
+      fa.unwrap.flatMap(a => f(a).unwrap).parallel
   }
 
   // sum type encoded with a single bit
@@ -69,5 +72,8 @@ trait UtilImplicits {
     Codec(enc, dec)
   }
 
+}
 
+final class taskParallelOps[A](val task: Task[A]) extends AnyVal {
+  def parallel: Task[A] @@ Parallel = scalaz.Tags.Parallel(task)
 }

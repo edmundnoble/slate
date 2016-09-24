@@ -13,7 +13,7 @@ object DashApp {
   def getCachedCompiledProgram(qqProgram: String): StorageProgram[OrCompilationError[CompiledFilter[Any]]] = {
 
     import StorageProgram._
-    import qq.data.FilterProtocol._
+    import qq.protocol.FilterProtocol._
 
     val hash = qqProgram.hashCode.toString
     for {

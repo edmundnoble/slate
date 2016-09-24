@@ -30,17 +30,17 @@ class ParserTest extends QQSyncTestSuite {
     Parser.dottableSimpleFilter.parse("[\"filter \"]").get.value shouldBe selectKey("filter ")
   }
 
-  "parse dotted filters" in {
-    Parser.dottedFilter.parse(".").get.value shouldBe id
-    Parser.dottedFilter.parse(".[]").get.value shouldBe collectResults
-    Parser.dottedFilter.parse(".key").get.value shouldBe selectKey("key")
-    Parser.dottedFilter.parse(".[1]").get.value shouldBe selectIndex(1)
-    Parser.dottedFilter.parse(".[-1]").get.value shouldBe selectIndex(-1)
-    Parser.dottedFilter.parse(".[1][]").get.value shouldBe (selectIndex(1) | collectResults)
-    Parser.dottedFilter.parse(".key[]").get.value shouldBe (selectKey("key") | collectResults)
-    Parser.dottedFilter.parse(""".key.otherkey.1.[1][].[1:3].["this key"]""").get.value shouldBe
-      (selectKey("key") | selectKey("otherkey") | selectKey("1") |
-        (selectIndex(1) | collectResults)) | selectRange(1, 3) | selectKey("this key")
+  "parse full paths" in {
+    Parser.fullPath.parse(".").get.value shouldBe Nil
+    Parser.fullPath.parse(".[]").get.value shouldBe List(collectResults)
+    Parser.fullPath.parse(".key").get.value shouldBe List(selectKey("key"))
+      Parser.fullPath.parse(".[1]").get.value shouldBe List(selectIndex(1))
+      Parser.fullPath.parse(".[-1]").get.value shouldBe List(selectIndex(-1))
+      Parser.fullPath.parse(".[1][]").get.value shouldBe List(selectIndex(1), collectResults)
+      Parser.fullPath.parse(".key[]").get.value shouldBe List(selectKey("key"), collectResults)
+      Parser.fullPath.parse(""".key.otherkey.1.[1][].[1:3].["this key"]""").get.value shouldBe
+      List(selectKey("key"), selectKey("otherkey"), selectKey("1"),
+        selectIndex(1), collectResults, selectRange(1, 3), selectKey("this key"))
   }
 
   "parse called filters" in {
@@ -51,11 +51,11 @@ class ParserTest extends QQSyncTestSuite {
 
   "parse piped filters" in {
     Parser.filter.parse(".key | .dang").get.value shouldBe
-      (selectKey("key") | selectKey("dang"))
+      (getPathS(selectKey("key")) | selectKey("dang"))
     Parser.filter.parse("(.key) | (.dang)").get.value shouldBe
-      (selectKey("key") | selectKey("dang"))
+      (getPathS(selectKey("key")) | selectKey("dang"))
     Parser.filter.parse("(.key) | (dang)").get.value shouldBe
-      (selectKey("key") | call("dang"))
+      (getPathS(selectKey("key")) | call("dang"))
   }
 
   "parse ensequenced filters" in {
@@ -104,7 +104,7 @@ class ParserTest extends QQSyncTestSuite {
         List(
           \/.left("sugar") -> selectKey("sugar"),
           \/.left("user") -> constString("user"),
-          \/.left("title") -> (selectKey("titles") | collectResults)
+          \/.left("title") -> (getPathS(selectKey("titles")) | collectResults)
         )
       )
   }

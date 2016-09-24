@@ -6,12 +6,15 @@ import monix.scalaz._
 import qq.data.VarBinding
 import qq.util._
 
-import scalaz.Tags.Parallel
+import scalaz.syntax.tag._
 import scalaz.std.list._
 import scalaz.syntax.traverse._
 import scalaz.{PlusEmpty, Reader}
 
 object CompiledFilter {
+
+  @inline final def id[J]: CompiledFilter[J] =
+    (_: VarBindings[J]) => (j: J) => Task.now(j :: Nil)
 
   @inline final def const[J](value: J): CompiledFilter[J] =
     (_: VarBindings[J]) => (_: J) => Task.now(value :: Nil)
@@ -19,12 +22,10 @@ object CompiledFilter {
   @inline final def func[J](f: CompiledProgram[J]): CompiledFilter[J] =
     (_: VarBindings[J]) => f
 
-  def composeFilters[J](f: CompiledFilter[J], s: CompiledFilter[J]): CompiledFilter[J] = {
-    (for {
-      fstFun <- Reader(f)
-      sndFun <- Reader(s)
-    } yield
-      fstFun.andThen(_.flatMap(t => Parallel.unwrap(t.traverseM[TaskParallel, J](sndFun.andThen(Parallel(_))))))).run
+  def composeFilters[J](f: CompiledFilter[J], s: CompiledFilter[J]): CompiledFilter[J] = { bindings =>
+      val fstFun = f(bindings)
+      val sndFun = s(bindings)
+      fstFun.andThen(_.flatMap(_.traverseM[TaskParallel, J](sndFun.andThen(_.parallel)).unwrap))
   }
 
   def ensequenceCompiledFilters[J]

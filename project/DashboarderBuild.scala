@@ -30,7 +30,6 @@ object DashboarderBuild {
     "org.scala-js" %%% "scalajs-dom" % "0.9.0",
     "com.github.japgolly.scalajs-react" %%% "core" % "0.11.1",
     "com.github.japgolly.scalajs-react" %%% "ext-scalaz72" % "0.11.1",
-    "com.github.japgolly.scalajs-react" %%% "ext-monocle" % "0.11.1",
     "com.github.japgolly.scalacss" %%% "ext-react" % "0.5.0"
   )
 
