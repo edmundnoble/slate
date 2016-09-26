@@ -18,5 +18,7 @@ class JSCompilerTest extends QQAsyncTestSuite {
   "collect results" in Future.traverse(collectResultsTests)(runTest)
   "fat stack" taggedAs StackTest in Future.traverse(fatStackTests)(runTest)
   "variables" in Future.traverse(variableTests)(runTest)
+  "path setters" in Future.traverse(pathSetterTests)(runTest)
+  "path modifiers" in Future.traverse(pathModifierTests)(runTest)
 
 }

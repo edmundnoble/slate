@@ -76,13 +76,13 @@ object Parser {
     (numericLiteral ~ ":" ~/ numericLiteral) map (dsl.selectRange _).tupled
   )
 
-  val dottableSimpleFilter: P[PathComponent] = P(
+  val simplePathComponent: P[PathComponent] = P(
     ("[" ~/ ((escapedStringLiteral map dsl.selectKey) | selectRange | selectIndex) ~ "]") | (stringLiteral map dsl.selectKey) | selectIndex
   )
 
   val pathComponent: P[List[PathComponent]] = P(
     for {
-      s <- dottableSimpleFilter
+      s <- simplePathComponent
       f <- "[]".!.?.map(_.cata(_ => dsl.collectResults :: Nil, Nil))
     } yield s :: f
   )

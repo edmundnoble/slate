@@ -89,4 +89,40 @@ object CompilerTest {
       CompilerTest(Js.Str("input"), letAsBinding("hello", add(id, constString("hi")), add(constString("hey"), deref("hello"))), Js.Str("heyinputhi"))
     )
 
+  val pathSetterTests: List[CompilerTest] =
+    List(
+      CompilerTest(
+        Js.Arr(
+          Js.Obj("key1" -> Js.Obj("key2" -> Js.Str("input1")), "out1" -> Js.Str("output1")),
+          Js.Obj("key1" -> Js.Obj("key2" -> Js.Str("input2")), "out1" -> Js.Str("output2"))
+        ),
+        getPathS(collectResults) | setPath(List(selectKey("key1"), selectKey("key2")), getPathS(selectKey("out1"))),
+        Js.Obj("key1" -> Js.Obj("key2" -> Js.Str("output1")), "out1" -> Js.Str("output1")),
+        Js.Obj("key1" -> Js.Obj("key2" -> Js.Str("output2")), "out1" -> Js.Str("output2"))
+      )
+    )
+
+  val pathModifierTests: List[CompilerTest] =
+    List(
+      CompilerTest(
+        Js.Arr(
+          Js.Obj("key1" -> Js.Obj("out1" -> Js.Str("output1"))),
+          Js.Obj("key1" -> Js.Obj("out1" -> Js.Str("output2")))
+        ),
+        modifyPath(List(collectResults, selectKey("key1"), selectKey("out1")), add(id, constString("mod"))),
+        Js.Obj("key1" -> Js.Obj("out1" -> Js.Str("output1mod"))),
+        Js.Obj("key1" -> Js.Obj("out1" -> Js.Str("output2mod")))
+      ),
+      CompilerTest(
+        Js.Arr(
+          Js.Obj("key1" -> Js.Obj("out1" -> Js.Str("output1"))),
+          Js.Obj("key1" -> Js.Obj("out1" -> Js.Str("output2")))
+        ),
+        modifyPath(List(collectResults, selectKey("key1")), getPathS(selectKey("out1"))),
+        Js.Obj("key1" -> Js.Str("output1")),
+        Js.Obj("key1" -> Js.Str("output2"))
+      )
+    )
+
+
 }

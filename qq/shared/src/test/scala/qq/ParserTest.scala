@@ -26,8 +26,8 @@ class ParserTest extends QQSyncTestSuite {
     }
   }
 
-  "parse dottable filters" in {
-    Parser.dottableSimpleFilter.parse("[\"filter \"]").get.value shouldBe selectKey("filter ")
+  "parse single path components" in {
+    Parser.pathComponent.parse("[\"filter \"]").get.value shouldBe List(selectKey("filter "))
   }
 
   "parse full paths" in {
@@ -41,6 +41,18 @@ class ParserTest extends QQSyncTestSuite {
     Parser.fullPath.parse(""".key.otherkey.1.[1][].[1:3].["this key"]""").get.value shouldBe
       List(selectKey("key"), selectKey("otherkey"), selectKey("1"),
         selectIndex(1), collectResults, selectRange(1, 3), selectKey("this key"))
+  }
+
+  "parse path getters" in {
+    Parser.filter.parse(".key").get.value shouldBe getPathS(selectKey("key"))
+  }
+
+  "parse path setters" in {
+    Parser.filter.parse(".key = 1").get.value shouldBe setPath(List(selectKey("key")), constNumber(1))
+  }
+
+  "parse path modifiers" in {
+    Parser.filter.parse(".key |= . + 1").get.value shouldBe modifyPath(List(selectKey("key")), add(id, constNumber(1)))
   }
 
   "parse called filters" in {

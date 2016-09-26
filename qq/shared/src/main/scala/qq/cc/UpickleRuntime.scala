@@ -26,17 +26,14 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
       case v => Task.raiseError(QQRuntimeException("Tried to collect results from " + print(v) + " but it's not an array"))
     }
     case SelectKey(key) => {
-      case obj: Js.Obj => obj
-        .value
-        .toList
-        .traverse { case (k, v) => if (k == key) f(v).map(_.map(k -> _)) else Task.now((k -> v) :: Nil) }
-        .map(_.map(Js.Obj(_: _*)))
+      case obj: Js.Obj =>
+        obj.value.toMap.get(key).fold(Task.now((Js.Null: Js.Value) :: Nil))(f(_)).map(_.map(v => Js.Obj(obj.value.toMap.updated(key, v).toList: _*)))
       case v => Task.raiseError(QQRuntimeException("Tried to select key " + key + " from " + print(v) + " but it's not an array"))
     }
     case SelectIndex(index) => {
       case arr: Js.Arr =>
         if (arr.value.length <= index) {
-          Task.raiseError(???)
+          Task.now(Js.Null :: Nil)
         } else {
           f(arr.value(index)).map {
             _.map { v =>
@@ -56,11 +53,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
       case v => Task.raiseError(QQRuntimeException("Tried to collect results from " + print(v) + " but it's not an array"))
     }
     case SelectKey(key) => {
-      case obj: Js.Obj => obj
-        .value
-        .toList
-        .traverse { case (k, v) => if (k == key) f(obj).map(_.map(k -> _)) else Task.now((k -> v) :: Nil) }
-        .map(_.map(Js.Obj(_: _*)))
+      case obj: Js.Obj => f(obj).map(_.map(v => Js.Obj(obj.value.toMap.updated(key, v).toList: _*)))
       case v => Task.raiseError(QQRuntimeException("Tried to select key " + key + " from " + print(v) + " but it's not an array"))
     }
     case SelectIndex(index) => {
@@ -119,7 +112,9 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
     case (f: Js.Obj, s: Js.Obj) =>
       val firstMap = f.value.toMap.mapValues(Task.now)
       val secondMap = s.value.toMap.mapValues(Task.now)
-      firstMap.unionWith(secondMap) { (f, s) => Task.mapBoth(f, s)(addJsValues).flatten[Js.Value] }.sequence.map(o => Js.Obj(o.toSeq: _*))
+      firstMap.unionWith(secondMap) {
+        (f, s) => Task.mapBoth(f, s)(addJsValues).flatten[Js.Value]
+      }.sequence.map(o => Js.Obj(o.toSeq: _*))
     case (f, s) =>
       Task.raiseError(QQRuntimeException("can't multiply " + f.toString + " and " + s.toString))
   }
@@ -136,10 +131,13 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
       Task.raiseError(QQRuntimeException("can't modulo " + f.toString + " by " + s.toString))
   }
 
-  override def enlistFilter(filter: CompiledFilter[Js.Value]): CompiledFilter[Js.Value] = (for {fFun <- Reader(filter)} yield { jsv: Js.Value =>
-    for {
-      results <- fFun(jsv)
-    } yield Js.Arr(results: _*) :: Nil
+  override def enlistFilter(filter: CompiledFilter[Js.Value]): CompiledFilter[Js.Value] = (for {
+    fFun <- Reader(filter)
+  } yield {
+    jsv: Js.Value =>
+      for {
+        results <- fFun(jsv)
+      } yield Js.Arr(results: _*) :: Nil
   }).run
 
   override def selectKey(key: String): CompiledProgram[Js.Value] = {
@@ -196,26 +194,30 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
   override def enjectFilter(obj: List[(\/[String, CompiledFilter[Js.Value]], CompiledFilter[Js.Value])]): CompiledFilter[Js.Value] = {
     if (obj.isEmpty) {
       CompiledFilter.func[Js.Value](_ => Task.now(Js.Obj() :: Nil))
-    } else { bindings: VarBindings[Js.Value] => { jsv: Js.Value =>
-      for {
-        kvPairs <- obj.traverse[Task, List[List[(String, Js.Value)]]] {
-          case (\/-(filterKey), filterValue) =>
-            for {
-              keyResults <- filterKey(bindings)(jsv)
-              valueResults <- filterValue(bindings)(jsv)
-              keyValuePairs <- keyResults.traverse[Task, List[(String, Js.Value)]] {
-                case Js.Str(keyString) =>
-                  Task.now(valueResults.map(keyString -> _))
-                case k =>
-                  Task.raiseError(QQRuntimeException("Tried to use " + k.toString + " as a key for an object but it's not a string"))
-              }
-            } yield keyValuePairs
-          case (-\/(filterName), filterValue) =>
-            filterValue(bindings)(jsv).map(_.map(filterName -> _) :: Nil)
-        }
-        kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => foldWithPrefixes(h, l.toList: _*) }
-      } yield kvPairsProducts.map(Js.Obj(_: _ *))
-    }
+    } else {
+      bindings: VarBindings[Js.Value] => {
+        jsv: Js.Value =>
+          for {
+            kvPairs <- obj.traverse[Task, List[List[(String, Js.Value)]]] {
+              case (\/-(filterKey), filterValue) =>
+                for {
+                  keyResults <- filterKey(bindings)(jsv)
+                  valueResults <- filterValue(bindings)(jsv)
+                  keyValuePairs <- keyResults.traverse[Task, List[(String, Js.Value)]] {
+                    case Js.Str(keyString) =>
+                      Task.now(valueResults.map(keyString -> _))
+                    case k =>
+                      Task.raiseError(QQRuntimeException("Tried to use " + k.toString + " as a key for an object but it's not a string"))
+                  }
+                } yield keyValuePairs
+              case (-\/(filterName), filterValue) =>
+                filterValue(bindings)(jsv).map(_.map(filterName -> _) :: Nil)
+            }
+            kvPairsProducts = kvPairs.map(_.flatten) <^> {
+              case NonEmptyList(h, l) => foldWithPrefixes(h, l.toList: _*)
+            }
+          } yield kvPairsProducts.map(Js.Obj(_: _*))
+      }
     }
   }
 

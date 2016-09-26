@@ -62,11 +62,8 @@ object JSRuntime extends QQRuntime[Any] {
       case v => Task.raiseError(QQRuntimeException("Tried to collect results from " + print(v) + " but it's not an array"))
     }
     case SelectKey(key) => {
-      case obj: js.Object => obj
-        .toDictionary
-        .toList
-        .traverse { case (k, v) => if (k == key) f(obj).map(_.map(k -> _)) else Task.now((k -> v) :: Nil) }
-        .map(_.map(_.toJSDictionary))
+      case obj: js.Object =>
+        f(obj).map(_.map(obj.toDictionary.updated(key, _)))
       case v => Task.raiseError(QQRuntimeException("Tried to select key " + key + " from " + print(v) + " but it's not an array"))
     }
     case SelectIndex(index) => {
