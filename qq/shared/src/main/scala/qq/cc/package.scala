@@ -15,7 +15,7 @@ package object cc {
 
   implicit class ListToNelOps[A](val l: List[A]) extends AnyVal {
     def toNel: Option[NonEmptyList[A]] = if (l.isEmpty) None else Some(NonEmptyList(l.head, l.tail: _*))
-    def nelFoldLeft1(ifEmpty: A)(foldFun: (A, A) => A): A = toNel.fold(ifEmpty)(_.foldLeft1(foldFun))
+    def nelFoldLeft1(ifEmpty: A)(foldFun: (A, A) => A): A = if (l.isEmpty) (ifEmpty) else (l.reduceLeft(foldFun))
   }
 
 }

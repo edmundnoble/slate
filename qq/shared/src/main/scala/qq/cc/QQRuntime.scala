@@ -2,11 +2,15 @@ package qq
 package cc
 
 import monix.eval.Task
+import monocle.{PTraversal, Setter, Traversal}
 import qq.data._
 
+import scala.language.higherKinds
 import scalaz.{Applicative, \/}
 import scalaz.syntax.plusEmpty._
+import scalaz.std.list._
 import scalaz.syntax.foldable1._
+import scalaz.syntax.traverse._
 import scalaz.syntax.std.option._
 
 trait QQRuntime[J] {
@@ -28,26 +32,32 @@ trait QQRuntime[J] {
     case ConstString(str) => constString(str)
   }
 
-  @inline final def evaluateGetPathComponent(component: PathComponent): CompiledFilter[J] = component match {
+  @inline final def makePathComponentGetter(component: PathComponent): CompiledProgram[J] = component match {
     case CollectResults => collectResults
     case SelectKey(key) => selectKey(key)
     case SelectIndex(index) => selectIndex(index)
     case SelectRange(start, end) => selectRange(start, end)
   }
 
-  @inline final def evaluatePath(components: List[PathComponent], operation: PathOperationF[CompiledFilter[J]]): CompiledFilter[J] = operation match {
+  def setPath(component: PathComponent)(f: CompiledProgram[J]): CompiledProgram[J]
+
+  def modifyPath(component: PathComponent)(f: CompiledProgram[J]): CompiledProgram[J]
+
+  @inline final def evaluatePath(components: List[PathComponent], operation: PathOperationF[CompiledProgram[J]]): CompiledProgram[J] = operation match {
     case PathGet() =>
-      components.map(evaluateGetPathComponent)
-        .nelFoldLeft1(CompiledFilter.id[J])(CompiledFilter.composeFilters[J])
-    case PathSet(set) => ???
-    case PathModify(modify) => ???
+      components.map(makePathComponentGetter)
+        .nelFoldLeft1(CompiledProgram.id[J])(CompiledProgram.composePrograms[J])
+    case PathSet(set) =>
+      components.map(setPath).reduce((f, s) => (i: CompiledProgram[J]) => f(s(i)))(set)
+    case PathModify(modify) =>
+      components.map(modifyPath).reduce((f, s) => (i: CompiledProgram[J]) => f(s(i)))(modify)
   }
 
-  def selectKey(key: String): CompiledFilter[J]
+  def selectKey(key: String): CompiledProgram[J]
 
-  def selectIndex(index: Int): CompiledFilter[J]
+  def selectIndex(index: Int): CompiledProgram[J]
 
-  def selectRange(start: Int, end: Int): CompiledFilter[J]
+  def selectRange(start: Int, end: Int): CompiledProgram[J]
 
   def constNumber(num: Double): CompiledFilter[J]
 
@@ -63,7 +73,7 @@ trait QQRuntime[J] {
 
   def moduloJsValues(first: J, second: J): Task[J]
 
-  def collectResults: CompiledFilter[J]
+  def collectResults: CompiledProgram[J]
 
   def enlistFilter(filter: CompiledFilter[J]): CompiledFilter[J]
 

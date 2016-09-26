@@ -94,17 +94,19 @@ object Parser {
         .map(_.nelFoldLeft1(Nil)(_ ++ _))
   )
 
-  val getPathFilter: P[ConcreteFilter] = P(
-    fullPath.map(dsl.getPath)
+  def setPathFilter(path: List[PathComponent]): P[ConcreteFilter] = P(
+    ("=" ~ whitespace ~ filter).map(dsl.setPath(path, _))
   )
 
-  val setPathFilter: P[ConcreteFilter] = P(
-    (fullPath ~ whitespace ~ "=" ~ whitespace ~ filter).map((dsl.setPath _).tupled)
+  def modifyPathFilter(path: List[PathComponent]): P[ConcreteFilter] = P(
+    ("|=" ~ whitespace ~ filter).map(dsl.modifyPath(path, _))
   )
 
-  val modifyPathFilter: P[ConcreteFilter] = P(
-    (fullPath ~ whitespace ~ "|=" ~ whitespace ~ filter).map((dsl.modifyPath _).tupled)
-  )
+  private val paths =
+    for {
+      path <- fullPath
+      f <- (whitespace ~ (setPathFilter(path) | modifyPathFilter(path))) | Terminals.Pass.map(_ => dsl.getPath(path))
+    } yield f
 
   private val filterIdentifier: P[String] = P(
     //    CharIn('a' to 'z', 'A' to 'Z').rep(min = 1).!
@@ -139,7 +141,7 @@ object Parser {
 
   val dereference: P[ConcreteFilter] = P(variableIdentifier.map(dsl.deref))
 
-  val smallFilter: P[ConcreteFilter] = P(constInt | constString | getPathFilter | dereference | callFilter)
+  val smallFilter: P[ConcreteFilter] = P(constInt | constString | paths | dereference | callFilter)
 
   val enlistedFilter: P[ConcreteFilter] = P(
     "[" ~/ filter.map(dsl.enlist) ~ "]"

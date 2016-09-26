@@ -113,7 +113,9 @@ object DashboarderBuild {
 
   def defineChromeBuildTask(folderName: String, buildTaskKey: TaskKey[Attributed[sbt.File]]): Def.Initialize[Task[File]] = Def.taskDyn {
     val r = (buildTaskKey in Compile).value
-    val unpacked = Def.task { copyResources(r.get(scalaJSSourceMap).get, Seq("chrome", folderName)).value }
+    val unpacked = Def.task {
+      copyResources(r.get(scalaJSSourceMap).get, Seq("chrome", folderName)).value
+    }
     Def.task {
       val file =
         Chrome.buildExtentionDirectory(unpacked.value)(
@@ -274,24 +276,24 @@ object DashboarderBuild {
     .settings(libraryDependencies += "com.github.japgolly.scalajs-benchmark" %%% "benchmark" % "0.2.4-SNAPSHOT")
     // otherwise scalajs-benchmark doesn't work
     .settings(jsManifestFilter := {
-      import org.scalajs.core.tools.jsdep.{JSDependency, JSDependencyManifest}
+    import org.scalajs.core.tools.jsdep.{JSDependency, JSDependencyManifest}
 
-      (seq: Traversable[JSDependencyManifest]) => {
-        seq map { manifest =>
+    (seq: Traversable[JSDependencyManifest]) => {
+      seq map { manifest =>
 
-          def isOkToInclude(jsDep: JSDependency): Boolean = {
-            !List("react-dom", "react-with-addons").exists(jsDep.resourceName.startsWith)
-          }
-
-          new JSDependencyManifest(
-            origin = manifest.origin,
-            libDeps = manifest.libDeps filter isOkToInclude,
-            requiresDOM = manifest.requiresDOM,
-            compliantSemantics = manifest.compliantSemantics
-          )
+        def isOkToInclude(jsDep: JSDependency): Boolean = {
+          !List("react-dom", "react-with-addons").exists(jsDep.resourceName.startsWith)
         }
+
+        new JSDependencyManifest(
+          origin = manifest.origin,
+          libDeps = manifest.libDeps filter isOkToInclude,
+          requiresDOM = manifest.requiresDOM,
+          compliantSemantics = manifest.compliantSemantics
+        )
       }
-    })
+    }
+  })
 
   lazy val root: Project = project.in(file("."))
     .aggregate(ui, uitests, uibench, qqjvm, qqjs)

@@ -23,9 +23,9 @@ object CompiledFilter {
     (_: VarBindings[J]) => f
 
   def composeFilters[J](f: CompiledFilter[J], s: CompiledFilter[J]): CompiledFilter[J] = { bindings =>
-      val fstFun = f(bindings)
-      val sndFun = s(bindings)
-      fstFun.andThen(_.flatMap(_.traverseM[TaskParallel, J](sndFun.andThen(_.parallel)).unwrap))
+    val fstFun = f(bindings)
+    val sndFun = s(bindings)
+    fstFun.andThen(_.flatMap(_.traverseM[TaskParallel, J](sndFun.andThen(_.parallel)).unwrap))
   }
 
   def ensequenceCompiledFilters[J]

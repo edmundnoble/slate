@@ -7,6 +7,7 @@ import qq.util._
 
 import scala.language.higherKinds
 import scalaz.syntax.either._
+import scalaz.syntax.functor._
 import scalaz.syntax.std.option._
 import scalaz.Reader
 import qq.Platform.Rec._
@@ -31,7 +32,7 @@ object QQCompiler {
                      definitions: IndexedSeq[CompiledDefinition[J]],
                      filter: FilterComponent[CompiledFilter[J]]): OrCompilationError[CompiledFilter[J]] = filter match {
     case leaf: LeafComponent[J@unchecked] => runtime.evaluateLeaf(leaf).right
-    case PathOperation(components, operationF) => runtime.evaluatePath(components, operationF).right
+    case PathOperation(components, operationF) => ((_: VarBindings[J]) => runtime.evaluatePath(components, operationF.map(_(Map.empty)))).right
     case ComposeFilters(f, s) => CompiledFilter.composeFilters(f, s).right
     case CallFilter(filterIdentifier, params) =>
       definitions.find(_.name == filterIdentifier).cata(

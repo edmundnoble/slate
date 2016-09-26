@@ -3,6 +3,7 @@ package cc
 
 import monix.eval.Task
 import monix.scalaz._
+import qq.data._
 import qq.util._
 import upickle.Js
 
@@ -18,6 +19,67 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
 
   val taskOfListOfNull: Task[List[Js.Value]] = Task.now(List(Js.Null))
   val emptyArray: Js.Arr = Js.Arr()
+
+  override def modifyPath(component: PathComponent)(f: CompiledProgram[Js.Value]): CompiledProgram[Js.Value] = component match {
+    case CollectResults => {
+      case arr: Js.Arr => arr.value.toList.traverseM(f)
+      case v => Task.raiseError(QQRuntimeException("Tried to collect results from " + print(v) + " but it's not an array"))
+    }
+    case SelectKey(key) => {
+      case obj: Js.Obj => obj
+        .value
+        .toList
+        .traverse { case (k, v) => if (k == key) f(v).map(_.map(k -> _)) else Task.now((k -> v) :: Nil) }
+        .map(_.map(Js.Obj(_: _*)))
+      case v => Task.raiseError(QQRuntimeException("Tried to select key " + key + " from " + print(v) + " but it's not an array"))
+    }
+    case SelectIndex(index) => {
+      case arr: Js.Arr =>
+        if (arr.value.length <= index) {
+          Task.raiseError(???)
+        } else {
+          f(arr.value(index)).map {
+            _.map { v =>
+              Js.Arr(arr.value.updated(index, v): _*)
+            }
+          }
+        }
+      case v =>
+        Task.raiseError(QQRuntimeException("Tried to select index " + index + " from " + print(v) + " but it's not an array"))
+    }
+    case SelectRange(start, end) => ???
+  }
+
+  override def setPath(component: PathComponent)(f: CompiledProgram[Js.Value]): CompiledProgram[Js.Value] = component match {
+    case CollectResults => {
+      case arr: Js.Arr => arr.value.toList.traverseM(f)
+      case v => Task.raiseError(QQRuntimeException("Tried to collect results from " + print(v) + " but it's not an array"))
+    }
+    case SelectKey(key) => {
+      case obj: Js.Obj => obj
+        .value
+        .toList
+        .traverse { case (k, v) => if (k == key) f(obj).map(_.map(k -> _)) else Task.now((k -> v) :: Nil) }
+        .map(_.map(Js.Obj(_: _*)))
+      case v => Task.raiseError(QQRuntimeException("Tried to select key " + key + " from " + print(v) + " but it's not an array"))
+    }
+    case SelectIndex(index) => {
+      case arr: Js.Arr =>
+        if (arr.value.length <= index) {
+          Task.raiseError(???)
+        } else {
+          f(arr).map {
+            _.map { v =>
+              Js.Arr(arr.value.updated(index, v): _*)
+            }
+          }
+        }
+      case v =>
+        Task.raiseError(QQRuntimeException("Tried to select index " + index + " from " + print(v) + " but it's not an array"))
+    }
+    case SelectRange(start, end) => ???
+  }
+
 
   override def constNumber(num: Double): CompiledFilter[Js.Value] =
     CompiledFilter.const(Js.Num(num))
@@ -80,7 +142,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
     } yield Js.Arr(results: _*) :: Nil
   }).run
 
-  override def selectKey(key: String): CompiledFilter[Js.Value] = CompiledFilter.func[Js.Value] {
+  override def selectKey(key: String): CompiledProgram[Js.Value] = {
     case f: Js.Obj =>
       f.value.find(_._1 == key) match {
         case None => taskOfListOfNull
@@ -90,7 +152,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
       Task.raiseError(QQRuntimeException("Tried to select key " + key.toString + " in " + v.toString + " but it's not a dictionary"))
   }
 
-  override def selectIndex(index: Int): CompiledFilter[Js.Value] = CompiledFilter.func {
+  override def selectIndex(index: Int): CompiledProgram[Js.Value] = {
     case f: Js.Arr =>
       val seq = f.value
       if (index >= -seq.length) {
@@ -108,7 +170,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
       Task.raiseError(QQRuntimeException("Tried to select index " + index.toString + " in " + v.toString + " but it's not an array"))
   }
 
-  override def selectRange(start: Int, end: Int): CompiledFilter[Js.Value] = CompiledFilter.func {
+  override def selectRange(start: Int, end: Int): CompiledProgram[Js.Value] = {
     case f: Js.Arr =>
       val seq = f.value
       if (start < end && start < seq.length) {
@@ -122,7 +184,7 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
         " but it's not an array"))
   }
 
-  override def collectResults: CompiledFilter[Js.Value] = _ => {
+  override def collectResults: CompiledProgram[Js.Value] = {
     case arr: Js.Arr =>
       Task.now(arr.value.toList)
     case dict: Js.Obj =>
@@ -153,15 +215,12 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
         }
         kvPairsProducts = kvPairs.map(_.flatten) <^> { case NonEmptyList(h, l) => foldWithPrefixes(h, l.toList: _*) }
       } yield kvPairsProducts.map(Js.Obj(_: _ *))
-    }}
+    }
+    }
   }
 
-  override def platformPrelude
+  override def platformPrelude = UpicklePrelude
 
-  = UpicklePrelude
-
-  override def print(value: Js.Value)
-
-  = value.toString
+  override def print(value: Js.Value) = value.toString
 
 }
