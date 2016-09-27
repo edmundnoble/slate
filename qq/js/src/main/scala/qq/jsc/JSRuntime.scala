@@ -3,21 +3,18 @@ package jsc
 
 import monix.eval.Task
 import monix.scalaz._
-import monocle.{PTraversal, Setter, Traversal}
 import qq.cc._
 import qq.data._
 import qq.util._
 
 import scala.scalajs.js
-import scalaz.Tags.Parallel
 import scalaz.std.list._
 import scalaz.std.map._
 import scalaz.syntax.std.list._
 import scalaz.syntax.std.map._
 import scalaz.syntax.traverse._
-import scalaz.{-\/, Applicative, NonEmptyList, Reader, \/, \/-}
+import scalaz.{-\/, NonEmptyList, Reader, \/, \/-}
 import JsUtil.JSRichSeq
-import scala.scalajs.js.JSConverters._
 
 // This is a QQ runtime which executes all operations on native JSON values in Javascript
 object JSRuntime extends QQRuntime[Any] {

@@ -5,7 +5,6 @@ import java.util.regex.Pattern
 
 import monix.eval.Task
 import monix.scalaz._
-import qq._
 import qq.cc._
 import qq.data.CompiledDefinition
 import scodec.bits.ByteVector

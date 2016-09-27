@@ -3,16 +3,13 @@ package cc
 
 import monix.eval.Task
 import monix.scalaz._
-import monocle.{PTraversal, Setter, Traversal}
 import qq.data._
 
 import scala.language.higherKinds
-import scalaz.{Applicative, \/}
-import scalaz.syntax.plusEmpty._
+import scalaz.\/
 import scalaz.std.list._
-import scalaz.syntax.foldable1._
-import scalaz.syntax.traverse._
 import scalaz.syntax.std.option._
+import scalaz.syntax.traverse._
 
 trait QQRuntime[J] {
 

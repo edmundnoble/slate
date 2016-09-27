@@ -69,34 +69,54 @@ object Recursion {
 
   @inline final def cata[T[_[_]] : Recursive, F[_] : Traverse, A]
   (destroy: F[A] => A): RecursiveFunction[T[F], A] = new RecursiveFunction[T[F], A] {
-    override def run(tf: T[F], loop: T[F] => Trampoline[A]): Trampoline[A] =
-      tf.project.traverse[Trampoline, A](loop) map destroy
+    override def run(tf: T[F], loop: T[F] => Trampoline[A]): Trampoline[A] = {
+      val projected = tf.project
+      val looped = projected.traverse[Trampoline, A](loop)
+      val destroyed = looped map destroy
+      destroyed
+    }
   }
 
   // if I find this useful I will feel very good about myself
   @inline final def cata2M[T[_[_]] : Recursive, F[_] : Traverse, M[_] : Monad, A]
   (destroy2: F[F[A]] => M[A]): RecursiveFunction[T[F], M[A]] = new RecursiveFunction[T[F], M[A]] {
     override def run(tf: T[F], loop: T[F] => Trampoline[M[A]]): Trampoline[M[A]] = {
-      tf.project.map(_.project).map(_.map(loop)).traverse(_.sequence).map(_.traverse(_.sequence)).map(_.flatMap(destroy2))
+      val project2: F[F[T[F]]] = tf.project.map(_.project)
+      val looped: F[F[Trampoline[M[A]]]] = project2.map(_.map(loop))
+      val traverseTrampoline: Trampoline[F[F[M[A]]]] = looped.traverse(_.sequence[Trampoline, M[A]])
+      val traverseM: Trampoline[M[F[F[A]]]] = traverseTrampoline.map(_.traverse(_.sequence))
+      traverseM.map(_.flatMap(destroy2))
     }
   }
 
   @inline final def cataM[T[_[_]] : Recursive, F[_] : Traverse, M[_] : Monad, A]
   (destroy: F[A] => M[A]): RecursiveFunction[T[F], M[A]] = new RecursiveFunction[T[F], M[A]] {
-    override def run(tf: T[F], loop: T[F] => Trampoline[M[A]]): Trampoline[M[A]] =
-      tf.project.traverse[Trampoline, M[A]](loop) map (_.sequence[M, A].flatMap(destroy))
+    override def run(tf: T[F], loop: T[F] => Trampoline[M[A]]): Trampoline[M[A]] = {
+      val projected: F[T[F]] = tf.project
+      val looped: Trampoline[F[M[A]]] = projected.traverse[Trampoline, M[A]](loop)
+      val sequenced: Trampoline[M[F[A]]] = looped.map(_.sequence[M, A])
+      val destroyed: Trampoline[M[A]] = sequenced.map(_.flatMap(destroy))
+      destroyed
+    }
   }
 
   @inline final def transAnaT[T[_[_]] : TraverseT, F[_] : Traverse]
   (rewrite: T[F] => T[F]): RecursiveFunction[T[F], T[F]] = new RecursiveFunction[T[F], T[F]] {
     override def run(tf: T[F], loop: T[F] => Trampoline[T[F]]): Trampoline[T[F]] =
-      tf.traverse[Trampoline, F](ftf => ftf.traverse[Trampoline, T[F]](tf => loop(rewrite(tf))))
+      tf.traverse[Trampoline, F] { (ftf: F[T[F]]) =>
+        val rewritten: F[T[F]] = ftf.map(rewrite)
+        val looped: Trampoline[F[T[F]]] = rewritten.traverse[Trampoline, T[F]](loop)
+        looped
+      }
   }
 
   @inline final def transCataT[T[_[_]] : TraverseT, F[_] : Traverse]
   (rewrite: T[F] => T[F]): RecursiveFunction[T[F], T[F]] = new RecursiveFunction[T[F], T[F]] {
-    override def run(tf: T[F], loop: T[F] => Trampoline[T[F]]): Trampoline[T[F]] =
-      tf.traverse[Trampoline, F](ftf => ftf.traverse[Trampoline, T[F]](tf => loop(tf))).map(rewrite)
+    override def run(tf: T[F], loop: T[F] => Trampoline[T[F]]): Trampoline[T[F]] = {
+      val looped: Trampoline[T[F]] = tf.traverse[Trampoline, F]((ftf: F[T[F]]) => ftf.traverse[Trampoline, T[F]](loop))
+      val rewritten: Trampoline[T[F]] = looped.map(rewrite)
+      rewritten
+    }
   }
 
   @inline final def allocate[T[_[_]] : Recursive, F[_] : Functor](tf: T[F]): Fix[F] =

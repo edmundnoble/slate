@@ -11,7 +11,6 @@ import upickle.Js
 
 import scalaz.Reader
 import scalaz.std.list._
-import scalaz.syntax.apply._
 import scalaz.syntax.either._
 import scalaz.syntax.traverse._
 
