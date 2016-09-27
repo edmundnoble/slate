@@ -156,9 +156,9 @@ class ParserTest extends QQSyncTestSuite {
     "in a filter call" in (Parser.filter.parse("f($hello)").get.value shouldBe call("f", List(deref("hello"))))
   }
 
-  "let bindings" - {
-    "plain binding" in (Parser.letAsBinding.parse("let $d as . in .").get.value shouldBe letAsBinding("d", id, id))
-    "in a filter" in (Parser.filter.parse(". | let $d as . in .").get.value shouldBe compose(id, letAsBinding("d", id, id)))
+  "as bindings" - {
+    "plain binding" in (Parser.asBinding.parse("$d as . in .").get.value shouldBe asBinding("d", id, id))
+    "in a filter" in (Parser.filter.parse(". | $d as . in .").get.value shouldBe compose(id, asBinding("d", id, id)))
   }
 
 }

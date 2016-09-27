@@ -31,7 +31,11 @@ object JSRuntime extends QQRuntime[Any] {
       case obj: js.Object => obj
         .toDictionary
         .toList
-        .traverse { case (k, v) => if (k == key) f(v).map(_.map(k -> _)) else Task.now((k -> v) :: Nil) }
+        .traverse[Task, List[(String, Any)]] {
+        case (k, v) =>
+          if (k == key) f(v).map(_.map(k -> _))
+          else Task.now((k -> v) :: Nil)
+      }
         .map(_.map(_.toJSDictionary))
       case v => Task.raiseError(QQRuntimeException("Tried to select key " + key + " from " + print(v) + " but it's not an array"))
     }
@@ -122,9 +126,9 @@ object JSRuntime extends QQRuntime[Any] {
     case (f: js.Object, s: js.Object) =>
       val firstMap = f.toDictionary.toMap.mapValues(Task.now)
       val secondMap = s.toDictionary.toMap.mapValues(Task.now)
-      firstMap.unionWith(secondMap) {
+      mapInstance[String].sequence(firstMap.unionWith(secondMap) {
         Task.mapBoth(_, _)(addJsValues).flatten
-      }.sequence.map(o => js.Dictionary(o.toSeq: _*))
+      }).map(o => js.Dictionary(o.toSeq: _*))
     case (f, s) =>
       Task.raiseError(QQRuntimeException("can't multiply " + print(f) + " and " + print(s)))
   }
@@ -226,9 +230,9 @@ object JSRuntime extends QQRuntime[Any] {
     }
   }
 
-  override def platformPrelude = JSPrelude
+  override def platformPrelude: PlatformPrelude[Any] = JSPrelude
 
-  override def print(value: Any) = print(value)
+  override def print(value: Any): String = Json.jsToString(value)
 
 }
 

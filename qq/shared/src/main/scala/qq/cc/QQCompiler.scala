@@ -45,7 +45,7 @@ object QQCompiler {
         },
         NoSuchMethod(filterIdentifier).left
       )
-    case LetAsBinding(name, as, in) => CompiledFilter.letBinding(name, as, in).right
+    case AsBinding(name, as, in) => CompiledFilter.asBinding(name, as, in).right
     case EnlistFilter(f) => runtime.enlistFilter(f).right
     case SilenceExceptions(f) => (for {
       fFun <- Reader(f)

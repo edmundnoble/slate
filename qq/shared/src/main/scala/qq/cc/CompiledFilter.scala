@@ -41,7 +41,7 @@ object CompiledFilter {
     }).run
 
 
-  def letBinding[J](name: String, as: CompiledFilter[J], in: CompiledFilter[J]): CompiledFilter[J] = {
+  def asBinding[J](name: String, as: CompiledFilter[J], in: CompiledFilter[J]): CompiledFilter[J] = {
     (bindings: VarBindings[J]) =>
       (v: J) => {
         val res = as(bindings)(v)

@@ -117,15 +117,14 @@ object Parser {
     "$" ~ filterIdentifier
   )
 
-  val letAsBinding: P[ConcreteFilter] = P(
+  val asBinding: P[ConcreteFilter] = P(
     for {
-      _ <- wspStr("let") ~ whitespace
       variable <- variableIdentifier
       _ <- whitespace ~ wspStr("as") ~ whitespace
       as <- filter
       _ <- whitespace ~ wspStr("in") ~ whitespace
       in <- filter
-    } yield dsl.letAsBinding(variable, as, in)
+    } yield dsl.asBinding(variable, as, in)
   )
 
   val callFilter: P[ConcreteFilter] = P(
@@ -182,7 +181,7 @@ object Parser {
     P(binaryOperators[ConcreteFilter](factor, "*" -> dsl.multiply _, "/" -> dsl.divide _, "%" -> dsl.modulo _))
 
   val factor: P[ConcreteFilter] =
-    P(("(" ~/ sequenced ~ ")") | letAsBinding | smallFilter | enjectedFilter | enlistedFilter)
+    P(("(" ~/ sequenced ~ ")") | asBinding | smallFilter | enjectedFilter | enlistedFilter)
 
   val filter: P[ConcreteFilter] = P(
     for {

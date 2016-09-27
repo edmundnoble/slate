@@ -16,7 +16,7 @@ object Unsafe {
 
   object Liskov1 {
     implicit object seq extends Liskov1[Seq, Iterable] {
-      override def apply[A] = Liskov.isa[Seq[A], Iterable[A]]
+      override def apply[A]: Seq[A] <~< Iterable[A] = Liskov.isa[Seq[A], Iterable[A]]
     }
   }
 
@@ -25,7 +25,7 @@ object Unsafe {
   }
   object GenericBuilderFactory {
     implicit object seq extends GenericBuilderFactory[Seq] {
-      override def newBuilder[A] = Seq.newBuilder[A]
+      override def newBuilder[A]: mutable.Builder[A, Seq[A]] = Seq.newBuilder[A]
     }
   }
 

@@ -23,8 +23,8 @@ sealed abstract class ConstantComponent[A] extends LeafComponent[A]
 // AST node containing a path selector subtree and an operation
 final case class PathOperation[A](pathComponents: List[PathComponent], operation: PathOperationF[A]) extends FilterComponent[A]
 
-// Let-binding, with raw names
-final case class LetAsBinding[A](name: String, as: A, in: A) extends FilterComponent[A]
+// Variable binding, with raw names and lexical scoping
+final case class AsBinding[A](name: String, as: A, in: A) extends FilterComponent[A]
 
 // Access let-bindings
 final case class Dereference[A](name: String) extends ConstantComponent[A]
@@ -81,7 +81,7 @@ object FilterComponent {
       fa match {
         case l: LeafComponent[_] => G.point(l.retag[B])
         case PathOperation(components, operationF) => operationF.traverse(f).map(PathOperation(components, _))
-        case LetAsBinding(name, as, in) => G.apply2(f(as), f(in))(LetAsBinding(name, _, _))
+        case AsBinding(name, as, in) => G.apply2(f(as), f(in))(AsBinding(name, _, _))
         case CallFilter(name, params) => params.traverse(f).map(CallFilter(name, _))
         case FilterMath(first, second, op) => G.apply2(f(first), f(second))(FilterMath(_, _, op))
         case ComposeFilters(first, second) => G.apply2(f(first), f(second))(ComposeFilters(_, _))

@@ -37,7 +37,7 @@ def contentFromFilter: { title: .name,
                          titleUrl: .viewUrl,
                          content: [.issues[] | contentFromIssue] };
 
-let $auth as authHeaders in
+$auth as authHeaders in
   httpGet("https://dashboarder.atlassian.net/rest/api/2/filter/favourite"; {}; {}; $auth)
       | extractFilters($auth)
       | contentFromFilter

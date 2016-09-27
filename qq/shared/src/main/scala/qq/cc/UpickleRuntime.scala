@@ -114,9 +114,9 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
     case (f: Js.Obj, s: Js.Obj) =>
       val firstMap = f.value.toMap.mapValues(Task.now)
       val secondMap = s.value.toMap.mapValues(Task.now)
-      firstMap.unionWith(secondMap) {
+      mapInstance[String].sequence(unionWith(firstMap, secondMap) {
         (f, s) => Task.mapBoth(f, s)(addJsValues).flatten[Js.Value]
-      }.sequence.map(o => Js.Obj(o.toSeq: _*))
+      }).map(o => Js.Obj(o.toSeq: _*))
     case (f, s) =>
       Task.raiseError(QQRuntimeException("can't multiply " + f.toString + " and " + s.toString))
   }
@@ -223,8 +223,8 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
     }
   }
 
-  override def platformPrelude = UpicklePrelude
+  override def platformPrelude: PlatformPrelude[Js.Value] = UpicklePrelude
 
-  override def print(value: Js.Value) = value.toString
+  override def print(value: Js.Value): String = value.toString
 
 }

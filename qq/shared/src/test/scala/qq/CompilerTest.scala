@@ -85,12 +85,13 @@ object CompilerTest {
 
   val variableTests: List[CompilerTest] =
     List(
-      CompilerTest(Js.Str("input"), letAsBinding("hello", id, deref("hello")), Js.Str("input")),
-      CompilerTest(Js.Str("input"), letAsBinding("hello", add(id, constString("hi")), add(constString("hey"), deref("hello"))), Js.Str("heyinputhi"))
+      CompilerTest(Js.Str("input"), asBinding("hello", id, deref("hello")), Js.Str("input")),
+      CompilerTest(Js.Str("input"), asBinding("hello", add(id, constString("hi")), add(constString("hey"), deref("hello"))), Js.Str("heyinputhi"))
     )
 
   val pathSetterTests: List[CompilerTest] =
     List(
+      CompilerTest(Js.Num(2), setPath(Nil, constNumber(3)), Js.Num(3)),
       CompilerTest(
         Js.Arr(
           Js.Obj("key1" -> Js.Obj("key2" -> Js.Str("input1")), "out1" -> Js.Str("output1")),
@@ -104,6 +105,7 @@ object CompilerTest {
 
   val pathModifierTests: List[CompilerTest] =
     List(
+      CompilerTest(Js.Num(2), modifyPath(Nil, constNumber(3)), Js.Num(3)),
       CompilerTest(
         Js.Arr(
           Js.Obj("key1" -> Js.Obj("out1" -> Js.Str("output1"))),
@@ -121,6 +123,17 @@ object CompilerTest {
         modifyPath(List(collectResults, selectKey("key1")), getPathS(selectKey("out1"))),
         Js.Obj("key1" -> Js.Str("output1")),
         Js.Obj("key1" -> Js.Str("output2"))
+      ),
+      CompilerTest(
+        Js.Arr(
+          Js.Obj("out1" -> Js.Str("output1")),
+          Js.Obj("out1" -> Js.Str("output2"))
+        ),
+        modifyPath(List(selectIndex(0)), getPathS(selectKey("out1"))),
+        Js.Arr(
+          Js.Str("output1"),
+          Js.Obj("out1" -> Js.Str("output2"))
+        )
       )
     )
 

@@ -67,7 +67,7 @@ object FilterProtocol {
   implicit def filterMathDiscriminator[A]: Discriminator[FilterComponent[A], FilterMath[A], Int] = Discriminator(7)
   implicit def constNumberDiscriminator[A]: Discriminator[FilterComponent[A], ConstNumber[A], Int] = Discriminator(8)
   implicit def constStringDiscriminator[A]: Discriminator[FilterComponent[A], ConstString[A], Int] = Discriminator(9)
-  implicit def letAsBindingDiscriminator[A]: Discriminator[FilterComponent[A], LetAsBinding[A], Int] = Discriminator(10)
+  implicit def asBindingDiscriminator[A]: Discriminator[FilterComponent[A], AsBinding[A], Int] = Discriminator(10)
   implicit def dereferenceDiscriminator[A]: Discriminator[FilterComponent[A], Dereference[A], Int] = Discriminator(11)
   implicit def pathOperationDiscriminator[A]: Discriminator[FilterComponent[A], PathOperation[A], Int] = Discriminator(12)
 

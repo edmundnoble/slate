@@ -43,17 +43,20 @@ trait QQRuntime[J] {
 
   @inline final def evaluatePath(components: List[PathComponent], operation: PathOperationF[CompiledProgram[J]]): CompiledProgram[J] = operation match {
     case PathGet() =>
-      components.map(makePathComponentGetter)
+      components
+        .map(makePathComponentGetter)
         .nelFoldLeft1(CompiledProgram.id[J])(CompiledProgram.composePrograms[J])
     case PathSet(set) => (j: J) =>
-      val app = set(j)
-      app.flatMap {
-        _.traverse[Task, List[J]] { jj =>
-          setPath(components, j, jj)
+      set(j).flatMap {
+        _.traverseM[Task, J] {
+          setPath(components, j, _)
         }
-      }.map(_.flatten)
+      }
     case PathModify(modify) =>
-      components.map(modifyPath).reduce((f, s) => (i: CompiledProgram[J]) => f(s(i)))(modify)
+      components
+        .map(modifyPath)
+        .nelFoldLeft1(identity[CompiledProgram[J]])(
+          (f, s) => (i: CompiledProgram[J]) => f(s(i)))(modify)
   }
 
   def selectKey(key: String): CompiledProgram[J]

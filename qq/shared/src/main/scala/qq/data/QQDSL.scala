@@ -104,8 +104,8 @@ object QQDSL {
     @inline def constString(value: String): T[FilterComponent] =
       embed[T](ConstString(value))
 
-    @inline def letAsBinding(name: String, as: T[FilterComponent], in: T[FilterComponent]): T[FilterComponent] =
-      embed[T](LetAsBinding[T[FilterComponent]](name, as, in))
+    @inline def asBinding(name: String, as: T[FilterComponent], in: T[FilterComponent]): T[FilterComponent] =
+      embed[T](AsBinding[T[FilterComponent]](name, as, in))
 
     @inline def deref(name: String): T[FilterComponent] =
       embed[T](Dereference[T[FilterComponent]](name))
