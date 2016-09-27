@@ -34,14 +34,17 @@ trait PlatformPrelude[J] extends Prelude[J] {
 
   // array or object includes
   def includes: CompiledDefinition[J]
-//
-//  // array/object existential predicate transformer
-//  def exists: CompiledDefinition[J]
-//
-//  // array/object universal predicate transformer
-//  def forall: CompiledDefinition[J]
 
-  // filters
+  // array/object existential predicate transformer
+  //  def exists: CompiledDefinition[J]
+
+  // array/object universal predicate transformer
+  //  def forall: CompiledDefinition[J]
+
+  // filter
+  def select: CompiledDefinition[J]
+
+  // type filters
 
   def arrays: CompiledDefinition[J]
 
@@ -64,7 +67,7 @@ trait PlatformPrelude[J] extends Prelude[J] {
   override def all(runtime: QQRuntime[J]): QQCompilationException \/ IndexedSeq[CompiledDefinition[J]] =
     Vector(
       `null`, `true`, `false`, orElse, b64Encode, includes, // exists, forall,
-      length, keys, replaceAll, arrays, objects, iterables, booleans,
+      length, keys, replaceAll, select, arrays, objects, iterables, booleans,
       numbers, strings, nulls, values, scalars
     ).right
 

@@ -79,6 +79,12 @@ object JSPrelude extends PlatformPrelude[Any] {
       }
     )
 
+  override def select: CompiledDefinition[Any] = CompiledDefinition[Any]("select", 1, {
+    case List(filterFun) => ((bindings: VarBindings[Any]) => {
+      case values:js.Array[Any@unchecked] => values.toList.traverseM(filterFun(bindings)).map(_.filter(_ == true).toList)
+    }: CompiledProgram[Any]).right
+  })
+
   override def arrays: CompiledDefinition[Any] =
     noParamDefinition(
       "arrays", CompiledFilter.func {

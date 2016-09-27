@@ -78,6 +78,12 @@ object UpicklePrelude extends PlatformPrelude[Js.Value] {
           valueRegexReplacementList
       })
 
+  override def select: CompiledDefinition[Js.Value] = CompiledDefinition[Js.Value]("select", 1, {
+    case List(filterFun) => ((bindings: VarBindings[Js.Value]) => {
+      case Js.Arr(values@_*) => values.toList.traverseM(filterFun(bindings)).map(_.filter(_ == Js.True).toList)
+    }: CompiledProgram[Js.Value]).right
+  })
+
   override def arrays: CompiledDefinition[Js.Value] =
     noParamDefinition(
       "arrays", CompiledFilter.func {

@@ -11,6 +11,7 @@ import scala.collection.immutable.Nil
 import scalaz.std.list._
 import scalaz.std.map._
 import scalaz.syntax.std.list._
+import scalaz.syntax.either._
 import scalaz.syntax.std.map._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, NonEmptyList, Reader, \/, \/-}
