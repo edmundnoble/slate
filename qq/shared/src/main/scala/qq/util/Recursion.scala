@@ -6,10 +6,9 @@ import matryoshka.TraverseT.ops._
 import matryoshka.{Corecursive, Fix, Recursive, TraverseT}
 
 import scala.language.higherKinds
+import scalaz._
+import Scalaz._
 import scalaz.Free.Trampoline
-import scalaz.syntax.monad._
-import scalaz.syntax.traverse._
-import scalaz.{Functor, Monad, Trampoline, Traverse}
 
 object Recursion {
 
@@ -70,25 +69,33 @@ object Recursion {
 
   @inline final def cata[T[_[_]] : Recursive, F[_] : Traverse, A]
   (destroy: F[A] => A): RecursiveFunction[T[F], A] = new RecursiveFunction[T[F], A] {
-    override def run(tf: T[F], loop: T[F] => Trampoline[A]) =
+    override def run(tf: T[F], loop: T[F] => Trampoline[A]): Trampoline[A] =
       tf.project.traverse[Trampoline, A](loop) map destroy
+  }
+
+  // if I find this useful I will feel very good about myself
+  @inline final def cata2M[T[_[_]] : Recursive, F[_] : Traverse, M[_] : Monad, A]
+  (destroy2: F[F[A]] => M[A]): RecursiveFunction[T[F], M[A]] = new RecursiveFunction[T[F], M[A]] {
+    override def run(tf: T[F], loop: T[F] => Trampoline[M[A]]): Trampoline[M[A]] = {
+      tf.project.map(_.project).map(_.map(loop)).traverse(_.sequence).map(_.traverse(_.sequence)).map(_.flatMap(destroy2))
+    }
   }
 
   @inline final def cataM[T[_[_]] : Recursive, F[_] : Traverse, M[_] : Monad, A]
   (destroy: F[A] => M[A]): RecursiveFunction[T[F], M[A]] = new RecursiveFunction[T[F], M[A]] {
-    override def run(tf: T[F], loop: T[F] => Trampoline[M[A]]) =
+    override def run(tf: T[F], loop: T[F] => Trampoline[M[A]]): Trampoline[M[A]] =
       tf.project.traverse[Trampoline, M[A]](loop) map (_.sequence[M, A].flatMap(destroy))
   }
 
   @inline final def transAnaT[T[_[_]] : TraverseT, F[_] : Traverse]
   (rewrite: T[F] => T[F]): RecursiveFunction[T[F], T[F]] = new RecursiveFunction[T[F], T[F]] {
-    override def run(tf: T[F], loop: T[F] => Trampoline[T[F]]) =
+    override def run(tf: T[F], loop: T[F] => Trampoline[T[F]]): Trampoline[T[F]] =
       tf.traverse[Trampoline, F](ftf => ftf.traverse[Trampoline, T[F]](tf => loop(rewrite(tf))))
   }
 
   @inline final def transCataT[T[_[_]] : TraverseT, F[_] : Traverse]
   (rewrite: T[F] => T[F]): RecursiveFunction[T[F], T[F]] = new RecursiveFunction[T[F], T[F]] {
-    override def run(tf: T[F], loop: T[F] => Trampoline[T[F]]) =
+    override def run(tf: T[F], loop: T[F] => Trampoline[T[F]]): Trampoline[T[F]] =
       tf.traverse[Trampoline, F](ftf => ftf.traverse[Trampoline, T[F]](tf => loop(tf))).map(rewrite)
   }
 

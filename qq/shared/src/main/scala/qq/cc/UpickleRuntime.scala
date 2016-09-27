@@ -47,32 +47,33 @@ object UpickleRuntime extends QQRuntime[Js.Value] {
     case SelectRange(start, end) => ???
   }
 
-  override def setPath(component: PathComponent)(f: CompiledProgram[Js.Value]): CompiledProgram[Js.Value] = component match {
-    case CollectResults => {
-      case arr: Js.Arr => arr.value.toList.traverseM(f)
-      case v => Task.raiseError(QQRuntimeException("Tried to collect results from " + print(v) + " but it's not an array"))
-    }
-    case SelectKey(key) => {
-      case obj: Js.Obj => f(obj).map(_.map(v => Js.Obj(obj.value.toMap.updated(key, v).toList: _*)))
-      case v => Task.raiseError(QQRuntimeException("Tried to select key " + key + " from " + print(v) + " but it's not an array"))
-    }
-    case SelectIndex(index) => {
-      case arr: Js.Arr =>
-        if (arr.value.length <= index) {
-          Task.raiseError(???)
-        } else {
-          f(arr).map {
-            _.map { v =>
-              Js.Arr(arr.value.updated(index, v): _*)
-            }
+  override def setPath(components: List[PathComponent], biggerStructure: Js.Value, smallerStructure: Js.Value): Task[List[Js.Value]] = components match {
+    case (component :: rest) => component match {
+      case CollectResults => biggerStructure match {
+        case arr: Js.Arr => arr.value.toList.traverseM(setPath(rest, _, smallerStructure))
+        case v => Task.raiseError(QQRuntimeException("Tried to collect results from " + print(v) + " but it's not an array"))
+      }
+      case SelectKey(key) => biggerStructure match {
+        case obj: Js.Obj =>
+          obj.value.toMap.get(key).fold(Task.now((Js.Null: Js.Value) :: Nil))(v =>
+            setPath(rest, v, smallerStructure).map(_.map(nv => Js.Obj(obj.value.toMap.updated(key, nv).toList: _*)))
+          )
+        case v => Task.raiseError(QQRuntimeException("Tried to select key " + key + " from " + print(v) + " but it's not an array"))
+      }
+      case SelectIndex(index) => biggerStructure match {
+        case arr: Js.Arr =>
+          if (arr.value.length <= index) {
+            Task.raiseError(???)
+          } else {
+            setPath(rest, arr(index), smallerStructure).map(_.map(v => Js.Arr(arr.value.updated(index, v): _*)))
           }
-        }
-      case v =>
-        Task.raiseError(QQRuntimeException("Tried to select index " + index + " from " + print(v) + " but it's not an array"))
+        case v =>
+          Task.raiseError(QQRuntimeException("Tried to select index " + index + " from " + print(v) + " but it's not an array"))
+      }
+      case SelectRange(start, end) => ???
     }
-    case SelectRange(start, end) => ???
+    case Nil => Task.now(List(smallerStructure))
   }
-
 
   override def constNumber(num: Double): CompiledFilter[Js.Value] =
     CompiledFilter.const(Js.Num(num))

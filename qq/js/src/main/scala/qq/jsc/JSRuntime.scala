@@ -17,6 +17,7 @@ import scalaz.syntax.std.map._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, Applicative, NonEmptyList, Reader, \/, \/-}
 import JsUtil.JSRichSeq
+import scala.scalajs.js.JSConverters._
 
 // This is a QQ runtime which executes all operations on native JSON values in Javascript
 object JSRuntime extends QQRuntime[Any] {
@@ -56,34 +57,34 @@ object JSRuntime extends QQRuntime[Any] {
     case SelectRange(start, end) => ???
   }
 
-  override def setPath(component: PathComponent)(f: CompiledProgram[Any]): CompiledProgram[Any] = component match {
-    case CollectResults => {
-      case arr: js.Array[Any@unchecked] => arr.toList.traverseM(f)
-      case v => Task.raiseError(QQRuntimeException("Tried to collect results from " + print(v) + " but it's not an array"))
-    }
-    case SelectKey(key) => {
-      case obj: js.Object =>
-        f(obj).map(_.map(obj.toDictionary.updated(key, _)))
-      case v => Task.raiseError(QQRuntimeException("Tried to select key " + key + " from " + print(v) + " but it's not an array"))
-    }
-    case SelectIndex(index) => {
-      case arr: js.Array[Any@unchecked] =>
-        if (arr.length <= index) {
-          Task.raiseError(???)
-        } else {
-          f(arr).map {
-            _.map { v =>
-              val newArr = arr.jsSlice()
-              newArr(index) = v
-              newArr
-            }
+  override def setPath(components: List[PathComponent], biggerStructure: Any, smallerStructure: Any): Task[List[Any]] = components match {
+    case (component :: rest) => component match {
+      case CollectResults => biggerStructure match {
+        case arr: js.Array[Any@unchecked] => arr.toList.traverseM(setPath(rest, _, smallerStructure))
+        case v => Task.raiseError(QQRuntimeException("Tried to collect results from " + print(v) + " but it's not an array"))
+      }
+      case SelectKey(key) => biggerStructure match {
+        case obj: js.Object =>
+          obj.toDictionary.get(key).fold(Task.now((null: Any) :: Nil))(v =>
+            setPath(rest, v, smallerStructure).map(_.map(nv => js.Dictionary(obj.toDictionary.updated(key, nv).toList: _*)))
+          )
+        case v => Task.raiseError(QQRuntimeException("Tried to select key " + key + " from " + print(v) + " but it's not an array"))
+      }
+      case SelectIndex(index) => biggerStructure match {
+        case arr: js.Array[Any@unchecked] =>
+          if (arr.length <= index) {
+            Task.raiseError(???)
+          } else {
+            setPath(rest, arr(index), smallerStructure).map(_.map(v => arr.updated(index, v)))
           }
-        }
-      case v =>
-        Task.raiseError(QQRuntimeException("Tried to select index " + index + " from " + print(v) + " but it's not an array"))
+        case v =>
+          Task.raiseError(QQRuntimeException("Tried to select index " + index + " from " + print(v) + " but it's not an array"))
+      }
+      case SelectRange(start, end) => ???
     }
-    case SelectRange(start, end) => ???
+    case Nil => Task.now(List(smallerStructure))
   }
+
 
   override def constNumber(num: Double): CompiledFilter[Any] = CompiledFilter.const(num)
 
@@ -181,7 +182,7 @@ object JSRuntime extends QQRuntime[Any] {
       Task.raiseError(QQRuntimeException("Tried to select index " + print(index) + " in " + print(v) + " but it's not an array"))
   }
 
-  override def selectRange(start: Int, end: Int): CompiledFilter[Any] = CompiledFilter.func {
+  override def selectRange(start: Int, end: Int): CompiledProgram[Any] = {
     case f: js.Array[js.Object@unchecked] =>
       if (start < end && start < f.length) {
         Task.now(f.jsSlice(start, end) :: Nil)

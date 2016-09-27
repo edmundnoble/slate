@@ -2,6 +2,7 @@ package qq
 package cc
 
 import monix.eval.Task
+import monix.scalaz._
 import monocle.{PTraversal, Setter, Traversal}
 import qq.data._
 
@@ -39,7 +40,7 @@ trait QQRuntime[J] {
     case SelectRange(start, end) => selectRange(start, end)
   }
 
-  def setPath(component: PathComponent)(f: CompiledProgram[J]): CompiledProgram[J]
+  def setPath(components: List[PathComponent], biggerStructure: J, smallerStructure: J): Task[List[J]]
 
   def modifyPath(component: PathComponent)(f: CompiledProgram[J]): CompiledProgram[J]
 
@@ -47,8 +48,13 @@ trait QQRuntime[J] {
     case PathGet() =>
       components.map(makePathComponentGetter)
         .nelFoldLeft1(CompiledProgram.id[J])(CompiledProgram.composePrograms[J])
-    case PathSet(set) =>
-      components.map(setPath).reduce((f, s) => (i: CompiledProgram[J]) => f(s(i)))(set)
+    case PathSet(set) => (j: J) =>
+      val app = set(j)
+      app.flatMap {
+        _.traverse[Task, List[J]] { jj =>
+          setPath(components, j, jj)
+        }
+      }.map(_.flatten)
     case PathModify(modify) =>
       components.map(modifyPath).reduce((f, s) => (i: CompiledProgram[J]) => f(s(i)))(modify)
   }
