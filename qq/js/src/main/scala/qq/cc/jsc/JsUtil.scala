@@ -1,7 +1,7 @@
 package qq
+package cc
 package jsc
 
-import scala.collection.GenMap
 import scala.scalajs.js
 import scala.scalajs.js.Dictionary
 import scalaz.syntax.apply._

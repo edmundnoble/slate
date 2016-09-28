@@ -16,6 +16,9 @@ object Platform {
        Recursion.Unsafe.LimitStack(maxStackSize = 50)
   }
   object Js {
+    implicit class objectOps(val obj: js.Object) extends AnyVal {
+      def toDictionary: js.Dictionary[Any] = obj.asInstanceOf[js.Dictionary[Any]]
+    }
     object Unsafe {
       implicit val jsWrappedArray: GenericBuilderFactory[js.WrappedArray] = new GenericBuilderFactory[js.WrappedArray] {
         override def newBuilder[A]: mutable.Builder[A, WrappedArray[A]] = js.WrappedArray.newBuilder[A]

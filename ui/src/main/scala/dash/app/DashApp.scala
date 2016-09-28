@@ -4,7 +4,7 @@ package app
 import matryoshka.Fix
 import qq.cc._
 import qq.data.{ConcreteFilter, FilterComponent, Program}
-import qq.jsc.JSRuntime
+import qq.cc.jsc.JSRuntime
 import scodec.bits.BitVector
 import Util._
 import fastparse.core.ParseError

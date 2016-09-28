@@ -1,12 +1,12 @@
 package qq
+package cc
 package jsc
 
 import java.util.regex.Pattern
 
 import monix.eval.Task
 import monix.scalaz._
-import qq.cc._
-import qq.data.CompiledDefinition
+import data.CompiledDefinition
 import scodec.bits.ByteVector
 
 import scala.scalajs.js
@@ -14,6 +14,7 @@ import scalaz.std.list._
 import scalaz.syntax.either._
 import scalaz.syntax.monadPlus._
 import scalaz.syntax.traverse._
+import Platform.Js._
 
 object JSPrelude extends PlatformPrelude[Any] {
 

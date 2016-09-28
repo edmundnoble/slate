@@ -1,11 +1,11 @@
 package qq
+package cc
 package jsc
 
 import monix.eval.Task
 import monix.scalaz._
-import qq.cc._
-import qq.data._
-import qq.util._
+import data._
+import util._
 
 import scala.scalajs.js
 import scalaz.std.list._
@@ -13,7 +13,8 @@ import scalaz.std.map._
 import scalaz.syntax.std.map._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, Reader, \/, \/-}
-import JsUtil.JSRichSeq
+import JsUtil._
+import Platform.Js._
 
 // This is a QQ runtime which executes all operations on native JSON values in Javascript
 object JSRuntime extends QQRuntime[Any] {
@@ -83,7 +84,6 @@ object JSRuntime extends QQRuntime[Any] {
     }
     case Nil => Task.now(List(smallerStructure))
   }
-
 
   override def constNumber(num: Double): CompiledFilter[Any] = CompiledFilter.const(num)
 

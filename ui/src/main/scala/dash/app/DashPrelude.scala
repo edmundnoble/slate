@@ -6,7 +6,7 @@ import monix.eval.Task
 import org.scalajs.dom.XMLHttpRequest
 import qq.cc.{OrCompilationError, Prelude, QQRuntime, QQRuntimeException}
 import qq.data.CompiledDefinition
-import qq.jsc._
+import qq.cc.jsc._
 import qq.util._
 
 import scala.concurrent.duration._
@@ -14,6 +14,7 @@ import scala.scalajs.js
 import scalaz.syntax.either._
 import scalaz.syntax.apply._
 import monix.scalaz._
+import qq.Json
 
 object DashPrelude extends Prelude[Any] {
 

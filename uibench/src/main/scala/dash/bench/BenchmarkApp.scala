@@ -4,7 +4,7 @@ package bench
 import japgolly.scalajs.benchmark.gui.BenchmarkGUI
 import org.scalajs.dom
 import qq.cc.{CompiledFilter, QQRuntime, UpickleRuntime}
-import qq.jsc.JSRuntime
+import qq.cc.jsc.JSRuntime
 import upickle.Js
 
 import scala.scalajs.js.JSON

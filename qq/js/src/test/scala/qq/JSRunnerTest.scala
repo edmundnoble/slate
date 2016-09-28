@@ -1,7 +1,7 @@
 package qq
 
 import org.scalatest.Assertion
-import qq.jsc.{JSRuntime, Json}
+import qq.cc.jsc.JSRuntime
 import upickle.Js
 import scalaz.syntax.traverse._
 import scalaz.std.scalaFuture._

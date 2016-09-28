@@ -14,8 +14,8 @@ import monix.reactive.{Observable, OverflowStrategy}
 import monix.scalaz._
 import org.scalajs.dom
 import org.scalajs.dom.raw._
+import qq.Json
 import qq.Platform.Rec._
-import qq.jsc.Json
 import shapeless.ops.coproduct.Unifier
 
 import scala.concurrent.duration.FiniteDuration

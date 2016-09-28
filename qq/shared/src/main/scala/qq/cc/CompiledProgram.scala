@@ -1,4 +1,5 @@
-package qq.cc
+package qq
+package cc
 
 import monix.eval.Task
 import qq.util.TaskParallel
@@ -10,13 +11,13 @@ import scalaz.std.list._
 
 object CompiledProgram {
 
-  @inline final def id[J]: CompiledProgram[J] =
+  @inline def id[J]: CompiledProgram[J] =
     (j: J) => Task.now(j :: Nil)
 
-  @inline final def const[J](value: J): CompiledProgram[J] =
+  @inline def const[J](value: J): CompiledProgram[J] =
     (_: J) => Task.now(value :: Nil)
 
-  def composePrograms[J](f: CompiledProgram[J], s: CompiledProgram[J]): CompiledProgram[J] = {
+  @inline final def composePrograms[J](f: CompiledProgram[J], s: CompiledProgram[J]): CompiledProgram[J] = {
     f.andThen(_.flatMap(_.traverseM[TaskParallel, J](s.andThen(_.parallel)).unwrap))
   }
 

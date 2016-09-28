@@ -7,7 +7,7 @@ import matryoshka.{Fix, Mu, Nu}
 import matryoshka.Recursive.ops._
 import qq.cc.QQCompiler
 import qq.data.{ConcreteFilter, FilterComponent, QQDSL}
-import qq.jsc.JSRuntime
+import qq.cc.jsc.JSRuntime
 
 object CompilerBench {
 

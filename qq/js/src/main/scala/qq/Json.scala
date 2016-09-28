@@ -1,5 +1,4 @@
 package qq
-package jsc
 
 import qq.Platform.Rec._
 import qq.util.Recursion.RecursiveFunction

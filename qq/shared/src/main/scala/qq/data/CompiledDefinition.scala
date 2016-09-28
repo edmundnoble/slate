@@ -2,7 +2,7 @@ package qq
 package data
 
 import monix.eval.Task
-import qq.cc._
+import cc._
 
 import scalaz.syntax.either._
 
