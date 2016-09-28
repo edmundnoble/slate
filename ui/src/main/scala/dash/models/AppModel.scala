@@ -3,11 +3,13 @@ package models
 
 import japgolly.scalajs.react.extra.Reusability
 
-case class AppModel(content: List[ExpandableContentModel]) extends AnyVal
+import scalaz.\/
+
+case class AppModel(content: Throwable \/ List[ExpandableContentModel])
 
 object AppModel {
 
   implicit val reusability: Reusability[AppModel] =
-    Reusability.caseClass[AppModel]
+    Reusability.byRefOr_==[AppModel]
 
 }

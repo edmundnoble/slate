@@ -23,9 +23,6 @@ object Platform {
       implicit val jsWrappedArrayLiskovSeq: Liskov1[js.WrappedArray, Iterable] = new Liskov1[js.WrappedArray, Iterable] {
         override def apply[A]: js.WrappedArray[A] <~< Iterable[A] = Liskov.isa[js.WrappedArray[A], Iterable[A]]
       }
-      implicit final val UndefOrFunctor = new Functor[js.UndefOr] {
-        override def map[A, B](fa: UndefOr[A])(f: (A) => B): UndefOr[B] = fa.map(f)
-      }
     }
   }
 }

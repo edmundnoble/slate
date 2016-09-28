@@ -14,7 +14,7 @@ object CompilerBench {
   val qqCompilerSuite: GuiSuite[Int] = GuiSuite(
     Suite("QQ Compiler Benchmarks")(
       Benchmark.setup[Int, ConcreteFilter] { i =>
-        Util.buildRec[Fix](QQDSL.fix.compose(_, QQDSL.fix.selectKey("key")), i, QQDSL.fix.id)
+        Util.buildRec[Fix](QQDSL.fix.compose(_, QQDSL.fix.getPathS(QQDSL.fix.selectKey("key"))), i, QQDSL.fix.id)
       }("fix select key") { filt =>
         QQCompiler.compileFilter(JSRuntime, IndexedSeq.empty, filt)
       },
@@ -26,7 +26,7 @@ object CompilerBench {
       },
 
       Benchmark.setup[Int, Mu[FilterComponent]] { i =>
-        Util.buildRec[Fix](QQDSL.fix.compose(_, QQDSL.fix.selectKey("key")), i, QQDSL.fix.id).convertTo[Mu]
+        Util.buildRec[Fix](QQDSL.fix.compose(_, QQDSL.fix.getPathS(QQDSL.fix.selectKey("key"))), i, QQDSL.fix.id).convertTo[Mu]
       }("mu select key") { filt =>
         QQCompiler.compileFilter(JSRuntime, IndexedSeq.empty, filt)
       },
@@ -38,7 +38,7 @@ object CompilerBench {
       },
 
       Benchmark.setup[Int, Nu[FilterComponent]] { i =>
-        Util.buildRec[Fix](QQDSL.fix.compose(_, QQDSL.fix.selectKey("key")), i, QQDSL.fix.id).convertTo[Nu]
+        Util.buildRec[Fix](QQDSL.fix.compose(_, QQDSL.fix.getPathS(QQDSL.fix.selectKey("key"))), i, QQDSL.fix.id).convertTo[Nu]
       }("nu select key") { filt =>
         QQCompiler.compileFilter(JSRuntime, IndexedSeq.empty, filt)
       },

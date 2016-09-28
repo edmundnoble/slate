@@ -4,7 +4,7 @@ import monix.eval.Task
 import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
 
 import scalaz.std.string._
-import scalaz.{==>>, Monad, State, ~>}
+import scalaz.{==>>, Applicative, Coyoneda, Id, Monad, State, ~>}
 
 // Operations on a Storage with F[_] effects
 // To abstract over storage that has different effects performed by its operations
@@ -32,6 +32,8 @@ sealed abstract class StorageAction[T] {
 }
 
 object StorageAction {
+
+  type StorageActionF[A] = Coyoneda[StorageAction, A]
 
   case object Length extends StorageAction[Int] {
     override def run[F[_]](storage: Storage[F]): F[Int] = storage.length

@@ -17,7 +17,7 @@ object RunnerTest {
   import org.scalatest.Matchers._
 
   def runTest[J](runtime: QQRuntime[J], fromUpickle: Js.Value => J, toUpickle: J => Js.Value, test: RunnerTest)
-                    (implicit sch: Scheduler): Future[Assertion] =
+                (implicit sch: Scheduler): Future[Assertion] =
     Runner
       .run(runtime, test.program)(List(fromUpickle(test.input)))
       .materialize
@@ -50,10 +50,18 @@ object RunnerTest {
     List(Js.Arr(Js.Str("lol1"), Js.Str("wat1"))).right
   )
 
-  val collectResults = RunnerTest(
-    Js.Obj("titles" -> Js.Arr(Js.Str("lol1"), Js.Str("wat1"))),
-    ".titles[]",
-    List(Js.Str("lol1"), Js.Str("wat1")).right)
+  val collectResults = List(
+    RunnerTest(
+      Js.Obj("titles" -> Js.Arr(Js.Str("lol1"), Js.Str("wat1"))),
+      ".titles[]",
+      List(Js.Str("lol1"), Js.Str("wat1")).right
+    ),
+    RunnerTest(
+      Js.Num(1),
+      ".[]",
+      QQRuntimeException("Tried to flatten 1 but it's not an array").left
+    )
+  )
 
   val enjectedFilters = RunnerTest(
     Js.Obj(

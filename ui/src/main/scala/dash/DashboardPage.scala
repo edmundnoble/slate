@@ -9,6 +9,7 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 
 import scalacss.Defaults._
+import scalaz.\/
 
 object DashboardPage {
 
@@ -53,25 +54,25 @@ object DashboardPage {
       .configure(Reusability.shouldComponentUpdate)
       .reactiveReplace
 
-  case class SearchPageState(appProps: List[AppProps])
+  case class SearchPageProps(appProps: List[AppProps])
 
-  object SearchPageState {
-    implicit val reusability: Reusability[SearchPageState] =
-      Reusability.caseClass[SearchPageState]
+  object SearchPageProps {
+    implicit val reusability: Reusability[SearchPageProps] =
+      Reusability.caseClass[SearchPageProps]
   }
 
   def makeDashboardPage(appbarProps: Observable[AppBarState])(implicit sch: Scheduler
-  ): ReactComponentB[Observable[SearchPageState], SearchPageState, Unit, TopNode] =
-    ReactComponentB[Observable[SearchPageState]]("Main search page")
-      .initialState(SearchPageState(Nil))
-      .renderS { (_, state) =>
+  ): ReactComponentB[SearchPageProps, Unit, Unit, TopNode] =
+    ReactComponentB[SearchPageProps]("Main search page")
+      .stateless
+      .render_P { (props) =>
         div(
           id := "react-root",
           appBar.build(appbarProps),
           div(
             div(Styles.container,
               Styles.dashboardContainer(
-                state.appProps
+                props.appProps
                   .grouped(2)
                   .map(makeAppRow).toSeq: _*
               )
@@ -80,7 +81,6 @@ object DashboardPage {
         )
       }
       .configure(Reusability.shouldComponentUpdate)
-      .reactiveReplace
 
 }
 

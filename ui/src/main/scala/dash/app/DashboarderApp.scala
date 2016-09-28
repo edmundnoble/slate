@@ -1,13 +1,14 @@
 package dash
 package app
 
-import dash.DashboardPage.{AppBarState, SearchPageState}
+import dash.DashboardPage.{AppBarState, SearchPageProps}
 import dash.Util._
+import dash.app.DashApp.WhatCanGoWrong
 import dash.models.{AppModel, ExpandableContentModel}
 import dash.views.AppView.AppProps
-import japgolly.scalajs.react.{Addons, ReactDOM}
+import japgolly.scalajs.react.{Addons, ReactComponentM, ReactDOM, TopNode}
 import monix.eval.Task
-import monix.execution.Cancelable
+import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.observers.Subscriber.Sync
 import monix.reactive.{Observable, OverflowStrategy}
 import monix.scalaz._
@@ -15,12 +16,18 @@ import org.scalajs.dom
 import org.scalajs.dom.raw._
 import qq.Platform.Rec._
 import qq.jsc.Json
+import shapeless.ops.coproduct.Unifier
 
 import scala.concurrent.duration.FiniteDuration
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
+import scalaz.syntax.traverse._
+import scalaz.syntax.either._
+import scalaz.std.list._
+import scalaz.std.`try`._
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
+import scalaz.\/
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
@@ -75,35 +82,32 @@ object DashboarderApp extends scalajs.js.JSApp {
       case DashProgram(title, program, input) =>
         (title,
           StorageProgram.runProgram(DomStorage.Local,
-            ProgramCache.getCachedCompiledProgram(program))
-            .flatMap(_.valueOrThrow)
+            DashApp.getCachedCompiledProgram(program))
+            .flatMap(coe => coe.leftMap(implicitly[Unifier.Aux[WhatCanGoWrong, Throwable]].apply).valueOrThrow)
             .flatMap(f => f(Map.empty)(input)
               .map(_.flatMap(i => ExpandableContentModel.pkl.read.lift(Json.jsToUpickleRec(i))))
             ))
     }
 
-  def getContent: SearchPageState =
-    SearchPageState(runCompiledPrograms.map {
+  def getContent: Task[SearchPageProps] =
+    runCompiledPrograms.traverse[Task, AppProps] {
       case (title, program) =>
-        AppProps(title,
-          Observable.fromTask(
-            program.materialize.map { t =>
-              t.failed.foreach {
-                logger.error("error while retrieving programs", _)
-              }
-              t.map(AppModel(_))
-            }.dematerialize
-          )
-        )
-    }(collection.breakOut))
+        program.materialize.map { t =>
 
-  def render(container: Element, wheelPosY: Observable[Double], content: SearchPageState) = {
+          t.failed.foreach {
+            logger.error("error while retrieving programs", _)
+          }
+
+          AppProps(title, AppModel(toDisjunction(t)))
+        }
+    }.map(SearchPageProps(_))
+
+  def render(container: Element, wheelPosY: Observable[Double], content: SearchPageProps)(implicit scheduler: Scheduler): ReactComponentM[SearchPageProps, Unit, Unit, TopNode] = {
     import dash.views._
-    import monix.execution.Scheduler.Implicits.global
     val searchPage =
       DashboardPage
         .makeDashboardPage(wheelPosY.map(AppBarState(_)))
-        .build(Observable.now(content))
+        .build(content)
     val renderer = new StringRenderer.Raw(StringRenderer.formatTiny)
     val aggregateStyles =
       PlatformExports.createStyleElement(
@@ -117,6 +121,7 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   @JSExport
   def main(): Unit = {
+    import monix.execution.Scheduler.Implicits.global
     if (!js.isUndefined(Addons.Perf)) {
       logger.info("Starting perf")
       Addons.Perf.start()
@@ -124,7 +129,9 @@ object DashboarderApp extends scalajs.js.JSApp {
     }
     val container =
       dom.document.body.children.namedItem("container")
-    render(container, wheelPositionY, getContent)
+    val initialState = SearchPageProps(runCompiledPrograms.map(_._1).map(AppProps(_, AppModel(Nil.right))))
+    render(container, wheelPositionY, initialState)
+    getContent.runAsync.foreach(render(container, wheelPositionY, _))
     if (!js.isUndefined(Addons.Perf)) {
       logger.info("Stopping perf")
       Addons.Perf.stop()

@@ -11,7 +11,7 @@ import scodec.bits.BitVector
 object SerializationBench {
 
   val selectKeyBuilder: Benchmark.Builder[Int, ConcreteFilter] =
-    Benchmark.setup[Int, ConcreteFilter](i => Util.composeBuildRec[Fix](i, QQDSL.fix.selectKey("key")))
+    Benchmark.setup[Int, ConcreteFilter](i => Util.composeBuildRec[Fix](i, QQDSL.fix.getPathS(QQDSL.fix.selectKey("key"))))
   val idBuilder: Benchmark.Builder[Int, ConcreteFilter] =
     Benchmark.setup[Int, ConcreteFilter](i => Util.composeBuildRec[Fix](i, QQDSL.fix.id))
 

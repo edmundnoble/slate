@@ -3,6 +3,9 @@ package qq
 import org.scalatest.Assertion
 import qq.jsc.{JSRuntime, Json}
 import upickle.Js
+import scalaz.syntax.traverse._
+import scalaz.std.scalaFuture._
+import scalaz.std.list._
 
 import scala.concurrent.Future
 
@@ -17,7 +20,7 @@ class JSRunnerTest extends QQAsyncTestSuite {
   "ensequenced filters" in runTest(ensequencedFilters)
   "enlisted filter" in runTest(enlistedFilters)
   "select key" in runTest(selectKeyProgram)
-  "collect results" in runTest(collectResults)
+  "collect results" in collectResults.traverse(runTest)
   "enject filter" in runTest(enjectedFilters)
   "pipes" in runTest(pipes)
   "length" in runTest(lengthTest)

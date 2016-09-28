@@ -7,7 +7,8 @@ import japgolly.scalajs.react.{ReactComponentU_, ReactNode}
 import scala.concurrent.duration._
 import scalacss.Defaults._
 import scalacss.StyleA
-import scalacss.internal.{FontFace, NonEmptyVector}
+import scalacss.internal.Macros.Color
+import scalacss.internal.{AV, FontFace, NonEmptyVector}
 
 object Styles extends StyleSheet.Inline {
 
@@ -15,15 +16,15 @@ object Styles extends StyleSheet.Inline {
 
   import scala.language.postfixOps
 
-  val sanFrancisco = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-regular-webfont.woff"))
-  val sanFranciscoLight = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-thin-webfont.woff"))
-  val sanFranciscoMedium = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-medium-webfont.woff"))
-  val sanFranciscoHeavy = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-bold-webfont.woff"))
+  val sanFrancisco: FontFace = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-regular-webfont.woff"))
+  val sanFranciscoLight: FontFace = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-thin-webfont.woff"))
+  val sanFranciscoMedium: FontFace = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-medium-webfont.woff"))
+  val sanFranciscoHeavy: FontFace = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-bold-webfont.woff"))
 
-  val materialBlue = c"#2196F3"
-  val materialGrey = c"#757575"
+  val materialBlue: Color = c"#2196F3"
+  val materialGrey: Color = c"#757575"
 
-  val pseudoContent = content := "\"\""
+  val pseudoContent: AV = content := "\"\""
 
   val appBar: StyleA = style(
     addClassName("mui-appbar")

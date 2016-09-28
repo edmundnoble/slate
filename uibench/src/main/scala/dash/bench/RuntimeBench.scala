@@ -26,7 +26,7 @@ object RuntimeBench {
       )("compose with id") {
         params => params.filt(Map.empty)(params.in)
       },
-      runtimeSetup(size => (QQDSL.fix.selectKey(s"k$size"), "{" + Stream.tabulate(size)(i => raw""""k$i":"$i"""").mkString(",") + "}")
+      runtimeSetup(size => (QQDSL.fix.getPathS(QQDSL.fix.selectKey(s"k$size")), "{" + Stream.tabulate(size)(i => raw""""k$i":"$i"""").mkString(",") + "}")
       )("select key") {
         params => params.filt(Map.empty)(params.in)
       },

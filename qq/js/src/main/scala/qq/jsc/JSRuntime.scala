@@ -29,8 +29,7 @@ object JSRuntime extends QQRuntime[Any] {
     }
     case SelectKey(key) => {
       case obj: js.Object => obj
-        .toDictionary
-        .toList
+        .toDictionary.toList
         .traverse[Task, List[(String, Any)]] {
         case (k, v) =>
           if (k == key) f(v).map(_.map(k -> _))
@@ -46,7 +45,7 @@ object JSRuntime extends QQRuntime[Any] {
         } else {
           f(arr(index)).map {
             _.map { v =>
-              val newArr = arr.jsSlice()
+              val newArr = arr.jsSlice(0, arr.length)
               newArr(index) = v
               newArr
             }

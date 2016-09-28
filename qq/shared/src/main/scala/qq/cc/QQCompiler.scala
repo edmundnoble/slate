@@ -16,14 +16,13 @@ import scalaz.syntax.plusEmpty._
 object QQCompiler {
 
   def compileDefinitions[T[_[_]] : Recursive, J](runtime: QQRuntime[J],
-                                                 prelude: Option[Prelude[J]] = None,
+                                                 prelude: Prelude[J],
                                                  definitions: Program.Definitions[T[FilterComponent]]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] = {
-    val preludeDefinitions = prelude.fold(IndexedSeq.empty[CompiledDefinition[J]].right[QQCompilationException])(_.all(runtime))
-    definitions.foldLeft(preludeDefinitions)(compileDefinitionStep[T, J](runtime))
+    definitions.foldLeft(prelude.all(runtime))(compileDefinitionStep[T, J](runtime))
   }
 
   def compileProgram[T[_[_]] : Recursive, J](runtime: QQRuntime[J],
-                                             prelude: Option[Prelude[J]] = None,
+                                             prelude: Prelude[J],
                                              program: Program[T[FilterComponent]]): OrCompilationError[CompiledFilter[J]] = {
     compileDefinitions(runtime, prelude, program.defns).flatMap(compileFilter(runtime, _, program.main))
   }
