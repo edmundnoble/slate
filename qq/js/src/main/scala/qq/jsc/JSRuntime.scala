@@ -10,10 +10,9 @@ import qq.util._
 import scala.scalajs.js
 import scalaz.std.list._
 import scalaz.std.map._
-import scalaz.syntax.std.list._
 import scalaz.syntax.std.map._
 import scalaz.syntax.traverse._
-import scalaz.{-\/, NonEmptyList, Reader, \/, \/-}
+import scalaz.{-\/, Reader, \/, \/-}
 import JsUtil.JSRichSeq
 
 // This is a QQ runtime which executes all operations on native JSON values in Javascript
@@ -202,7 +201,7 @@ object JSRuntime extends QQRuntime[Any] {
 
   override def enjectFilter(obj: List[(\/[String, CompiledFilter[Any]], CompiledFilter[Any])]): CompiledFilter[Any] = {
     if (obj.isEmpty) {
-      CompiledFilter.func[Any](_ => Task.now(js.Object() :: Nil))
+      CompiledFilter.const[Any](js.Object())
     } else {
       bindings: VarBindings[Any] =>
         jsv: Any =>
@@ -222,9 +221,7 @@ object JSRuntime extends QQRuntime[Any] {
               case (-\/(filterName), filterValue) =>
                 filterValue(bindings)(jsv).map(_.map(filterName -> _) :: Nil)
             }
-            kvPairsProducts = kvPairs.map(_.flatten) <^> {
-              case NonEmptyList(h, l) => foldWithPrefixes(h, l.toList: _*)
-            }
+            kvPairsProducts = kvPairs.map(_.flatten).unconsFold(Nil, foldWithPrefixes[(String, Any)](_, _: _*))
           } yield kvPairsProducts.map(js.Dictionary[Any](_: _ *))
     }
   }

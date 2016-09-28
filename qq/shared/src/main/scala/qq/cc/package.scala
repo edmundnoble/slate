@@ -14,8 +14,8 @@ package object cc {
   type OrCompilationError[T] = QQCompilationException \/ T
 
   implicit class ListToNelOps[A](val l: List[A]) extends AnyVal {
-    def toNel: Option[NonEmptyList[A]] = if (l.isEmpty) None else Some(NonEmptyList(l.head, l.tail: _*))
-    def nelFoldLeft1(ifEmpty: A)(foldFun: (A, A) => A): A = if (l.isEmpty) (ifEmpty) else (l.reduceLeft(foldFun))
+    def unconsFold[B](b: B, f: (A, List[A]) => B): B = if (l.isEmpty) b else f(l.head, l.tail)
+    def nelFoldLeft1(ifEmpty: A)(foldFun: (A, A) => A): A = if (l.isEmpty) ifEmpty else l.reduceLeft(foldFun)
   }
 
 }
