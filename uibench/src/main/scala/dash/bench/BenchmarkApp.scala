@@ -3,12 +3,12 @@ package bench
 
 import japgolly.scalajs.benchmark.gui.BenchmarkGUI
 import org.scalajs.dom
-import qq.cc.{CompiledFilter, QQRuntime, UpickleRuntime}
+import qq.cc.{CompiledFilter, JSONRuntime, QQRuntime}
 import qq.cc.jsc.JSRuntime
-import upickle.Js
+import upickle.Invalid
 
-import scala.scalajs.js.JSON
 import scala.scalajs.js.annotation.JSExport
+import scalaz.\/
 
 @JSExport
 object BenchmarkApp extends scalajs.js.JSApp {
@@ -34,15 +34,10 @@ object BenchmarkApp extends scalajs.js.JSApp {
     val iso: String => T
   }
 
-  case object JSRuntimeParams extends QQRuntimeParams {
-    type T = Any
-    override val runtime: QQRuntime[Any] = JSRuntime
-    override val iso: (String) => Any = JSON.parse(_)
-  }
-  case object UpickleRuntimeParams extends QQRuntimeParams {
-    type T = Js.Value
-    override val runtime: QQRuntime[Js.Value] = UpickleRuntime
-    override val iso: (String) => Js.Value = upickle.json.read
+  case object JSONRuntimeParams extends QQRuntimeParams {
+    type T = qq.data.JSON
+    override val runtime: QQRuntime[qq.data.JSON] = JSONRuntime
+    override val iso: (String) => T = qq.Json.stringToJSON(_).getOrElse(???)
   }
 
   abstract class BenchParams {

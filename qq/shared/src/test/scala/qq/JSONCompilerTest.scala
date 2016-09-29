@@ -1,16 +1,16 @@
 package qq
 
 import org.scalatest.Assertion
-import qq.cc.UpickleRuntime
+import qq.cc.JSONRuntime
 
 import scala.concurrent.Future
 
-class UpickleCompilerTest extends QQAsyncTestSuite {
+class JSONCompilerTest extends QQAsyncTestSuite {
 
   import CompilerTest._
 
   def runTest(qQDoubleCompilerTest: CompilerTest): Future[Assertion] =
-    CompilerTest.runTest(UpickleRuntime, qQDoubleCompilerTest)
+    CompilerTest.runTest(JSONRuntime, qQDoubleCompilerTest)
 
   "select keys" in Future.traverse(selectKeyTests)(runTest)
   "select index" in Future.traverse(selectIndexTests)(runTest)

@@ -1,7 +1,9 @@
 package qq
 
+import org.scalactic.Normalization
+import org.scalatest.matchers.{BeMatcher, MatchResult}
 import qq.cc.Parser
-import qq.data.{ConcreteFilter, Definition, Program}
+import qq.data.{ConcreteFilter, Definition, JSON, Program}
 
 import scalaz.\/
 

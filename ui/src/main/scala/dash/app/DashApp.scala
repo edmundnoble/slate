@@ -3,7 +3,7 @@ package app
 
 import matryoshka.Fix
 import qq.cc._
-import qq.data.{ConcreteFilter, FilterComponent, Program}
+import qq.data.{ConcreteFilter, FilterComponent, JSON, Program}
 import qq.cc.jsc.JSRuntime
 import scodec.bits.BitVector
 import Util._
@@ -33,7 +33,7 @@ object DashApp {
 
   // cache optimized, parsed programs using their hashcode as a key
   // store them as base64-encoded bytecode
-  def getCachedCompiledProgram(qqProgram: String): StorageProgram[WhatCanGoWrong \/ CompiledFilter[Any]] = {
+  def getCachedCompiledProgram(qqProgram: String): StorageProgram[WhatCanGoWrong \/ CompiledFilter[JSON]] = {
 
     import StorageProgram._
     import qq.protocol.FilterProtocol._
@@ -68,7 +68,7 @@ object DashApp {
           decodedProgram.pure[StorageProgram]
       }
       compiledProgram = decodedOptimizedProgram.flatMap(
-        QQCompiler.compileProgram(JSRuntime, DashPrelude, _).leftMap(inj[WhatCanGoWrong, QQCompilationException])
+        QQCompiler.compileProgram[Fix, JSON](JSONRuntime, DashPrelude, _).leftMap(inj[WhatCanGoWrong, QQCompilationException])
       )
     } yield compiledProgram
   }

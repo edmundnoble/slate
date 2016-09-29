@@ -2,8 +2,10 @@ package qq
 package util
 
 import monix.eval.Task
-import qq.cc.{CompiledFilter, Runner, UpickleRuntime}
+import qq.cc.{CompiledFilter, JSONRuntime, Runner}
+import qq.data.JSON
 import upickle.{Js, json}
+import qq.Platform.Rec._
 
 import scalaz.\/
 import scalaz.syntax.either._
@@ -27,21 +29,21 @@ object Interpreter {
   def programInterpreter: Interpreter = taskSwitch orElse
     Interpreter("program:", {
       case program =>
-        Runner.parseAndCompile(UpickleRuntime, program).fold(
+        Runner.parseAndCompile(JSONRuntime, program).fold(
           err => Task.eval {
             val () = Console.err.println("Error: " + err.merge[Exception].getMessage)
             ("", programInterpreter)
           },
-          compiledFilter => Task.defer {
-            Task.now(("", programInterpreterOf(program, compiledFilter)))
+          compiledFilter => Task.delay {
+            ("", programInterpreterOf(program, compiledFilter))
           }
         ).right
     })
 
-  def programInterpreterOf(source: String, program: CompiledFilter[Js.Value]): Interpreter = taskSwitch orElse
+  def programInterpreterOf(source: String, program: CompiledFilter[JSON]): Interpreter = taskSwitch orElse
     Interpreter("program " + source + ", input:", {
       case input =>
-        val inputJs = json read input
+        val inputJs = JSON.upickleToJSONRec(json read input)
         val outputTask = program(Map.empty)(inputJs)
         outputTask.map { outputs =>
           (outputs.mkString(", "), programInterpreterOf(source, program))
@@ -50,19 +52,19 @@ object Interpreter {
 
   def inputInterpreter: Interpreter = taskSwitch orElse Interpreter("input:", {
     case input =>
-      val inputJs = json read input
+      val inputJs = JSON.upickleToJSONRec(json read input)
       Task.now(("", inputInterpreterOf(input, inputJs))).right
   })
 
-  def inputInterpreterOf(source: String, input: Js.Value): Interpreter = taskSwitch orElse
+  def inputInterpreterOf(source: String, input: JSON): Interpreter = taskSwitch orElse
     Interpreter("input " + source + ", program:", {
       case program =>
-        Runner.parseAndCompile(UpickleRuntime, program).fold(
+        Runner.parseAndCompile(JSONRuntime, program).fold(
           err => Task.eval {
             val () = Console.err.println("Error: " + err.merge[Exception].getMessage)
             ("", programInterpreter)
           },
-          (compiledFilter: CompiledFilter[Js.Value]) => compiledFilter(Map.empty)(input).map { outputs =>
+          (compiledFilter: CompiledFilter[JSON]) => compiledFilter(Map.empty)(input).map { outputs =>
             (outputs.mkString(", "), inputInterpreterOf(source, input))
           }
         ).right

@@ -1,20 +1,21 @@
 package qq
 
 import org.scalatest.Assertion
-import qq.cc.jsc.JSRuntime
+import qq.cc.JSONRuntime
+import qq.data.JSON
 import upickle.Js
+
 import scalaz.syntax.traverse._
 import scalaz.std.scalaFuture._
 import scalaz.std.list._
-
 import scala.concurrent.Future
 
-class JSRunnerTest extends QQAsyncTestSuite {
+class JSONRunnerTest extends QQAsyncTestSuite {
 
   import RunnerTest._
 
   def runTest(test: RunnerTest): Future[Assertion] =
-    RunnerTest.runTest(JSRuntime, Json.upickleToJsRec(_: Js.Value), Json.jsToUpickleRec(_: Any), test)
+    RunnerTest.runTest(JSONRuntime, identity[JSON], identity[JSON], test)
 
   "identity" in runTest(identityProgram)
   "ensequenced filters" in runTest(ensequencedFilters)

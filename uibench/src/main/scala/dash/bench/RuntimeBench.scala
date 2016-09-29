@@ -1,7 +1,7 @@
 package dash
 package bench
 
-import dash.bench.BenchmarkApp.{BenchParams, JSRuntimeParams, QQRuntimeParams, UpickleRuntimeParams}
+import dash.bench.BenchmarkApp._
 import japgolly.scalajs.benchmark._
 import japgolly.scalajs.benchmark.gui.{GuiParam, GuiParams, GuiSuite}
 import matryoshka.Fix
@@ -37,9 +37,9 @@ object RuntimeBench {
     ),
     GuiParams.two(
       Iso.id[(QQRuntimeParams, Int)],
-      GuiParam.enum[QQRuntimeParams]("Runtime", JSRuntimeParams, UpickleRuntimeParams)(
+      GuiParam.enum[QQRuntimeParams]("Runtime", JSONRuntimeParams)(
         (p: QQRuntimeParams) => <.span(p.toString()),
-        initialValues = Seq(JSRuntimeParams, UpickleRuntimeParams)
+        initialValues = Seq(JSONRuntimeParams)
       ),
       GuiParam.int("Program Size", 1, 5, 10, 20, 50, 100, 200)
     )

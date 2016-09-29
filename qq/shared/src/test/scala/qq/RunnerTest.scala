@@ -3,222 +3,224 @@ package qq
 import monix.execution.Scheduler
 import org.scalatest.Assertion
 import qq.cc.{QQRuntime, QQRuntimeException, Runner}
-import upickle.Js
+import qq.data.JSON
 
 import scala.concurrent.Future
 import scalaz.\/
 import scalaz.syntax.either._
 import scalaz.syntax.std.`try`._
+import org.scalactic.NormMethods._
 
-case class RunnerTest(input: Js.Value, program: String, expectedOutputOrException: Exception \/ List[Js.Value])
+case class RunnerTest(input: JSON, program: String, expectedOutputOrException: Exception \/ List[JSON])
 
 object RunnerTest {
 
+  import CompilerTest.canonicalized
   import org.scalatest.Matchers._
 
-  def runTest[J](runtime: QQRuntime[J], fromUpickle: Js.Value => J, toUpickle: J => Js.Value, test: RunnerTest)
+  def runTest[J](runtime: QQRuntime[J], fromJSON: JSON => J, toJSON: J => JSON, test: RunnerTest)
                 (implicit sch: Scheduler): Future[Assertion] =
     Runner
-      .run(runtime, test.program)(List(fromUpickle(test.input)))
+      .run(runtime, test.program)(List(fromJSON(test.input)))
       .materialize
       .map { outputOrExceptionTry =>
-        val outputUpickleOrExceptionTry = outputOrExceptionTry.map(_.map(toUpickle))
-        outputUpickleOrExceptionTry.toDisjunction should be(test.expectedOutputOrException)
+        val outputJSONOrExceptionTry = outputOrExceptionTry.map(_.map(toJSON))
+        outputJSONOrExceptionTry.map(_.map(_.norm)).toDisjunction should be(test.expectedOutputOrException.map(_.map(_.norm)))
       }
       .runAsync
 
   val identityProgram = {
-    val dict = Js.Obj("1" -> Js.Num(2), "3" -> Js.Num(4))
+    val dict = JSON.ObjList("1" -> JSON.Num(2), "3" -> JSON.Num(4))
     RunnerTest(dict, ".", List(dict).right)
   }
 
   val selectKeyProgram = RunnerTest(
-    Js.Obj("lol" -> Js.Str("test")),
+    JSON.ObjList("lol" -> JSON.Str("test")),
     ".lol",
-    List(Js.Str("test")).right
+    List(JSON.Str("test")).right
   )
 
   val ensequencedFilters = RunnerTest(
-    Js.Obj("lol" -> Js.Str("lol1"), "wat" -> Js.Str("wat1")),
+    JSON.ObjList("lol" -> JSON.Str("lol1"), "wat" -> JSON.Str("wat1")),
     ".lol, .wat",
-    List(Js.Str("lol1"), Js.Str("wat1")).right
+    List(JSON.Str("lol1"), JSON.Str("wat1")).right
   )
 
   val enlistedFilters = RunnerTest(
-    Js.Obj("lol" -> Js.Str("lol1"), "wat" -> Js.Str("wat1")),
+    JSON.ObjList("lol" -> JSON.Str("lol1"), "wat" -> JSON.Str("wat1")),
     "[.lol, .wat]",
-    List(Js.Arr(Js.Str("lol1"), Js.Str("wat1"))).right
+    List(JSON.Arr(JSON.Str("lol1"), JSON.Str("wat1"))).right
   )
 
   val collectResults = List(
     RunnerTest(
-      Js.Obj("titles" -> Js.Arr(Js.Str("lol1"), Js.Str("wat1"))),
+      JSON.ObjList("titles" -> JSON.Arr(JSON.Str("lol1"), JSON.Str("wat1"))),
       ".titles[]",
-      List(Js.Str("lol1"), Js.Str("wat1")).right
+      List(JSON.Str("lol1"), JSON.Str("wat1")).right
     ),
     RunnerTest(
-      Js.Num(1),
+      JSON.Num(1),
       ".[]",
-      QQRuntimeException("Tried to flatten 1 but it's not an array").left
+      QQRuntimeException("Tried to flatten Num(1.0) but it's not an array").left
     )
   )
 
   val enjectedFilters = RunnerTest(
-    Js.Obj(
-      "user" -> Js.Str("stedolan"),
-      "titleName" -> Js.Arr(Js.Str("title1"), Js.Str("title2")),
-      "titles" -> Js.Arr(Js.Str("JQ Primer"), Js.Str("More JQ"))
+    JSON.ObjList(
+      "user" -> JSON.Str("stedolan"),
+      "titleName" -> JSON.Arr(JSON.Str("title1"), JSON.Str("title2")),
+      "titles" -> JSON.Arr(JSON.Str("JQ Primer"), JSON.Str("More JQ"))
     ),
     "{user, (.titleName[]): .titles[]}",
     List(
-      Js.Obj(
-        "title1" -> Js.Str("JQ Primer"),
-        "user" -> Js.Str("stedolan")
+      JSON.ObjList(
+        "title1" -> JSON.Str("JQ Primer"),
+        "user" -> JSON.Str("stedolan")
       ),
-      Js.Obj(
-        "title1" -> Js.Str("More JQ"),
-        "user" -> Js.Str("stedolan")
+      JSON.ObjList(
+        "title1" -> JSON.Str("More JQ"),
+        "user" -> JSON.Str("stedolan")
       ),
-      Js.Obj(
-        "title2" -> Js.Str("JQ Primer"),
-        "user" -> Js.Str("stedolan")
+      JSON.ObjList(
+        "title2" -> JSON.Str("JQ Primer"),
+        "user" -> JSON.Str("stedolan")
       ),
-      Js.Obj(
-        "title2" -> Js.Str("More JQ"),
-        "user" -> Js.Str("stedolan")
+      JSON.ObjList(
+        "title2" -> JSON.Str("More JQ"),
+        "user" -> JSON.Str("stedolan")
       )
     ).right)
 
   val pipes = RunnerTest(
-    Js.Arr(Js.Obj("name" -> Js.Str("JSON"), "good" -> Js.True), Js.Obj("name" -> Js.Str("XML"), "good" -> Js.False)),
+    JSON.Arr(JSON.ObjList("name" -> JSON.Str("JSON"), "good" -> JSON.True), JSON.ObjList("name" -> JSON.Str("XML"), "good" -> JSON.False)),
     ".[] | .name",
-    List(Js.Str("JSON"), Js.Str("XML")).right
+    List(JSON.Str("JSON"), JSON.Str("XML")).right
   )
 
   val lengthTest = RunnerTest(
-    Js.Arr(Js.Arr(Js.Num(1), Js.Num(2)), Js.Str("string"), Js.Obj("a" -> Js.Num(2)), Js.Null),
+    JSON.Arr(JSON.Arr(JSON.Num(1), JSON.Num(2)), JSON.Str("string"), JSON.ObjList("a" -> JSON.Num(2)), JSON.Null),
     ".[] | length",
-    List(Js.Num(2), Js.Num(6), Js.Num(1), Js.Num(0)).right
+    List(JSON.Num(2), JSON.Num(6), JSON.Num(1), JSON.Num(0)).right
   )
 
   val keys = RunnerTest(
-    Js.Obj("abc" -> Js.Num(1), "abcd" -> Js.Num(2), "Foo" -> Js.Num(3)),
+    JSON.ObjList("abc" -> JSON.Num(1), "abcd" -> JSON.Num(2), "Foo" -> JSON.Num(3)),
     "keys",
-    List(Js.Arr(Js.Str("abc"), Js.Str("abcd"), Js.Str("Foo"))).right
+    List(JSON.Arr(JSON.Str("abc"), JSON.Str("abcd"), JSON.Str("Foo"))).right
   )
 
   val numbers = RunnerTest(
-    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    JSON.Arr(JSON.Arr(), JSON.ObjList(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
     ".[] | numbers",
-    List(Js.Num(1)).right
+    List(JSON.Num(1)).right
   )
 
   val arrays = RunnerTest(
-    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    JSON.Arr(JSON.Arr(), JSON.ObjList(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
     ".[] | arrays",
-    List(Js.Arr()).right
+    List(JSON.Arr()).right
   )
 
   val objects = RunnerTest(
-    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    JSON.Arr(JSON.Arr(), JSON.ObjList(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
     ".[] | objects",
-    List(Js.Obj()).right
+    List(JSON.ObjList()).right
   )
 
   val iterables = RunnerTest(
-    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    JSON.Arr(JSON.Arr(), JSON.ObjList(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
     ".[] | iterables",
-    List(Js.Arr(), Js.Obj()).right
+    List(JSON.Arr(), JSON.ObjList()).right
   )
 
   val booleans = RunnerTest(
-    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    JSON.Arr(JSON.Arr(), JSON.ObjList(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
     ".[] | booleans",
-    List(Js.True, Js.False).right
+    List(JSON.True, JSON.False).right
   )
 
   val strings = RunnerTest(
-    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    JSON.Arr(JSON.Arr(), JSON.ObjList(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
     ".[] | strings",
-    List(Js.Str("foo")).right
+    List(JSON.Str("foo")).right
   )
 
   val nulls = RunnerTest(
-    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    JSON.Arr(JSON.Arr(), JSON.ObjList(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
     ".[] | nulls",
-    List(Js.Null).right
+    List(JSON.Null).right
   )
 
   val values = RunnerTest(
-    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    JSON.Arr(JSON.Arr(), JSON.ObjList(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
     ".[] | values",
-    List(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.True, Js.False).right
+    List(JSON.Arr(), JSON.ObjList(), JSON.Num(1), JSON.Str("foo"), JSON.True, JSON.False).right
   )
 
   val scalars = RunnerTest(
-    Js.Arr(Js.Arr(), Js.Obj(), Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False),
+    JSON.Arr(JSON.Arr(), JSON.ObjList(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
     ".[] | scalars",
-    List(Js.Num(1), Js.Str("foo"), Js.Null, Js.True, Js.False).right
+    List(JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False).right
   )
 
   val add = RunnerTest(
-    Js.Arr(Js.Num(1), Js.Arr(Js.Num(1)), Js.Str("test")),
+    JSON.Arr(JSON.Num(1), JSON.Arr(JSON.Num(1)), JSON.Str("test")),
     ".[] | (. + .)",
-    List(Js.Num(2), Js.Arr(Js.Num(1), Js.Num(1)), Js.Str("testtest")).right
+    List(JSON.Num(2), JSON.Arr(JSON.Num(1), JSON.Num(1)), JSON.Str("testtest")).right
   )
 
   val multiply = RunnerTest(
-    Js.Obj("nested" -> Js.Obj("nested" -> Js.Obj("nested" -> Js.Obj("nested" -> Js.Num(1))))),
+    JSON.ObjList("nested" -> JSON.ObjList("nested" -> JSON.ObjList("nested" -> JSON.ObjList("nested" -> JSON.Num(1))))),
     ".[] | (. * .nested)",
-    List(Js.Obj("nested" -> Js.Obj("nested" -> Js.Num(1)))).right
+    List(JSON.ObjList("nested" -> JSON.ObjList("nested" -> JSON.Num(1)))).right
   )
 
   val maths = RunnerTest(
-    Js.Num(4),
+    JSON.Num(4),
     ". % (. / 2)",
-    List(Js.Num(0)).right
+    List(JSON.Num(0)).right
   )
 
   val bedmas = RunnerTest(
-    Js.Num(5),
+    JSON.Num(5),
     ". + . * .",
-    List(Js.Num(30)).right
+    List(JSON.Num(30)).right
   )
 
   val map = RunnerTest(
-    Js.Arr(Js.Num(1)),
+    JSON.Arr(JSON.Num(1)),
     "def f: . + 2; map(f)",
-    List(Js.Num(3)).right
+    List(JSON.Num(3)).right
   )
 
   val addNullException = RunnerTest(
-    Js.Arr(),
+    JSON.Arr(),
     ".[0] + .[0]",
-    QQRuntimeException("can't add null and null").left
+    QQRuntimeException("can't add Null and Null").left
   )
 
   val silencedException = RunnerTest(
-    Js.Arr(),
+    JSON.Arr(),
     "(.[0] + .[0])?",
     List().right
   )
 
   val emptyObjectProgram = RunnerTest(
-    Js.Null,
+    JSON.Null,
     "{}",
-    List(Js.Obj()).right
+    List(JSON.ObjList()).right
   )
 
   val constants = RunnerTest(
-    Js.Null,
+    JSON.Null,
     "true, false, null",
-    List(Js.True, Js.False, Js.Null).right
+    List(JSON.True, JSON.False, JSON.Null).right
   )
 
   val base64Encode = RunnerTest(
-    Js.Str("hi"),
+    JSON.Str("hi"),
     "b64Encode",
-    List(Js.Str("aGk=")).right
+    List(JSON.Str("aGk=")).right
   )
 
 

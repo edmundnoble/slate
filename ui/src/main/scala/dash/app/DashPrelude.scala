@@ -6,7 +6,7 @@ import monix.eval.Task
 import org.scalajs.dom.XMLHttpRequest
 import qq.Platform.Js._
 import qq.cc.{OrCompilationError, Prelude, QQRuntime, QQRuntimeException}
-import qq.data.CompiledDefinition
+import qq.data.{CompiledDefinition, JSON}
 import qq.cc.jsc._
 import qq.util._
 
@@ -17,70 +17,70 @@ import scalaz.syntax.apply._
 import monix.scalaz._
 import qq.Json
 
-object DashPrelude extends Prelude[Any] {
+object DashPrelude extends Prelude[JSON] {
 
   import CompiledDefinition.noParamDefinition
 
-  def googleAuth: CompiledDefinition[Any] =
-    noParamDefinition("googleAuth", _ => _ => identify.getAuthToken(interactive = false).map(_ :: Nil))
+  def googleAuth: CompiledDefinition[JSON] =
+    noParamDefinition("googleAuth", _ => _ => identify.getAuthToken(interactive = false).map(JSON.Str(_) :: Nil))
 
-  def launchAuth: CompiledDefinition[Any] =
-    CompiledDefinition[Any]("launchAuth", 2, CompiledDefinition.standardEffectDistribution[Any] {
+  def launchAuth: CompiledDefinition[JSON] =
+    CompiledDefinition[JSON]("launchAuth", 2, CompiledDefinition.standardEffectDistribution[JSON] {
       case List(urlRaw, queryParamsRaw) => _ =>
         val urlTask = urlRaw match {
-          case s: String => Task.now(s)
-          case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not a URL"))
+          case JSON.Str(s) => Task.now(s)
+          case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not a URL"))
         }
         val queryParamsTask = queryParamsRaw match {
-          case o: js.Object => Task.now(o.toDictionary.toMap)
-          case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not a query params object"))
+          case o: JSON.Obj => Task.now(o.toMap.value)
+          case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not a query params object"))
         }
         for {
           url <- urlTask
           queryParams <- queryParamsTask
-        } yield identify.launchWebAuthFlow(interactive = true, Ajax.addQueryParams(url, queryParams)).delayExecution(5.seconds)
+          webAuthResult <- identify.launchWebAuthFlow(interactive = true, Ajax.addQueryParams(url, queryParams)).map(JSON.Str).delayExecution(5.seconds)
+        } yield webAuthResult
     })
 
-  private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition[Any](name, 4,
-    CompiledDefinition.standardEffectDistribution[Any] {
+  private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition[JSON](name, 4,
+    CompiledDefinition.standardEffectDistribution[JSON] {
       case List(urlRaw, queryParamsRaw, dataRaw, headersRaw) => _ =>
         implicit val ajaxTimeout = Ajax.Timeout(2000.millis)
         val urlTask = urlRaw match {
-          case s: String => Task.now(s)
-          case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not a URL"))
+          case JSON.Str(s) => Task.now(s)
+          case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not a URL"))
         }
         val queryParamsTask = queryParamsRaw match {
-          case o: js.Object => Task.now(o.toDictionary.toMap)
-          case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not query params/data"))
+          case o: JSON.Obj => Task.now(o.toMap.value)
+          case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not query params/data"))
         }
         val dataTask = dataRaw match {
-          case s: String => Task.now(s)
-          case o: js.Object => Task.now(Json.jsToString(o))
-          case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not usable as POST data"))
+          case JSON.Str(s) => Task.now(s)
+          case o: JSON.Obj => Task.now(Json.jsToString(o))
+          case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not usable as POST data"))
         }
         val headersTask = headersRaw match {
-          case o: js.Object => Task.now(o.toDictionary.asInstanceOf[js.Dictionary[String]].toMap)
-          case k => Task.raiseError(QQRuntimeException(JSRuntime.print(k) + " is not headers"))
+          case o: JSON.Obj => Task.now(o.toMap.value.mapValues(_.asInstanceOf[JSON.Str].value))
+          case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not headers"))
         }
-        val ajaxs: Task[XMLHttpRequest] =
-          (urlTask |@| dataTask |@| queryParamsTask |@| headersTask) (
+        for {
+          resp <- (urlTask |@| dataTask |@| queryParamsTask |@| headersTask) (
             Ajax(ajaxMethod, _, _, _, _, withCredentials = false, "").onErrorRestart(2)
           ).flatten
-        ajaxs.flatMap(
-          resp => Json.stringToJs(resp.responseText).fold(Task.raiseError(_), Task.now)
-        )
+          asJson <- Json.stringToJSON(resp.responseText).fold(Task.raiseError(_), Task.now)
+        } yield asJson
     })
 
-  def httpDelete: CompiledDefinition[Any] = makeAjaxDefinition("httpDelete", AjaxMethod.DELETE)
+  def httpDelete: CompiledDefinition[JSON] = makeAjaxDefinition("httpDelete", AjaxMethod.DELETE)
 
-  def httpGet: CompiledDefinition[Any] = makeAjaxDefinition("httpGet", AjaxMethod.GET)
+  def httpGet: CompiledDefinition[JSON] = makeAjaxDefinition("httpGet", AjaxMethod.GET)
 
-  def httpPost: CompiledDefinition[Any] = makeAjaxDefinition("httpPost", AjaxMethod.POST)
+  def httpPost: CompiledDefinition[JSON] = makeAjaxDefinition("httpPost", AjaxMethod.POST)
 
-  def httpPatch: CompiledDefinition[Any] = makeAjaxDefinition("httpPatch", AjaxMethod.PATCH)
+  def httpPatch: CompiledDefinition[JSON] = makeAjaxDefinition("httpPatch", AjaxMethod.PATCH)
 
-  def httpPut: CompiledDefinition[Any] = makeAjaxDefinition("httpPut", AjaxMethod.PUT)
+  def httpPut: CompiledDefinition[JSON] = makeAjaxDefinition("httpPut", AjaxMethod.PUT)
 
-  override def all(runtime: QQRuntime[Any]): OrCompilationError[IndexedSeq[CompiledDefinition[Any]]] =
+  override def all(runtime: QQRuntime[JSON]): OrCompilationError[IndexedSeq[CompiledDefinition[JSON]]] =
     Vector(googleAuth, launchAuth, httpDelete, httpGet, httpPost, httpPatch, httpPut).right
 }

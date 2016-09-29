@@ -16,6 +16,7 @@ import org.scalajs.dom
 import org.scalajs.dom.raw._
 import qq.Json
 import qq.Platform.Rec._
+import qq.data.JSON
 import shapeless.ops.coproduct.Unifier
 
 import scala.concurrent.duration.FiniteDuration
@@ -56,23 +57,23 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   final class EmptyResponseException extends java.lang.Exception("Empty response")
 
-  case class DashProgram(title: String, program: String, input: js.Any)
+  case class DashProgram(title: String, program: String, input: JSON)
 
   val todoistState = scala.util.Random.nextString(6)
 
   val programs =
     List(
-      DashProgram("Gmail", GmailApp.program, js.Dictionary[Any]()),
+      DashProgram("Gmail", GmailApp.program, JSON.ObjList()),
       DashProgram("JIRA", JIRAApp.program,
-        js.Dictionary[Any](
-          "username" -> Creds.jiraUsername,
-          "password" -> Creds.jiraPassword
+        JSON.ObjList(
+          "username" -> JSON.Str(Creds.jiraUsername),
+          "password" -> JSON.Str(Creds.jiraPassword)
         )
       ),
       DashProgram("Todoist", ".",
-        js.Dictionary[Any](
-          "client_id" -> Creds.todoistClientId,
-          "tok" -> todoistState
+        JSON.ObjList(
+          "client_id" -> JSON.Str(Creds.todoistClientId),
+          "tok" -> JSON.Str(todoistState)
         )
       )
     )
@@ -84,7 +85,7 @@ object DashboarderApp extends scalajs.js.JSApp {
           StorageProgram.runProgram(DomStorage.Local,
             DashApp.getCachedCompiledProgram(program))
             .flatMap(coe => coe.leftMap(implicitly[Unifier.Aux[WhatCanGoWrong, Throwable]].apply).valueOrThrow)
-            .flatMap(f => f(Map.empty)(input)
+            .flatMap(f => f(Map.empty)(Json.jsToJSONRec(input))
               .map(_.flatMap(i => ExpandableContentModel.pkl.read.lift(Json.jsToUpickleRec(i))))
             ))
     }

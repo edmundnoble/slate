@@ -37,13 +37,13 @@ class InterpreterTest extends QQAsyncTestSuite {
     "take any program and input subsequently" in {
       for {
         output <- runInterpreter(mainMenu, ":p", ".", "[]").runAsync
-      } yield output._1 should be("[]")
+      } yield output._1 should be("Arr(List())")
     }
 
     "take any program and input subsequently several times" in {
       for {
         output <- runInterpreter(mainMenu, ":p", ".", "[]", "1").runAsync
-      } yield output._1 should be("1")
+      } yield output._1 should be("Num(1)")
     }
   }
 
@@ -59,13 +59,13 @@ class InterpreterTest extends QQAsyncTestSuite {
     "take any input and program subsequently" in {
       for {
         output <- runInterpreter(mainMenu, ":i", "[]", ".").runAsync
-      } yield output._1 should be("[]")
+      } yield output._1 should be("Arr(List())")
     }
 
     "take any input and program subsequently several times" in {
       for {
         output <- runInterpreter(mainMenu, ":i", "0", ". + 1", ". + 2").runAsync
-      } yield output._1 should be("2")
+      } yield output._1 should be("Num(2)")
     }
   }
 
