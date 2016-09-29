@@ -93,7 +93,7 @@ object JSONRuntime extends QQRuntime[JSON] {
     case (f: JSON.Obj, s: JSON.Obj) =>
       Task.now(JSON.ObjMap(f.toMap.value ++ s.toMap.value))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't add " + f.toString + " and " + s.toString))
+      Task.raiseError(QQRuntimeException("can't add " + print(f) + " and " + print(s)))
   }
 
   override def subtractJsValues(first: JSON, second: JSON): Task[JSON] = (first, second) match {
@@ -105,7 +105,7 @@ object JSONRuntime extends QQRuntime[JSON] {
       val contents: Map[String, JSON] = f.toMap.value -- s.map[String, Set[String]](_._1)(collection.breakOut)
       Task.now(JSON.ObjMap(contents))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't subtract " + f.toString + " and " + s.toString))
+      Task.raiseError(QQRuntimeException("can't subtract " + print(f) + " and " + print(s)))
   }
 
   override def multiplyJsValues(first: JSON, second: JSON): Task[JSON] = (first, second) match {
@@ -119,19 +119,19 @@ object JSONRuntime extends QQRuntime[JSON] {
         (f, s) => Task.mapBoth(f, s)(addJsValues).flatten[JSON]
       }).map(o => JSON.ObjMap(o))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't multiply " + f.toString + " and " + s.toString))
+      Task.raiseError(QQRuntimeException("can't multiply " + print(f) + " and " + print(s)))
   }
 
   override def divideJsValues(first: JSON, second: JSON): Task[JSON] = (first, second) match {
     case (JSON.Num(f), JSON.Num(s)) => Task.now(JSON.Num(f / s))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't divide " + f.toString + " by " + s.toString))
+      Task.raiseError(QQRuntimeException("can't divide " + print(f) + " by " + print(s)))
   }
 
   override def moduloJsValues(first: JSON, second: JSON): Task[JSON] = (first, second) match {
     case (JSON.Num(f), JSON.Num(s)) => Task.now(JSON.Num(f % s))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't modulo " + f.toString + " by " + s.toString))
+      Task.raiseError(QQRuntimeException("can't modulo " + print(f) + " by " + print(s)))
   }
 
   override def enlistFilter(filter: CompiledFilter[JSON]): CompiledFilter[JSON] = (for {
@@ -150,7 +150,7 @@ object JSONRuntime extends QQRuntime[JSON] {
         case Some(v) => Task.now(v :: Nil)
       }
     case v =>
-      Task.raiseError(QQRuntimeException("Tried to select key " + key.toString + " in " + v.toString + " but it's not a dictionary"))
+      Task.raiseError(QQRuntimeException("Tried to select key " + key + " in " + print(v) + " but it's not a dictionary"))
   }
 
   override def selectIndex(index: Int): CompiledProgram[JSON] = {
@@ -168,7 +168,7 @@ object JSONRuntime extends QQRuntime[JSON] {
         taskOfListOfNull
       }
     case v =>
-      Task.raiseError(QQRuntimeException("Tried to select index " + index.toString + " in " + v.toString + " but it's not an array"))
+      Task.raiseError(QQRuntimeException("Tried to select index " + index.toString + " in " + print(v) + " but it's not an array"))
   }
 
   override def selectRange(start: Int, end: Int): CompiledProgram[JSON] = {
@@ -181,7 +181,7 @@ object JSONRuntime extends QQRuntime[JSON] {
       }
     case v =>
       Task.raiseError(QQRuntimeException("Tried to select range " +
-        start.toString + ":" + end.toString + " in " + v.toString +
+        start + ":" + end + " in " + print(v) +
         " but it's not an array"))
   }
 
@@ -191,7 +191,7 @@ object JSONRuntime extends QQRuntime[JSON] {
     case dict: JSON.Obj =>
       Task.now(dict.map(_._2)(collection.breakOut))
     case v =>
-      Task.raiseError(QQRuntimeException("Tried to flatten " + v.toString + " but it's not an array"))
+      Task.raiseError(QQRuntimeException("Tried to flatten " + print(v) + " but it's not an array"))
   }
 
   override def enjectFilter(obj: List[(\/[String, CompiledFilter[JSON]], CompiledFilter[JSON])]): CompiledFilter[JSON] = {
@@ -210,15 +210,13 @@ object JSONRuntime extends QQRuntime[JSON] {
                     case JSON.Str(keyString) =>
                       Task.now(valueResults.map(keyString -> _))
                     case k =>
-                      Task.raiseError(QQRuntimeException("Tried to use " + k.toString + " as a key for an object but it's not a string"))
+                      Task.raiseError(QQRuntimeException("Tried to use " + print(k) + " as a key for an object but it's not a string"))
                   }
                 } yield keyValuePairs
               case (-\/(filterName), filterValue) =>
                 filterValue(bindings)(JSONv).map(_.map(filterName -> _) :: Nil)
             }
-            kvPairsProducts = kvPairs.map(_.flatten) <^> {
-              case NonEmptyList(h, l) => foldWithPrefixes(h, l.toList: _*)
-            }
+            kvPairsProducts = kvPairs.map(_.flatten).unconsFold(Nil, foldWithPrefixes[(String, JSON)](_, _: _*))
           } yield kvPairsProducts.map(JSON.ObjList(_: _*))
       }
     }
@@ -226,6 +224,6 @@ object JSONRuntime extends QQRuntime[JSON] {
 
   override def platformPrelude: PlatformPrelude[JSON] = JSONPrelude
 
-  override def print(value: JSON): String = value.toString
+  override def print(value: JSON): String = JSON.render(value).mkString
 
 }

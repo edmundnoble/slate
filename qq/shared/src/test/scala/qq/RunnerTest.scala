@@ -61,7 +61,7 @@ object RunnerTest {
     RunnerTest(
       JSON.Num(1),
       ".[]",
-      QQRuntimeException("Tried to flatten Num(1.0) but it's not an array").left
+      QQRuntimeException("Tried to flatten 1.000000 but it's not an array").left
     )
   )
 
@@ -196,7 +196,7 @@ object RunnerTest {
   val addNullException = RunnerTest(
     JSON.Arr(),
     ".[0] + .[0]",
-    QQRuntimeException("can't add Null and Null").left
+    QQRuntimeException("can't add null and null").left
   )
 
   val silencedException = RunnerTest(

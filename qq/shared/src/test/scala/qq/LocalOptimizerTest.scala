@@ -15,7 +15,7 @@ class LocalOptimizerTest extends QQSyncTestSuite {
 
   "optimize collectresults and enlist duality" in {
     optimizeFilter(enlist(collectResults)) shouldBe id
-    optimizeFilter(enlist(compose(collectResults, id)) )shouldBe id
+    optimizeFilter(enlist(compose(collectResults, id))) shouldBe id
     optimizeFilter(enlist(id | collectResults)) shouldBe id
   }
 
@@ -27,20 +27,11 @@ class LocalOptimizerTest extends QQSyncTestSuite {
 
   "optimize all math in constant expressions" in {
     optimizeFilter(
-      add(
-        constNumber(5.4) *
-          divide(
-            constNumber(1),
-            subtract(
-              constNumber(1),
-              multiply(
-                constNumber(0.25),
-                constNumber(2)
-              )
-            )
-          ),
-        constNumber(20))
-    ) shouldBe constNumber(20 + (5.4 * (1 / (1 - (0.25 * 2)))))
+      constNumber(5.4) *
+        constNumber(1) /
+        (constNumber(1) - constNumber(0.25) * constNumber(2)) +
+        constNumber(20)
+    ) shouldBe constNumber(20 + 5.4 * (1 / (1 - 0.25 * 2)))
   }
 
   "no stack overflow on deeply nested filters" taggedAs StackTest in {
