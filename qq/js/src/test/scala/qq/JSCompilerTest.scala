@@ -9,7 +9,7 @@ class JSCompilerTest extends QQAsyncTestSuite {
   import CompilerTest._
 
   def runTest(qqCompilerTest: CompilerTest): Future[Assertion] =
-    CompilerTest.runTest[Any](qq.jsc.JSRuntime, qqCompilerTest)
+    CompilerTest.runTest[Any](qq.cc.jsc.JSRuntime, qqCompilerTest)
 
   "select keys" in Future.traverse(selectKeyTests)(runTest)
   "select index" in Future.traverse(selectIndexTests)(runTest)

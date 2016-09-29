@@ -4,6 +4,7 @@ package app
 import dash.ajax.{Ajax, AjaxMethod}
 import monix.eval.Task
 import org.scalajs.dom.XMLHttpRequest
+import qq.Platform.Js._
 import qq.cc.{OrCompilationError, Prelude, QQRuntime, QQRuntimeException}
 import qq.data.CompiledDefinition
 import qq.cc.jsc._

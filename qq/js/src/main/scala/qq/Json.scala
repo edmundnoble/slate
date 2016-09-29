@@ -1,5 +1,6 @@
 package qq
 
+import qq.Platform.Js._
 import qq.Platform.Rec._
 import qq.util.Recursion.RecursiveFunction
 import qq.util.Unsafe
