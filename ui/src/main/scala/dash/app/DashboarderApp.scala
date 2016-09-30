@@ -90,12 +90,13 @@ object DashboarderApp extends scalajs.js.JSApp {
             ProgramCache.getCachedCompiledProgram(program))
             .flatMap(coe => coe.leftMap(implicitly[Unifier.Aux[WhatCanGoWrong, Throwable]].apply).valueOrThrow)
             .flatMap(f => f(Map.empty)(input)
-              .flatMap(_.traverse { i =>
-                val upickle: Js.Value = JSON.JSONToUpickleRec(i)
-                Task.coeval(Coeval.delay(ExpandableContentModel.pkl.read(upickle)).materialize.map {
-                  case Failure(ex) => Failure(new Exception(s"Deserialization error, trying to deserialize ${JSON.render(i).mkString}", ex))
-                  case s => s
-                }.dematerialize)
+              .flatMap(_.traverse { json =>
+                val upickle: Js.Value = JSON.JSONToUpickleRec(json)
+                Task.coeval(Coeval.delay(ExpandableContentModel.pkl.read(upickle)).materialize.map(
+                  _.recoverWith {
+                    case ex => Failure(new Exception(s"Deserialization error, trying to deserialize ${JSON.render(json).mkString}", ex))
+                  }
+                ).dematerialize)
               })
             ))
     }

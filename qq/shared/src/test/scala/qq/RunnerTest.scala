@@ -24,7 +24,7 @@ class RunnerTest extends QQAsyncTestSuite {
       .map(_.map(_.map(_.norm)).toDisjunction should be(test.expectedOutputOrException.map(_.map(_.norm))))
       .runAsync
 
-  val identityProgram = {
+  val identityProgram: RunnerTestCase = {
     val dict = JSON.Obj("1" -> JSON.Num(2), "3" -> JSON.Num(4))
     RunnerTestCase(dict, ".", List(dict).right)
   }
