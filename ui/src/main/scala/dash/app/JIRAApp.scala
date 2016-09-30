@@ -17,7 +17,7 @@ def extractIssues: .issues[] | {
 };
 
 def issues(auth): httpPost("https://dashboarder.atlassian.net/rest/api/2/search/"; {};
-                           { jql: .jql, maxResults: 10 };
+                           { jql, maxResults: 10 };
                            auth + { "Content-Type": "application/json" }) | extractIssues;
 
 def extractFilters(auth): .[] | {

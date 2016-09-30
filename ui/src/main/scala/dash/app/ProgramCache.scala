@@ -4,11 +4,9 @@ package app
 import matryoshka.Fix
 import qq.cc._
 import qq.data.{ConcreteFilter, FilterComponent, JSON, Program}
-import qq.cc.jsc.JSRuntime
 import scodec.bits.BitVector
 import Util._
-import fastparse.core.ParseError
-import fastparse.core.Parsed.Failure
+import fastparse.core.{ParseError, Parsed}
 import shapeless.ops.coproduct.Inject
 import shapeless.{:+:, CNil, Coproduct}
 
@@ -16,9 +14,9 @@ import scalaz.\/
 import scalaz.syntax.either._
 import scalaz.syntax.applicative._
 
-object DashApp {
+object ProgramCache {
 
-  def prepareProgram(program: String): \/[Failure, Program[Fix[FilterComponent]]] = {
+  def prepareProgram(program: String): \/[Parsed.Failure, Program[Fix[FilterComponent]]] = {
     val parsedQQProgram = Parser.program.parse(program).toDisjunction.map(_.value)
     val optimizedProgram = parsedQQProgram.map(LocalOptimizer.optimizeProgram[Fix])
     optimizedProgram
@@ -38,7 +36,7 @@ object DashApp {
     import StorageProgram._
     import qq.protocol.FilterProtocol._
 
-    val hash = qqProgram.hashCode.toString
+    val hash = "program " + qqProgram.hashCode.toString
     for {
       programInStorage <- get(hash)
       decodedOptimizedProgram <- programInStorage match {

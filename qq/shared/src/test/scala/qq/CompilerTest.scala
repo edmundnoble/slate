@@ -2,7 +2,6 @@ package qq
 
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalactic.{Normalization, Uniformity}
 import org.scalatest.Assertion
 import qq.cc.{JSONRuntime, QQCompiler, QQRuntime}
 import qq.data.{ConcreteFilter, JSON}
@@ -11,34 +10,14 @@ import org.scalactic.NormMethods._
 import scala.concurrent.Future
 
 // data representation of a compiler test case
-case class CompilerTest(input: JSON, program: ConcreteFilter, expectedOutput: JSON*)
+case class CompilerTestCase(input: JSON, program: ConcreteFilter, expectedOutput: JSON*)
 
-object CompilerTest {
+class CompilerTest extends QQAsyncTestSuite {
 
   import qq.data.QQDSL.fix._
-  import org.scalatest.Matchers._
 
-  implicit object canonicalized extends Uniformity[JSON] {
-    final def normalizedCanHandle(b: Any): Boolean = b.isInstanceOf[JSON]
-    final def normalizedOrSame(b: Any): Any =
-      b match {
-        case s: JSON => normalized(s)
-        case _ => b
-      }
-    def normalized(right: JSON): JSON = toCanonical(right)
-  }
-
-  def toCanonical(j: JSON): JSON = j match {
-    case (l: JSON.ObjList) => JSON.ObjList(l.value.map { case (k, v) => k -> toCanonical(v) })
-    case (m: JSON.ObjMap) => toCanonical(m.toList)
-    case JSON.Arr(values) => JSON.Arr(values.map(toCanonical))
-    case _ => j
-  }
-
-
-  def runTest[J](runtime: QQRuntime[J], qqCompilerTest: CompilerTest)
-                (implicit sch: Scheduler): Future[Assertion] = qqCompilerTest match {
-    case CompilerTest(input, filter, expectedOutput@_*) =>
+  def runTest(qqCompilerTest: CompilerTestCase): Future[Assertion] = qqCompilerTest match {
+    case CompilerTestCase(input, filter, expectedOutput@_*) =>
       QQCompiler
         .compileFilter(JSONRuntime, IndexedSeq.empty, filter)
         .fold[Task[Assertion]](
@@ -50,113 +29,123 @@ object CompilerTest {
         .runAsync
   }
 
-  val selectKeyTests: List[CompilerTest] = {
-    val dict = JSON.ObjList("present" -> JSON.Num(1))
+  val selectKeyTests: List[CompilerTestCase] = {
+    val dict = JSON.Obj("present" -> JSON.Num(1))
     List(
-      CompilerTest(dict, selectKey("present"), JSON.Num(1)),
-      CompilerTest(dict, selectKey("absent"), JSON.Null)
+      CompilerTestCase(dict, selectKey("present"), JSON.Num(1)),
+      CompilerTestCase(dict, selectKey("absent"), JSON.Null)
     )
   }
 
-  val selectIndexTests: List[CompilerTest] = {
+  val selectIndexTests: List[CompilerTestCase] = {
     val arr = JSON.Arr(JSON.Num(1), JSON.Num(2))
     List(
-      CompilerTest(arr, selectIndex(-3), JSON.Null),
-      CompilerTest(arr, selectIndex(-2), JSON.Num(1)),
-      CompilerTest(arr, selectIndex(-1), JSON.Num(2)),
-      CompilerTest(arr, selectIndex(0), JSON.Num(1)),
-      CompilerTest(arr, selectIndex(1), JSON.Num(2)),
-      CompilerTest(arr, selectIndex(2), JSON.Null)
+      CompilerTestCase(arr, selectIndex(-3), JSON.Null),
+      CompilerTestCase(arr, selectIndex(-2), JSON.Num(1)),
+      CompilerTestCase(arr, selectIndex(-1), JSON.Num(2)),
+      CompilerTestCase(arr, selectIndex(0), JSON.Num(1)),
+      CompilerTestCase(arr, selectIndex(1), JSON.Num(2)),
+      CompilerTestCase(arr, selectIndex(2), JSON.Null)
     )
   }
 
-  val idTests: List[CompilerTest] = {
-    val dict = JSON.ObjList("present" -> JSON.Num(1))
-    List(CompilerTest(dict, id, dict))
+  val idTests: List[CompilerTestCase] = {
+    val dict = JSON.Obj("present" -> JSON.Num(1))
+    List(CompilerTestCase(dict, id, dict))
   }
 
-  val selectRangeTests: List[CompilerTest] = {
+  val selectRangeTests: List[CompilerTestCase] = {
     val arr = JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4))
     List(
-      CompilerTest(arr, selectRange(0, 0), JSON.Arr()),
-      CompilerTest(arr, selectRange(0, 1), JSON.Arr(JSON.Num(1))),
-      CompilerTest(arr, selectRange(0, 2), JSON.Arr(JSON.Num(1), JSON.Num(2))),
-      CompilerTest(arr, selectRange(0, 3), JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3))),
-      CompilerTest(arr, selectRange(0, 4), JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4))),
-      CompilerTest(arr, selectRange(0, 5), JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4))),
-      CompilerTest(arr, selectRange(1, 5), JSON.Arr(JSON.Num(2), JSON.Num(3), JSON.Num(4)))
+      CompilerTestCase(arr, selectRange(0, 0), JSON.Arr()),
+      CompilerTestCase(arr, selectRange(0, 1), JSON.Arr(JSON.Num(1))),
+      CompilerTestCase(arr, selectRange(0, 2), JSON.Arr(JSON.Num(1), JSON.Num(2))),
+      CompilerTestCase(arr, selectRange(0, 3), JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3))),
+      CompilerTestCase(arr, selectRange(0, 4), JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4))),
+      CompilerTestCase(arr, selectRange(0, 5), JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4))),
+      CompilerTestCase(arr, selectRange(1, 5), JSON.Arr(JSON.Num(2), JSON.Num(3), JSON.Num(4)))
     )
   }
 
-  val collectResultsTests: List[CompilerTest] = {
+  val collectResultsTests: List[CompilerTestCase] = {
     List(
-      CompilerTest(JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4)), collectResults, JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4)),
-      CompilerTest(JSON.ObjList("a" -> JSON.Num(1), "b" -> JSON.Str("c")), collectResults, JSON.Num(1), JSON.Str("c"))
+      CompilerTestCase(JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4)), collectResults, JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4)),
+      CompilerTestCase(JSON.Obj("a" -> JSON.Num(1), "b" -> JSON.Str("c")), collectResults, JSON.Num(1), JSON.Str("c"))
     )
   }
 
-  val fatStackTests: List[CompilerTest] = {
+  val fatStackTests: List[CompilerTestCase] = {
     // tail recursive builder, giving you (i * 2) compositions of id with f.
     @annotation.tailrec
     def fun(f: ConcreteFilter, i: Int): ConcreteFilter = if (i == 0) f else fun(id | f | id, i - 1)
     List(
-      CompilerTest(JSON.False, fun(id, 1000), JSON.False)
+      CompilerTestCase(JSON.False, fun(id, 1000), JSON.False)
     )
   }
 
-  val variableTests: List[CompilerTest] =
+  val variableTests: List[CompilerTestCase] =
     List(
-      CompilerTest(JSON.Str("input"), asBinding("hello", id, deref("hello")), JSON.Str("input")),
-      CompilerTest(JSON.Str("input"), asBinding("hello", add(id, constString("hi")), add(constString("hey"), deref("hello"))), JSON.Str("heyinputhi"))
+      CompilerTestCase(JSON.Str("input"), asBinding("hello", id, deref("hello")), JSON.Str("input")),
+      CompilerTestCase(JSON.Str("input"), asBinding("hello", add(id, constString("hi")), add(constString("hey"), deref("hello"))), JSON.Str("heyinputhi"))
     )
 
-  val pathSetterTests: List[CompilerTest] =
+  val pathSetterTests: List[CompilerTestCase] =
     List(
-      CompilerTest(JSON.Num(2), setPath(Nil, constNumber(3)), JSON.Num(3)),
-      CompilerTest(
+      CompilerTestCase(JSON.Num(2), setPath(Nil, constNumber(3)), JSON.Num(3)),
+      CompilerTestCase(
         JSON.Arr(
-          JSON.ObjList("key1" -> JSON.ObjList("key2" -> JSON.Str("input1")), "out1" -> JSON.Str("output1")),
-          JSON.ObjList("key1" -> JSON.ObjList("key2" -> JSON.Str("input2")), "out1" -> JSON.Str("output2"))
+          JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("input1")), "out1" -> JSON.Str("output1")),
+          JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("input2")), "out1" -> JSON.Str("output2"))
         ),
         getPathS(collectResults) | setPath(List(selectKey("key1"), selectKey("key2")), getPathS(selectKey("out1"))),
-        JSON.ObjList("key1" -> JSON.ObjList("key2" -> JSON.Str("output1")), "out1" -> JSON.Str("output1")),
-        JSON.ObjList("key1" -> JSON.ObjList("key2" -> JSON.Str("output2")), "out1" -> JSON.Str("output2"))
+        JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("output1")), "out1" -> JSON.Str("output1")),
+        JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("output2")), "out1" -> JSON.Str("output2"))
       )
     )
 
-  val pathModifierTests: List[CompilerTest] =
+  val pathModifierTests: List[CompilerTestCase] =
     List(
-      CompilerTest(JSON.Num(2), modifyPath(Nil, constNumber(3)), JSON.Num(3)),
-      CompilerTest(
+      CompilerTestCase(JSON.Num(2), modifyPath(Nil, constNumber(3)), JSON.Num(3)),
+      CompilerTestCase(
         JSON.Arr(
-          JSON.ObjList("key1" -> JSON.ObjList("out1" -> JSON.Str("output1"))),
-          JSON.ObjList("key1" -> JSON.ObjList("out1" -> JSON.Str("output2")))
+          JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output1"))),
+          JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output2")))
         ),
         modifyPath(List(collectResults, selectKey("key1"), selectKey("out1")), add(id, constString("mod"))),
-        JSON.ObjList("key1" -> JSON.ObjList("out1" -> JSON.Str("output1mod"))),
-        JSON.ObjList("key1" -> JSON.ObjList("out1" -> JSON.Str("output2mod")))
+        JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output1mod"))),
+        JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output2mod")))
       ),
-      CompilerTest(
+      CompilerTestCase(
         JSON.Arr(
-          JSON.ObjList("key1" -> JSON.ObjList("out1" -> JSON.Str("output1"))),
-          JSON.ObjList("key1" -> JSON.ObjList("out1" -> JSON.Str("output2")))
+          JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output1"))),
+          JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output2")))
         ),
         modifyPath(List(collectResults, selectKey("key1")), getPathS(selectKey("out1"))),
-        JSON.ObjList("key1" -> JSON.Str("output1")),
-        JSON.ObjList("key1" -> JSON.Str("output2"))
+        JSON.Obj("key1" -> JSON.Str("output1")),
+        JSON.Obj("key1" -> JSON.Str("output2"))
       ),
-      CompilerTest(
+      CompilerTestCase(
         JSON.Arr(
-          JSON.ObjList("out1" -> JSON.Str("output1")),
-          JSON.ObjList("out1" -> JSON.Str("output2"))
+          JSON.Obj("out1" -> JSON.Str("output1")),
+          JSON.Obj("out1" -> JSON.Str("output2"))
         ),
         modifyPath(List(selectIndex(0)), getPathS(selectKey("out1"))),
         JSON.Arr(
           JSON.Str("output1"),
-          JSON.ObjList("out1" -> JSON.Str("output2"))
+          JSON.Obj("out1" -> JSON.Str("output2"))
         )
       )
     )
+
+  "select keys" in Future.traverse(selectKeyTests)(runTest)
+  "select index" in Future.traverse(selectIndexTests)(runTest)
+  "id" in Future.traverse(idTests)(runTest)
+  "select range" in Future.traverse(selectRangeTests)(runTest)
+  "collect results" in Future.traverse(collectResultsTests)(runTest)
+  "fat stack" taggedAs StackTest in Future.traverse(fatStackTests)(runTest)
+  "variables" in Future.traverse(variableTests)(runTest)
+  "path setters" in Future.traverse(pathSetterTests)(runTest)
+  "path modifiers" in Future.traverse(pathModifierTests)(runTest)
 
 
 }

@@ -105,7 +105,7 @@ object Recursion {
     override def run(tf: T[F], loop: T[F] => Trampoline[T[F]]): Trampoline[T[F]] =
       tf.traverse[Trampoline, F] { (ftf: F[T[F]]) =>
         val rewritten: F[T[F]] = ftf.map(rewrite)
-        val looped: Trampoline[F[T[F]]] = rewritten.traverse[Trampoline, T[F]](loop)
+        val looped: Trampoline[F[T[F]]] = rewritten.traverse(loop)
         looped
       }
   }
@@ -113,7 +113,7 @@ object Recursion {
   @inline final def transCataT[T[_[_]] : TraverseT, F[_] : Traverse]
   (rewrite: T[F] => T[F]): RecursiveFunction[T[F], T[F]] = new RecursiveFunction[T[F], T[F]] {
     override def run(tf: T[F], loop: T[F] => Trampoline[T[F]]): Trampoline[T[F]] = {
-      val looped: Trampoline[T[F]] = tf.traverse[Trampoline, F]((ftf: F[T[F]]) => ftf.traverse[Trampoline, T[F]](loop))
+      val looped: Trampoline[T[F]] = tf.traverse[Trampoline, F]((ftf: F[T[F]]) => ftf.traverse(loop))
       val rewritten: Trampoline[T[F]] = looped.map(rewrite)
       rewritten
     }
@@ -122,9 +122,8 @@ object Recursion {
   @inline final def allocate[T[_[_]] : Recursive, F[_] : Functor](tf: T[F]): Fix[F] =
     tf.cata(Fix[F])
 
-  @inline final def stream[T[_[_]], F[_] : Functor](tf: Fix[F])(implicit T: Corecursive[T]): T[F] = {
+  @inline final def stream[T[_[_]], F[_] : Functor](tf: Fix[F])(implicit T: Corecursive[T]): T[F] =
     T.ana(tf)(_.unFix)
-  }
 
 }
 

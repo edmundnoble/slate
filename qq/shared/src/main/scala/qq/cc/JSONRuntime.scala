@@ -38,7 +38,7 @@ object JSONRuntime extends QQRuntime[JSON] {
         } else {
           f(arr.value(index)).map {
             _.map { v =>
-              JSON.Arr(arr.value.updated(index, v): _*)
+              JSON.Arr(arr.value.updated(index, v))
             }
           }
         }
@@ -51,7 +51,7 @@ object JSONRuntime extends QQRuntime[JSON] {
   override def setPath(components: List[PathComponent], biggerStructure: JSON, smallerStructure: JSON): Task[List[JSON]] = components match {
     case (component :: rest) => component match {
       case CollectResults => biggerStructure match {
-        case arr: JSON.Arr => arr.value.toList.traverseM(setPath(rest, _, smallerStructure))
+        case arr: JSON.Arr => arr.value.traverseM(setPath(rest, _, smallerStructure))
         case v => Task.raiseError(QQRuntimeException("Tried to collect results from " + print(v) + " but it's not an array"))
       }
       case SelectKey(key) => biggerStructure match {
@@ -67,7 +67,7 @@ object JSONRuntime extends QQRuntime[JSON] {
           if (arr.value.length <= index) {
             Task.raiseError(???)
           } else {
-            setPath(rest, arr.value(index), smallerStructure).map(_.map(v => JSON.Arr(arr.value.updated(index, v): _*)))
+            setPath(rest, arr.value(index), smallerStructure).map(_.map(v => JSON.Arr(arr.value.updated(index, v))))
           }
         case v =>
           Task.raiseError(QQRuntimeException("Tried to select index " + index + " from " + print(v) + " but it's not an array"))
@@ -89,7 +89,7 @@ object JSONRuntime extends QQRuntime[JSON] {
     case (JSON.Str(f), JSON.Str(s)) =>
       Task.now(JSON.Str(f + s))
     case (f: JSON.Arr, s: JSON.Arr) =>
-      Task.now(JSON.Arr(f.value ++ s.value: _*))
+      Task.now(JSON.Arr(f.value ++ s.value))
     case (f: JSON.Obj, s: JSON.Obj) =>
       Task.now(JSON.ObjMap(f.toMap.value ++ s.toMap.value))
     case (f, s) =>
@@ -100,7 +100,7 @@ object JSONRuntime extends QQRuntime[JSON] {
     case (JSON.Num(f), JSON.Num(s)) =>
       Task.now(JSON.Num(f - s))
     case (f: JSON.Arr, s: JSON.Arr) =>
-      Task.now(JSON.Arr(f.value.filter(!s.value.contains(_)): _*))
+      Task.now(JSON.Arr(f.value.filter(!s.value.contains(_))))
     case (f: JSON.Obj, s: JSON.Obj) =>
       val contents: Map[String, JSON] = f.toMap.value -- s.map[String, Set[String]](_._1)(collection.breakOut)
       Task.now(JSON.ObjMap(contents))
@@ -115,9 +115,7 @@ object JSONRuntime extends QQRuntime[JSON] {
     case (f: JSON.Obj, s: JSON.Obj) =>
       val firstMap = f.toMap.value.mapValues(Task.now)
       val secondMap = s.toMap.value.mapValues(Task.now)
-      mapInstance[String].sequence(unionWith(firstMap, secondMap) {
-        (f, s) => Task.mapBoth(f, s)(addJsValues).flatten[JSON]
-      }).map(o => JSON.ObjMap(o))
+      mapInstance[String].sequence(unionWith(firstMap, secondMap)(Task.mapBoth(_, _)(addJsValues).flatten)).map(JSON.ObjMap)
     case (f, s) =>
       Task.raiseError(QQRuntimeException("can't multiply " + print(f) + " and " + print(s)))
   }
@@ -134,14 +132,12 @@ object JSONRuntime extends QQRuntime[JSON] {
       Task.raiseError(QQRuntimeException("can't modulo " + print(f) + " by " + print(s)))
   }
 
-  override def enlistFilter(filter: CompiledFilter[JSON]): CompiledFilter[JSON] = (for {
-    fFun <- Reader(filter)
-  } yield {
-    JSONv: JSON =>
-      for {
-        results <- fFun(JSONv)
-      } yield JSON.Arr(results: _*) :: Nil
-  }).run
+  override def enlistFilter(filter: CompiledFilter[JSON]): CompiledFilter[JSON] =
+    (bindings: VarBindings[JSON]) =>
+      (jsv: JSON) =>
+        for {
+          results <- filter(bindings)(jsv)
+        } yield JSON.Arr(results) :: Nil
 
   override def selectKey(key: String): CompiledProgram[JSON] = {
     case f: JSON.Obj =>
@@ -175,7 +171,7 @@ object JSONRuntime extends QQRuntime[JSON] {
     case f: JSON.Arr =>
       val seq = f.value
       if (start < end && start < seq.length) {
-        Task.now(JSON.Arr(seq.slice(start, end): _*) :: Nil)
+        Task.now(JSON.Arr(seq.slice(start, end)) :: Nil)
       } else {
         Task.now(emptyArray :: Nil)
       }
@@ -196,16 +192,16 @@ object JSONRuntime extends QQRuntime[JSON] {
 
   override def enjectFilter(obj: List[(\/[String, CompiledFilter[JSON]], CompiledFilter[JSON])]): CompiledFilter[JSON] = {
     if (obj.isEmpty) {
-      CompiledFilter.func[JSON](_ => Task.now(JSON.ObjList() :: Nil))
+      CompiledFilter.func[JSON](_ => Task.now(JSON.Obj() :: Nil))
     } else {
       bindings: VarBindings[JSON] => {
-        JSONv: JSON =>
+        jsv: JSON =>
           for {
             kvPairs <- obj.traverse[Task, List[List[(String, JSON)]]] {
               case (\/-(filterKey), filterValue) =>
                 for {
-                  keyResults <- filterKey(bindings)(JSONv)
-                  valueResults <- filterValue(bindings)(JSONv)
+                  keyResults <- filterKey(bindings)(jsv)
+                  valueResults <- filterValue(bindings)(jsv)
                   keyValuePairs <- keyResults.traverse[Task, List[(String, JSON)]] {
                     case JSON.Str(keyString) =>
                       Task.now(valueResults.map(keyString -> _))
@@ -214,10 +210,10 @@ object JSONRuntime extends QQRuntime[JSON] {
                   }
                 } yield keyValuePairs
               case (-\/(filterName), filterValue) =>
-                filterValue(bindings)(JSONv).map(_.map(filterName -> _) :: Nil)
+                filterValue(bindings)(jsv).map(_.map(filterName -> _) :: Nil)
             }
             kvPairsProducts = kvPairs.map(_.flatten).unconsFold(Nil, foldWithPrefixes[(String, JSON)](_, _: _*))
-          } yield kvPairsProducts.map(JSON.ObjList(_: _*))
+          } yield kvPairsProducts.map(JSON.ObjList)
       }
     }
   }

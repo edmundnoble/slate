@@ -31,26 +31,26 @@ object JSON {
       case obj: Js.Obj =>
         Unsafe.builderTraverse[Seq]
           .traverse[Trampoline, (String, Js.Value), (String, JSON)](obj.value) { case (s, d) => loop(d) map (r => (s, r)) }
-          .map(JSON.ObjList(_: _*))
+          .map(s => JSON.ObjList(s.toList))
     }
   }
-  //
-  //  def JSONToUpickleRec: RecursiveFunction[JSON, Js.Value] = new RecursiveFunction[JSON, Js.Value] {
-  //    override def run(in: JSON, loop: (JSON) => Trampoline[Js.Value]): Trampoline[Js.Value] = in match {
-  //      case JSON.Str(s) => Trampoline.done(Js.Str(s))
-  //      case JSON.Num(n) => Trampoline.done(Js.Num(n))
-  //      case JSON.True => Trampoline.done(Js.True)
-  //      case JSON.False => Trampoline.done(Js.False)
-  //      case JSON.Null => Trampoline.done(Js.Null)
-  //      case JSON.Arr(children) =>
-  //        children.traverse(loop)
-  //          .map(Js.Arr(_: _*))
-  //      case obj: JSON.Obj =>
-  //        obj.toList.value
-  //          .traverse[Trampoline, (String, Js.Value)] { case (s, d) => loop(d) map (r => (s, r)) }
-  //          .map(Js.Obj(_: _*))
-  //    }
-  //  }
+
+  def JSONToUpickleRec: RecursiveFunction[JSON, Js.Value] = new RecursiveFunction[JSON, Js.Value] {
+    override def run(in: JSON, loop: (JSON) => Trampoline[Js.Value]): Trampoline[Js.Value] = in match {
+      case JSON.Str(s) => Trampoline.done(Js.Str(s))
+      case JSON.Num(n) => Trampoline.done(Js.Num(n))
+      case JSON.True => Trampoline.done(Js.True)
+      case JSON.False => Trampoline.done(Js.False)
+      case JSON.Null => Trampoline.done(Js.Null)
+      case JSON.Arr(children) =>
+        children.traverse(loop)
+          .map(Js.Arr(_: _*))
+      case obj: JSON.Obj =>
+        obj.toList.value
+          .traverse[Trampoline, (String, Js.Value)] { case (s, d) => loop(d) map (r => (s, r)) }
+          .map(Js.Obj(_: _*))
+    }
+  }
 
   def render(v: JSON): Vector[String] = v match {
     case JSON.Str(s) => Vector("\"", s, "\"")
@@ -72,15 +72,16 @@ object JSON {
     def toList: ObjList
     def map[B, That](f: ((String, JSON)) => B)(implicit cbf: CanBuildFrom[Any, B, That]): That
   }
+  object Obj {
+    def apply(values: (String, JSON)*): ObjList = ObjList(values.toList)
+    private[Obj] val empty = ObjList(Nil)
+    def apply(): ObjList = empty
+  }
   final case class ObjList(value: List[(String, JSON)]) extends Obj {
     override def toMap: ObjMap = ObjMap(value.toMap)
     override def toList: ObjList = this
     override def map[B, That](f: ((String, JSON)) => B)(implicit cbf: CanBuildFrom[Any, B, That]): That =
       value.map(f)(cbf)
-  }
-  object ObjList {
-    def apply(values: (String, JSON)*): ObjList = ObjList(values.toList)
-    def apply(): ObjList = ObjList(Nil)
   }
   final case class ObjMap(value: Map[String, JSON]) extends Obj {
     override def toMap: ObjMap = this

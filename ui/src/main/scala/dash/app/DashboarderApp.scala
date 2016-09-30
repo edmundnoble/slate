@@ -3,25 +3,26 @@ package app
 
 import dash.DashboardPage.{AppBarState, SearchPageProps}
 import dash.Util._
-import dash.app.DashApp.WhatCanGoWrong
+import dash.app.ProgramCache.WhatCanGoWrong
 import dash.models.{AppModel, ExpandableContentModel}
 import dash.views.AppView.AppProps
 import japgolly.scalajs.react.{Addons, ReactComponentM, ReactDOM, TopNode}
-import monix.eval.Task
+import monix.eval.{Coeval, Task}
 import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.observers.Subscriber.Sync
 import monix.reactive.{Observable, OverflowStrategy}
 import monix.scalaz._
 import org.scalajs.dom
 import org.scalajs.dom.raw._
-import qq.Json
 import qq.Platform.Rec._
 import qq.data.JSON
 import shapeless.ops.coproduct.Unifier
+import upickle.Js
 
 import scala.concurrent.duration.FiniteDuration
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
+import scala.util.Failure
 import scalaz.syntax.traverse._
 import scalaz.syntax.either._
 import scalaz.std.list._
@@ -59,34 +60,43 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   case class DashProgram(title: String, program: String, input: JSON)
 
-  val todoistState = scala.util.Random.nextString(6)
+  val programs = {
+    val todoistState: String = List.fill(6) {
+      java.lang.Integer.toHexString(scala.util.Random.nextInt(256))
+    }.mkString
 
-  val programs =
     List(
-      DashProgram("Gmail", GmailApp.program, JSON.ObjList()),
+      DashProgram("Gmail", GmailApp.program, JSON.Obj()),
       DashProgram("JIRA", JIRAApp.program,
-        JSON.ObjList(
+        JSON.Obj(
           "username" -> JSON.Str(Creds.jiraUsername),
           "password" -> JSON.Str(Creds.jiraPassword)
         )
       ),
-      DashProgram("Todoist", ".",
-        JSON.ObjList(
+      DashProgram("Todoist", TodoistApp.program,
+        JSON.Obj(
           "client_id" -> JSON.Str(Creds.todoistClientId),
           "tok" -> JSON.Str(todoistState)
         )
       )
     )
+  }
 
   private def runCompiledPrograms: List[(String, Task[List[ExpandableContentModel]])] =
     programs.map {
       case DashProgram(title, program, input) =>
         (title,
           StorageProgram.runProgram(DomStorage.Local,
-            DashApp.getCachedCompiledProgram(program))
+            ProgramCache.getCachedCompiledProgram(program))
             .flatMap(coe => coe.leftMap(implicitly[Unifier.Aux[WhatCanGoWrong, Throwable]].apply).valueOrThrow)
-            .flatMap(f => f(Map.empty)(Json.jsToJSONRec(input))
-              .map(_.flatMap(i => ExpandableContentModel.pkl.read.lift(Json.jsToUpickleRec(i))))
+            .flatMap(f => f(Map.empty)(input)
+              .flatMap(_.traverse { i =>
+                val upickle: Js.Value = JSON.JSONToUpickleRec(i)
+                Task.coeval(Coeval.delay(ExpandableContentModel.pkl.read(upickle)).materialize.map {
+                  case Failure(ex) => Failure(new Exception(s"Deserialization error, trying to deserialize ${JSON.render(i).mkString}", ex))
+                  case s => s
+                }.dematerialize)
+              })
             ))
     }
 

@@ -4,7 +4,6 @@ package app
 object TodoistApp {
   val program: String =
 raw"""
-
 print
 """
   //def doAuth: launchAuth("https://todoist.com/oauth/authorize"; oAuthParams);

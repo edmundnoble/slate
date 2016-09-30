@@ -3,19 +3,16 @@ package app
 
 import dash.ajax.{Ajax, AjaxMethod}
 import monix.eval.Task
-import org.scalajs.dom.XMLHttpRequest
-import qq.Platform.Js._
 import qq.cc.{OrCompilationError, Prelude, QQRuntime, QQRuntimeException}
 import qq.data.{CompiledDefinition, JSON}
-import qq.cc.jsc._
 import qq.util._
 
 import scala.concurrent.duration._
-import scala.scalajs.js
 import scalaz.syntax.either._
 import scalaz.syntax.apply._
 import monix.scalaz._
 import qq.Json
+import qq.Platform.Rec._
 
 object DashPrelude extends Prelude[JSON] {
 
@@ -51,7 +48,7 @@ object DashPrelude extends Prelude[JSON] {
           case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not a URL"))
         }
         val queryParamsTask = queryParamsRaw match {
-          case o: JSON.Obj => Task.now(o.toMap.value)
+          case o: JSON.Obj => Task.now(o.toMap.value.mapValues(Json.JSONToJsRec(_)))
           case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not query params/data"))
         }
         val dataTask = dataRaw match {
