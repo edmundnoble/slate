@@ -29,13 +29,12 @@ object DashPrelude extends Prelude[JSON] {
           case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not a URL"))
         }
         val queryParamsTask = queryParamsRaw match {
-          case o: JSON.Obj => Task.now(o.toMap.value)
+          case o: JSON.Obj => Task.now(o.toMap.value.mapValues(Json.JSONToJsRec(_)))
           case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not a query params object"))
         }
         for {
-          url <- urlTask
-          queryParams <- queryParamsTask
-          webAuthResult <- identify.launchWebAuthFlow(interactive = true, Ajax.addQueryParams(url, queryParams)).map(JSON.Str).delayExecution(5.seconds)
+          urlWithQueryParams <- (urlTask |@| queryParamsTask)(Ajax.addQueryParams)
+          webAuthResult <- identify.launchWebAuthFlow(interactive = true, urlWithQueryParams).map(JSON.Str)
         } yield webAuthResult
     })
 

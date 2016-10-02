@@ -30,7 +30,7 @@ object ChromeIdentity extends js.Object {
 
   @native
   def launchWebAuthFlow(details: LaunchWebAuthFlowOptions,
-                     callback: js.Function1[String, Unit]): Unit = native
+                        callback: js.Function1[String, Unit]): Unit = native
 
   @native
   def removeCachedAuthToken(details: RemoveCachedAuthTokenOptions,

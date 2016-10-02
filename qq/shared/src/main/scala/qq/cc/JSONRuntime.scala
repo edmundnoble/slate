@@ -12,6 +12,7 @@ import scalaz.std.map._
 import scalaz.syntax.std.list._
 import scalaz.syntax.either._
 import scalaz.syntax.std.map._
+import scalaz.syntax.tag._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, NonEmptyList, Reader, \/, \/-}
 
@@ -115,7 +116,7 @@ object JSONRuntime extends QQRuntime[JSON] {
     case (f: JSON.Obj, s: JSON.Obj) =>
       val firstMap = f.toMap.value.mapValues(Task.now)
       val secondMap = s.toMap.value.mapValues(Task.now)
-      mapInstance[String].sequence(unionWith(firstMap, secondMap)(Task.mapBoth(_, _)(addJsValues).flatten)).map(JSON.ObjMap)
+      mapInstance[String].sequence(unionWith(firstMap, secondMap)((f, s) => Task.mapBoth(f, s)(addJsValues).flatten)).map(JSON.ObjMap)
     case (f, s) =>
       Task.raiseError(QQRuntimeException("can't multiply " + print(f) + " and " + print(s)))
   }
@@ -197,9 +198,9 @@ object JSONRuntime extends QQRuntime[JSON] {
       bindings: VarBindings[JSON] => {
         jsv: JSON =>
           for {
-            kvPairs <- obj.traverse[Task, List[List[(String, JSON)]]] {
+            kvPairs <- obj.traverse[TaskParallel, List[List[(String, JSON)]]] {
               case (\/-(filterKey), filterValue) =>
-                for {
+                (for {
                   keyResults <- filterKey(bindings)(jsv)
                   valueResults <- filterValue(bindings)(jsv)
                   keyValuePairs <- keyResults.traverse[Task, List[(String, JSON)]] {
@@ -208,10 +209,10 @@ object JSONRuntime extends QQRuntime[JSON] {
                     case k =>
                       Task.raiseError(QQRuntimeException("Tried to use " + print(k) + " as a key for an object but it's not a string"))
                   }
-                } yield keyValuePairs
+                } yield keyValuePairs).parallel
               case (-\/(filterName), filterValue) =>
-                filterValue(bindings)(jsv).map(_.map(filterName -> _) :: Nil)
-            }
+                filterValue(bindings)(jsv).map(_.map(filterName -> _) :: Nil).parallel
+            }.unwrap
             kvPairsProducts = kvPairs.map(_.flatten).unconsFold(Nil, foldWithPrefixes[(String, JSON)](_, _: _*))
           } yield kvPairsProducts.map(JSON.ObjList)
       }

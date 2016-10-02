@@ -22,7 +22,7 @@ object ErrorView {
 
   def builder: ReactComponentB[Throwable, Unit, Unit, TopNode] =
     ReactComponentB[Throwable]("errorView").stateless.noBackend.render_P { ex =>
-      div(Styles.danger, ex.getMessage())
+      div(Styles.danger, ex.toString())
     }
 
 

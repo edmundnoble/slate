@@ -22,12 +22,11 @@ trait UtilImplicits {
   new Monad[TaskParallel] {
     override def point[A](a: => A): TaskParallel[A] = Task.now(a).parallel
 
-    override def ap[A, B](fa: => TaskParallel[A])(f: => TaskParallel[(A) => B]): TaskParallel[B] = {
-      Task.mapBoth(fa.unwrap, f.unwrap)((a, f) => f(a)).parallel
-    }
+    override def ap[A, B](fa: => TaskParallel[A])(f: => TaskParallel[(A) => B]): TaskParallel[B] =
+      Task.mapBoth(f.unwrap, fa.unwrap)(_ (_)).parallel
 
     override def bind[A, B](fa: TaskParallel[A])(f: (A) => TaskParallel[B]): TaskParallel[B] =
-      fa.unwrap.flatMap(a => f(a).unwrap).parallel
+      fa.unwrap.flatMap(f(_).unwrap).parallel
   }
 
   // sum type encoded with a single bit

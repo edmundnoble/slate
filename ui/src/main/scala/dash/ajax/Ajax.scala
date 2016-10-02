@@ -19,7 +19,8 @@ import scala.scalajs.js.typedarray._
   * Thrown when `Ajax.get` or `Ajax.post` receives a non-20X response code.
   * Contains the XMLHttpRequest that resulted in that response
   */
-case class AjaxException(xhr: dom.XMLHttpRequest) extends Exception {
+case class AjaxException(xhr: dom.XMLHttpRequest, url: String)
+  extends Exception("Ajax " + (if (xhr.status == 0 && xhr.readyState == 4) " timeout " else s" error ${xhr.status} ") + s" $url") {
   def isTimeout = xhr.status == 0 && xhr.readyState == 4
 }
 
@@ -112,7 +113,7 @@ object Ajax {
           if ((req.status >= 200 && req.status < 300) || req.status == 304)
             callback.onSuccess(req)
           else
-            callback.onError(AjaxException(req))
+            callback.onError(AjaxException(req, url))
         }
       }
 

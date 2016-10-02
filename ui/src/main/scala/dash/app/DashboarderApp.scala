@@ -15,9 +15,11 @@ import monix.scalaz._
 import org.scalajs.dom
 import org.scalajs.dom.raw._
 import qq.Platform.Rec._
+import qq.cc.CompiledFilter
 import qq.data.JSON
 import shapeless.ops.coproduct.Unifier
 import upickle.Js
+import qq.util._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.scalajs.js
@@ -26,6 +28,7 @@ import scala.util.Failure
 import scalaz.syntax.traverse._
 import scalaz.syntax.either._
 import scalaz.std.list._
+import scalaz.syntax.tag._
 import scalaz.std.`try`._
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
@@ -34,7 +37,7 @@ import scalaz.\/
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
 
-  val wheelPositionY: Observable[Double] =
+  def wheelPositionY: Observable[Double] =
     Observable.create[Double](OverflowStrategy.Unbounded) { (s: Sync[Double]) =>
       var posY = 0.0
       val wheelHandler = js.Any.fromFunction1((ev: WheelEvent) => {
@@ -58,22 +61,22 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   final class EmptyResponseException extends java.lang.Exception("Empty response")
 
-  case class DashProgram(title: String, program: String, input: JSON)
+  case class DashProgram[P](title: String, program: P, input: JSON)
 
-  val programs = {
+  def programs: List[DashProgram[String]] = {
     val todoistState: String = List.fill(6) {
       java.lang.Integer.toHexString(scala.util.Random.nextInt(256))
     }.mkString
 
     List(
-      DashProgram("Gmail", GmailApp.program, JSON.Obj()),
-      DashProgram("JIRA", JIRAApp.program,
+      DashProgram[String]("Gmail", GmailApp.program, JSON.Obj()),
+      DashProgram[String]("JIRA", JIRAApp.program,
         JSON.Obj(
           "username" -> JSON.Str(Creds.jiraUsername),
           "password" -> JSON.Str(Creds.jiraPassword)
         )
       ),
-      DashProgram("Todoist", TodoistApp.program,
+      DashProgram[String]("Todoist", TodoistApp.program,
         JSON.Obj(
           "client_id" -> JSON.Str(Creds.todoistClientId),
           "tok" -> JSON.Str(todoistState)
@@ -82,37 +85,46 @@ object DashboarderApp extends scalajs.js.JSApp {
     )
   }
 
-  private def runCompiledPrograms: List[(String, Task[List[ExpandableContentModel]])] =
-    programs.map {
+  def compiledPrograms: List[DashProgram[Task[WhatCanGoWrong \/ CompiledFilter[JSON]]]] =
+    programs.map(program =>
+      program.copy(program = StorageProgram.runProgram(DomStorage.Local, ProgramCache.getCachedCompiledProgram(program.program)))
+    )
+
+  private def runCompiledPrograms: List[(String, Task[List[JSON]])] =
+    compiledPrograms.map {
       case DashProgram(title, program, input) =>
         (title,
-          StorageProgram.runProgram(DomStorage.Local,
-            ProgramCache.getCachedCompiledProgram(program))
-            .flatMap(coe => coe.leftMap(implicitly[Unifier.Aux[WhatCanGoWrong, Throwable]].apply).valueOrThrow)
-            .flatMap(f => f(Map.empty)(input)
-              .flatMap(_.traverse { json =>
-                val upickle: Js.Value = JSON.JSONToUpickleRec(json)
-                Task.coeval(Coeval.delay(ExpandableContentModel.pkl.read(upickle)).materialize.map(
-                  _.recoverWith {
-                    case ex => Failure(new Exception(s"Deserialization error, trying to deserialize ${JSON.render(json).mkString}", ex))
-                  }
-                ).dematerialize)
-              })
+          program
+            .flatMap(_.leftMap(implicitly[Unifier.Aux[WhatCanGoWrong, Throwable]].apply).valueOrThrow)
+            .flatMap(_ (Map.empty)(input)
             ))
     }
 
-  def getContent: Task[SearchPageProps] =
-    runCompiledPrograms.traverse[Task, AppProps] {
-      case (title, program) =>
-        program.materialize.map { t =>
+  private def deserializeProgramOutput = runCompiledPrograms.map {
+    case (title, program) =>
+    (title,
+      program.flatMap(_.traverse[TaskParallel, ExpandableContentModel] { json =>
+          val upickle: Js.Value = JSON.JSONToUpickleRec(json)
+          Task.coeval(Coeval.delay(ExpandableContentModel.pkl.read(upickle)).materialize.map(
+            _.recoverWith {
+              case ex => Failure(new Exception(s"Deserialization error, trying to deserialize ${JSON.render(json).mkString}", ex))
+            }
+          ).dematerialize).parallel
+        }.unwrap))
+  }
 
+  def getContent: Observable[SearchPageProps] =
+    Observable.fromIterable(deserializeProgramOutput.map {
+      case (title, program) =>
+        val errorsCaughtProgram = program.materialize.map { t =>
           t.failed.foreach {
             logger.error("error while retrieving programs", _)
           }
-
           AppProps(title, AppModel(toDisjunction(t)))
         }
-    }.map(SearchPageProps(_))
+        errorsCaughtProgram
+    }).flatMap(Observable.fromTask).foldLeftF(Nil: List[AppProps])((l, ap) => ap :: l)
+      .map(SearchPageProps(_))
 
   def render(container: Element, wheelPosY: Observable[Double], content: SearchPageProps)(implicit scheduler: Scheduler): ReactComponentM[SearchPageProps, Unit, Unit, TopNode] = {
     import dash.views._
@@ -143,7 +155,7 @@ object DashboarderApp extends scalajs.js.JSApp {
       dom.document.body.children.namedItem("container")
     val initialState = SearchPageProps(runCompiledPrograms.map(_._1).map(AppProps(_, AppModel(Nil.right))))
     render(container, wheelPositionY, initialState)
-    getContent.runAsync.foreach(render(container, wheelPositionY, _))
+    getContent.foreach(render(container, wheelPositionY, _))
     if (!js.isUndefined(Addons.Perf)) {
       logger.info("Stopping perf")
       Addons.Perf.stop()
