@@ -114,9 +114,15 @@ object JSONRuntime extends QQRuntime[JSON] {
       Task.now(if (s == 0) JSON.Null else JSON.Num(f * s))
     case (JSON.Str(f), JSON.Num(s)) => Task.now(JSON.Str(f + s))
     case (f: JSON.Obj, s: JSON.Obj) =>
-      val firstMap = f.toMap.value.mapValues(Task.now)
-      val secondMap = s.toMap.value.mapValues(Task.now)
-      mapInstance[String].sequence(unionWith(firstMap, secondMap)((f, s) => Task.mapBoth(f, s)(addJsValues).flatten)).map(JSON.ObjMap)
+      val firstMapTask = f.toMap.value.mapValues(Task.now(_).parallel)
+      val secondMapTask = s.toMap.value.mapValues(Task.now(_).parallel)
+      mapInstance[String]
+        .sequence[TaskParallel, JSON](
+        unionWith(firstMapTask, secondMapTask)(
+          (f, s) => Task.mapBoth(f.unwrap, s.unwrap)(addJsValues).flatten.parallel
+        )
+      )
+        .unwrap.map(JSON.ObjMap)
     case (f, s) =>
       Task.raiseError(QQRuntimeException("can't multiply " + print(f) + " and " + print(s)))
   }
