@@ -10,19 +10,23 @@ import scalaz.syntax.either._
 object SharedPreludes {
 
   object Compiled {
-    def print[J](runtime: QQRuntime[J]): CompiledDefinition[J] = {
-      val body: CompiledFilter[J] = CompiledFilter.func { (jsv: J) => println("debug: " + runtime.print(jsv)); Task.now(jsv :: Nil) }
-      CompiledDefinition[J]("print", 0, body = { _ => body.right[QQCompilationException] })
-    }
-
-    def empty[J](runtime: QQRuntime[J]): CompiledDefinition[J] = {
-      val body: CompiledFilter[J] = CompiledFilter.func { (_: J) => Task.now(Nil) }
-      CompiledDefinition[J]("empty", 0, body = { _ => body.right[QQCompilationException] })
-    }
 
     def apply[J]: Prelude[J] = new Prelude[J] {
-      override def all(runtime: QQRuntime[J]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
-        IndexedSeq(print(runtime), empty(runtime)).right
+      override def all(runtime: QQRuntime[J]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] = {
+
+        val print: CompiledDefinition[J] =
+          CompiledDefinition.noParamDefinition[J]("print",
+            CompiledFilter.func { (jsv: J) =>
+              println("debug: " + runtime.print(jsv))
+              Task.now(jsv :: Nil)
+            }
+          )
+
+        val empty: CompiledDefinition[J] =
+          CompiledDefinition.noParamDefinition[J]("empty", CompiledFilter.constL(Nil))
+
+        IndexedSeq(print, empty).right
+      }
     }
   }
 
@@ -37,7 +41,7 @@ object SharedPreludes {
 
     def apply[J]: Prelude[J] = new Prelude[J] {
       override def all(runtime: QQRuntime[J]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
-        QQCompiler.compileDefinitions(runtime, Prelude.preludeMonoid.empty, List(map))
+        QQCompiler.compileDefinitions(runtime, Prelude.empty, List(map))
     }
   }
 

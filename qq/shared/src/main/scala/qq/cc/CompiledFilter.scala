@@ -19,6 +19,9 @@ object CompiledFilter {
   @inline final def const[J](value: J): CompiledFilter[J] =
     (_: VarBindings[J]) => (_: J) => Task.now(value :: Nil)
 
+  @inline final def constL[J](values: List[J]): CompiledFilter[J] =
+    (_: VarBindings[J]) => (_: J) => Task.now(values)
+
   @inline final def func[J](f: CompiledProgram[J]): CompiledFilter[J] =
     (_: VarBindings[J]) => f
 
