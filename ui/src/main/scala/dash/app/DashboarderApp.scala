@@ -7,8 +7,7 @@ import dash.app.ProgramCache.WhatCanGoWrong
 import dash.models.{AppModel, ExpandableContentModel}
 import dash.views.AppView.AppProps
 import japgolly.scalajs.react.{Addons, ReactComponentM, ReactDOM, TopNode}
-import monix.eval.{Callback, Coeval, Task}
-import monix.execution.cancelables.{CompositeCancelable, StackedCancelable}
+import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.observers.Subscriber.Sync
 import monix.reactive.{Observable, OverflowStrategy}
@@ -22,7 +21,6 @@ import shapeless.ops.coproduct.Unifier
 import upickle.Js
 import qq.util._
 
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.FiniteDuration
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
@@ -109,7 +107,7 @@ object DashboarderApp extends scalajs.js.JSApp {
       title ->
         program.flatMap(
             _.traverse[TaskParallel, ExpandableContentModel] { json =>
-              val upickle: Js.Value = JSON.JSONToUpickleRec(json)
+              val upickle = JSON.JSONToUpickleRec.apply(json)
               Task.delay(ExpandableContentModel.pkl.read(upickle)).materialize.map(
                 _.recoverWith {
                   case ex => Failure(
