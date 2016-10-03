@@ -19,7 +19,8 @@ object ChromeManifest {
 
   case class Overrides(newtab: String)
 
-  implicit val pkl = upickle.default.macroRW[ChromeManifest]
+  implicit val pkl: upickle.default.ReadWriter[ChromeManifest] =
+    upickle.default.macroRW[ChromeManifest]
 
   val mySettings = ChromeManifest(
     name = "Dashboarder",

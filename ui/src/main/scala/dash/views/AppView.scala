@@ -18,13 +18,19 @@ object AppView {
   object Styles extends StyleSheet.Inline {
 
     import dsl._
+    import scala.language.postfixOps
 
     val panel = style(
+      marginLeft(10 px),
+      marginRight(10 px),
+      marginBottom(10 px),
+      //      margin(10 px),
       addClassName("mui-panel")
     )
 
     val header = style(
       width(100 %%),
+      marginTop(-10 px),
       display.inlineBlock
     )
 

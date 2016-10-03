@@ -20,7 +20,7 @@ object TitledContentView {
       display contents,
       pageBreakInside avoid,
       position relative,
-      marginBottom(10 px)
+      margin(10 px)
     )
 
     val fade = style(

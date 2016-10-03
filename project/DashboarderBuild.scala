@@ -53,9 +53,9 @@ object DashboarderBuild {
 
   val chromePackageContent: SettingKey[File] = SettingKey[File]("chromePackageContent",
     "The contents of this directory get copied to the into the chrome extension")
-  val chromeBuildOpt: TaskKey[File] = TaskKey[File]("chromeBuildOpt")
-  val chromeBuildFast: TaskKey[File] = TaskKey[File]("chromeBuildFast")
-  val chromeBuildUnopt: TaskKey[File] = TaskKey[File]("chromeBuildUnopt")
+  val unpackedProd: TaskKey[File] = TaskKey[File]("unpackedProd")
+  val unpackedDevFast: TaskKey[File] = TaskKey[File]("unpackedDevFast")
+  val unpackedDevOpt: TaskKey[File] = TaskKey[File]("unpackedDevOpt")
   val chromePackage: TaskKey[File] = TaskKey[File]("chromePackage")
   val chromeGenerateManifest: TaskKey[File] = TaskKey[File]("chromeGenerateManifest")
   val chromeManifest: TaskKey[Manifest] = TaskKey[chrome.Manifest]("chromeManifest")
@@ -132,38 +132,37 @@ object DashboarderBuild {
   lazy val chromeTasks: Seq[Def.Setting[_]] = Seq(
     chromePackageContent := file("content"),
 
-    chromeBuildOpt := {
+    unpackedProd <<= Def.task {
+      scalaJSSemantics ~= (_.withProductionMode(true))
       defineChromeBuildTask("unpackedopt", fullOptJS).value
     },
 
-    chromeBuildFast := {
+    unpackedDevFast <<= Def.task {
       defineChromeBuildTask("unpackedfast", fastOptJS).value
     },
 
-    chromeBuildUnopt := {
+    unpackedDevOpt <<= Def.task {
       val oldOpts = scalaJSOptimizerOptions.value
-      scalaJSOptimizerOptions := oldOpts.withDisableOptimizer(true)
-      val file = defineChromeBuildTask("unpackedunopt", fastOptJS).value
-      scalaJSOptimizerOptions := oldOpts
+      println((scalaJSLinkedFile in Compile).value.path)
+      scalaJSOptimizerOptions := oldOpts.withPrettyPrintFullOptJS(true)
+      val file = defineChromeBuildTask("unpackedunopt", fullOptJS).value
+//      scalaJSOptimizerOptions := oldOpts
       file
     },
 
-    chromePackage := {
+    chromePackage <<= Def.task {
       val out = target.value / "chrome"
-      val chromeAppDir = chromeBuildOpt.value
+      val chromeAppDir = unpackedProd.value
       val zipFile = new File(out, name.value + ".zip")
       IO.zip(allSubpaths(chromeAppDir), zipFile)
       zipFile
     },
 
-    chromeGenerateManifest := {
+    chromeGenerateManifest <<= Def.task {
       generateManifest(target.value / "chrome" / "generated_manifest.json")(ChromeManifest.mySettings)
     }
 
   )
-
-  lazy val replMain: Setting[Task[Option[String]]] =
-    mainClass in(Compile, run) := Some("qq.InterpreterMain")
 
   val unitTest: TaskKey[Unit] = TaskKey[Unit]("unitTest")
   val itTest: TaskKey[Unit] = TaskKey[Unit]("itTest")
@@ -230,7 +229,6 @@ object DashboarderBuild {
   lazy val qq: CrossProject = crossProject.in(file("qq"))
     .settings(baseSettings: _*)
     .settings(commonDeps: _*)
-    .settings(replMain: _*)
     .jsSettings(jsSettings: _*)
     .jsSettings(ScalaJSPlugin.projectSettings: _*)
 
@@ -254,7 +252,7 @@ object DashboarderBuild {
     .settings(libraryDependencies += "org.seleniumhq.selenium" % "selenium-java" % "2.35.0" % "test")
     .settings(baseSettings)
     .settings(commonDeps)
-    .settings(dependOnChrome(chromeBuildOpt, testOptions in Test))
+    .settings(dependOnChrome(unpackedProd, testOptions in Test))
     .settings((test in Test) <<= (test in Test).dependsOn(compile in Test in qqjvm))
     .settings((testOptions in Test) <<= (testOptions in Test).dependsOn(compile in Test in qqjvm))
     .settings((testQuick in Test) := (test in Test).value)

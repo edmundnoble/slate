@@ -8,6 +8,7 @@ import monix.execution.Scheduler
 
 import scala.language.higherKinds
 import scalacss.Defaults._
+import scalaz.Memo
 import scalaz.std.list._
 import scalaz.syntax.std.boolean._
 
@@ -40,13 +41,16 @@ object ExpandableContentView {
     val base = style(
       addClassName("mui-panel"),
       overflow.hidden,
-      marginBottom(40 px)
+      marginLeft(10 px),
+      marginRight(10 px),
+      marginBottom(10 px)
     )
 
     val header = style(
       addClassName("mui--divider-bottom"),
       width(100 %%),
-      display.inlineBlock
+      display.inlineBlock,
+      marginTop(-10 px)
     )
 
     val filterButton = style(
@@ -106,7 +110,8 @@ object ExpandableContentView {
       if (state.expanded) (Styles.filterButtonExpanded: TagMod) :: otherStyles
       else otherStyles
     }
-    val makeContent = scalaz.Memo.mutableHashMapMemo[List[TitledContentModel], List[ReactComponentU[_, _, _, _]]]((_: List[TitledContentModel]).map(TitledContentView.builder.build(_)))
+    val makeContent =
+      Memo.mutableHashMapMemo[List[TitledContentModel], List[ReactComponentU[_, _, _, _]]]((_: List[TitledContentModel]).map(TitledContentView.builder.build(_)))
 
     ReactComponentB[ExpandableContentProps]("Expandable content view")
       .initialState_P[ExpandableState](props => ExpandableState(expanded = props.initiallyExpanded))
@@ -117,7 +122,7 @@ object ExpandableContentView {
             div(Styles.header,
               div(Styles.headerLeft,
                 div(Styles.number,
-                  a(props.model.content.length.toString(), titleLink)),
+                  props.model.content.length.toString()),
                 div(Styles.title,
                   a(props.model.title, titleLink)
                 )
