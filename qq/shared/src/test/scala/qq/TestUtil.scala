@@ -11,6 +11,8 @@ import scalaz.\/
 
 trait TestUtil {
 
+  // this is necessary to encode the isomorphism between ObjList and ObjMap
+  // into the equality checked by tests
   implicit object canonicalized extends Uniformity[JSON] {
     final def normalizedCanHandle(b: Any): Boolean = b.isInstanceOf[JSON]
     final def normalizedOrSame(b: Any): Any =

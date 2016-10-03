@@ -46,7 +46,7 @@ object Interpreter {
         val inputJs = JSON.upickleToJSONRec(json read input)
         val outputTask = program(Map.empty)(inputJs)
         outputTask.map { outputs =>
-          (outputs.map(JSON.render(_).mkString).mkString(", "), programInterpreterOf(source, program))
+          (outputs.map(JSON.render(_)).mkString(", "), programInterpreterOf(source, program))
         }.right
     })
 
@@ -65,7 +65,7 @@ object Interpreter {
             ("", programInterpreter)
           },
           (compiledFilter: CompiledFilter[JSON]) => compiledFilter(Map.empty)(input).map { outputs =>
-            (outputs.map(JSON.render(_).mkString).mkString(", "), inputInterpreterOf(source, input))
+            (outputs.map(JSON.render(_)).mkString(", "), inputInterpreterOf(source, input))
           }
         ).right
     })

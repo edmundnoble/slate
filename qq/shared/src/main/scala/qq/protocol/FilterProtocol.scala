@@ -42,6 +42,11 @@ object FilterProtocol {
   implicit val multiplyDiscriminator: Discriminator[MathOperator, Multiply.type, Int] = Discriminator(2)
   implicit val divideDiscriminator: Discriminator[MathOperator, Divide.type, Int] = Discriminator(3)
   implicit val moduloDiscriminator: Discriminator[MathOperator, Modulo.type, Int] = Discriminator(4)
+  implicit val equalDiscriminator: Discriminator[MathOperator, Equal.type, Int] = Discriminator(5)
+  implicit val lteDiscriminator: Discriminator[MathOperator, LTE.type, Int] = Discriminator(6)
+  implicit val gteDiscriminator: Discriminator[MathOperator, GTE.type, Int] = Discriminator(7)
+  implicit val lessThanDiscriminator: Discriminator[MathOperator, LessThan.type, Int] = Discriminator(8)
+  implicit val greaterThanDiscriminator: Discriminator[MathOperator, GreaterThan.type, Int] = Discriminator(9)
 
   implicit def pathComponentDiscriminated[A]: Discriminated[PathComponent, Int] = Discriminated(uint(3))
 
@@ -67,8 +72,9 @@ object FilterProtocol {
   implicit def filterMathDiscriminator[A]: Discriminator[FilterComponent[A], FilterMath[A], Int] = Discriminator(7)
   implicit def constNumberDiscriminator[A]: Discriminator[FilterComponent[A], ConstNumber[A], Int] = Discriminator(8)
   implicit def constStringDiscriminator[A]: Discriminator[FilterComponent[A], ConstString[A], Int] = Discriminator(9)
-  implicit def asBindingDiscriminator[A]: Discriminator[FilterComponent[A], AsBinding[A], Int] = Discriminator(10)
-  implicit def dereferenceDiscriminator[A]: Discriminator[FilterComponent[A], Dereference[A], Int] = Discriminator(11)
-  implicit def pathOperationDiscriminator[A]: Discriminator[FilterComponent[A], PathOperation[A], Int] = Discriminator(12)
+  implicit def constBooleanDiscriminator[A]: Discriminator[FilterComponent[A], ConstBoolean[A], Int] = Discriminator(10)
+  implicit def asBindingDiscriminator[A]: Discriminator[FilterComponent[A], AsBinding[A], Int] = Discriminator(11)
+  implicit def dereferenceDiscriminator[A]: Discriminator[FilterComponent[A], Dereference[A], Int] = Discriminator(12)
+  implicit def pathOperationDiscriminator[A]: Discriminator[FilterComponent[A], PathOperation[A], Int] = Discriminator(13)
 
 }

@@ -139,6 +139,8 @@ object Parser {
 
   val constString: P[ConcreteFilter] = P(escapedStringLiteral map dsl.constString)
 
+  val constBoolean: P[ConcreteFilter] = P((wspStr("true").map(_ => true) | wspStr("false").map(_ => false)).map(dsl.constBoolean))
+
   val dereference: P[ConcreteFilter] = P(variableIdentifier.map(dsl.deref))
 
   val smallFilter: P[ConcreteFilter] = P(constInt | constString | paths | dereference | callFilter)
@@ -169,6 +171,9 @@ object Parser {
     (rec ~ whitespace ~ (op ~/ whitespace ~ rec).rep).map((foldOperators _).tupled)
   }
 
+  val withEquals: P[ConcreteFilter] =
+    P(binaryOperators[ConcreteFilter](sequenced, "==" -> dsl.equal _))
+
   val sequenced: P[ConcreteFilter] =
     P(binaryOperators[ConcreteFilter](piped, "," -> dsl.ensequence _))
 
@@ -182,11 +187,11 @@ object Parser {
     P(binaryOperators[ConcreteFilter](factor, "*" -> dsl.multiply _, "/" -> dsl.divide _, "%" -> dsl.modulo _))
 
   val factor: P[ConcreteFilter] =
-    P(("(" ~/ sequenced ~ ")") | asBinding | smallFilter | enjectedFilter | enlistedFilter)
+    P(("(" ~/ withEquals ~ ")") | asBinding | smallFilter | enjectedFilter | enlistedFilter)
 
   val filter: P[ConcreteFilter] = P(
     for {
-      f <- sequenced
+      f <- withEquals
       fun <- "?".!.?.map(_.fold(identity[ConcreteFilter] _)(_ => dsl.silence))
     } yield fun(f)
   )

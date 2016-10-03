@@ -34,6 +34,11 @@ object QQCompiler {
     case Multiply => runtime.multiplyJsValues
     case Divide => runtime.divideJsValues
     case Modulo => runtime.moduloJsValues
+    case Equal => runtime.equalJsValues
+    case LTE => ???
+    case GTE => ???
+    case LessThan => ???
+    case GreaterThan =>  ???
   }
 
   def compileStep[J](runtime: QQRuntime[J],

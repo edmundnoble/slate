@@ -28,6 +28,7 @@ trait QQRuntime[J] {
         )
     case ConstNumber(num) => constNumber(num)
     case ConstString(str) => constString(str)
+    case ConstBoolean(bool) => constBoolean(bool)
   }
 
   @inline final def makePathComponentGetter(component: PathComponent): CompiledProgram[J] = component match {
@@ -69,6 +70,8 @@ trait QQRuntime[J] {
 
   def constString(str: String): CompiledFilter[J]
 
+  def constBoolean(bool: Boolean): CompiledFilter[J]
+
   def addJsValues(first: J, second: J): Task[J]
 
   def subtractJsValues(first: J, second: J): Task[J]
@@ -78,6 +81,8 @@ trait QQRuntime[J] {
   def divideJsValues(first: J, second: J): Task[J]
 
   def moduloJsValues(first: J, second: J): Task[J]
+
+  def equalJsValues(first: J, second: J): Task[J]
 
   def collectResults: CompiledProgram[J]
 

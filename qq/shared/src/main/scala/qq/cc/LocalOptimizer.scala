@@ -61,6 +61,7 @@ object LocalOptimizer {
         case Multiply => Some(embed[T](ConstNumber(f * s)))
         case Divide => Some(embed[T](ConstNumber(f / s)))
         case Modulo => Some(embed[T](ConstNumber(f % s)))
+        case Equal => Some(embed[T](ConstBoolean(f == s)))
       }
       case _ => None
     }

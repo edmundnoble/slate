@@ -81,6 +81,9 @@ object JSONRuntime extends QQRuntime[JSON] {
   override def constString(str: String): CompiledFilter[JSON] =
     CompiledFilter.const(JSON.Str(str))
 
+  override def constBoolean(bool: Boolean): CompiledFilter[JSON] =
+    CompiledFilter.const(if (bool) JSON.True else JSON.False)
+
   override def addJsValues(first: JSON, second: JSON): Task[JSON] = (first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
       Task.now(JSON.Num(f + s))
@@ -113,13 +116,11 @@ object JSONRuntime extends QQRuntime[JSON] {
     case (f: JSON.Obj, s: JSON.Obj) =>
       val firstMapTask = f.toMap.value.mapValues(Task.now(_).parallel)
       val secondMapTask = s.toMap.value.mapValues(Task.now(_).parallel)
-      mapInstance[String]
-        .sequence[TaskParallel, JSON](
+      mapInstance[String].sequence[TaskParallel, JSON](
         unionWith(firstMapTask, secondMapTask)(
           (f, s) => Task.mapBoth(f.unwrap, s.unwrap)(addJsValues).flatten.parallel
         )
-      )
-        .unwrap.map(JSON.ObjMap)
+      ).unwrap.map(JSON.ObjMap)
     case (f, s) =>
       Task.raiseError(QQRuntimeException("can't multiply " + print(f) + " and " + print(s)))
   }
@@ -135,6 +136,9 @@ object JSONRuntime extends QQRuntime[JSON] {
     case (f, s) =>
       Task.raiseError(QQRuntimeException("can't modulo " + print(f) + " by " + print(s)))
   }
+
+  def equalJsValues(first: JSON, second: JSON): Task[JSON] =
+    Task.now(if (first == second) JSON.True else JSON.False)
 
   override def enlistFilter(filter: CompiledFilter[JSON]): CompiledFilter[JSON] =
     (bindings: VarBindings[JSON]) =>
@@ -224,6 +228,6 @@ object JSONRuntime extends QQRuntime[JSON] {
 
   override def platformPrelude: PlatformPrelude[JSON] = JSONPrelude
 
-  override def print(value: JSON): String = JSON.render(value).mkString
+  override def print(value: JSON): String = JSON.render(value)
 
 }

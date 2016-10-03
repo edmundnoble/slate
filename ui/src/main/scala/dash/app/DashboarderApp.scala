@@ -113,7 +113,7 @@ object DashboarderApp extends scalajs.js.JSApp {
               Task.delay(ExpandableContentModel.pkl.read(upickle)).materialize.map(
                 _.recoverWith {
                   case ex => Failure(
-                    new Exception("Deserialization error, trying to deserialize " + JSON.render(json).mkString, ex)
+                    new Exception("Deserialization error, trying to deserialize " + JSON.render(json), ex)
                   )
                 }
               ).dematerialize.parallel

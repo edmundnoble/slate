@@ -56,7 +56,7 @@ class RunnerTest extends QQAsyncTestSuite {
     RunnerTestCase(
       JSON.Num(1),
       ".[]",
-      QQRuntimeException("Tried to flatten 1.000000 but it's not an array").left
+      QQRuntimeException("Tried to flatten 1 but it's not an array").left
     )
   )
 
@@ -102,60 +102,6 @@ class RunnerTest extends QQAsyncTestSuite {
     JSON.Obj("abc" -> JSON.Num(1), "abcd" -> JSON.Num(2), "Foo" -> JSON.Num(3)),
     "keys",
     List(JSON.Arr(JSON.Str("abc"), JSON.Str("abcd"), JSON.Str("Foo"))).right
-  )
-
-  val numbers = RunnerTestCase(
-    JSON.Arr(JSON.Arr(), JSON.Obj(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
-    ".[] | numbers",
-    List(JSON.Num(1)).right
-  )
-
-  val arrays = RunnerTestCase(
-    JSON.Arr(JSON.Arr(), JSON.Obj(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
-    ".[] | arrays",
-    List(JSON.Arr()).right
-  )
-
-  val objects = RunnerTestCase(
-    JSON.Arr(JSON.Arr(), JSON.Obj(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
-    ".[] | objects",
-    List(JSON.Obj()).right
-  )
-
-  val iterables = RunnerTestCase(
-    JSON.Arr(JSON.Arr(), JSON.Obj(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
-    ".[] | iterables",
-    List(JSON.Arr(), JSON.Obj()).right
-  )
-
-  val booleans = RunnerTestCase(
-    JSON.Arr(JSON.Arr(), JSON.Obj(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
-    ".[] | booleans",
-    List(JSON.True, JSON.False).right
-  )
-
-  val strings = RunnerTestCase(
-    JSON.Arr(JSON.Arr(), JSON.Obj(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
-    ".[] | strings",
-    List(JSON.Str("foo")).right
-  )
-
-  val nulls = RunnerTestCase(
-    JSON.Arr(JSON.Arr(), JSON.Obj(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
-    ".[] | nulls",
-    List(JSON.Null).right
-  )
-
-  val values = RunnerTestCase(
-    JSON.Arr(JSON.Arr(), JSON.Obj(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
-    ".[] | values",
-    List(JSON.Arr(), JSON.Obj(), JSON.Num(1), JSON.Str("foo"), JSON.True, JSON.False).right
-  )
-
-  val scalars = RunnerTestCase(
-    JSON.Arr(JSON.Arr(), JSON.Obj(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False),
-    ".[] | scalars",
-    List(JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False).right
   )
 
   val add = RunnerTestCase(
@@ -227,16 +173,6 @@ class RunnerTest extends QQAsyncTestSuite {
   "pipes" in runTest(pipes)
   "length" in runTest(lengthTest)
   "keys" in runTest(keys)
-  "classifiers" - {
-    "arrays" in runTest(arrays)
-    "strings" in runTest(strings)
-    "booleans" in runTest(booleans)
-    "scalars" in runTest(scalars)
-    "objects" in runTest(objects)
-    "iterables" in runTest(iterables)
-    "nulls" in runTest(nulls)
-    "numbers" in runTest(numbers)
-  }
   "add" in runTest(add)
   "maths" in runTest(maths)
   "bedmas" in runTest(bedmas)

@@ -3,7 +3,7 @@ package cc
 
 import java.util.regex.Pattern
 
-import monix.eval.Task
+import monix.eval.{Coeval, Task}
 import monix.scalaz._
 import qq.data.{CompiledDefinition, JSON}
 import scodec.bits.ByteVector
@@ -12,6 +12,7 @@ import upickle.Js
 import scalaz.std.list._
 import scalaz.syntax.either._
 import scalaz.syntax.traverse._
+import scalaz.syntax.apply._
 
 object JSONPrelude extends PlatformPrelude[JSON] {
 
@@ -61,27 +62,27 @@ object JSONPrelude extends PlatformPrelude[JSON] {
     CompiledDefinition[JSON](name = "replaceAll", numParams = 2,
       body = CompiledDefinition.standardEffectDistribution[JSON] {
         case (regexRaw :: replacementRaw :: Nil) => (j: JSON) =>
-          val regexTask: Task[Pattern] = regexRaw match {
-            case JSON.Str(string) => Task.now(Pattern.compile(string))
-            case k => Task.raiseError(NotARegex(JSONRuntime.print(k)))
+          val regexCoeval: Coeval[Pattern] = regexRaw match {
+            case JSON.Str(string) => Coeval.now(Pattern.compile(string))
+            case k => Coeval.raiseError(NotARegex(JSONRuntime.print(k)))
           }
-          val replacementTask: Task[String] = replacementRaw match {
-            case JSON.Str(string) => Task.now(string)
-            case k => Task.raiseError(QQRuntimeException("can't replace with " + JSONRuntime.print(k)))
+          val replacementCoeval: Coeval[String] = replacementRaw match {
+            case JSON.Str(string) => Coeval.now(string)
+            case k => Coeval.raiseError(QQRuntimeException("can't replace with " + JSONRuntime.print(k)))
           }
-          val valueRegexReplacementList = Task.mapBoth(regexTask, replacementTask) { (regex, replacement) =>
+          val valueRegexReplacementList = (regexCoeval |@| replacementCoeval) { (regex, replacement) =>
             j match {
               case JSON.Str(string) =>
-                Task.now(JSON.Str(regex.matcher(string).replaceAll(replacement)))
-              case k => Task.raiseError(QQRuntimeException("can't replace " + JSONRuntime.print(k)))
+                Coeval.now(JSON.Str(regex.matcher(string).replaceAll(replacement)))
+              case k => Coeval.raiseError(QQRuntimeException("can't replace " + JSONRuntime.print(k)))
             }
           }.flatten
-          valueRegexReplacementList
+          Task.coeval(valueRegexReplacementList)
       })
 
   override def select: CompiledDefinition[JSON] = CompiledDefinition[JSON]("select", 1, {
     case List(filterFun) => ((bindings: VarBindings[JSON]) => {
-      case JSON.Arr(values) => values.traverseM(filterFun(bindings)).map(_.filter(_ == JSON.True).toList)
+      (value: JSON) => filterFun(bindings)(value).map(_.filter(_ == JSON.True).map(_ => value))
     }: CompiledProgram[JSON]).right
   })
 

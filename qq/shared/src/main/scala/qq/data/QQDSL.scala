@@ -28,6 +28,8 @@ object QQDSL {
 
       final def +(next: T[FilterComponent]): T[FilterComponent] = add(f, next)
 
+      final def ===(next: T[FilterComponent]): T[FilterComponent] = equal(f, next)
+
       final def -(next: T[FilterComponent]): T[FilterComponent] = subtract(f, next)
 
       final def *(next: T[FilterComponent]): T[FilterComponent] = multiply(f, next)
@@ -98,11 +100,17 @@ object QQDSL {
     @inline def modulo(first: T[FilterComponent], second: T[FilterComponent]): T[FilterComponent] =
       embed[T](FilterMath(first, second, Modulo))
 
+    @inline def equal(first: T[FilterComponent], second: T[FilterComponent]): T[FilterComponent] =
+      embed[T](FilterMath(first, second, Equal))
+
     @inline def constNumber(value: Double): T[FilterComponent] =
       embed[T](ConstNumber(value))
 
     @inline def constString(value: String): T[FilterComponent] =
       embed[T](ConstString(value))
+
+    @inline def constBoolean(value: Boolean): T[FilterComponent] =
+      embed[T](ConstBoolean(value))
 
     @inline def asBinding(name: String, as: T[FilterComponent], in: T[FilterComponent]): T[FilterComponent] =
       embed[T](AsBinding[T[FilterComponent]](name, as, in))

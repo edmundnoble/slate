@@ -2,7 +2,7 @@ package dash
 package app
 
 import dash.ajax.{Ajax, AjaxMethod}
-import monix.eval.Task
+import monix.eval.{Coeval, Task}
 import qq.cc.{OrCompilationError, Prelude, QQRuntime, QQRuntimeException}
 import qq.data.{CompiledDefinition, JSON}
 import qq.util._
@@ -24,16 +24,16 @@ object DashPrelude extends Prelude[JSON] {
   def launchAuth: CompiledDefinition[JSON] =
     CompiledDefinition[JSON]("launchAuth", 2, CompiledDefinition.standardEffectDistribution[JSON] {
       case List(urlRaw, queryParamsRaw) => _ =>
-        val urlTask = urlRaw match {
-          case JSON.Str(s) => Task.now(s)
-          case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not a URL"))
+        val urlCoeval = urlRaw match {
+          case JSON.Str(s) => Coeval.now(s)
+          case k => Coeval.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not a URL"))
         }
-        val queryParamsTask = queryParamsRaw match {
-          case o: JSON.Obj => Task.now(o.toMap.value.mapValues(Json.JSONToJsRec(_)))
-          case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not a query params object"))
+        val queryParamsCoeval = queryParamsRaw match {
+          case o: JSON.Obj => Coeval.now(o.toMap.value.mapValues(Json.JSONToJsRec(_)))
+          case k => Coeval.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not a query params object"))
         }
         for {
-          urlWithQueryParams <- (urlTask |@| queryParamsTask)(Ajax.addQueryParams)
+          urlWithQueryParams <- Task.coeval((urlCoeval |@| queryParamsCoeval) (Ajax.addQueryParams))
           webAuthResult <- identify.launchWebAuthFlow(interactive = true, urlWithQueryParams)
           accessToken = webAuthResult.substring(webAuthResult.indexOf("&code=") + "&code=".length)
         } yield JSON.Obj("code" -> JSON.Str(accessToken))
@@ -43,27 +43,28 @@ object DashPrelude extends Prelude[JSON] {
     CompiledDefinition.standardEffectDistribution[JSON] {
       case List(urlRaw, queryParamsRaw, dataRaw, headersRaw) => _ =>
         implicit val ajaxTimeout = Ajax.Timeout(2000.millis)
-        val urlTask = urlRaw match {
-          case JSON.Str(s) => Task.now(s)
-          case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not a URL"))
+        val urlCoeval = urlRaw match {
+          case JSON.Str(s) => Coeval.now(s)
+          case k => Coeval.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not a URL"))
         }
-        val queryParamsTask = queryParamsRaw match {
-          case o: JSON.Obj => Task.now(o.toMap.value.mapValues(Json.JSONToJsRec(_)))
-          case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not query params/data"))
+        val queryParamsCoeval = queryParamsRaw match {
+          case o: JSON.Obj => Coeval.now(o.toMap.value.mapValues(Json.JSONToJsRec(_)))
+          case k => Coeval.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not query params/data"))
         }
-        val dataTask = dataRaw match {
-          case JSON.Str(s) => Task.now(s)
-          case o: JSON.Obj => Task.now(JSON.render(o).mkString)
-          case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not usable as POST data"))
+        val dataCoeval = dataRaw match {
+          case JSON.Str(s) => Coeval.now(s)
+          case o: JSON.Obj => Coeval.now(JSON.render(o))
+          case k => Coeval.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not usable as POST data"))
         }
-        val headersTask = headersRaw match {
-          case o: JSON.Obj => Task.now(o.toMap.value.mapValues(_.asInstanceOf[JSON.Str].value))
-          case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not headers"))
+        val headersCoeval = headersRaw match {
+          case o: JSON.ObjList if o.value.forall(_._2.isInstanceOf[JSON.Str]) => Coeval.now(o.toMap.value.mapValues(_.asInstanceOf[JSON.Str].value))
+          case o: JSON.ObjMap if o.value.forall(_._2.isInstanceOf[JSON.Str]) => Coeval.now(o.toMap.value.mapValues(_.asInstanceOf[JSON.Str].value))
+          case k => Coeval.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not headers"))
         }
         for {
-          resp <- (urlTask |@| dataTask |@| queryParamsTask |@| headersTask) (
-            Ajax(ajaxMethod, _, _, _, _, withCredentials = false, "").onErrorRestart(2)
-          ).flatten
+          resp <- Task.coeval((urlCoeval |@| dataCoeval |@| queryParamsCoeval |@| headersCoeval) (
+            Ajax(ajaxMethod, _, _, _, _, withCredentials = false, "").onErrorRestart(1)
+          )).flatten
           asJson <- Json.stringToJSON(resp.responseText).fold(Task.raiseError(_), Task.now)
         } yield asJson
     })

@@ -56,6 +56,8 @@ final case class CallFilter[A](name: String, params: List[A]) extends FilterComp
 // constants!
 final case class ConstNumber[A](value: Double) extends ConstantComponent[A]
 
+final case class ConstBoolean[A](value: Boolean) extends ConstantComponent[A]
+
 final case class ConstString[A](value: String) extends ConstantComponent[A]
 
 // Math, with operator as its own type
@@ -72,6 +74,16 @@ case object Multiply extends MathOperator
 case object Divide extends MathOperator
 
 case object Modulo extends MathOperator
+
+case object Equal extends MathOperator
+
+case object LTE extends MathOperator
+
+case object GTE extends MathOperator
+
+case object LessThan extends MathOperator
+
+case object GreaterThan extends MathOperator
 
 object FilterComponent {
 
