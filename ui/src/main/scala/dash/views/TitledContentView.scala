@@ -20,7 +20,10 @@ object TitledContentView {
       display contents,
       pageBreakInside avoid,
       position relative,
-      marginBottom(10 px),
+      marginBottom(10 px)
+    )
+
+    val fade = style(
       &.after(
         height(1.2 em),
         bottom(0 px),
@@ -72,15 +75,21 @@ object TitledContentView {
         div(
           key := model.title + model.titleUrl,
           div(Styles.base,
+            if (model.content.isEmpty)
+              (Nil: List[TagMod]): TagMod
+            else
+              Styles.fade,
             div(Styles.title,
               a(
                 model.title,
                 href := model.titleUrl
               )
             ),
-            div(Styles.content,
-              model.content
-            )
+            if (model.content.isEmpty)
+              (Nil: List[TagMod]): TagMod
+            else
+              div(Styles.content,
+                model.content)
           )
         )
       )
