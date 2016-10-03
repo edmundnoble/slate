@@ -4,7 +4,7 @@ import monix.eval.Task
 import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
 
 import scalaz.std.string._
-import scalaz.{==>>, Applicative, Coyoneda, Id, Monad, State, ~>}
+import scalaz.{==>>, Applicative, BindRec, Coyoneda, State, ~>}
 
 // Operations on a Storage with F[_] effects
 // To abstract over storage that has different effects performed by its operations
@@ -85,8 +85,8 @@ object StorageProgram {
   @inline final def clear: StorageProgram[Unit] =
     liftFC(Clear)
 
-  @inline def runProgram[F[_] : Monad, A](storage: Storage[F], program: StorageProgram[A]): F[A] =
-    foldMapFC(program, new (StorageAction ~> F) {
+  @inline def runProgram[F[_] : Applicative : BindRec, A](storage: Storage[F], program: StorageProgram[A]): F[A] =
+    foldMapFCRec(program, new (StorageAction ~> F) {
       override def apply[Y](fa: StorageAction[Y]): F[Y] = fa.run(storage)
     })
 }

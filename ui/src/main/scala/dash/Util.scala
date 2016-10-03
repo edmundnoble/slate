@@ -11,7 +11,7 @@ import scodec.Attempt
 
 import scala.collection.mutable.ListBuffer
 import scala.language.implicitConversions
-import scalaz.{Coyoneda, Free, Monad, \/, ~>}
+import scalaz.{Applicative, BindRec, Coyoneda, Free, Monad, \/, ~>}
 import scalaz.syntax.either._
 
 object Util {
@@ -154,7 +154,7 @@ object Util {
   @inline def pureFC[S[_], A](a: A): Free[Coyoneda[S, ?], A] =
     Free.pure[Coyoneda[S, ?], A](a)
 
-  @inline def foldMapFC[F[_], G[_] : Monad, A](program: Free[Coyoneda[F, ?], A], nt: F ~> G): G[A] =
-    program.foldMap[G](Coyoneda.liftTF(nt))
+  @inline def foldMapFCRec[F[_], G[_] : Applicative : BindRec, A](program: Free[Coyoneda[F, ?], A], nt: F ~> G): G[A] =
+    program.foldMapRec[G](Coyoneda.liftTF(nt)(implicitly[Applicative[G]]))
 
 }

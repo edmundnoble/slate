@@ -13,6 +13,8 @@ import shapeless.{:+:, CNil, Coproduct}
 import scalaz.\/
 import scalaz.syntax.either._
 import scalaz.syntax.applicative._
+import scalaz.syntax.traverse._
+import scalaz.std.list._
 
 object ProgramCache {
 
