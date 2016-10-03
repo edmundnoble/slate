@@ -55,13 +55,12 @@ object JSON {
   def render(v: JSON): String = {
     def renderRec(v: JSON): Vector[String] = v match {
       case JSON.Str(s) => Vector("\"", s, "\"")
-      case JSON.Num(n) => {
+      case JSON.Num(n) =>
         val toInt = n.toInt
-        {
+        (
           if (toInt == n) String.format("%d", Int.box(toInt))
           else String.format("%f", Double.box(n))
-        } +: Vector.empty[String]
-      }
+          ) +: Vector.empty[String]
       case JSON.True => "true" +: Vector.empty[String]
       case JSON.False => "false" +: Vector.empty[String]
       case JSON.Null => "null" +: Vector.empty[String]

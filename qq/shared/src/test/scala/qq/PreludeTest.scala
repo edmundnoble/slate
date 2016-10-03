@@ -24,7 +24,7 @@ class PreludeTest extends QQAsyncTestSuite {
       .map(_.map(_.map(_.norm)).toDisjunction should be(test.expectedOutputOrException.map(_.map(_.norm))))
       .runAsync
 
-  val selectTests = {
+  val selectTests: List[PreludeTestCase] = {
     val first: JSON =
       JSON.Obj("id" -> JSON.Str("first"), "val" -> JSON.Num(1))
     val second: JSON =
@@ -35,49 +35,22 @@ class PreludeTest extends QQAsyncTestSuite {
     )
   }
 
-  val classifierTestInput = JSON.Arr(JSON.Arr(), JSON.Obj(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False)
+  val classifierTestInput =
+    JSON.Arr(JSON.Arr(), JSON.Obj(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False)
 
-  val numbers = PreludeTestCase(
-   classifierTestInput,
-    ".[] | numbers",
-    List(JSON.Num(1)).right
-  )
+  val numbers = PreludeTestCase(classifierTestInput, ".[] | numbers", List(JSON.Num(1)).right)
 
-  val arrays = PreludeTestCase(
-    classifierTestInput,
-    ".[] | arrays",
-    List(JSON.Arr()).right
-  )
+  val arrays = PreludeTestCase(classifierTestInput, ".[] | arrays", List(JSON.Arr()).right)
 
-  val objects = PreludeTestCase(
-    classifierTestInput,
-    ".[] | objects",
-    List(JSON.Obj()).right
-  )
+  val objects = PreludeTestCase(classifierTestInput, ".[] | objects", List(JSON.Obj()).right)
 
-  val iterables = PreludeTestCase(
-    classifierTestInput,
-    ".[] | iterables",
-    List(JSON.Arr(), JSON.Obj()).right
-  )
+  val iterables = PreludeTestCase(classifierTestInput, ".[] | iterables", List(JSON.Arr(), JSON.Obj()).right)
 
-  val booleans = PreludeTestCase(
-    classifierTestInput,
-    ".[] | booleans",
-    List(JSON.True, JSON.False).right
-  )
+  val booleans = PreludeTestCase(classifierTestInput, ".[] | booleans", List(JSON.True, JSON.False).right)
 
-  val strings = PreludeTestCase(
-    classifierTestInput,
-    ".[] | strings",
-    List(JSON.Str("foo")).right
-  )
+  val strings = PreludeTestCase(classifierTestInput, ".[] | strings", List(JSON.Str("foo")).right)
 
-  val nulls = PreludeTestCase(
-    classifierTestInput,
-    ".[] | nulls",
-    List(JSON.Null).right
-  )
+  val nulls = PreludeTestCase(classifierTestInput, ".[] | nulls", List(JSON.Null).right)
 
   val values = PreludeTestCase(
     classifierTestInput,
