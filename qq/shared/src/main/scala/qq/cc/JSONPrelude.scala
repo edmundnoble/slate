@@ -9,7 +9,6 @@ import qq.data.{CompiledDefinition, JSON}
 import scodec.bits.ByteVector
 import upickle.Js
 
-import scalaz.Reader
 import scalaz.std.list._
 import scalaz.syntax.either._
 import scalaz.syntax.traverse._
@@ -25,10 +24,12 @@ object JSONPrelude extends PlatformPrelude[JSON] {
   def `false`: CompiledDefinition[JSON] = noParamDefinition("false", CompiledFilter.const(JSON.False))
 
   def orElse: CompiledDefinition[JSON] = CompiledDefinition[JSON]("orElse", 1, {
-    case (default :: Nil) => (for {d <- Reader(default)} yield (pf: JSON) => pf match {
-      case JSON.Null => d(JSON.Null)
-      case k => Task.now(k :: Nil)
-    }).run.right[QQCompilationException]
+    case (default :: Nil) =>
+      ((bindings: VarBindings[JSON]) => (pf: JSON) =>
+        pf match {
+          case JSON.Null => default(bindings)(JSON.Null)
+          case k => Task.now(k :: Nil)
+        }).right[QQCompilationException]
   })
 
   def b64Encode: CompiledDefinition[JSON] = noParamDefinition("b64Encode", CompiledFilter.func {

@@ -35,7 +35,7 @@ object FilterProtocol {
   implicit def pathOpFCodec[A](implicit A: Lazy[Codec[A]]): Codec[PathOperationF[A]] =
     Codec.coproduct[PathOperationF[A]].auto
 
-  implicit def mathOperatorDiscriminated[A]: Discriminated[MathOperator, Int] = Discriminated(uint8)
+  implicit def mathOperatorDiscriminated[A]: Discriminated[MathOperator, Int] = Discriminated(uint(3))
 
   implicit val addDiscriminator: Discriminator[MathOperator, Add.type, Int] = Discriminator(0)
   implicit val subtractDiscriminator: Discriminator[MathOperator, Subtract.type, Int] = Discriminator(1)
@@ -43,20 +43,20 @@ object FilterProtocol {
   implicit val divideDiscriminator: Discriminator[MathOperator, Divide.type, Int] = Discriminator(3)
   implicit val moduloDiscriminator: Discriminator[MathOperator, Modulo.type, Int] = Discriminator(4)
 
-  implicit def pathComponentDiscriminated[A]: Discriminated[PathComponent, Int] = Discriminated(uint8)
+  implicit def pathComponentDiscriminated[A]: Discriminated[PathComponent, Int] = Discriminated(uint(3))
 
   implicit def collectDiscriminator: Discriminator[PathComponent, CollectResults.type, Int] = Discriminator(0)
   implicit def selectKeyDiscriminator: Discriminator[PathComponent, SelectKey, Int] = Discriminator(1)
   implicit def selectIndexDiscriminator: Discriminator[PathComponent, SelectIndex, Int] = Discriminator(2)
   implicit def selectRangeDiscriminator: Discriminator[PathComponent, SelectRange, Int] = Discriminator(3)
 
-  implicit def pathOperationFDiscriminated[A]: Discriminated[PathOperationF[A], Int] = Discriminated(uint8)
+  implicit def pathOperationFDiscriminated[A]: Discriminated[PathOperationF[A], Int] = Discriminated(uint(3))
 
   implicit def pathGetDiscriminator[A]: Discriminator[PathOperationF[A], PathGet[A], Int] = Discriminator(0)
   implicit def pathSetDiscriminator[A]: Discriminator[PathOperationF[A], PathSet[A], Int] = Discriminator(1)
   implicit def pathModifyDiscriminator[A]: Discriminator[PathOperationF[A], PathModify[A], Int] = Discriminator(2)
 
-  implicit def filterComponentDiscriminated[A]: Discriminated[FilterComponent[A], Int] = Discriminated(uint8)
+  implicit def filterComponentDiscriminated[A]: Discriminated[FilterComponent[A], Int] = Discriminated(uint(4))
 
   implicit def composeDiscriminator[A]: Discriminator[FilterComponent[A], ComposeFilters[A], Int] = Discriminator(1)
   implicit def silenceDiscriminator[A]: Discriminator[FilterComponent[A], SilenceExceptions[A], Int] = Discriminator(2)

@@ -9,7 +9,7 @@ import qq.util._
 import scalaz.syntax.tag._
 import scalaz.std.list._
 import scalaz.syntax.traverse._
-import scalaz.{PlusEmpty, Reader}
+import scalaz.PlusEmpty
 
 object CompiledFilter {
 
@@ -23,23 +23,18 @@ object CompiledFilter {
     (_: VarBindings[J]) => f
 
   def composeFilters[J](f: CompiledFilter[J], s: CompiledFilter[J]): CompiledFilter[J] = { bindings =>
-    val fstFun = f(bindings)
-    val sndFun = s(bindings)
-    fstFun.andThen(_.flatMap(_.traverseM[TaskParallel, J](sndFun.andThen(_.parallel)).unwrap))
+    f(bindings).andThen(_.flatMap(_.traverseM[TaskParallel, J](s(bindings).andThen(_.parallel)).unwrap))
   }
 
   def ensequenceCompiledFilters[J]
   (first: CompiledFilter[J], second: CompiledFilter[J]): CompiledFilter[J] =
-    (for {fstFun <- Reader(first); sndFun <- Reader(second)} yield { jsv: J =>
-      Task.mapBoth(fstFun(jsv), sndFun(jsv)) { (a, b) => a ++ b }
-    }).run
+    (bindings: VarBindings[J]) => (jsv: J) =>
+      Task.mapBoth(first(bindings)(jsv), second(bindings)(jsv)) { (a, b) => a ++ b }
 
   def zipFiltersWith[J]
   (first: CompiledFilter[J], second: CompiledFilter[J], fun: (J, J) => Task[J]): CompiledFilter[J] =
-    (for {fstFun <- Reader(first); sndFun <- Reader(second)} yield { jsv: J =>
-      Task.mapBoth(fstFun(jsv), sndFun(jsv)) { (f, s) => (f, s).zipped.map(fun) }.map(_.sequence).flatten
-    }).run
-
+    (bindings: VarBindings[J]) => (jsv: J) =>
+      Task.mapBoth(first(bindings)(jsv), second(bindings)(jsv)) { (f, s) => (f, s).zipped.map(fun) }.map(_.sequence).flatten
 
   def asBinding[J](name: String, as: CompiledFilter[J], in: CompiledFilter[J]): CompiledFilter[J] = {
     (bindings: VarBindings[J]) =>
@@ -47,8 +42,7 @@ object CompiledFilter {
         val res = as(bindings)(v)
         val newBindings = res.map(_.map(VarBinding[J](name, _)))
         val allBindings = newBindings.map(_.map(b => bindings + (b.name -> b)))
-        val o = allBindings.map(_.map(in(_)(v)))
-        o.flatMap((ltl: List[Task[List[J]]]) => ltl.sequence[Task, List[J]].map(_.flatten))
+        allBindings.map(_.map(in(_)(v))).flatMap((ltl: List[Task[List[J]]]) => ltl.sequence[Task, List[J]].map(_.flatten))
       }
   }
 

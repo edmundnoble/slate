@@ -1,5 +1,6 @@
 package qq.data
 
+import scala.language.higherKinds
 import scalaz.{Applicative, Traverse}
 
 sealed abstract class PathComponent

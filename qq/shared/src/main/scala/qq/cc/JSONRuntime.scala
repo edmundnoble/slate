@@ -9,12 +9,9 @@ import qq.util._
 import scala.collection.immutable.Nil
 import scalaz.std.list._
 import scalaz.std.map._
-import scalaz.syntax.std.list._
-import scalaz.syntax.either._
-import scalaz.syntax.std.map._
 import scalaz.syntax.tag._
 import scalaz.syntax.traverse._
-import scalaz.{-\/, NonEmptyList, Reader, \/, \/-}
+import scalaz.{-\/, \/, \/-}
 
 object JSONRuntime extends QQRuntime[JSON] {
 
@@ -29,7 +26,7 @@ object JSONRuntime extends QQRuntime[JSON] {
     case SelectKey(key) => {
       case obj: JSON.Obj =>
         val asMap = obj.toMap
-        asMap.value.get(key).fold(Task.now((JSON.Null: JSON) :: Nil))(f(_)).map(_.map(v => asMap.copy(value = asMap.value + (key -> v))))
+        asMap.value.get(key).fold(Task.now((JSON.Null: JSON) :: Nil))(f).map(_.map(v => asMap.copy(value = asMap.value + (key -> v))))
       case v => Task.raiseError(QQRuntimeException("Tried to select key " + key + " from " + print(v) + " but it's not an array"))
     }
     case SelectIndex(index) => {
@@ -58,8 +55,8 @@ object JSONRuntime extends QQRuntime[JSON] {
       case SelectKey(key) => biggerStructure match {
         case obj: JSON.Obj =>
           val asMap = obj.toMap
-          asMap.value.get(key).fold(Task.now((JSON.Null: JSON) :: Nil))(v =>
-            setPath(rest, v, smallerStructure).map(_.map(nv => asMap.copy(value = asMap.value.updated(key, nv))))
+          asMap.value.get(key).fold(Task.now((JSON.Null: JSON) :: Nil))(
+            setPath(rest, _, smallerStructure).map(_.map(nv => asMap.copy(value = asMap.value.updated(key, nv))))
           )
         case v => Task.raiseError(QQRuntimeException("Tried to select key " + key + " from " + print(v) + " but it's not an array"))
       }
