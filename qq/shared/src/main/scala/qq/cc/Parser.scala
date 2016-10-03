@@ -44,13 +44,13 @@ object Parser {
 
   def isStringLiteralChar(c: Char): Boolean = Character.isAlphabetic(c) || Character.isDigit(c)
 
-  case class CharsWhileFastSetup(set: Seq[Char], min: Int = 1) extends Parser[Unit]{
+  case class CharsWhileFastSetup(set: Seq[Char], min: Int = 1) extends Parser[Unit] {
     private[this] val uberSet = CharBitSet(set)
 
     def parseRec(cfg: ParseCtx, index: Int) = {
       var curr = index
       val input = cfg.input
-      while(curr < input.length && uberSet(input(curr))) curr += 1
+      while (curr < input.length && uberSet(input(curr))) curr += 1
       if (curr - index < min) fail(cfg.failure, curr)
       else success(cfg.success, (), curr, Set.empty, cut = false)
     }
@@ -184,11 +184,15 @@ object Parser {
     (rec ~ (whitespace ~ (op ~/ whitespace ~ rec ~ whitespace).rep(min = 1)).?).map { case (a, f) => f.map(foldOperators(a, _)).getOrElse(a) }
   }
 
-  val ensequenced: P[ConcreteFilter] =
-    P(binaryOperators[ConcreteFilter](withEquals, "," -> dsl.ensequence _))
 
   val withEquals: P[ConcreteFilter] =
-    P(binaryOperators[ConcreteFilter](piped, "==" -> dsl.equal _, "!=" -> ((f: ConcreteFilter, s: ConcreteFilter) => dsl.compose(dsl.equal(f, s), dsl.not))))
+    P(binaryOperators[ConcreteFilter](
+      binaryOperators[ConcreteFilter](
+        ensequenced, "==" -> dsl.equal _), "!=" -> ((f: ConcreteFilter, s: ConcreteFilter) => dsl.compose(dsl.equal(f, s), dsl.not))
+    ))
+
+  val ensequenced: P[ConcreteFilter] =
+    P(binaryOperators[ConcreteFilter](piped, "," -> dsl.ensequence _))
 
   val piped: P[ConcreteFilter] =
     P(binaryOperators[ConcreteFilter](expr, "|" -> dsl.compose _))

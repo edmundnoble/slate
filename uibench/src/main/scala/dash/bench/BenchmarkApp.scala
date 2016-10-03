@@ -4,7 +4,6 @@ package bench
 import japgolly.scalajs.benchmark.gui.BenchmarkGUI
 import org.scalajs.dom
 import qq.cc.{CompiledFilter, JSONRuntime, QQRuntime}
-import qq.cc.jsc.JSRuntime
 import upickle.Invalid
 
 import scala.scalajs.js.annotation.JSExport
