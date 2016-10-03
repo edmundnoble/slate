@@ -41,7 +41,6 @@ object AppView {
 
   def builder(implicit sch: Scheduler
              ): ReactComponentB[AppProps, AppState, Unit, TopNode] = {
-    import dash.views.ReactiveReact._
     import japgolly.scalajs.react.vdom.all._
 
     import scalacss.ScalaCssReact._
@@ -63,7 +62,7 @@ object AppView {
                 props.model.content.fold({
                   ErrorView.builder.build(_)
                 }, _.map { k =>
-                  ExpandableContentView.builder.build(ExpandableContentProps(k, initiallyExpanded = false))
+                  ExpandableContentView.builder.build(ExpandableContentProps(k, initiallyExpanded = true))
                 })
               )
             )
