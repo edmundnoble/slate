@@ -64,11 +64,13 @@ trait PlatformPrelude[J] extends Prelude[J] {
 
   def scalars: CompiledDefinition[J]
 
+  def toStringDef: CompiledDefinition[J]
+
   override def all(runtime: QQRuntime[J]): QQCompilationException \/ IndexedSeq[CompiledDefinition[J]] =
     Vector(
       `null`, `true`, `false`, orElse, b64Encode, includes, // exists, forall,
       length, keys, replaceAll, select, arrays, objects, iterables, booleans,
-      numbers, strings, nulls, values, scalars
+      numbers, strings, nulls, values, scalars, toStringDef
     ).right
 
 }

@@ -48,11 +48,12 @@ object Parser {
 
   val whitespaceChars: String = " \n\t"
   val whitespace: P0 = P(CharIn(whitespaceChars.toSeq).rep.map(_ => ()))
-  val escapedStringLiteralChars = stringLiteralChars :+ ("$(),.:/": Seq[Char]) :+ whitespaceChars.toSeq
+  val escapedStringLiteralChars: Seq[Seq[Char]] =
+    stringLiteralChars :+ ("[]$(),.:/": Seq[Char]) :+ whitespaceChars.toSeq
 
   val escapedStringLiteral: P[String] = P(
     quote ~/
-      ((Terminals.CharLiteral('\\') ~/ (Terminals.CharLiteral('n').map(_ => "\n") | Terminals.CharLiteral('\\').!)) |
+      ((Terminals.CharLiteral('\\') ~/ (Terminals.CharLiteral('n').map(_ => "\n") | Terminals.CharLiteral('"').map(_ => "\"") | Terminals.CharLiteral('\\').!)) |
         CharIn(escapedStringLiteralChars: _*).!).rep.map(_.mkString) ~ quote
   )
 

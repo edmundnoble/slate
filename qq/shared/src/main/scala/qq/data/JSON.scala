@@ -52,14 +52,24 @@ object JSON {
     }
   }
 
-  def render(v: JSON): Vector[String] = v match {
-    case JSON.Str(s) => Vector("\"", s, "\"")
-    case JSON.Num(n) => String.format("%f", Double.box(n)) +: Vector.empty[String]
-    case JSON.True => "true" +: Vector.empty[String]
-    case JSON.False => "false" +: Vector.empty[String]
-    case JSON.Null => "null" +: Vector.empty[String]
-    case JSON.Arr(v) => "[" +: v.map(render).nelFoldLeft1(Vector.empty[String])((a, b) => (a :+ ",\n") ++ b) :+ "]"
-    case o: JSON.Obj => "{" +: o.toList.value.map { case (k, nv) => Vector(k, ": ") ++ render(nv) }.nelFoldLeft1(Vector.empty[String])((a, b) => (a :+ ",\n") ++ b) :+ "}"
+  def render(v: JSON): String = {
+    def renderRec(v: JSON): Vector[String] = v match {
+      case JSON.Str(s) => Vector("\"", s, "\"")
+      case JSON.Num(n) => {
+        val toInt = n.toInt
+        (
+          if (toInt == n) String.format("%d", Int.box(toInt))
+          else String.format("%f", Double.box(n))
+          ) +: Vector.empty[String]
+      }
+      case JSON.True => "true" +: Vector.empty[String]
+      case JSON.False => "false" +: Vector.empty[String]
+      case JSON.Null => "null" +: Vector.empty[String]
+      case JSON.Arr(v) => "[" +: v.map(renderRec).nelFoldLeft1(Vector.empty[String])((a, b) => (a :+ ",\n") ++ b) :+ "]"
+      case o: JSON.Obj => "{" +: o.toList.value.map { case (k, nv) => Vector(k, ": ") ++ renderRec(nv) }.nelFoldLeft1(Vector.empty[String])((a, b) => (a :+ ",\n") ++ b) :+ "}"
+    }
+
+    renderRec(v).mkString
   }
 
   case object True extends JSON

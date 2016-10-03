@@ -34,8 +34,9 @@ object DashPrelude extends Prelude[JSON] {
         }
         for {
           urlWithQueryParams <- (urlTask |@| queryParamsTask)(Ajax.addQueryParams)
-          webAuthResult <- identify.launchWebAuthFlow(interactive = true, urlWithQueryParams).map(JSON.Str)
-        } yield webAuthResult
+          webAuthResult <- identify.launchWebAuthFlow(interactive = true, urlWithQueryParams)
+          accessToken = webAuthResult.substring(webAuthResult.indexOf("&code=") + "&code=".length)
+        } yield JSON.Obj("code" -> JSON.Str(accessToken))
     })
 
   private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition[JSON](name, 4,
@@ -52,7 +53,7 @@ object DashPrelude extends Prelude[JSON] {
         }
         val dataTask = dataRaw match {
           case JSON.Str(s) => Task.now(s)
-          case o: JSON.Obj => Task.now(Json.jsToString(o))
+          case o: JSON.Obj => Task.now(JSON.render(o).mkString)
           case k => Task.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not usable as POST data"))
         }
         val headersTask = headersRaw match {

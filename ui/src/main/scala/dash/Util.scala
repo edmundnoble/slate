@@ -3,17 +3,119 @@ package dash
 import fastparse.core.Parsed
 import japgolly.scalajs.react.CallbackTo
 import japgolly.scalajs.react.extra.Reusability
-import monix.eval.Task
+import monix.eval.{Callback, Task}
+import monix.execution.cancelables.{CompositeCancelable, StackedCancelable}
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.Observable
 import scodec.Attempt
 
+import scala.collection.mutable.ListBuffer
 import scala.language.implicitConversions
-import scalaz.{Applicative, Coyoneda, Free, FreeT, Functor, Monad, \/, ~>}
+import scalaz.{Coyoneda, Free, Monad, \/, ~>}
 import scalaz.syntax.either._
-import scalaz.syntax.monad._
 
 object Util {
+
+  def raceFold[A, B](ob: Seq[Task[A]])(z: B)(fold: (B, A) => B): Observable[B] = {
+    ob.foldLeft(Observable.now(z)) { (tb, ta) =>
+      Observable.combineLatest2(tb, Observable.fromTask(ta)).map(fold.tupled)
+    }
+
+    // We are using OOP for initializing this `OnFinish` callback because we
+    // need something to synchronize on and because it's better for making the
+    // state explicit (e.g. the builder, remaining, isActive vars)
+    Observable.unsafeCreate { subscriber =>
+      // We need a monitor to synchronize on, per evaluation!
+      val lock = new AnyRef
+      val conn = StackedCancelable()
+      // Forces a fork on another (logical) thread!
+      subscriber.scheduler.executeAsync(lock.synchronized {
+        // Keeps track of tasks remaining to be completed.
+        // Is initialized by 1 because of the logic - tasks can run synchronously,
+        // and we decrement this value whenever one finishes, so we must prevent
+        // zero values before the loop is done.
+        // MUST BE synchronized by `lock`!
+        var remaining = 1
+
+        // If this variable is false, then a task ended in error.
+        // MUST BE synchronized by `lock`!
+        var isActive = true
+
+        var cur: B = z
+
+        // MUST BE synchronized by `lock`!
+        // MUST NOT BE called if isActive == false!
+        @inline def maybeSignalFinal(conn: StackedCancelable)
+          (implicit s: Scheduler): Unit = {
+
+          remaining -= 1
+          if (remaining == 0) {
+            subscriber.onComplete()
+            isActive = false
+            conn.pop()
+          }
+        }
+
+        implicit val s = subscriber.scheduler
+        // Represents the collection of cancelables for all started tasks
+        val composite = CompositeCancelable()
+        conn.push(composite)
+
+        // Collecting all cancelables in a buffer, because adding
+        // cancelables one by one in our `CompositeCancelable` is
+        // expensive, so we do it at the end
+        val allCancelables = ListBuffer.empty[StackedCancelable]
+        val cursor = ob.toIterator
+
+        // The `isActive` check short-circuits the process in case
+        // we have a synchronous task that just completed in error
+        while (cursor.hasNext && isActive) {
+          remaining += 1
+          val task = cursor.next()
+          val stacked = StackedCancelable()
+          allCancelables += stacked
+
+          // Light asynchronous boundary; with most scheduler implementations
+          // it will not fork a new (logical) thread!
+          subscriber.scheduler.executeLocal(
+            Task.unsafeStartNow(task, subscriber.scheduler, stacked,
+              new Callback[A] {
+                def onSuccess(value: A): Unit =
+                  lock.synchronized {
+                    if (isActive) {
+                      val newValue = fold(cur, value)
+                      cur = newValue
+                      subscriber.onNext(newValue)
+                      maybeSignalFinal(conn)
+                    }
+                  }
+
+                def onError(ex: Throwable): Unit =
+                  lock.synchronized {
+                    if (isActive) {
+                      isActive = false
+                      // This should cancel our CompositeCancelable
+                      conn.pop().cancel()
+                      subscriber.onError(ex)
+                    } else {
+                      subscriber.scheduler.reportFailure(ex)
+                    }
+                  }
+              }))
+        }
+
+        // All tasks could have executed synchronously, so we might be
+        // finished already. If so, then trigger the final callback.
+        maybeSignalFinal(conn)
+
+        // Note that if an error happened, this should cancel all
+        // other active tasks.
+        composite ++= allCancelables
+      })
+      conn
+    }
+  }
+
 
   def taskToCallback[A](fa: Task[A])(implicit scheduler: Scheduler): CallbackTo[CancelableFuture[A]] = {
     CallbackTo.lift { () =>

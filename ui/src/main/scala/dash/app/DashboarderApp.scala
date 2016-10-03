@@ -7,7 +7,8 @@ import dash.app.ProgramCache.WhatCanGoWrong
 import dash.models.{AppModel, ExpandableContentModel}
 import dash.views.AppView.AppProps
 import japgolly.scalajs.react.{Addons, ReactComponentM, ReactDOM, TopNode}
-import monix.eval.{Coeval, Task}
+import monix.eval.{Callback, Coeval, Task}
+import monix.execution.cancelables.{CompositeCancelable, StackedCancelable}
 import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.observers.Subscriber.Sync
 import monix.reactive.{Observable, OverflowStrategy}
@@ -21,6 +22,7 @@ import shapeless.ops.coproduct.Unifier
 import upickle.Js
 import qq.util._
 
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.FiniteDuration
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
@@ -29,6 +31,7 @@ import scalaz.syntax.traverse._
 import scalaz.syntax.either._
 import scalaz.std.list._
 import scalaz.syntax.tag._
+import scalaz.syntax.apply._
 import scalaz.std.`try`._
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
@@ -79,6 +82,8 @@ object DashboarderApp extends scalajs.js.JSApp {
       DashProgram[String]("Todoist", TodoistApp.program,
         JSON.Obj(
           "client_id" -> JSON.Str(Creds.todoistClientId),
+          "client_secret" -> JSON.Str(Creds.todoistClientSecret),
+          "redirect_uri" -> JSON.Str("https://ldhbkcmhfmoaepapkcopmigahjdiekil.chromiumapp.org/provider_cb"),
           "tok" -> JSON.Str(todoistState)
         )
       )
@@ -90,31 +95,34 @@ object DashboarderApp extends scalajs.js.JSApp {
       program.copy(program = StorageProgram.runProgram(DomStorage.Local, ProgramCache.getCachedCompiledProgram(program.program)))
     )
 
-  private def runCompiledPrograms: List[(String, Task[List[JSON]])] =
+  private def runCompiledPrograms: Map[String, Task[List[JSON]]] =
     compiledPrograms.map {
       case DashProgram(title, program, input) =>
-        (title,
+        title ->
           program
             .flatMap(_.leftMap(implicitly[Unifier.Aux[WhatCanGoWrong, Throwable]].apply).valueOrThrow)
-            .flatMap(_ (Map.empty)(input)
-            ))
-    }
+            .flatMap(_ (Map.empty)(input))
+    }(collection.breakOut)
 
   private def deserializeProgramOutput = runCompiledPrograms.map {
     case (title, program) =>
-    (title,
-      program.flatMap(_.traverse[TaskParallel, ExpandableContentModel] { json =>
-          val upickle: Js.Value = JSON.JSONToUpickleRec(json)
-          Task.coeval(Coeval.delay(ExpandableContentModel.pkl.read(upickle)).materialize.map(
-            _.recoverWith {
-              case ex => Failure(new Exception(s"Deserialization error, trying to deserialize ${JSON.render(json).mkString}", ex))
-            }
-          ).dematerialize).parallel
-        }.unwrap))
+      title ->
+        program.flatMap(
+            _.traverse[TaskParallel, ExpandableContentModel] { json =>
+              val upickle: Js.Value = JSON.JSONToUpickleRec(json)
+              Task.delay(ExpandableContentModel.pkl.read(upickle)).materialize.map(
+                _.recoverWith {
+                  case ex => Failure(
+                    new Exception("Deserialization error, trying to deserialize " + JSON.render(json).mkString, ex)
+                  )
+                }
+              ).dematerialize.parallel
+            }.unwrap
+          )
   }
 
   def getContent: Observable[SearchPageProps] =
-    Observable.fromIterable(deserializeProgramOutput.map {
+    raceFold(deserializeProgramOutput.map {
       case (title, program) =>
         val errorsCaughtProgram = program.materialize.map { t =>
           t.failed.foreach {
@@ -123,8 +131,8 @@ object DashboarderApp extends scalajs.js.JSApp {
           AppProps(title, AppModel(toDisjunction(t)))
         }
         errorsCaughtProgram
-    }).flatMap(Observable.fromTask).foldLeftF(Nil: List[AppProps])((l, ap) => ap :: l)
-      .map(SearchPageProps(_))
+    }(collection.breakOut))(runCompiledPrograms.map(t => t._1 -> AppProps(t._1, AppModel(Nil.right))))((l, ap) => l + (ap.title -> ap))
+      .map(l => SearchPageProps(l.values.toList))
 
   def render(container: Element, wheelPosY: Observable[Double], content: SearchPageProps)(implicit scheduler: Scheduler): ReactComponentM[SearchPageProps, Unit, Unit, TopNode] = {
     import dash.views._
@@ -137,6 +145,7 @@ object DashboarderApp extends scalajs.js.JSApp {
       PlatformExports.createStyleElement(
         "html{\noverflow-y:scroll;\n}\n" + Styles.renderA(renderer) + "\n" +
           ExpandableContentView.Styles.renderA(renderer) + "\n" +
+          ErrorView.Styles.renderA(renderer) + "\n" +
           TitledContentView.Styles.renderA(renderer) + "\n" +
           AppView.Styles.renderA(renderer))
     dom.document.head appendChild aggregateStyles
@@ -153,9 +162,9 @@ object DashboarderApp extends scalajs.js.JSApp {
     }
     val container =
       dom.document.body.children.namedItem("container")
-    val initialState = SearchPageProps(runCompiledPrograms.map(_._1).map(AppProps(_, AppModel(Nil.right))))
-    render(container, wheelPositionY, initialState)
-    getContent.foreach(render(container, wheelPositionY, _))
+    getContent.foreach { props =>
+      val _ = render(container, wheelPositionY, props)
+    }
     if (!js.isUndefined(Addons.Perf)) {
       logger.info("Stopping perf")
       Addons.Perf.stop()

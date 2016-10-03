@@ -149,6 +149,13 @@ object JSONPrelude extends PlatformPrelude[JSON] {
         case k => Task.now(k :: Nil)
       })
 
+  override def toStringDef: CompiledDefinition[JSON] =
+    noParamDefinition(
+      "toString", CompiledFilter.func { j: JSON =>
+        Task.now(JSON.Str(JSON.render(j)) :: Nil)
+      }
+    )
+
   // array or object includes
   override def includes: CompiledDefinition[JSON] = CompiledDefinition.undefinedOnPlatform("includes")
 }
