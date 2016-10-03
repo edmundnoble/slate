@@ -53,11 +53,7 @@ class RunnerTest extends QQAsyncTestSuite {
       ".titles[]",
       List(JSON.Str("lol1"), JSON.Str("wat1")).right
     ),
-    RunnerTestCase(
-      JSON.Num(1),
-      ".[]",
-      QQRuntimeException("Tried to flatten 1 but it's not an array").left
-    )
+    RunnerTestCase(JSON.Num(1), ".[]", QQRuntimeException("Tried to flatten 1 but it's not an array").left)
   )
 
   val enjectedFilters = RunnerTestCase(
@@ -116,53 +112,29 @@ class RunnerTest extends QQAsyncTestSuite {
     List(JSON.Obj("nested" -> JSON.Obj("nested" -> JSON.Num(1)))).right
   )
 
-  val maths = RunnerTestCase(
-    JSON.Num(4),
-    ". % (. / 2)",
-    List(JSON.Num(0)).right
-  )
+  val maths =
+    RunnerTestCase(JSON.Num(4), ". % (. / 2)", List(JSON.Num(0)).right)
 
-  val bedmas = RunnerTestCase(
-    JSON.Num(5),
-    ". + . * .",
-    List(JSON.Num(30)).right
-  )
+  val bedmas =
+    RunnerTestCase(JSON.Num(5), ". + . * .", List(JSON.Num(30)).right)
 
-  val map = RunnerTestCase(
-    JSON.Arr(JSON.Num(1)),
-    "def f: . + 2; map(f)",
-    List(JSON.Num(3)).right
-  )
+  val map =
+    RunnerTestCase(JSON.Arr(JSON.Num(1)), "def f: . + 2; map(f)", List(JSON.Num(3)).right)
 
-  val addNullException = RunnerTestCase(
-    JSON.Arr(),
-    ".[0] + .[0]",
-    QQRuntimeException("can't add null and null").left
-  )
+  val addNullException =
+    RunnerTestCase(JSON.Arr(), ".[0] + .[0]", QQRuntimeException("can't add null and null").left)
 
-  val silencedException = RunnerTestCase(
-    JSON.Arr(),
-    "(.[0] + .[0])?",
-    List().right
-  )
+  val silencedException =
+    RunnerTestCase(JSON.Arr(), "(.[0] + .[0])?", List().right)
 
-  val emptyObjectProgram = RunnerTestCase(
-    JSON.Null,
-    "{}",
-    List(JSON.Obj()).right
-  )
+  val emptyObjectProgram =
+    RunnerTestCase(JSON.Null, "{}", List(JSON.Obj()).right)
 
-  val constants = RunnerTestCase(
-    JSON.Null,
-    "true, false, null",
-    List(JSON.True, JSON.False, JSON.Null).right
-  )
+  val constants =
+    RunnerTestCase(JSON.Null, "true, false, null", List(JSON.True, JSON.False, JSON.Null).right)
 
-  val base64Encode = RunnerTestCase(
-    JSON.Str("hi"),
-    "b64Encode",
-    List(JSON.Str("aGk=")).right
-  )
+  val base64Encode =
+    RunnerTestCase(JSON.Str("hi"), "b64Encode", List(JSON.Str("aGk=")).right)
 
   "identity" in runTest(identityProgram)
   "ensequenced filters" in runTest(ensequencedFilters)
