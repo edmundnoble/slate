@@ -23,6 +23,11 @@ object AppView {
       addClassName("mui-panel")
     )
 
+    val header = style(
+      width(100 %%),
+      display.inlineBlock
+    )
+
   }
 
   final case class AppState(model: AppModel)
@@ -50,7 +55,7 @@ object AppView {
       .renderP { (_, props) =>
         div(
           div(Styles.panel,
-            div(ExpandableContentView.Styles.header,
+            div(Styles.header,
               div(ExpandableContentView.Styles.headerLeft,
                 div(ExpandableContentView.Styles.title,
                   a(props.title)
