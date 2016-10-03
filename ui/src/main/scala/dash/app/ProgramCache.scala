@@ -62,7 +62,8 @@ object ProgramCache {
               .fold(inj[WhatCanGoWrong, InvalidBase64](InvalidBase64(encodedProgram)).left[BitVector])(_.right)
           val decodedProgram =
             encodedProgramBits.flatMap(
-              programCodec.decode(_).toDisjunction
+              programCodec
+                .decode(_).toDisjunction
                 .bimap(inj[WhatCanGoWrong, InvalidBytecode] _ compose InvalidBytecode, _.value.value)
             )
           decodedProgram.pure[StorageProgram]

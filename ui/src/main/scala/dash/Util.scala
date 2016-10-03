@@ -21,9 +21,6 @@ object Util {
       Observable.combineLatest2(tb, Observable.fromTask(ta)).map(fold.tupled)
     }
 
-    // We are using OOP for initializing this `OnFinish` callback because we
-    // need something to synchronize on and because it's better for making the
-    // state explicit (e.g. the builder, remaining, isActive vars)
     Observable.unsafeCreate { subscriber =>
       // We need a monitor to synchronize on, per evaluation!
       val lock = new AnyRef

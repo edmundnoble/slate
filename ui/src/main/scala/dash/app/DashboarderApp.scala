@@ -18,7 +18,6 @@ import qq.Platform.Rec._
 import qq.cc.CompiledFilter
 import qq.data.JSON
 import shapeless.ops.coproduct.Unifier
-import upickle.Js
 import qq.util._
 
 import scala.concurrent.duration.FiniteDuration
@@ -30,7 +29,7 @@ import scalaz.syntax.either._
 import scalaz.std.list._
 import scalaz.syntax.tag._
 import scalaz.syntax.apply._
-import scalaz.std.`try`._
+import scalaz.syntax.std.`try`._
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
 import scalaz.\/
@@ -126,7 +125,7 @@ object DashboarderApp extends scalajs.js.JSApp {
           t.failed.foreach {
             logger.error("error while retrieving programs", _)
           }
-          AppProps(title, AppModel(toDisjunction(t)))
+          AppProps(title, AppModel(t.toDisjunction))
         }
         errorsCaughtProgram
     }(collection.breakOut))(runCompiledPrograms.map(t => t._1 -> AppProps(t._1, AppModel(Nil.right))))((l, ap) => l + (ap.title -> ap))
