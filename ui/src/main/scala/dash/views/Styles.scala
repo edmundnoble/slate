@@ -19,6 +19,7 @@ object Styles extends StyleSheet.Inline {
   val sanFrancisco: FontFace = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-regular-webfont.woff"))
   val sanFranciscoLight: FontFace = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-thin-webfont.woff"))
   val sanFranciscoMedium: FontFace = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-medium-webfont.woff"))
+  val sanFranciscoSubheavy: FontFace = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-semibold-webfont.woff"))
   val sanFranciscoHeavy: FontFace = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-bold-webfont.woff"))
 
   val materialBlue: Color = c"#2196F3"

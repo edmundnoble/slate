@@ -39,7 +39,6 @@ object ExpandableContentView {
     )
 
     val base = style(
-      addClassName("mui-panel"),
       overflow.hidden,
       marginLeft(10 px),
       marginRight(10 px),
@@ -66,17 +65,16 @@ object ExpandableContentView {
     )
 
     val number = style(
-      addClassName("mui--text-headline"),
-      fontFamily(sanFranciscoHeavy),
+      addClassName("mui--text-title"),
+      fontFamily(sanFranciscoSubheavy),
       paddingRight(10 px),
       display inline
     )
 
     val title = style(
-      addClassName("mui--text-headline"),
-      fontFamily(sanFranciscoHeavy),
+      addClassName("mui--text-title"),
+      fontFamily(sanFranciscoSubheavy),
       display inline
-      //fontSize(150 %%)
     )
 
     val animationGroup = new dash.views.Styles.ScrollFadeContainer("filter-group")

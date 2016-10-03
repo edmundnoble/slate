@@ -44,7 +44,7 @@ object TitledContentView {
     )
 
     val title = style(
-      addClassName("mui--text-title"),
+      addClassName("mui--text-subhead"),
       whiteSpace nowrap,
       overflow hidden,
       position relative,

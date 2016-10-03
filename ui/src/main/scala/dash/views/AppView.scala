@@ -31,7 +31,14 @@ object AppView {
     val header = style(
       width(100 %%),
       marginTop(-10 px),
+      marginBottom(5 px),
       display.inlineBlock
+    )
+
+    val title = style(
+      addClassName("mui--text-headline"),
+      fontFamily(dash.views.Styles.sanFranciscoHeavy),
+      display inline
     )
 
   }
@@ -63,8 +70,8 @@ object AppView {
           div(Styles.panel,
             div(Styles.header,
               div(ExpandableContentView.Styles.headerLeft,
-                div(ExpandableContentView.Styles.title,
-                  a(props.title)
+                div(AppView.Styles.title,
+                  a(props.title.toUpperCase())
                 )
               )
             ),
