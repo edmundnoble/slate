@@ -1,7 +1,9 @@
 package qq
 package cc
 
+import fastparse.Utils.CharBitSet
 import fastparse.all._
+import fastparse.core.ParseCtx
 import fastparse.parsers.Terminals
 import fastparse.{Implicits, parsers}
 import qq.data._
@@ -42,14 +44,25 @@ object Parser {
 
   def isStringLiteralChar(c: Char): Boolean = Character.isAlphabetic(c) || Character.isDigit(c)
 
-  val stringLiteralChars = Seq(('a' to 'z') ++ ('A' to 'Z') ++ ('0' to '9'), "↪+*-_": Seq[Char])
-  val stringLiteralChar = CharIn(stringLiteralChars: _*)
-  val stringLiteral: P[String] = P(stringLiteralChar.rep(min = 1).!)
+  case class CharsWhileFastSetup(set: Seq[Char], min: Int = 1) extends Parser[Unit]{
+    private[this] val uberSet = CharBitSet(set)
 
-  val whitespaceChars: String = " \n\t"
-  val whitespace: P0 = P(CharIn(whitespaceChars.toSeq).rep.map(_ => ()))
+    def parseRec(cfg: ParseCtx, index: Int) = {
+      var curr = index
+      val input = cfg.input
+      while(curr < input.length && uberSet(input(curr))) curr += 1
+      if (curr - index < min) fail(cfg.failure, curr)
+      else success(cfg.success, (), curr, Set.empty, cut = false)
+    }
+  }
+
+  val stringLiteralChars: Seq[Char] = ('a' to 'z') ++ ('A' to 'Z') ++ ('0' to '9') ++ "↪+*-_".toSeq
+  val stringLiteral: P[String] = P(CharsWhileFastSetup(stringLiteralChars).!)
+
+  val whitespaceChars: Seq[Char] = " \n\t".toSeq
+  val whitespace: P0 = P(CharsWhileFastSetup(whitespaceChars, min = 0))
   val escapedStringLiteralChars: Seq[Seq[Char]] =
-    stringLiteralChars :+ ("[]$(),.:/": Seq[Char]) :+ whitespaceChars.toSeq
+    Seq(stringLiteralChars, "[]$(),.:/".toSeq, whitespaceChars)
 
   val escapedStringLiteral: P[String] = P(
     quote ~/
@@ -161,21 +174,21 @@ object Parser {
   )
 
   // binary operators with the same precedence level
-  def binaryOperators[A](rec: P[A], op1: (String, (A, A) => A), ops: (String, (A, A) => A)*): P[A] = {
+  def binaryOperators[A](rec: P[A], ops: (String, (A, A) => A)*): P[A] = {
     def makeParser(text: String, function: (A, A) => A): P[(A, A) => A] = wspStr(text) >| function
 
     def foldOperators(begin: A, operators: List[((A, A) => A, A)]): A =
       operators.foldLeft(begin) { case (f, (combFun, nextF)) => combFun(f, nextF) }
 
-    val op = NonEmptyList(op1, ops: _*).map((makeParser _).tupled).foldLeft1(_ | _)
-    (rec ~ whitespace ~ (op ~/ whitespace ~ rec).rep).map((foldOperators _).tupled)
+    val op = ops.map((makeParser _).tupled).reduceLeft(_ | _)
+    (rec ~ (whitespace ~ (op ~/ whitespace ~ rec ~ whitespace).rep(min = 1)).?).map { case (a, f) => f.map(foldOperators(a, _)).getOrElse(a) }
   }
 
-  val withEquals: P[ConcreteFilter] =
-    P(binaryOperators[ConcreteFilter](sequenced, "==" -> dsl.equal _))
+  val ensequenced: P[ConcreteFilter] =
+    P(binaryOperators[ConcreteFilter](withEquals, "," -> dsl.ensequence _))
 
-  val sequenced: P[ConcreteFilter] =
-    P(binaryOperators[ConcreteFilter](piped, "," -> dsl.ensequence _))
+  val withEquals: P[ConcreteFilter] =
+    P(binaryOperators[ConcreteFilter](piped, "==" -> dsl.equal _, "!=" -> ((f: ConcreteFilter, s: ConcreteFilter) => dsl.compose(dsl.equal(f, s), dsl.not))))
 
   val piped: P[ConcreteFilter] =
     P(binaryOperators[ConcreteFilter](expr, "|" -> dsl.compose _))
@@ -208,7 +221,7 @@ object Parser {
     (whitespace ~
       (definition.rep(min = 1, sep = whitespace) ~ whitespace)
         .?.map(_.getOrElse(Nil)) ~
-      filter ~ Terminals.End)
+      filter ~ whitespace ~ Terminals.End)
       .map((Program[ConcreteFilter] _).tupled)
   )
 

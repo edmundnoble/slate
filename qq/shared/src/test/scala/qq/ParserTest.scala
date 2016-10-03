@@ -66,6 +66,8 @@ class ParserTest extends QQSyncTestSuite {
   "parse piped filters" in {
     Parser.filter.parse(".key | .dang").get.value shouldBe
       (getPathS(selectKey("key")) | selectKey("dang"))
+    Parser.filter.parse(".key | .dang | .hey").get.value shouldBe
+      (getPathS(selectKey("key")) | getPathS(selectKey("dang")) | selectKey("hey"))
     Parser.filter.parse("(.key) | (.dang)").get.value shouldBe
       (getPathS(selectKey("key")) | selectKey("dang"))
     Parser.filter.parse("(.key) | (dang)").get.value shouldBe

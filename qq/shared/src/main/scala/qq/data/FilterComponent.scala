@@ -53,6 +53,9 @@ final case class EnjectFilters[A](obj: List[((String \/ A), A)]) extends FilterC
 // Calls another filter or filter operator.
 final case class CallFilter[A](name: String, params: List[A]) extends FilterComponent[A]
 
+// not, i.e., bang (!)
+final case class FilterNot[A]() extends LeafComponent[A]
+
 // constants!
 final case class ConstNumber[A](value: Double) extends ConstantComponent[A]
 

@@ -34,7 +34,7 @@ object QQCompiler {
     case Multiply => runtime.multiplyJsValues
     case Divide => runtime.divideJsValues
     case Modulo => runtime.moduloJsValues
-    case Equal => runtime.equalJsValues
+    case Equal => (j1: J, j2: J) => Task.now(runtime.equalJsValues(j1, j2))
     case LTE => ???
     case GTE => ???
     case LessThan => ???

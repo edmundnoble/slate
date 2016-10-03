@@ -1,7 +1,7 @@
 package qq
 package cc
 
-import monix.eval.Task
+import monix.eval.{Coeval, Task}
 import monix.scalaz._
 import qq.data._
 import qq.util._
@@ -137,8 +137,14 @@ object JSONRuntime extends QQRuntime[JSON] {
       Task.raiseError(QQRuntimeException("can't modulo " + print(f) + " by " + print(s)))
   }
 
-  def equalJsValues(first: JSON, second: JSON): Task[JSON] =
-    Task.now(if (first == second) JSON.True else JSON.False)
+  override def equalJsValues(first: JSON, second: JSON): JSON =
+    if (first == second) JSON.True else JSON.False
+
+  override def not(v: JSON): Coeval[JSON] = v match {
+    case JSON.True => Coeval.now(JSON.False)
+    case JSON.False => Coeval.now(JSON.True)
+    case k => Coeval.raiseError(TypeError("true|false", print(k)))
+  }
 
   override def enlistFilter(filter: CompiledFilter[JSON]): CompiledFilter[JSON] =
     (bindings: VarBindings[JSON]) =>
@@ -229,5 +235,4 @@ object JSONRuntime extends QQRuntime[JSON] {
   override def platformPrelude: PlatformPrelude[JSON] = JSONPrelude
 
   override def print(value: JSON): String = JSON.render(value)
-
 }

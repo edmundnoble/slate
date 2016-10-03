@@ -73,18 +73,18 @@ object DashboarderApp extends scalajs.js.JSApp {
 
     List(
       DashProgram[String]("Gmail", GmailApp.program, JSON.Obj()),
-      DashProgram[String]("JIRA", JIRAApp.program,
-        JSON.Obj(
-          "username" -> JSON.Str(Creds.jiraUsername),
-          "password" -> JSON.Str(Creds.jiraPassword)
-        )
-      ),
       DashProgram[String]("Todoist", TodoistApp.program,
         JSON.Obj(
           "client_id" -> JSON.Str(Creds.todoistClientId),
           "client_secret" -> JSON.Str(Creds.todoistClientSecret),
           "redirect_uri" -> JSON.Str("https://ldhbkcmhfmoaepapkcopmigahjdiekil.chromiumapp.org/provider_cb"),
           "tok" -> JSON.Str(todoistState)
+        )
+      ),
+      DashProgram[String]("JIRA", JIRAApp.program,
+        JSON.Obj(
+          "username" -> JSON.Str(Creds.jiraUsername),
+          "password" -> JSON.Str(Creds.jiraPassword)
         )
       )
     )

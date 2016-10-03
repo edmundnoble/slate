@@ -15,9 +15,14 @@ object SharedPreludes {
       CompiledDefinition[J]("print", 0, body = { _ => body.right[QQCompilationException] })
     }
 
+    def empty[J](runtime: QQRuntime[J]): CompiledDefinition[J] = {
+      val body: CompiledFilter[J] = CompiledFilter.func { (_: J) => Task.now(Nil) }
+      CompiledDefinition[J]("empty", 0, body = { _ => body.right[QQCompilationException] })
+    }
+
     def apply[J]: Prelude[J] = new Prelude[J] {
       override def all(runtime: QQRuntime[J]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
-        IndexedSeq(print(runtime)).right
+        IndexedSeq(print(runtime), empty(runtime)).right
     }
   }
 

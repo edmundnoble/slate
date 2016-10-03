@@ -103,6 +103,9 @@ object QQDSL {
     @inline def equal(first: T[FilterComponent], second: T[FilterComponent]): T[FilterComponent] =
       embed[T](FilterMath(first, second, Equal))
 
+    @inline def not: T[FilterComponent] =
+      embed[T](FilterNot())
+
     @inline def constNumber(value: Double): T[FilterComponent] =
       embed[T](ConstNumber(value))
 

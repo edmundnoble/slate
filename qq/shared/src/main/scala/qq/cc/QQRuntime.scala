@@ -1,7 +1,7 @@
 package qq
 package cc
 
-import monix.eval.Task
+import monix.eval.{Coeval, Task}
 import monix.scalaz._
 import qq.data._
 
@@ -29,6 +29,7 @@ trait QQRuntime[J] {
     case ConstNumber(num) => constNumber(num)
     case ConstString(str) => constString(str)
     case ConstBoolean(bool) => constBoolean(bool)
+    case FilterNot() => CompiledFilter.func[J] { j => Task.coeval(not(j).map(_ :: Nil)) }
   }
 
   @inline final def makePathComponentGetter(component: PathComponent): CompiledProgram[J] = component match {
@@ -82,7 +83,9 @@ trait QQRuntime[J] {
 
   def moduloJsValues(first: J, second: J): Task[J]
 
-  def equalJsValues(first: J, second: J): Task[J]
+  def equalJsValues(first: J, second: J): J
+
+  def not(v: J): Coeval[J]
 
   def collectResults: CompiledProgram[J]
 
