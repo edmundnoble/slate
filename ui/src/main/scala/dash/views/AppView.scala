@@ -3,9 +3,8 @@ package views
 
 import dash.models.AppModel
 import japgolly.scalajs.react.extra.Reusability
-import japgolly.scalajs.react.{ReactComponentB, TopNode}
+import japgolly.scalajs.react.{ReactComponentB, ReactElement, ReactNode, TopNode}
 import monix.execution.Scheduler
-import monix.reactive.Observable
 import dash.Util.observableReusability
 import dash.views.ExpandableContentView.ExpandableContentProps
 
@@ -41,6 +40,8 @@ object AppView {
       display inline
     )
 
+    val animationGroup = new dash.views.ScrollFadeContainer("filter-group")
+
   }
 
   final case class AppState(model: AppModel)
@@ -50,7 +51,7 @@ object AppView {
       Reusability.caseClass[AppState]
   }
 
-  final case class AppProps(title: String, model: AppModel)
+  final case class AppProps(id: Int, title: String, titleLink: String, model: AppModel)
 
   object AppProps {
     implicit val reusability: Reusability[AppProps] =
@@ -66,22 +67,22 @@ object AppView {
     ReactComponentB[AppProps]("Expandable content view")
       .initialState[AppState](AppState(AppModel(Nil.right)))
       .renderP { (_, props) =>
-        div(
+        div(key := props.id,
           div(Styles.panel,
             div(Styles.header,
               div(ExpandableContentView.Styles.headerLeft,
                 div(AppView.Styles.title,
-                  a(props.title.toUpperCase())
+                  a(props.title.toUpperCase(), href := props.titleLink)
                 )
               )
             ),
             div(
-              ExpandableContentView.Styles.animationGroup(
-                props.model.content.fold({
-                  ErrorView.builder.build(_)
-                }, _.map { k =>
-                  ExpandableContentView.builder.build(ExpandableContentProps(k, initiallyExpanded = true))
-                })
+              Styles.animationGroup(
+                props.model.content.fold[List[ReactNode]]({ ex =>
+                  ErrorView.builder.build(ex) :: Nil
+                }, _.map { model =>
+                  ExpandableContentView.builder.build(ExpandableContentProps(model, initiallyExpanded = false))
+                }): _*
               )
             )
           )

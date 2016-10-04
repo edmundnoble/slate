@@ -63,8 +63,6 @@ object TitledContentView {
       )
     )
 
-    val filterIssueContainer = new ScrollFadeContainer("filterIssueContainer")
-    val searchResultContainer = new ScrollFadeContainer("searchResultContainer")
   }
 
   def builder: ReactComponentB[TitledContentModel, Unit, Unit, TopNode] = {
@@ -74,8 +72,7 @@ object TitledContentView {
 
     ReactComponentB[TitledContentModel]("Issue")
       .renderP((_, model) =>
-        div(
-          key := model.title + model.titleUrl,
+        div(key := model.title,
           div(Styles.base,
             if (model.content.isEmpty)
               (Nil: List[TagMod]): TagMod

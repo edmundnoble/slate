@@ -77,7 +77,7 @@ object ExpandableContentView {
       display inline
     )
 
-    val animationGroup = new dash.views.Styles.ScrollFadeContainer("filter-group")
+    val animationGroup = new dash.views.ScrollFadeContainer("expandableContentView")
 
   }
 
@@ -115,7 +115,7 @@ object ExpandableContentView {
       .initialState_P[ExpandableState](props => ExpandableState(expanded = props.initiallyExpanded))
       .renderPS { ($, props, state) =>
         val titleLink = href := props.model.titleUrl
-        div(
+        div(key := props.model.title,
           div(Styles.base,
             div(Styles.header,
               div(Styles.headerLeft,

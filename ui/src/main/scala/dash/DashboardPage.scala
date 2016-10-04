@@ -22,10 +22,13 @@ object DashboardPage {
   def makeAppRow(results: List[AppProps])(implicit sch: Scheduler
   ): ReactElement =
     div(Styles.filterContainer,
-      results.map(result =>
-        div(Styles.innerFilterContainer,
-          AppView.builder.build(result)
-        )
+      Styles.dashboardContainer(
+        results.map(result =>
+          div(key := result.id,
+            Styles.innerFilterContainer,
+            AppView.builder.build(result)
+          )
+        ): _*
       )
     )
 
@@ -71,11 +74,9 @@ object DashboardPage {
           appBar.build(appbarProps),
           div(
             div(Styles.container,
-              Styles.dashboardContainer(
-                props.appProps
-                  .grouped(2)
-                  .map(makeAppRow).toSeq: _*
-              )
+              props.appProps
+                .grouped(2)
+                .map(makeAppRow).toSeq
             )
           )
         )

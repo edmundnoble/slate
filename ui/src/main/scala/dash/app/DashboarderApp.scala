@@ -61,7 +61,7 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   final class EmptyResponseException extends java.lang.Exception("Empty response")
 
-  case class DashProgram[P](title: String, program: P, input: JSON)
+  case class DashProgram[P](id: Int, title: String, titleLink: String, program: P, input: JSON)
 
   def programs: List[DashProgram[String]] = {
     val todoistState: String = List.fill(6) {
@@ -69,8 +69,8 @@ object DashboarderApp extends scalajs.js.JSApp {
     }.mkString
 
     List(
-      DashProgram[String]("Gmail", GmailApp.program, JSON.Obj()),
-      DashProgram[String]("Todoist", TodoistApp.program,
+      DashProgram[String](1, "Gmail", "https://gmail.com", GmailApp.program, JSON.Obj()),
+      DashProgram[String](2, "Todoist", "https://todoist.com", TodoistApp.program,
         JSON.Obj(
           "client_id" -> JSON.Str(Creds.todoistClientId),
           "client_secret" -> JSON.Str(Creds.todoistClientSecret),
@@ -78,7 +78,7 @@ object DashboarderApp extends scalajs.js.JSApp {
           "tok" -> JSON.Str(todoistState)
         )
       ),
-      DashProgram[String]("JIRA", JIRAApp.program,
+      DashProgram[String](3, "JIRA", "https://dashboarder.atlassian.net", JIRAApp.program,
         JSON.Obj(
           "username" -> JSON.Str(Creds.jiraUsername),
           "password" -> JSON.Str(Creds.jiraPassword)
@@ -92,18 +92,18 @@ object DashboarderApp extends scalajs.js.JSApp {
       program.copy(program = StorageProgram.runProgram(DomStorage.Local, ProgramCache.getCachedCompiledProgram(program.program)))
     )
 
-  private def runCompiledPrograms: Map[String, Task[List[JSON]]] =
+  private def runCompiledPrograms: List[(Int, String, String, Task[List[JSON]])] =
     compiledPrograms.map {
-      case DashProgram(title, program, input) =>
-        title ->
+      case DashProgram(id, title, titleLink, program, input) =>
+        (id, title, titleLink,
           program
             .flatMap(_.leftMap(implicitly[Unifier.Aux[WhatCanGoWrong, Throwable]].apply).valueOrThrow)
-            .flatMap(_ (Map.empty)(input))
+            .flatMap(_ (Map.empty)(input)))
     }(collection.breakOut)
 
-  private def deserializeProgramOutput = runCompiledPrograms.map {
-    case (title, program) =>
-      title ->
+  private def deserializeProgramOutput: List[(Int, String, String, Task[List[ExpandableContentModel]])] = runCompiledPrograms.map {
+    case (id, title, titleLink, program) =>
+      (id, title, titleLink,
         program.flatMap(
             _.traverse[TaskParallel, ExpandableContentModel] { json =>
               val upickle = JSON.JSONToUpickleRec.apply(json)
@@ -115,21 +115,21 @@ object DashboarderApp extends scalajs.js.JSApp {
                 }
               ).dematerialize.parallel
             }.unwrap
-          )
+          ))
   }
 
   def getContent: Observable[SearchPageProps] =
     raceFold(deserializeProgramOutput.map {
-      case (title, program) =>
+      case (id, title, titleLink, program) =>
         val errorsCaughtProgram = program.materialize.map { t =>
           t.failed.foreach {
             logger.error("error while retrieving programs", _)
           }
-          AppProps(title, AppModel(t.toDisjunction))
+          AppProps(id, title, titleLink, AppModel(t.toDisjunction))
         }
         errorsCaughtProgram
-    }(collection.breakOut))(runCompiledPrograms.map(t => t._1 -> AppProps(t._1, AppModel(Nil.right))))((l, ap) => l + (ap.title -> ap))
-      .map(l => SearchPageProps(l.values.toList))
+    }(collection.breakOut))(runCompiledPrograms.map(t => AppProps(t._1, t._2, t._3, AppModel(Nil.right))))((l, ap) => (ap :: l.filterNot(_.title == ap.title)).sortBy(_.title))
+      .map(SearchPageProps(_))
 
   def render(container: Element, wheelPosY: Observable[Double], content: SearchPageProps)(implicit scheduler: Scheduler): ReactComponentM[SearchPageProps, Unit, Unit, TopNode] = {
     import dash.views._
