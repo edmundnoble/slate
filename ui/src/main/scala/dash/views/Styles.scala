@@ -41,9 +41,10 @@ object Styles extends StyleSheet.Inline {
 
   val appBarText: StyleA = style(
     addClassNames("mui--appbar-height"),
-    fontSize(150 %%),
+    fontSize(160 %%),
+    letterSpacing(2 px),
     fontWeight._800,
-    paddingLeft(10 px),
+    paddingLeft(80 px),
     fontFamily(akrobatBlack)
   )
 
@@ -57,10 +58,12 @@ object Styles extends StyleSheet.Inline {
 
   val container: StyleA = style(
     addClassName("mui-container-fluid"),
-    width(100 %%),
-//    fontFamily(sanFrancisco),
-//    color(materialGrays),
+    width(95 %%),
+    //    fontFamily(sanFrancisco),
+    //    color(materialGrays),
     marginTop(25 px)
+//    marginLeft(20 px)
+//    marginRight(20 px)
   )
 
   val dashboardContainer: ScrollFadeContainer = new ScrollFadeContainer("dashboardContainer")

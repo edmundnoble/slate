@@ -41,7 +41,7 @@ object ExpandableContentView {
 
     val base = style(
       overflow.hidden,
-      marginRight(10 px),
+//      marginRight(10 px),
       marginBottom(10 px),
       marginTop(5 px)
     )
@@ -54,7 +54,8 @@ object ExpandableContentView {
     )
 
     val filterButton = style(
-      addClassNames("mui-btn", "mui-btn--flat"),
+      addClassNames("mui-btn", "mui-btn--flat", "mui-btn--small"),
+      marginTop(5 px),
       float.right,
       lineHeight.`0`.important
     )
@@ -67,14 +68,15 @@ object ExpandableContentView {
 
     val number = style(
       fontSize(150 %%),
-      fontFamily(akrobatBlack),
+      fontWeight._600,
+      fontFamily(akrobatBold),
       paddingRight(10 px),
       display inline
     )
 
     val title = style(
       fontSize(150 %%),
-      fontFamily(akrobatBold),
+      fontFamily(akrobat),
       display inline
     )
 
