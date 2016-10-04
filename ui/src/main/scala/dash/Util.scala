@@ -17,10 +17,6 @@ import scalaz.syntax.either._
 object Util {
 
   def raceFold[A, B](ob: Seq[Task[A]])(z: B)(fold: (B, A) => B): Observable[B] = {
-    ob.foldLeft(Observable.now(z)) { (tb, ta) =>
-      Observable.combineLatest2(tb, Observable.fromTask(ta)).map(fold.tupled)
-    }
-
     Observable.unsafeCreate { subscriber =>
       // We need a monitor to synchronize on, per evaluation!
       val lock = new AnyRef
@@ -39,6 +35,8 @@ object Util {
         var isActive = true
 
         var cur: B = z
+
+        subscriber.onNext(z)
 
         // MUST BE synchronized by `lock`!
         // MUST NOT BE called if isActive == false!
