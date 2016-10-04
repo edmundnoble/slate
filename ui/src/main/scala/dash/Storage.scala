@@ -4,7 +4,7 @@ import monix.eval.Task
 import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
 
 import scalaz.std.string._
-import scalaz.{==>>, Applicative, BindRec, Coyoneda, State, ~>}
+import scalaz.{==>>, Applicative, BindRec, Coyoneda, State, WriterT, ~>}
 
 // Operations on a Storage with F[_] effects
 // To abstract over storage that has different effects performed by its operations
@@ -90,7 +90,19 @@ object StorageProgram {
       override def apply[Y](fa: StorageAction[Y]): F[Y] = fa.run(storage)
     })
 
-  @inline def runRetargetableProgram[F[_] : Applicative : BindRec, A](storage: Storage[F], index: String, program: RetargetableStorageProgram[A]): F[A] =
+  @inline def logProgram[F[_] : Applicative : BindRec](storage: Storage[F]): StorageAction ~> WriterT[F, Vector[String], ?] =
+    new (StorageAction ~> WriterT[F, Vector[String], ?]) {
+      override def apply[Y](fa: StorageAction[Y]): WriterT[F, Vector[String], Y] = {
+        val keys = fa match {
+          case StorageAction.Get(k) => Vector.empty[String] :+ k
+          case StorageAction.Update(k, _) => Vector.empty[String] :+ k
+          case _ => Vector.empty[String]
+        }
+        WriterT.put[F, Vector[String], Y](fa.run(storage))(keys)(implicitly[Applicative[F]])
+      }
+    }
+
+  @inline def runRetargetableProgram[F[_] : Applicative : BindRec, A](storage: Storage[F], index: String, program: Retargetable[StorageProgram, A]): F[A] =
     foldMapFCRec(program.run(index), new (StorageAction ~> F) {
       override def apply[Y](fa: StorageAction[Y]): F[Y] = fa.run(storage)
     })

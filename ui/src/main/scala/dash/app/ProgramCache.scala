@@ -32,7 +32,7 @@ object ProgramCache {
 
   // cache optimized, parsed programs using their hashcode as a key
   // store them as base64-encoded bytecode
-  def getCachedCompiledProgram(qqProgram: String): RetargetableStorageProgram[WhatCanGoWrong \/ CompiledFilter[JSON]] = {
+  def getCachedCompiledProgram(qqProgram: String): Retargetable[StorageProgram, WhatCanGoWrong \/ CompiledFilter[JSON]] = {
 
     import StorageProgram._
     import qq.protocol.FilterProtocol._
@@ -52,7 +52,7 @@ object ProgramCache {
             )
           val asBase64 = encodedProgram.map(_.toBase64)
           asBase64.fold(
-            _.left[Program[ConcreteFilter]].pure[RetargetableStorageProgram],
+            _.left[Program[ConcreteFilter]].pure[Retargetable[StorageProgram, ?]],
             (s: String) =>
               ReaderT.kleisli[StorageProgram, String, WhatCanGoWrong \/ Program[ConcreteFilter]](_ => update(hash, s).map(_ => preparedProgram))
           )
@@ -66,7 +66,7 @@ object ProgramCache {
                 .decode(_).toDisjunction
                 .bimap(inj[WhatCanGoWrong, InvalidBytecode] _ compose InvalidBytecode, _.value.value)
             )
-          decodedProgram.pure[RetargetableStorageProgram]
+          decodedProgram.pure[Retargetable[StorageProgram, ?]]
       }
       compiledProgram = decodedOptimizedProgram.flatMap(
         QQCompiler.compileProgram[Fix, JSON](JSONRuntime, DashPrelude, _).leftMap(inj[WhatCanGoWrong, QQCompilationException])
