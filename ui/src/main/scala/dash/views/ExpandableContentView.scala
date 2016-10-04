@@ -22,7 +22,8 @@ object ExpandableContentView {
 
     val filterButtonIcon = style(
       addClassName("material-icons"),
-      (transition := "transform 0.3s ease-out").important
+      (transition := "transform 0.3s ease-out").important,
+      marginTop(5 px)
     )
 
     val filterButtonExpanded = style(
@@ -40,9 +41,8 @@ object ExpandableContentView {
 
     val base = style(
       overflow.hidden,
-      marginLeft(10 px),
       marginRight(10 px),
-      marginBottom(10 px)
+      marginBottom(5 px)
     )
 
     val header = style(
@@ -53,7 +53,7 @@ object ExpandableContentView {
     )
 
     val filterButton = style(
-      addClassNames("mui-btn", "mui-btn--raised"),
+      addClassNames("mui-btn", "mui-btn--flat"),
       float.right,
       lineHeight.`0`.important
     )
@@ -73,7 +73,7 @@ object ExpandableContentView {
 
     val title = style(
       addClassName("mui--text-title"),
-      fontFamily(sanFranciscoSubheavy),
+      fontFamily(sanFranciscoLight),
       display inline
     )
 
@@ -130,8 +130,10 @@ object ExpandableContentView {
                 i(buttonStyleForState(state): _*)
               )
             ),
-            Styles.animationGroup(
-              state.expanded ?? makeContent(props.model.content): _*
+            div(
+              Styles.animationGroup(
+                state.expanded ?? makeContent(props.model.content): _*
+              )
             )
           )
         )

@@ -30,7 +30,6 @@ object AppView {
     val header = style(
       width(100 %%),
       marginTop(-10 px),
-      marginBottom(5 px),
       display.inlineBlock
     )
 
@@ -71,7 +70,7 @@ object AppView {
           div(Styles.panel,
             div(Styles.header,
               div(ExpandableContentView.Styles.headerLeft,
-                div(AppView.Styles.title,
+                div(Styles.title,
                   a(props.title.toUpperCase(), href := props.titleLink)
                 )
               )
