@@ -25,6 +25,24 @@ abstract class Storage[F[_]] {
   def keyAtIndex(index: Int): F[Option[String]]
 }
 
+object Storage {
+  import scalaz.Isomorphism._
+  // finally tagless encoding isomorphism
+  def storageStorageActionNatIso[F[_]]: Storage[F] <=> (StorageAction ~> F) = new (Storage[F] <=> (StorageAction ~> F)) {
+    override def to: (Storage[F]) => StorageAction ~> F = (stor: Storage[F]) => new (StorageAction ~> F) {
+      override def apply[A](fa: StorageAction[A]): F[A] = fa.run(stor)
+    }
+    override def from: StorageAction ~> F => Storage[F] = (nat: StorageAction ~> F) => new Storage[F] {
+      override def length: F[Int] = nat(StorageAction.Length)
+      override def apply(key: String): F[Option[String]] = nat(StorageAction.Get(key))
+      override def update(key: String, data: String): F[Unit] = nat(StorageAction.Update(key, data))
+      override def clear(): F[Unit] = nat(StorageAction.Clear)
+      override def remove(key: String): F[Unit] = nat(StorageAction.Remove(key))
+      override def keyAtIndex(index: Int): F[Option[String]] = nat(StorageAction.KeyAtIndex(index))
+    }
+  }
+}
+
 // Finally tagless storage action functor (http://okmij.org/ftp/tagless-final/)
 // Only using this because higher-kinded GADT refinement is broken
 sealed abstract class StorageAction[T] {

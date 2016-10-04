@@ -10,7 +10,7 @@ import fastparse.core.{ParseError, Parsed}
 import shapeless.ops.coproduct.Inject
 import shapeless.{:+:, CNil, Coproduct}
 
-import scalaz.{Coyoneda, ReaderT, \/}
+import scalaz.{ReaderT, \/}
 import scalaz.syntax.either._
 import scalaz.syntax.applicative._
 import scalaz.std.list._
