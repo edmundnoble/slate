@@ -18,8 +18,16 @@ object Styles extends StyleSheet.Inline {
   val sanFranciscoSubheavy: FontFace = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-semibold-webfont.woff"))
   val sanFranciscoHeavy: FontFace = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-bold-webfont.woff"))
 
+  val akrobat: FontFace = FontFace("Akrobat", src = NonEmptyVector("fonts/akrobat/AkrobatRegular.woff2"))
+  val akrobatThin: FontFace = FontFace("Akrobat", src = NonEmptyVector("fonts/akrobat/AkrobatThin.woff2"))
+  val akrobatMedium: FontFace = FontFace("Akrobat", src = NonEmptyVector("fonts/akrobat/AkrobatMedium.woff2"))
+  val akrobatSemibold: FontFace = FontFace("Akrobat", src = NonEmptyVector("fonts/akrobat/AkrobatSemiBold.woff2"))
+  val akrobatBlack: FontFace = FontFace("Akrobat", src = NonEmptyVector("fonts/akrobat/AkrobatBlack.woff2"))
+  val akrobatBold: FontFace = FontFace("Akrobat", src = NonEmptyVector("fonts/akrobat/AkrobatBold.woff2"))
+
   val materialBlue: Color = c"#2196F3"
   val materialGrey: Color = c"#757575"
+  val materialGrays: Color = c"#BDBDBD"
 
   val pseudoContent: AV = content := "\"\""
 
@@ -32,9 +40,11 @@ object Styles extends StyleSheet.Inline {
   )
 
   val appBarText: StyleA = style(
-    addClassNames("mui--appbar-height", "mui--text-display1"),
+    addClassNames("mui--appbar-height"),
+    fontSize(250 %%),
+    fontWeight._800,
     paddingLeft(10 px),
-    fontFamily(sanFranciscoLight)
+    fontFamily(akrobatBlack)
   )
 
   val innerFilterContainer: StyleA = style(
@@ -48,9 +58,9 @@ object Styles extends StyleSheet.Inline {
   val container: StyleA = style(
     addClassName("mui-container-fluid"),
     width(100 %%),
-    fontFamily(sanFrancisco),
-    color(materialBlue),
-    marginTop(30 px)
+//    fontFamily(sanFrancisco),
+//    color(materialGrays),
+    marginTop(25 px)
   )
 
   val dashboardContainer: ScrollFadeContainer = new ScrollFadeContainer("dashboardContainer")

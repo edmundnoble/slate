@@ -22,7 +22,7 @@ object AppView {
     val panel = style(
       marginLeft(10 px),
       marginRight(10 px),
-      marginBottom(10 px),
+      marginBottom(15 px),
       //      margin(10 px),
       addClassName("mui-panel")
     )
@@ -34,8 +34,9 @@ object AppView {
     )
 
     val title = style(
-      addClassName("mui--text-headline"),
-      fontFamily(dash.views.Styles.sanFranciscoHeavy),
+      fontSize(180 %%),
+      fontWeight._600,
+      fontFamily(dash.views.Styles.akrobatBlack),
       display inline
     )
 

@@ -48,7 +48,7 @@ object DashboardPage {
           table(
             tr(Styles.appBarRow,
               td(Styles.appBarText,
-                "Dashboarder"
+                "Dashboarder".toUpperCase()
               )
             )
           )
@@ -89,5 +89,5 @@ object LinkStyles extends StyleSheet.Standalone {
 
   import dsl._
 
-  "a" - color(c"#616161")
+  "a" - color(Styles.materialGrays)
 }

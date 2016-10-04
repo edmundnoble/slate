@@ -40,7 +40,6 @@ object TitledContentView {
 
     val content = style(
       fontFamily(sanFrancisco),
-      addClassName("mui--text-body1"),
       color(black),
       overflow hidden,
       maxHeight(3.2 em),
@@ -48,8 +47,8 @@ object TitledContentView {
     )
 
     val title = style(
+      fontSize(120 %%),
       fontFamily(sanFrancisco),
-      addClassName("mui--text-subhead"),
       whiteSpace nowrap,
       overflow hidden,
       position relative,

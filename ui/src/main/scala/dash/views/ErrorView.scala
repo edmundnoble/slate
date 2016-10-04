@@ -11,8 +11,7 @@ object ErrorView {
     import dsl._
 
     val danger: StyleA = style(
-      fontFamily(views.Styles.sanFranciscoMedium),
-      addClassName("mui--text-danger")
+      fontFamily(views.Styles.sanFranciscoMedium)
     )
   }
 

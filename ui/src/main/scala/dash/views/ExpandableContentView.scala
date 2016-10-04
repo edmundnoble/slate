@@ -42,7 +42,8 @@ object ExpandableContentView {
     val base = style(
       overflow.hidden,
       marginRight(10 px),
-      marginBottom(5 px)
+      marginBottom(10 px),
+      marginTop(5 px)
     )
 
     val header = style(
@@ -65,15 +66,15 @@ object ExpandableContentView {
     )
 
     val number = style(
-      addClassName("mui--text-title"),
-      fontFamily(sanFranciscoSubheavy),
+      fontSize(150 %%),
+      fontFamily(akrobatBlack),
       paddingRight(10 px),
       display inline
     )
 
     val title = style(
-      addClassName("mui--text-title"),
-      fontFamily(sanFranciscoLight),
+      fontSize(150 %%),
+      fontFamily(akrobatBold),
       display inline
     )
 
