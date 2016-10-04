@@ -10,10 +10,9 @@ import fastparse.core.{ParseError, Parsed}
 import shapeless.ops.coproduct.Inject
 import shapeless.{:+:, CNil, Coproduct}
 
-import scalaz.\/
+import scalaz.{Coyoneda, ReaderT, \/}
 import scalaz.syntax.either._
 import scalaz.syntax.applicative._
-import scalaz.syntax.traverse._
 import scalaz.std.list._
 
 object ProgramCache {
@@ -33,14 +32,14 @@ object ProgramCache {
 
   // cache optimized, parsed programs using their hashcode as a key
   // store them as base64-encoded bytecode
-  def getCachedCompiledProgram(qqProgram: String): StorageProgram[WhatCanGoWrong \/ CompiledFilter[JSON]] = {
+  def getCachedCompiledProgram(qqProgram: String): RetargetableStorageProgram[WhatCanGoWrong \/ CompiledFilter[JSON]] = {
 
     import StorageProgram._
     import qq.protocol.FilterProtocol._
 
-    val hash = "program " + qqProgram.hashCode.toString
     for {
-      programInStorage <- get(hash)
+      hash <- ReaderT.ask[StorageProgram, String].map(_ + " " + qqProgram.hashCode.toString)
+      programInStorage <- ReaderT.kleisli[StorageProgram, String, Option[String]](_ => get(hash))
       decodedOptimizedProgram <- programInStorage match {
         case None =>
           val preparedProgram = prepareProgram(qqProgram)
@@ -53,8 +52,9 @@ object ProgramCache {
             )
           val asBase64 = encodedProgram.map(_.toBase64)
           asBase64.fold(
-            _.left[Program[ConcreteFilter]].pure[StorageProgram],
-            update(hash, _).map(_ => preparedProgram)
+            _.left[Program[ConcreteFilter]].pure[RetargetableStorageProgram],
+            (s: String) =>
+              ReaderT.kleisli[StorageProgram, String, WhatCanGoWrong \/ Program[ConcreteFilter]](_ => update(hash, s).map(_ => preparedProgram))
           )
         case Some(encodedProgram) =>
           val encodedProgramBits =
@@ -66,7 +66,7 @@ object ProgramCache {
                 .decode(_).toDisjunction
                 .bimap(inj[WhatCanGoWrong, InvalidBytecode] _ compose InvalidBytecode, _.value.value)
             )
-          decodedProgram.pure[StorageProgram]
+          decodedProgram.pure[RetargetableStorageProgram]
       }
       compiledProgram = decodedOptimizedProgram.flatMap(
         QQCompiler.compileProgram[Fix, JSON](JSONRuntime, DashPrelude, _).leftMap(inj[WhatCanGoWrong, QQCompilationException])

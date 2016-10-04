@@ -89,6 +89,11 @@ object StorageProgram {
     foldMapFCRec(program, new (StorageAction ~> F) {
       override def apply[Y](fa: StorageAction[Y]): F[Y] = fa.run(storage)
     })
+
+  @inline def runRetargetableProgram[F[_] : Applicative : BindRec, A](storage: Storage[F], index: String, program: RetargetableStorageProgram[A]): F[A] =
+    foldMapFCRec(program.run(index), new (StorageAction ~> F) {
+      override def apply[Y](fa: StorageAction[Y]): F[Y] = fa.run(storage)
+    })
 }
 
 // Implementation for dom.ext.Storage values

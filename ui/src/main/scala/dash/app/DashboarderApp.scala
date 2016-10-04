@@ -89,7 +89,7 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   def compiledPrograms: List[DashProgram[Task[WhatCanGoWrong \/ CompiledFilter[JSON]]]] =
     programs.map(program =>
-      program.copy(program = StorageProgram.runProgram(DomStorage.Local, ProgramCache.getCachedCompiledProgram(program.program)))
+      program.copy(program = StorageProgram.runRetargetableProgram(DomStorage.Local, "program", ProgramCache.getCachedCompiledProgram(program.program)))
     )
 
   private def runCompiledPrograms: List[(Int, String, String, Task[List[JSON]])] =
