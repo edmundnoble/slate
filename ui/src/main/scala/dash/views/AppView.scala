@@ -36,6 +36,7 @@ object AppView {
     val title = style(
       fontSize(180 %%),
       fontWeight._600,
+      letterSpacing(1 px),
       fontFamily(dash.views.Styles.akrobatBlack),
       display inline
     )
