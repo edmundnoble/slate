@@ -41,7 +41,7 @@ object Styles extends StyleSheet.Inline {
 
   val appBarText: StyleA = style(
     addClassNames("mui--appbar-height"),
-    fontSize(250 %%),
+    fontSize(150 %%),
     fontWeight._800,
     paddingLeft(10 px),
     fontFamily(akrobatBlack)
