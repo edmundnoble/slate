@@ -23,7 +23,7 @@ import qq.util._
 import scala.concurrent.duration.FiniteDuration
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
-import scala.util.Failure
+import scala.util.{Failure, Success}
 import scalaz.syntax.traverse._
 import scalaz.syntax.either._
 import scalaz.std.list._
@@ -105,17 +105,17 @@ object DashboarderApp extends scalajs.js.JSApp {
     case (id, title, titleLink, program) =>
       (id, title, titleLink,
         program.flatMap(
-            _.traverse[TaskParallel, ExpandableContentModel] { json =>
-              val upickle = JSON.JSONToUpickleRec.apply(json)
-              Task.delay(ExpandableContentModel.pkl.read(upickle)).materialize.map(
-                _.recoverWith {
-                  case ex => Failure(
-                    new Exception("Deserialization error, trying to deserialize " + JSON.render(json), ex)
-                  )
-                }
-              ).dematerialize.parallel
-            }.unwrap
-          ))
+          _.traverse[TaskParallel, ExpandableContentModel] { json =>
+            val upickle = JSON.JSONToUpickleRec.apply(json)
+            Task.delay(ExpandableContentModel.pkl.read(upickle)).materialize.map(
+              _.recoverWith {
+                case ex => Failure(
+                  new Exception("Deserialization error, trying to deserialize " + JSON.render(json), ex)
+                )
+              }
+            ).dematerialize.parallel
+          }.unwrap
+        ))
   }
 
   def getContent: Observable[SearchPageProps] =
@@ -128,10 +128,13 @@ object DashboarderApp extends scalajs.js.JSApp {
           AppProps(id, title, titleLink, AppModel(t.toDisjunction))
         }
         errorsCaughtProgram
-    }(collection.breakOut))(runCompiledPrograms.map(t => AppProps(t._1, t._2, t._3, AppModel(Nil.right))))((l, ap) => (ap :: l.filterNot(_.title == ap.title)).sortBy(_.title))
+    }(collection.breakOut))(
+      runCompiledPrograms.map(t => AppProps(t._1, t._2, t._3, AppModel(Nil.right))).sortBy(_.title)
+    )((l, ap) => (ap :: l.filterNot(_.title == ap.title)).sortBy(_.title))
       .map(SearchPageProps(_))
 
-  def render(container: Element, wheelPosY: Observable[Double], content: SearchPageProps)(implicit scheduler: Scheduler): ReactComponentM[SearchPageProps, Unit, Unit, TopNode] = {
+  def render(container: Element, wheelPosY: Observable[Double], content: SearchPageProps)(
+    implicit scheduler: Scheduler): Task[ReactComponentM[SearchPageProps, Unit, Unit, TopNode]] = {
     import dash.views._
     val searchPage =
       DashboardPage
@@ -142,7 +145,11 @@ object DashboarderApp extends scalajs.js.JSApp {
       Seq(Styles, ExpandableContentView.Styles, ErrorView.Styles, TitledContentView.Styles, AppView.Styles).map(_.renderA(renderer)).mkString("\n")
     val aggregateStyles = PlatformExports.createStyleElement("html{\noverflow-y:scroll;\n}\n" + addStyles)
     dom.document.head appendChild aggregateStyles
-    ReactDOM.render(searchPage, container)
+    Task.create[ReactComponentM[SearchPageProps, Unit, Unit, TopNode]] { (sch, cb) =>
+      ReactDOM.render(searchPage, container,
+        js.ThisFunction.fromFunction1((t: ReactComponentM[SearchPageProps, Unit, Unit, TopNode]) => cb.apply(Success(t))))
+      Cancelable.empty
+    }
   }
 
   @JSExport
@@ -155,9 +162,9 @@ object DashboarderApp extends scalajs.js.JSApp {
     }
     val container =
       dom.document.body.children.namedItem("container")
-    getContent.foreach { props =>
-      val _ = render(container, wheelPositionY, props)
-    }
+    val _ = getContent.flatMap { props =>
+      Observable.fromTask(render(container, wheelPositionY, props))
+    }.subscribe()
     if (!js.isUndefined(Addons.Perf)) {
       logger.info("Stopping perf")
       Addons.Perf.stop()
