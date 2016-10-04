@@ -3,8 +3,11 @@ package dash
 import monix.eval.Task
 import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
 
-import scalaz.std.string._
-import scalaz.{==>>, Applicative, BindRec, Coyoneda, State, WriterT, ~>}
+import scalaz._
+import scalaz.Scalaz._
+import scalaz.syntax.functor._
+import scalaz.syntax.bind._
+import scalaz.syntax.applicative._
 
 // Operations on a Storage with F[_] effects
 // To abstract over storage that has different effects performed by its operations
@@ -26,27 +29,72 @@ abstract class Storage[F[_]] {
 }
 
 object Storage {
+
   import scalaz.Isomorphism._
+
+  def storageFilter[F[_]](pred: String => Boolean): StorageProgram[Unit] = {
+    for {
+      len <- StorageProgram.length
+      keys <- (0 to len).toList.traverse(StorageProgram.keyAtIndex(_)).map(_.map(_.get).filter(pred))
+      _ <- keys.traverse(StorageProgram.remove)
+    } yield ()
+  }
+
+  def toTrans[F[_]](storage: Storage[F]): StorageAction ~> F = new (StorageAction ~> F) {
+    override def apply[A](fa: StorageAction[A]): F[A] = fa.run(storage)
+  }
+
+  def fromTrans[F[_]](trans: StorageAction ~> F): Storage[F] = new Storage[F] {
+    override def length: F[Int] = trans(StorageAction.Length)
+    override def apply(key: String): F[Option[String]] = trans(StorageAction.Get(key))
+    override def update(key: String, data: String): F[Unit] = trans(StorageAction.Update(key, data))
+    override def clear(): F[Unit] = trans(StorageAction.Clear)
+    override def remove(key: String): F[Unit] = trans(StorageAction.Remove(key))
+    override def keyAtIndex(index: Int): F[Option[String]] = trans(StorageAction.KeyAtIndex(index))
+  }
+
+  def log[F[_] : Applicative](storage: Storage[F]): Storage[LoggedStorage[F, ?]] =
+    new Storage[WriterT[F, Vector[String], ?]] {
+      override def length: WriterT[F, Vector[String], Int] =
+        WriterT.put(storage.length)(Vector.empty[String])
+      override def apply(key: String): WriterT[F, Vector[String], Option[String]] =
+        WriterT.put(storage(key))(Vector.empty[String] :+ key)
+      override def update(key: String, data: String): WriterT[F, Vector[String], Unit] =
+        WriterT.put(storage.update(key, data))(Vector.empty[String] :+ key)
+      override def clear(): WriterT[F, Vector[String], Unit] =
+        WriterT.put(storage.clear())(Vector.empty[String])
+      override def remove(key: String): WriterT[F, Vector[String], Unit] =
+        WriterT.put(storage.remove(key))(Vector.empty[String])
+      override def keyAtIndex(index: Int): WriterT[F, Vector[String], Option[String]] =
+        WriterT.put(storage.keyAtIndex(index))(Vector.empty[String])
+    }
+
+  def emprefix[F[_] : Applicative : BindRec](storage: Storage[F]): Storage[Retargetable[F, ?]] = new Storage[ReaderT[F, String, ?]] {
+    override def length: ReaderT[F, String, Int] =
+      ReaderT.kleisli((_: String) => storage.length)
+    override def apply(key: String): ReaderT[F, String, Option[String]] =
+      ReaderT.kleisli((index: String) => storage.apply(index + " " + key))
+    override def update(key: String, data: String): ReaderT[F, String, Unit] =
+      ReaderT.kleisli((index: String) => storage.update(index + " " + key, data))
+    override def clear(): ReaderT[F, String, Unit] =
+      ReaderT.kleisli[F, String, Unit]((index: String) => StorageProgram.runProgram(storage, storageFilter[F](!_.startsWith(index + " "))))
+    override def remove(key: String): ReaderT[F, String, Unit] =
+      ReaderT.kleisli[F, String, Unit]((index: String) => storage.remove(index + " " + key))
+    override def keyAtIndex(index: Int): ReaderT[F, String, Option[String]] =
+      ReaderT.kleisli((_: String) => storage.keyAtIndex(index))
+  }
+
   // finally tagless encoding isomorphism
-  def storageStorageActionNatIso[F[_]]: Storage[F] <=> (StorageAction ~> F) = new (Storage[F] <=> (StorageAction ~> F)) {
-    override def to: (Storage[F]) => StorageAction ~> F = (stor: Storage[F]) => new (StorageAction ~> F) {
-      override def apply[A](fa: StorageAction[A]): F[A] = fa.run(stor)
-    }
-    override def from: StorageAction ~> F => Storage[F] = (nat: StorageAction ~> F) => new Storage[F] {
-      override def length: F[Int] = nat(StorageAction.Length)
-      override def apply(key: String): F[Option[String]] = nat(StorageAction.Get(key))
-      override def update(key: String, data: String): F[Unit] = nat(StorageAction.Update(key, data))
-      override def clear(): F[Unit] = nat(StorageAction.Clear)
-      override def remove(key: String): F[Unit] = nat(StorageAction.Remove(key))
-      override def keyAtIndex(index: Int): F[Option[String]] = nat(StorageAction.KeyAtIndex(index))
-    }
+  def storageActionNatIso[F[_]]: Storage[F] <=> (StorageAction ~> F) = new (Storage[F] <=> (StorageAction ~> F)) {
+    override def to: (Storage[F]) => StorageAction ~> F = toTrans
+    override def from: StorageAction ~> F => Storage[F] = fromTrans
   }
 }
 
 // Finally tagless storage action functor (http://okmij.org/ftp/tagless-final/)
 // Only using this because higher-kinded GADT refinement is broken
-sealed abstract class StorageAction[T] {
-  def run[F[_]](storage: Storage[F]): F[T]
+sealed abstract class StorageAction[A] {
+  def run[F[_]](storage: Storage[F]): F[A]
 }
 
 object StorageAction {
@@ -104,26 +152,27 @@ object StorageProgram {
     liftFC(Clear)
 
   @inline def runProgram[F[_] : Applicative : BindRec, A](storage: Storage[F], program: StorageProgram[A]): F[A] =
-    foldMapFCRec(program, new (StorageAction ~> F) {
-      override def apply[Y](fa: StorageAction[Y]): F[Y] = fa.run(storage)
-    })
+    foldMapFCRec(program, Storage.toTrans(storage))
 
-  @inline def logProgram[F[_] : Applicative : BindRec](storage: Storage[F]): StorageAction ~> WriterT[F, Vector[String], ?] =
-    new (StorageAction ~> WriterT[F, Vector[String], ?]) {
-      override def apply[Y](fa: StorageAction[Y]): WriterT[F, Vector[String], Y] = {
-        val keys = fa match {
-          case StorageAction.Get(k) => Vector.empty[String] :+ k
-          case StorageAction.Update(k, _) => Vector.empty[String] :+ k
-          case _ => Vector.empty[String]
-        }
-        WriterT.put[F, Vector[String], Y](fa.run(storage))(keys)(implicitly[Applicative[F]])
-      }
-    }
-
-  @inline def runRetargetableProgram[F[_] : Applicative : BindRec, A](storage: Storage[F], index: String, program: Retargetable[StorageProgram, A]): F[A] =
-    foldMapFCRec(program.run(index), new (StorageAction ~> F) {
-      override def apply[Y](fa: StorageAction[Y]): F[Y] = fa.run(storage)
+  @inline def sealProgram[F[_] : Applicative : BindRec, A](storage: Storage[F], index: String, program: StorageProgram[A]): F[A] = {
+    implicit val functor: Functor[F] = implicitly[Applicative[F]]
+    implicit val bind: Bind[F] = implicitly[BindRec[F]]
+    bind.join[A](functor.map(StorageProgram.runProgram[Retargetable[LoggedStorage[F, ?], ?], A](
+      Storage.emprefix(Storage.log(storage)),
+      program
+    ).run(index).run) { case (keys, out) =>
+      functor.map[Unit, A](StorageProgram.runProgram[Retargetable[F, ?], Unit](
+        Storage.emprefix(storage),
+        Storage.storageFilter((str: String) => keys.contains(str) || !str.startsWith(index))).run(index)
+      )(_ => out)
     })
+  }
+
+  @inline def runRetargetable[A]
+  (index: String, program: Retargetable[StorageProgram, A]): StorageProgram[A] = program.run(index)
+
+  @inline def runLoggedStorage[A]
+  (program: LoggedStorage[StorageProgram, A]): StorageProgram[(Vector[String], A)] = program.run
 }
 
 // Implementation for dom.ext.Storage values
