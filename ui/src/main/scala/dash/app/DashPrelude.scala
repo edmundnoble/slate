@@ -19,7 +19,7 @@ object DashPrelude extends Prelude[JSON] {
   import CompiledDefinition.noParamDefinition
 
   def googleAuth: CompiledDefinition[JSON] =
-    noParamDefinition("googleAuth", _ => _ => identify.getAuthToken(interactive = false).map(JSON.Str(_) :: Nil))
+    noParamDefinition("googleAuth", _ => _ => identify.getAuthToken(interactive = true).map(JSON.Str(_) :: Nil))
 
   def launchAuth: CompiledDefinition[JSON] =
     CompiledDefinition[JSON]("launchAuth", 2, CompiledDefinition.standardEffectDistribution[JSON] {
