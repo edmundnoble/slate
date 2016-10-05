@@ -42,16 +42,19 @@ object TitledContentView {
       fontFamily(sanFrancisco),
       overflow hidden,
       maxHeight(3.2 em),
-      minHeight(2.4 em)
+      minHeight(2.4 em),
+      fontSize(14 px)
     )
 
     val title = style(
+      width(100 %%),
       addClassName("mdl-typography--headline"),
-      addClassName("mdl-color-text--grey-600"),
-      fontSize(120 %%),
+      color(rgba(0, 0, 0, 0.86)),
+      (textOverflow := "ellipsis").important,
+      fontSize(17 px),
       fontFamily(sanFrancisco),
       whiteSpace nowrap,
-      overflow hidden,
+      overflow.hidden.important,
       position relative,
       marginBottom(5 px)
     )

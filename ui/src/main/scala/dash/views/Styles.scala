@@ -32,6 +32,7 @@ object Styles extends StyleSheet.Inline {
   val pseudoContent: AV = content := "\"\""
 
   val appBarText: StyleA = style(
+    color(c"#303030"),
     fontSize(160 %%),
     letterSpacing(2 px),
     fontWeight._800,
@@ -41,7 +42,8 @@ object Styles extends StyleSheet.Inline {
 
   val container: StyleA = style(
     addClassNames("mdl-grid", "page-content"),
-    width(1000 px),
+//    width(1100 px),
+    width(90 %%),
     marginTop(25 px)
   )
 

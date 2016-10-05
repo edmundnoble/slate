@@ -42,9 +42,9 @@ object DashboardPage {
       .stateless
       .render_P { props =>
         div(`class` := "mdl-layout__container has-scrolling-header",
-          div(`class` := "mdl-layout mdl-js-layout mdl-layout--fixed-header", "data-upgraded".reactAttr := ",MaterialLayout",
+          div(`class` := "mdl-layout mdl-js-layout", "data-upgraded".reactAttr := ",MaterialLayout",
             id := "react-root",
-            header(`class` := "mdl-layout__header mdl-layout__header--transparent mdl-shadow--4dp mdl-color--grey-100 mdl-color-text--grey-600 is-casting-shadow",
+            header(`class` := "mdl-layout__header mdl-layout__header--transparent mdl-shadow--4dp mdl-color--grey-100 is-casting-shadow",
               div(`class` := "mdl-layout__header-row",
                 span(`class` := "mdl-layout-title", Styles.appBarText, "Dashboarder".toUpperCase()),
                 div(`class` := "mdl-layout-spacer"),

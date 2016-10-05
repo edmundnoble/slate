@@ -77,13 +77,13 @@ object DashboarderApp extends scalajs.js.JSApp {
           "redirect_uri" -> JSON.Str("https://ldhbkcmhfmoaepapkcopmigahjdiekil.chromiumapp.org/provider_cb"),
           "tok" -> JSON.Str(todoistState)
         )
-      ),
-      DashProgram[String](3, "JIRA", "https://dashboarder.atlassian.net", JIRAApp.program,
-        JSON.Obj(
-          "username" -> JSON.Str(Creds.jiraUsername),
-          "password" -> JSON.Str(Creds.jiraPassword)
-        )
       )
+//      DashProgram[String](3, "JIRA", "https://dashboarder.atlassian.net", JIRAApp.program,
+//        JSON.Obj(
+//          "username" -> JSON.Str(Creds.jiraUsername),
+//          "password" -> JSON.Str(Creds.jiraPassword)
+//        )
+//      )
     )
   }
 

@@ -32,12 +32,12 @@ object ExpandableContentView {
     )
 
     val base = style(
-      width(95 %%),
+      width(100 %%),
       addClassNames("mdl-cell", "mdl-cell--6-col", "mdl-color--grey-100", "mdl-color-text--grey-600"),
       overflow.hidden,
       marginRight(20 px),
-      marginLeft(20 px),
-      marginBottom(10 px),
+      marginLeft(10 px),
+      marginBottom(20 px),
       marginTop(5 px)
     )
 
@@ -51,8 +51,10 @@ object ExpandableContentView {
       marginTop(-10 px)
     )
 
-    val filterButton = style(
+    val expandToggleButton = style(
       addClassNames("mdl-button", "mdl-js-button", "mdl-js-ripple-effect"),
+      minWidth(56 px).important,
+      marginRight(20 px),
       marginTop(5 px),
       float.right,
       lineHeight.`0`.important
@@ -65,14 +67,19 @@ object ExpandableContentView {
     )
 
     val number = style(
+      fontSize(22 px),
       fontWeight._600,
+      addClassName("mdl-color-text--grey-800"),
       fontFamily(akrobatBold),
-      paddingRight(10 px),
+      marginLeft(5 px),
+      paddingRight(5 px),
       display inline
     )
 
     val title = style(
-      addClassName("mdl-color-text--grey-600"),
+      fontSize(22 px),
+      fontWeight._300,
+      addClassName("mdl-color-text--grey-500"),
       fontFamily(akrobat),
       display inline
     )
@@ -122,7 +129,7 @@ object ExpandableContentView {
                 a(Styles.title, props.model.title, titleLink)
               )
             ),
-            button(Styles.filterButton,
+            button(Styles.expandToggleButton,
               onClick --> $.modState(_.toggleExpanded),
               i(buttonStyleForState(state): _*)
             )

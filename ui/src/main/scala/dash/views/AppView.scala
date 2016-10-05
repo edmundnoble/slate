@@ -20,15 +20,20 @@ object AppView {
     import scala.language.postfixOps
 
     val panel = style(
-      marginLeft(10 px),
+      //      marginLeft(10 px),
+      //      marginRight(10 px),
+      //      marginBottom(15 px),
+      addClassNames("mdl-cell", "mdl-card", "mdl-shadow--2dp", "mdl-cell--6-col", "mdl-color--grey-100", "mdl-color-text--grey-600"),
       marginRight(10 px),
-      marginBottom(15 px),
-      addClassNames("mdl-cell", "mdl-card", "mdl-shadow--4dp", "mdl-cell--12-col", "mdl-color--grey-100", "mdl-color-text--grey-600")
+      marginLeft(10 px),
+      paddingBottom(20 px),
+      paddingLeft(-5 px),
+      width :=! "calc(50% - 20px)"
     )
 
     val header = style(
       addClassName("mdl-card__title"),
-//      width(100 %%),
+      //      width(100 %%),
       marginTop(-10 px),
       display.inlineBlock
     )
@@ -76,7 +81,7 @@ object AppView {
               a(Styles.title, props.title.toUpperCase(), href := props.titleLink)
             )
           ),
-          div( // `class` := "mdl-grid",
+          div(// `class` := "mdl-grid",
             Styles.animationGroup(
               props.model.content.fold[List[ReactNode]]({ ex =>
                 ErrorView.builder.build(ex) :: Nil
