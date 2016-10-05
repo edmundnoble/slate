@@ -59,11 +59,7 @@ object Styles extends StyleSheet.Inline {
   val container: StyleA = style(
     addClassName("mui-container-fluid"),
     width(95 %%),
-    //    fontFamily(sanFrancisco),
-    //    color(materialGrays),
     marginTop(25 px)
-//    marginLeft(20 px)
-//    marginRight(20 px)
   )
 
   val dashboardContainer: ScrollFadeContainer = new ScrollFadeContainer("dashboardContainer")

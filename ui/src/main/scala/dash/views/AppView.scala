@@ -23,7 +23,6 @@ object AppView {
       marginLeft(10 px),
       marginRight(10 px),
       marginBottom(15 px),
-      //      margin(10 px),
       addClassName("mui-panel")
     )
 

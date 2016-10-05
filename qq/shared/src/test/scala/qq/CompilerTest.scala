@@ -24,7 +24,6 @@ class CompilerTest extends QQAsyncTestSuite {
         err => Task.eval(fail("error occurred during compilation: \n" + err.toString)),
         program => program(Map.empty)(input).map { output =>
           output.map(_.norm) shouldBe expectedOutput.toList.map(_.norm)
-          //          (output should be expectedOutput.toList) (after being canonicalized)
         })
         .runAsync
   }

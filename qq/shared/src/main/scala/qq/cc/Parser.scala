@@ -123,7 +123,6 @@ object Parser {
     } yield f
 
   private val filterIdentifier: P[String] = P(
-    //    CharIn('a' to 'z', 'A' to 'Z').rep(min = 1).!
     stringLiteral
   )
 
