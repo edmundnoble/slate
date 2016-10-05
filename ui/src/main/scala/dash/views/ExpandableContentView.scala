@@ -31,30 +31,28 @@ object ExpandableContentView {
       perspective(600 pt)
     )
 
-    val innerFilterContainer = style(
-      addClassName("mui-col-md-6")
-    )
-
-    val filterContainer = style(
-      addClassName("mui-row")
-    )
-
     val base = style(
+      width(95 %%),
+      addClassNames("mdl-cell", "mdl-cell--6-col", "mdl-color--grey-100", "mdl-color-text--grey-600"),
       overflow.hidden,
-//      marginRight(10 px),
+      marginRight(20 px),
+      marginLeft(20 px),
       marginBottom(10 px),
       marginTop(5 px)
     )
 
     val header = style(
-      addClassName("mui--divider-bottom"),
       width(100 %%),
+      addClassName("mdl-card__title-text"),
+      borderBottom.rgba(0, 0, 0, .13),
+      borderBottomStyle.solid,
+      borderBottomWidth(1 px),
       display.inlineBlock,
       marginTop(-10 px)
     )
 
     val filterButton = style(
-      addClassNames("mui-btn", "mui-btn--flat", "mui-btn--small"),
+      addClassNames("mdl-button", "mdl-js-button", "mdl-js-ripple-effect"),
       marginTop(5 px),
       float.right,
       lineHeight.`0`.important
@@ -67,7 +65,6 @@ object ExpandableContentView {
     )
 
     val number = style(
-      fontSize(150 %%),
       fontWeight._600,
       fontFamily(akrobatBold),
       paddingRight(10 px),
@@ -75,7 +72,7 @@ object ExpandableContentView {
     )
 
     val title = style(
-      fontSize(150 %%),
+      addClassName("mdl-color-text--grey-600"),
       fontFamily(akrobat),
       display inline
     )
@@ -111,32 +108,28 @@ object ExpandableContentView {
       if (state.expanded) (Styles.filterButtonExpanded: TagMod) :: otherStyles
       else otherStyles
     }
-    val makeContent =
-      Memo.mutableHashMapMemo[List[TitledContentModel], List[ReactComponentU[_, _, _, _]]]((_: List[TitledContentModel]).map(TitledContentView.builder.build(_)))
 
     ReactComponentB[ExpandableContentProps]("Expandable content view")
       .initialState_P[ExpandableState](props => ExpandableState(expanded = props.initiallyExpanded))
       .renderPS { ($, props, state) =>
         val titleLink = href := props.model.titleUrl
-        div(key := props.model.title,
-          div(Styles.base,
-            div(Styles.header,
-              div(Styles.headerLeft,
-                div(Styles.number,
-                  props.model.content.length.toString()),
-                div(Styles.title,
-                  a(props.model.title, titleLink)
-                )
-              ),
-              button(Styles.filterButton,
-                onClick --> $.modState(_.toggleExpanded),
-                i(buttonStyleForState(state): _*)
+        div(key := props.model.title, Styles.base,
+          div(Styles.header,
+            div(Styles.headerLeft,
+              span(Styles.number,
+                props.model.content.length.toString()),
+              span(
+                a(Styles.title, props.model.title, titleLink)
               )
             ),
-            div(
-              Styles.animationGroup(
-                state.expanded ?? makeContent(props.model.content): _*
-              )
+            button(Styles.filterButton,
+              onClick --> $.modState(_.toggleExpanded),
+              i(buttonStyleForState(state): _*)
+            )
+          ),
+          div(
+            Styles.animationGroup(
+              state.expanded ?? props.model.content.map(TitledContentView.builder.build(_)): _*
             )
           )
         )

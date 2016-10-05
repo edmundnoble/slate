@@ -31,34 +31,17 @@ object Styles extends StyleSheet.Inline {
 
   val pseudoContent: AV = content := "\"\""
 
-  val appBar: StyleA = style(
-    addClassName("mui-appbar")
-  )
-
-  val appBarRow: StyleA = style(
-    verticalAlign.middle
-  )
-
   val appBarText: StyleA = style(
-    addClassNames("mui--appbar-height"),
     fontSize(160 %%),
     letterSpacing(2 px),
     fontWeight._800,
-    paddingLeft(80 px),
+    paddingLeft(75 px),
     fontFamily(akrobatBlack)
   )
 
-  val innerFilterContainer: StyleA = style(
-    addClassName("mui-col-md-6")
-  )
-
-  val filterContainer: StyleA = style(
-    addClassName("mui-row")
-  )
-
   val container: StyleA = style(
-    addClassName("mui-container-fluid"),
-    width(95 %%),
+    addClassNames("mdl-grid", "page-content"),
+    width(1000 px),
     marginTop(25 px)
   )
 

@@ -11,6 +11,7 @@ object ErrorView {
     import dsl._
 
     val danger: StyleA = style(
+      margin(20 px),
       fontFamily(views.Styles.sanFranciscoMedium)
     )
   }

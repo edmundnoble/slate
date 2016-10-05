@@ -10,11 +10,6 @@ class StartupTests extends UITestSuite {
     reactRoot shouldBe displayed
   }
 
-  "appbar should be displayed with text" taggedAs WebTest in {
-    appbar shouldBe displayed
-    appbar.text shouldBe "Dashboarder"
-  }
-
   "title should be Dashboarder" taggedAs WebTest in {
     pageTitle shouldBe "Dashboarder"
   }

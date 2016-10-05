@@ -19,18 +19,8 @@ object DashboardPage {
   import scala.language.implicitConversions
   import scalacss.ScalaCssReact._
 
-  def makeAppRow(results: List[AppProps])(implicit sch: Scheduler
-  ): ReactElement =
-    div(Styles.filterContainer,
-      Styles.dashboardContainer(
-        results.map(result =>
-          div(key := result.id,
-            Styles.innerFilterContainer,
-            AppView.builder.build(result)
-          )
-        ): _*
-      )
-    )
+  def makeAppCell(result: AppProps)(implicit sch: Scheduler): ReactElement =
+    AppView.builder.build(result)
 
   case class AppBarState(scrollY: Double)
 
@@ -38,24 +28,6 @@ object DashboardPage {
     implicit val reusability: Reusability[AppBarState] =
       Reusability.byRefOr_==[AppBarState]
   }
-
-  def appBar(implicit sch: Scheduler
-            ): ReactComponentB[Observable[AppBarState], AppBarState, Unit, TopNode] =
-    ReactComponentB[Observable[AppBarState]]("App bar")
-      .initialState(AppBarState(0.0))
-      .render_S { _ =>
-        div(Styles.appBar,
-          table(
-            tr(Styles.appBarRow,
-              td(Styles.appBarText,
-                "Dashboarder".toUpperCase()
-              )
-            )
-          )
-        )
-      }
-      .configure(Reusability.shouldComponentUpdate)
-      .reactiveReplace
 
   case class SearchPageProps(appProps: List[AppProps])
 
@@ -68,15 +40,28 @@ object DashboardPage {
   ): ReactComponentB[SearchPageProps, Unit, Unit, TopNode] =
     ReactComponentB[SearchPageProps]("Main search page")
       .stateless
-      .render_P { (props) =>
-        div(
-          id := "react-root",
-          appBar.build(appbarProps),
-          div(
-            div(Styles.container,
-              props.appProps
-                .grouped(2)
-                .map(makeAppRow).toSeq
+      .render_P { props =>
+        div(`class` := "mdl-layout__container has-scrolling-header",
+          div(`class` := "mdl-layout mdl-js-layout mdl-layout--fixed-header", "data-upgraded".reactAttr := ",MaterialLayout",
+            id := "react-root",
+            header(`class` := "mdl-layout__header mdl-layout__header--transparent mdl-shadow--4dp mdl-color--grey-100 mdl-color-text--grey-600 is-casting-shadow",
+              div(`class` := "mdl-layout__header-row",
+                span(`class` := "mdl-layout-title", Styles.appBarText, "Dashboarder".toUpperCase()),
+                div(`class` := "mdl-layout-spacer"),
+                div(`class` := "mdl-textfield mdl-js-textfield mdl-textfield--expandable is-upgraded",
+                  label(`class` := "mdl-button mdl-js-button mdl-button--icon", `for` := "search"),
+                  i(`class` := "material-icons", "search")
+                ),
+                div(`class` := "mdl-textfield__expandable-holder",
+                  input(`class` := "mdl-textfield__input", `type` := "text", id := "search"),
+                  label(`class` := "mdl-textfield__label", `for` := "search", "Enter your query...")
+                )
+              )
+            ),
+            "main".reactTag(`class` := "mdl-layout__content",
+              div(Styles.container,
+                  props.appProps.map(makeAppCell)
+              )
             )
           )
         )

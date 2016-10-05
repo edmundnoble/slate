@@ -163,7 +163,7 @@ object DashboarderApp extends scalajs.js.JSApp {
     val container =
       dom.document.body.children.namedItem("container")
     val _ = getContent.flatMap { props =>
-      Observable.fromTask(render(container, wheelPositionY, props))
+      Observable.fromTask(render(container, Observable.never, props))
     }.subscribe()
     if (!js.isUndefined(Addons.Perf)) {
       logger.info("Stopping perf")

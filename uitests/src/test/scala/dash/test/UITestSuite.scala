@@ -57,7 +57,6 @@ abstract class UITestSuite extends AsyncFreeSpec with Matchers with WebBrowser w
   object Elements {
     def reactRoot = find(IdQuery("react-root")).value
     def container = find(IdQuery("container")).value
-    def appbar = find(ClassNameQuery("mui-appbar")).value
   }
 
   def makeChromeDriver(): RemoteWebDriver =

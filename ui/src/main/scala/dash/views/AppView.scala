@@ -23,18 +23,21 @@ object AppView {
       marginLeft(10 px),
       marginRight(10 px),
       marginBottom(15 px),
-      addClassName("mui-panel")
+      addClassNames("mdl-cell", "mdl-card", "mdl-shadow--4dp", "mdl-cell--12-col", "mdl-color--grey-100", "mdl-color-text--grey-600")
     )
 
     val header = style(
-      width(100 %%),
+      addClassName("mdl-card__title"),
+//      width(100 %%),
       marginTop(-10 px),
       display.inlineBlock
     )
 
     val title = style(
-      fontSize(180 %%),
-      fontWeight._600,
+      addClassName("mdl-color-text--grey-700"),
+      addClassName("mdl-card__title-text"),
+      (textDecoration := "none").important,
+      fontWeight._700,
       letterSpacing(1 px),
       fontFamily(dash.views.Styles.akrobatBlack),
       display inline
@@ -67,23 +70,19 @@ object AppView {
     ReactComponentB[AppProps]("Expandable content view")
       .initialState[AppState](AppState(AppModel(Nil.right)))
       .renderP { (_, props) =>
-        div(key := props.id,
-          div(Styles.panel,
-            div(Styles.header,
-              div(ExpandableContentView.Styles.headerLeft,
-                div(Styles.title,
-                  a(props.title.toUpperCase(), href := props.titleLink)
-                )
-              )
-            ),
-            div(
-              Styles.animationGroup(
-                props.model.content.fold[List[ReactNode]]({ ex =>
-                  ErrorView.builder.build(ex) :: Nil
-                }, _.map { model =>
-                  ExpandableContentView.builder.build(ExpandableContentProps(model, initiallyExpanded = false))
-                }): _*
-              )
+        div(Styles.panel, key := props.id,
+          div(Styles.header,
+            div(ExpandableContentView.Styles.headerLeft,
+              a(Styles.title, props.title.toUpperCase(), href := props.titleLink)
+            )
+          ),
+          div( // `class` := "mdl-grid",
+            Styles.animationGroup(
+              props.model.content.fold[List[ReactNode]]({ ex =>
+                ErrorView.builder.build(ex) :: Nil
+              }, _.map { model =>
+                ExpandableContentView.builder.build(ExpandableContentProps(model, initiallyExpanded = false))
+              }): _*
             )
           )
         )

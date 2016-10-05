@@ -40,19 +40,23 @@ object TitledContentView {
 
     val content = style(
       fontFamily(sanFrancisco),
-      color(black),
       overflow hidden,
       maxHeight(3.2 em),
       minHeight(2.4 em)
     )
 
     val title = style(
+      addClassName("mdl-typography--headline"),
+      addClassName("mdl-color-text--grey-600"),
       fontSize(120 %%),
       fontFamily(sanFrancisco),
       whiteSpace nowrap,
       overflow hidden,
       position relative,
-      marginBottom(5 px),
+      marginBottom(5 px)
+    )
+
+    val titleFade = style(
       &.after(
         height(1.2 em),
         bottom(0 px),
@@ -74,14 +78,14 @@ object TitledContentView {
 
     ReactComponentB[TitledContentModel]("Issue")
       .renderP((_, model) =>
-        div(key := model.title,
+        span(key := model.title,
           div(Styles.base,
-            if (model.content.isEmpty)
-              (Nil: List[TagMod]): TagMod
-            else
-              Styles.fade,
-            div(Styles.title,
-              a(
+//            if (model.content.isEmpty)
+//              (Nil: List[TagMod]): TagMod
+//            else
+//              Styles.fade,
+            div(
+              a(Styles.title,
                 model.title,
                 href := model.titleUrl
               )
