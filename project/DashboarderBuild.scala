@@ -146,7 +146,7 @@ object DashboarderBuild {
       println((scalaJSLinkedFile in Compile).value.path)
       scalaJSOptimizerOptions := oldOpts.withPrettyPrintFullOptJS(true)
       val file = defineChromeBuildTask("unpackedunopt", fullOptJS).value
-//      scalaJSOptimizerOptions := oldOpts
+      //      scalaJSOptimizerOptions := oldOpts
       file
     },
 
@@ -236,12 +236,12 @@ object DashboarderBuild {
   lazy val qqjs: Project = qq.js
 
   lazy val qqmacros: CrossProject = crossProject.in(file("qqmacros"))
+    .dependsOn(qq)
     .settings(baseSettings: _*)
     .settings(commonDeps: _*)
     .settings(libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _))
     .jsSettings(jsSettings: _*)
     .jsSettings(ScalaJSPlugin.projectSettings: _*)
-    .dependsOn(qq)
 
   lazy val qqmacrosjvm: Project = qqmacros.jvm
   lazy val qqmacrosjs: Project = qqmacros.js
@@ -306,7 +306,7 @@ object DashboarderBuild {
   })
 
   lazy val root: Project = project.in(file("."))
-    .aggregate(ui, uitests, uibench, qqjvm, qqjs)
+    .aggregate(ui, uitests, uibench, qqjvm, qqjs, qqmacrosjvm, qqmacrosjs)
     .settings(Defaults.projectCore)
     .settings(baseSettings)
     .settings(ScalaJSPlugin.globalSettings)
