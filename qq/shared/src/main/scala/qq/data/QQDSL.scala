@@ -23,7 +23,7 @@ object QQDSL {
     @inline def selectRange(start: Int, end: Int): PathComponent =
       SelectRange(start, end)
 
-    implicit class extraOps(val f: T[FilterComponent]) {
+    implicit final class extraOps(val f: T[FilterComponent]) {
       final def |(next: T[FilterComponent]): T[FilterComponent] = compose(f, next)
 
       final def +(next: T[FilterComponent]): T[FilterComponent] = add(f, next)

@@ -1,6 +1,5 @@
 package dash
 
-import dash.Util._
 import dash.views.AppView.AppProps
 import dash.views.{AppView, Styles}
 import japgolly.scalajs.react._
@@ -14,7 +13,6 @@ import scalaz.\/
 object DashboardPage {
 
   import japgolly.scalajs.react.vdom.all._
-  import views.ReactiveReact._
 
   import scala.language.implicitConversions
   import scalacss.ScalaCssReact._

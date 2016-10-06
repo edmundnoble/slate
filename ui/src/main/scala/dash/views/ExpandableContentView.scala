@@ -1,14 +1,13 @@
 package dash
 package views
 
-import dash.models.{ExpandableContentModel, TitledContentModel}
+import dash.models.ExpandableContentModel
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.extra.Reusability
 import monix.execution.Scheduler
 
 import scala.language.higherKinds
 import scalacss.Defaults._
-import scalaz.Memo
 import scalaz.std.list._
 import scalaz.syntax.std.boolean._
 
@@ -125,9 +124,7 @@ object ExpandableContentView {
             div(Styles.headerLeft,
               span(Styles.number,
                 props.model.content.length.toString()),
-              span(
-                a(Styles.title, props.model.title, titleLink)
-              )
+              a(Styles.title, props.model.title, titleLink)
             ),
             button(Styles.expandToggleButton,
               onClick --> $.modState(_.toggleExpanded),

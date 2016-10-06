@@ -3,7 +3,7 @@ package views
 
 import dash.models.AppModel
 import japgolly.scalajs.react.extra.Reusability
-import japgolly.scalajs.react.{ReactComponentB, ReactElement, ReactNode, TopNode}
+import japgolly.scalajs.react.{ReactComponentB, ReactNode, TopNode}
 import monix.execution.Scheduler
 import dash.Util.observableReusability
 import dash.views.ExpandableContentView.ExpandableContentProps
@@ -20,9 +20,6 @@ object AppView {
     import scala.language.postfixOps
 
     val panel = style(
-      //      marginLeft(10 px),
-      //      marginRight(10 px),
-      //      marginBottom(15 px),
       addClassNames("mdl-cell", "mdl-card", "mdl-shadow--2dp", "mdl-cell--6-col", "mdl-color--grey-100", "mdl-color-text--grey-600"),
       marginRight(10 px),
       marginLeft(10 px),
@@ -33,14 +30,12 @@ object AppView {
 
     val header = style(
       addClassName("mdl-card__title"),
-      //      width(100 %%),
       marginTop(-10 px),
       display.inlineBlock
     )
 
     val title = style(
-      addClassName("mdl-color-text--grey-700"),
-      addClassName("mdl-card__title-text"),
+      addClassNames("mdl-color-text--grey-700", "mdl-card__title-text"),
       (textDecoration := "none").important,
       fontWeight._700,
       letterSpacing(1 px),

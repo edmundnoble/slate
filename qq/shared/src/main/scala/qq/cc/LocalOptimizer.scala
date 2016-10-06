@@ -29,7 +29,7 @@ object LocalOptimizer {
   // Some(newFilter) => The optimization produced newFilter from this filter
   type LocalOptimization[F] = F => Option[F]
 
-  implicit class localOptimizationOrOps[F](val localOptimization: LocalOptimization[F]) extends AnyVal {
+  implicit final class localOptimizationOrOps[F](val localOptimization: LocalOptimization[F]) extends AnyVal {
     @inline final def or(other: LocalOptimization[F]): LocalOptimization[F] =
       (f: F) => localOptimization(f).orElse(other(f))
   }

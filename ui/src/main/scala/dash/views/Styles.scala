@@ -42,7 +42,6 @@ object Styles extends StyleSheet.Inline {
 
   val container: StyleA = style(
     addClassNames("mdl-grid", "page-content"),
-//    width(1100 px),
     width(90 %%),
     marginTop(25 px)
   )
