@@ -9,10 +9,11 @@ object ErrorView {
   object Styles extends StyleSheet.Inline {
 
     import dsl._
+    import scala.language.postfixOps
 
     val danger: StyleA = style(
       margin(20 px),
-      fontFamily(views.Styles.sanFranciscoMedium)
+      fontFamily(views.Styles.sanFrancisco)
     )
   }
 

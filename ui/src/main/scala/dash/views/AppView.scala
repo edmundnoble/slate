@@ -39,7 +39,7 @@ object AppView {
       (textDecoration := "none").important,
       fontWeight._700,
       letterSpacing(1 px),
-      fontFamily(dash.views.Styles.akrobatBlack),
+      fontFamily(dash.views.Styles.akrobat),
       display inline
     )
 

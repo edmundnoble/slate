@@ -12,18 +12,26 @@ object Styles extends StyleSheet.Inline {
 
   import scala.language.postfixOps
 
-  val sanFrancisco: FontFace = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-regular-webfont.woff"))
-  val sanFranciscoLight: FontFace = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-thin-webfont.woff"))
-  val sanFranciscoMedium: FontFace = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-medium-webfont.woff"))
-  val sanFranciscoSubheavy: FontFace = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-semibold-webfont.woff"))
-  val sanFranciscoHeavy: FontFace = FontFace("San Francisco", src = NonEmptyVector("fonts/sanfrancisco/sanfranciscodisplay-bold-webfont.woff"))
+  val sanFrancisco: FontFace = FontFace("San Francisco", src =
+    NonEmptyVector(
+      "fonts/sanfrancisco/sanfranciscodisplay-regular-webfont.woff",
+      "fonts/sanfrancisco/sanfranciscodisplay-thin-webfont.woff",
+      "fonts/sanfrancisco/sanfranciscodisplay-medium-webfont.woff",
+      "fonts/sanfrancisco/sanfranciscodisplay-semibold-webfont.woff",
+      "fonts/sanfrancisco/sanfranciscodisplay-bold-webfont.woff"
+    )
+  )
 
-  val akrobat: FontFace = FontFace("Akrobat", src = NonEmptyVector("fonts/akrobat/AkrobatRegular.woff2"))
-  val akrobatThin: FontFace = FontFace("Akrobat", src = NonEmptyVector("fonts/akrobat/AkrobatThin.woff2"))
-  val akrobatMedium: FontFace = FontFace("Akrobat", src = NonEmptyVector("fonts/akrobat/AkrobatMedium.woff2"))
-  val akrobatSemibold: FontFace = FontFace("Akrobat", src = NonEmptyVector("fonts/akrobat/AkrobatSemiBold.woff2"))
-  val akrobatBlack: FontFace = FontFace("Akrobat", src = NonEmptyVector("fonts/akrobat/AkrobatBlack.woff2"))
-  val akrobatBold: FontFace = FontFace("Akrobat", src = NonEmptyVector("fonts/akrobat/AkrobatBold.woff2"))
+  val akrobat: FontFace = FontFace("Akrobat", src =
+    NonEmptyVector(
+      "fonts/akrobat/AkrobatRegular.woff2",
+      "fonts/akrobat/AkrobatThin.woff2",
+      "fonts/akrobat/AkrobatMedium.woff2",
+      "fonts/akrobat/AkrobatSemiBold.woff2",
+      "fonts/akrobat/AkrobatBlack.woff2",
+      "fonts/akrobat/AkrobatBold.woff2"
+    )
+  )
 
   val materialBlue: Color = c"#2196F3"
   val materialGrey: Color = c"#757575"
@@ -37,7 +45,7 @@ object Styles extends StyleSheet.Inline {
     letterSpacing(2 px),
     fontWeight._800,
     paddingLeft(75 px),
-    fontFamily(akrobatBlack)
+    fontFamily(akrobat)
   )
 
   val container: StyleA = style(

@@ -7,6 +7,8 @@ import scala.concurrent.duration._
 import scalacss.Defaults._
 import scalacss.StyleA
 
+import scala.language.postfixOps
+
 abstract class ReactAnimationStyles(val className: String)(implicit r: scalacss.internal.mutable.Register) extends StyleSheet.Inline()(r) {
   def enterClassName: String = className + "-enter"
 

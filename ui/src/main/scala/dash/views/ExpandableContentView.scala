@@ -69,7 +69,7 @@ object ExpandableContentView {
       fontSize(22 px),
       fontWeight._600,
       addClassName("mdl-color-text--grey-800"),
-      fontFamily(akrobatBold),
+      fontFamily(akrobat),
       marginLeft(5 px),
       paddingRight(5 px),
       display inline
