@@ -4,6 +4,8 @@ package views
 import dash.models.TitledContentModel
 import japgolly.scalajs.react.{ReactComponentB, _}
 import japgolly.scalajs.react.extra.Reusability
+import scalaz.syntax.std.boolean._
+import Util._
 
 import scalacss.Defaults._
 
@@ -17,12 +19,20 @@ object TitledContentView {
     import scala.language.postfixOps
 
     val base = style(
-      addClassNames("mdl-list__item", "mdl-list__item--three-line"),
+      addClassNames("mdl-list__item"),
       padding(6 px).important,
-      display.inlineBlock.important,
-      height(4.5 em).important,
+      maxHeight(4.5 em).important,
+      minHeight(1 em).important,
       pageBreakInside avoid,
       position relative
+    )
+
+    val tallCell = style(
+      addClassName("mdl-list__item--three-line")
+    )
+
+    val tall = style(
+      addClassName("mdl-list__item-primary-content")
     )
 
     val fade = style(
@@ -38,6 +48,8 @@ object TitledContentView {
     )
 
     val content = style(
+      addClassName("mdl-list__item-text-body"),
+      marginTop(5 px),
       fontFamily(sanFrancisco),
       overflow hidden,
       maxHeight(2.4 em),
@@ -81,24 +93,17 @@ object TitledContentView {
     ReactComponentB[TitledContentModel]("Issue")
       .renderP((_, model) =>
         li(Styles.base, key := model.title,
-          //            if (model.content.isEmpty)
-          //              (Nil: List[TagMod]): TagMod
-          //            else
-          //              Styles.fade,
-          span(`class` := "mdl-list__item-primary-content",
+          model.content.isEmpty !? (Styles.tallCell: TagMod),
+          div(model.content.isEmpty ?? (Styles.tall: TagMod),
             span(Styles.title,
               a(Styles.title,
                 model.title,
                 href := model.titleUrl
               )
             ),
-            span(`class` := "mdl-list__item-text-body",
-              if (model.content.isEmpty)
-                (Nil: List[TagMod]): TagMod
-              else
-                div(Styles.content: TagMod,
-                  model.content: TagMod): TagMod
-            )
+            model.content.isEmpty !?
+              (div(Styles.content,
+                model.content): TagMod)
           )
         )
       )

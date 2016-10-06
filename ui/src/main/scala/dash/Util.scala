@@ -1,8 +1,9 @@
 package dash
 
 import fastparse.core.Parsed
-import japgolly.scalajs.react.CallbackTo
+import japgolly.scalajs.react.{CallbackTo, vdom}
 import japgolly.scalajs.react.extra.Reusability
+import japgolly.scalajs.react.vdom.TagMod
 import monix.eval.{Callback, Task}
 import monix.execution.cancelables.{CompositeCancelable, StackedCancelable}
 import monix.execution.{CancelableFuture, Scheduler}
@@ -11,7 +12,7 @@ import scodec.Attempt
 
 import scala.collection.mutable.ListBuffer
 import scala.language.implicitConversions
-import scalaz.{Applicative, BindRec, Coyoneda, Free, Monad, \/, ~>}
+import scalaz.{Applicative, BindRec, Coyoneda, Free, Monad, Monoid, \/, ~>}
 import scalaz.syntax.either._
 
 object Util {
@@ -113,6 +114,10 @@ object Util {
     }
   }
 
+  implicit val tagmodMonoid: Monoid[TagMod] = new Monoid[TagMod] {
+    override def zero: TagMod = vdom.EmptyTag
+    override def append(f1: TagMod, f2: => TagMod): TagMod = f1 + f2
+  }
 
   def taskToCallback[A](fa: Task[A])(implicit scheduler: Scheduler): CallbackTo[CancelableFuture[A]] = {
     CallbackTo.lift { () =>

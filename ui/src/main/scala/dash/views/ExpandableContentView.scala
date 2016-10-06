@@ -84,6 +84,8 @@ object ExpandableContentView {
     )
 
     val content = style(
+      addClassName("mdl-list"),
+      paddingTop(5 px).important,
       marginLeft(10 px),
       paddingRight(10 px)
     )
@@ -137,11 +139,9 @@ object ExpandableContentView {
             )
           ),
           div(Styles.content,
-            div(`class` := "mdl-list",
-              Styles.animationGroup(
-                state.expanded ?? props.model.content.map(TitledContentView.builder.build(_)): _*
-              )
-            )
+            //              Styles.animationGroup(
+            state.expanded ?? props.model.content.map(TitledContentView.builder.build(_))
+            //              )
           )
         )
       }

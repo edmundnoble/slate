@@ -58,8 +58,7 @@ object DashboardPage {
             ),
             "main".reactTag(`class` := "mdl-layout__content",
               div(Styles.container,
-                  props.appProps.map(makeAppCell)
-              )
+                  props.appProps.map(makeAppCell))
             )
           )
         )
