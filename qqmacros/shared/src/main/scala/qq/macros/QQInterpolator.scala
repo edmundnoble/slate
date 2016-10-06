@@ -4,11 +4,19 @@ package macros
 import fastparse.core.Parsed
 import qq.cc.{LocalOptimizer, Parser}
 import qq.data._
+import qq.util.Recursion.RecursiveFunction
 
 import scala.language.experimental.macros
 import scala.reflect.macros.whitebox
 import language.experimental.macros
-import scalaz.\/
+import scalaz.Free.Trampoline
+import scalaz.{Free, Trampoline, \/}
+import scalaz.syntax.traverse._
+import scalaz.std.list._
+import scalaz.std.tuple._
+import scalaz.syntax.apply._
+import scalaz.syntax.bitraverse._
+import qq.Platform.Rec._
 
 // this is used to pre-prepare QQ programs at compile time
 object QQInterpolator {
@@ -45,54 +53,58 @@ object QQInterpolator {
         case SelectRange(s, e) => q"qq.data.SelectRange(${lift(s)}, ${lift(e)})"
       }
 
-    implicit def pathOpFLiftable[A : Liftable]: Liftable[PathOperationF[A]] =
-      Liftable {
-        case PathGet() => q"qq.data.PathGet()"
-        case PathModify(m) => q"qq.data.PathModify(${lift(m)})"
-        case PathSet(s) => q"qq.data.PathSet(${lift(s)})"
-      }
+    def pathOpLift[A](f: A => Trampoline[c.universe.Tree]): PathOperationF[A] => Trampoline[c.universe.Tree] = {
+      case PathGet() => Trampoline.done(q"qq.data.PathGet()")
+      case PathModify(m) => f(m).map { r => q"qq.data.PathModify($r)" }
+      case PathSet(s) => f(s).map { r => q"qq.data.PathSet($r)" }
+    }
 
-    def conv(value: ConcreteFilter): c.universe.Tree = {
-      q"matryoshka.Fix[qq.data.FilterComponent](${value.unFix match {
-        case PathOperation(pc, op) => q"qq.data.PathOperation[qq.data.ConcreteFilter](${lift[List[PathComponent]](pc)}, ${lift[PathOperationF[ConcreteFilter]](op)})"
-        case AsBinding(name, as, in) => q"qq.data.AsBinding[qq.data.ConcreteFilter](${lift(name)}, ${lift(as)}, ${lift(in)})"
-        case Dereference(name) => q"qq.data.Dereference[qq.data.ConcreteFilter](${lift(name)})"
-        case ComposeFilters(first, second) => q"qq.data.ComposeFilters[qq.data.ConcreteFilter](${lift(first)}, ${lift(second)})"
-        case SilenceExceptions(f) => q"qq.data.SilenceExceptions[qq.data.ConcreteFilter](${lift(f)})"
-        case EnlistFilter(f) => q"qq.data.EnlistFilter[qq.data.ConcreteFilter](${lift(f)})"
-        case EnsequenceFilters(first, second) => q"qq.data.EnsequenceFilters[qq.data.ConcreteFilter](${lift(first)}, ${lift(second)})"
-        case EnjectFilters(obj) => q"qq.data.EnjectFilters[qq.data.ConcreteFilter](${lift(obj)})"
-        case CallFilter(name: String, params) => q"qq.data.CallFilter[qq.data.ConcreteFilter](${lift(name)}, ${lift(params)})"
-        case FilterNot() => q"qq.data.FilterNot[qq.data.ConcreteFilter]()"
-        case ConstNumber(v) => q"qq.data.ConstNumber[qq.data.ConcreteFilter](${lift(v)})"
-        case ConstBoolean(v) => q"qq.data.ConstBoolean[qq.data.ConcreteFilter](${lift(v)})"
-        case ConstString(v) => q"qq.data.ConstString[qq.data.ConcreteFilter](${lift(v)})"
-        case FilterMath(first, second, op) => q"qq.data.FilterMath[qq.data.ConcreteFilter](${lift(first)}, ${lift(second)}, ${lift(op)})"
-      }})"
+    val liftFilter: RecursiveFunction[ConcreteFilter, c.universe.Tree] = new RecursiveFunction[ConcreteFilter, c.universe.Tree] {
+      override def run(value: ConcreteFilter, loop: ConcreteFilter => Trampoline[c.universe.Tree]): Trampoline[c.universe.Tree] = {
+        val sub: Trampoline[c.universe.Tree] = value.unFix match {
+          case PathOperation(pc, op) => pathOpLift(loop)(op) map { o => q"qq.data.PathOperation[qq.data.ConcreteFilter](${lift(pc)}, $o)" }
+          case AsBinding(name, as, in) => (loop(as) |@| loop(in)) { (a, i) => q"qq.data.AsBinding[qq.data.ConcreteFilter](${lift(name)}, $a, $i)" }
+          case Dereference(name) => Trampoline.done(q"qq.data.Dereference[qq.data.ConcreteFilter](${lift(name)})")
+          case ComposeFilters(first, second) => (loop(first) |@| loop(second)) { (f, s) => q"qq.data.ComposeFilters[qq.data.ConcreteFilter]($f, $s)" }
+          case SilenceExceptions(child) => loop(child) map { f => q"qq.data.SilenceExceptions[qq.data.ConcreteFilter]($f)" }
+          case EnlistFilter(child) => loop(child) map { f => q"qq.data.EnlistFilter[qq.data.ConcreteFilter]($f)" }
+          case EnsequenceFilters(first, second) => (loop(first) |@| loop(second)) { (f, s) => q"qq.data.EnsequenceFilters[qq.data.ConcreteFilter]($f, $s)" }
+          case EnjectFilters(obj) => obj.traverse[Trampoline, (c.universe.Tree, c.universe.Tree)] { case (k, v) =>
+            for {
+              ke <- k.traverse(loop).map(e => lift(e.leftMap(lift(_))))
+              ve <- loop(v)
+            } yield (ke, ve)
+          }
+            .map { o => q"qq.data.EnjectFilters[qq.data.ConcreteFilter](${lift(o)})" }
+          case CallFilter(name: String, params) => params.traverse(loop).map { p => q"qq.data.CallFilter[qq.data.ConcreteFilter](${lift(name)}, $p)" }
+          case FilterNot() => Trampoline.done(q"qq.data.FilterNot[qq.data.ConcreteFilter]()")
+          case ConstNumber(v) => Trampoline.done(q"qq.data.ConstNumber[qq.data.ConcreteFilter](${lift(v)})")
+          case ConstBoolean(v) => Trampoline.done(q"qq.data.ConstBoolean[qq.data.ConcreteFilter](${lift(v)})")
+          case ConstString(v) => Trampoline.done(q"qq.data.ConstString[qq.data.ConcreteFilter](${lift(v)})")
+          case FilterMath(first, second, op) => (loop(first) |@| loop(second)) { (f, s) => q"qq.data.FilterMath[qq.data.ConcreteFilter]($f, $s, ${lift(op)})" }
+        }
+        sub.map(f => q"matryoshka.Fix[qq.data.FilterComponent]($f)")
+      }
     }
 
     implicit def concreteFilterLiftable: Liftable[ConcreteFilter] =
-      Liftable(conv(_))
+      Liftable(liftFilter(_))
 
-    implicit def programLiftable: Liftable[Program[ConcreteFilter]] = new Liftable[Program[ConcreteFilter]] {
-      override def apply(value: Program[ConcreteFilter]): c.universe.Tree = {
-        q"qq.data.Program(${lift(value.defns)}, ${lift(value.main)})"
-      }
-    }
-
+    implicit def programLiftable: Liftable[Program[ConcreteFilter]] = Liftable[Program[ConcreteFilter]](
+      value => q"qq.data.Program(${lift(value.defns)}, ${lift(value.main)})"
+    )
 
     val program = c.prefix.tree match {
       // access data of string interpolation
       case Apply(_, List(Apply(_, rawParts))) =>
         if (rawParts.length != 1) {
-          c.abort(c.enclosingPosition, "qq is not an interpolator, it's for ONE STRING")
+          c.abort(c.enclosingPosition, "$ detected. qq is not an interpolator, it's for a single string")
         }
         rawParts.head match {
           case Literal(Constant(str: String)) => str
           case _ =>
             c.abort(c.enclosingPosition, "invalid") // TODO: make the error message more readable
         }
-      //...
       case _ =>
         c.abort(c.enclosingPosition, "invalid") // TODO: make the error message more readable
     }
