@@ -1,9 +1,12 @@
 package dash
 package app
 
+import java.text.SimpleDateFormat
+import java.util.Date
+
 import dash.ajax.{Ajax, AjaxMethod}
 import monix.eval.{Coeval, Task}
-import qq.cc.{OrCompilationError, Prelude, QQRuntime, QQRuntimeException}
+import qq.cc.{CompiledFilter, OrCompilationError, Prelude, QQRuntime, QQRuntimeException}
 import qq.data.{CompiledDefinition, JSON}
 import qq.util._
 
@@ -14,6 +17,8 @@ import monix.scalaz._
 import qq.Json
 import qq.Platform.Rec._
 import qq.util.Recursion.RecursionEngine
+
+import scala.scalajs.js
 
 object DashPrelude extends Prelude[JSON] {
 
@@ -80,6 +85,23 @@ object DashPrelude extends Prelude[JSON] {
 
   def httpPut: CompiledDefinition[JSON] = makeAjaxDefinition("httpPut", AjaxMethod.PUT)
 
+  final def toRFC3339(d: js.Date): String = {
+    def pad(n: Int): String = {
+      val toStr = n.toString
+      if (n < 10) "0" + toStr else toStr
+    }
+    d.getUTCFullYear() + "-" +
+      pad(d.getUTCMonth() + 1) + "-" + pad(d.getUTCDate()) + "T" +
+      pad(d.getUTCHours()) + ":" +
+      pad(d.getUTCMinutes()) + ":" +
+      pad(d.getUTCSeconds()) + "Z"
+  }
+
+  def nowRFC3339: CompiledDefinition[JSON] = noParamDefinition[JSON]("nowRFC3339", CompiledFilter.func[JSON] { _ =>
+    val now = new js.Date()
+    Task.now(JSON.Str(toRFC3339(now)) :: Nil)
+  })
+
   override def all(runtime: QQRuntime[JSON])(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition[JSON]]] =
-    Vector(googleAuth, launchAuth, httpDelete, httpGet, httpPost, httpPatch, httpPut).right
+    Vector(googleAuth, launchAuth, httpDelete, httpGet, httpPost, httpPatch, httpPut, nowRFC3339).right
 }

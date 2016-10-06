@@ -30,7 +30,10 @@ object ChromeManifest {
     oauth2 = Oauth2Settings(
       clientId = "475975148140-onsakb7o5ht32neb1m5belmp9tg756va.apps.googleusercontent.com",
       scopes = List(
-        "https://mail.google.com/"
+        "https://mail.google.com/",
+        "https://mail.google.com/",
+        "https://www.googleapis.com/auth/calendar.readonly",
+        "https://www.googleapis.com/auth/calendar"
       )
     ),
     background = Background(List("deps.js", "main.js", "launcher.js")),

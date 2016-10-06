@@ -92,7 +92,8 @@ object DashboarderApp extends scalajs.js.JSApp {
           "username" -> JSON.Str(Creds.jiraUsername),
           "password" -> JSON.Str(Creds.jiraPassword)
         )
-      )
+      ),
+      DashProgram(4, "Google Calendar", "https://calendar.google.com", GCalendarApp.program.left, JSON.Obj())
     )
   }
 

@@ -109,8 +109,8 @@ object QQInterpolator {
         c.abort(c.enclosingPosition, "invalid") // TODO: make the error message more readable
     }
     val parsedProgram: Program[ConcreteFilter] = Parser.program.parse(program) match {
-      case f@Parsed.Failure(_, i, _) =>
-        c.abort(c.enclosingPosition.withStart(i).withEnd(i).withPoint(i), "QQ parsing error: " + f)
+      case f@Parsed.Failure(_, _, _) =>
+        c.abort(c.enclosingPosition, "QQ parsing error: " + f)
       case Parsed.Success(prog, _) => prog
     }
     val optimizedProgram = LocalOptimizer.optimizeProgram(parsedProgram)

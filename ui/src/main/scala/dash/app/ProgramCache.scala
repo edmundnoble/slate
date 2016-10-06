@@ -7,6 +7,7 @@ import qq.data.{ConcreteFilter, FilterComponent, JSON, Program}
 import scodec.bits.BitVector
 import Util._
 import fastparse.core.{ParseError, Parsed}
+import qq.util.Recursion.RecursionEngine
 import shapeless.ops.coproduct.Inject
 import shapeless.{:+:, CNil, Coproduct}
 
@@ -17,7 +18,7 @@ import scalaz.std.list._
 
 object ProgramCache {
 
-  def prepareProgram(program: String): \/[Parsed.Failure, Program[Fix[FilterComponent]]] = {
+  def prepareProgram(program: String)(implicit rec: RecursionEngine): \/[Parsed.Failure, Program[Fix[FilterComponent]]] = {
     val parsedQQProgram = Parser.program.parse(program).toDisjunction.map(_.value)
     val optimizedProgram = parsedQQProgram.map(LocalOptimizer.optimizeProgram[Fix])
     optimizedProgram
@@ -30,7 +31,7 @@ object ProgramCache {
 
   // cache optimized, parsed programs using their hashcode as a key
   // store them as base64-encoded bytecode
-  def getCachedProgram(qqProgram: String): Retargetable[StorageProgram, WhatCanGoWrong \/ Program[ConcreteFilter]] = {
+  def getCachedProgram(qqProgram: String)(implicit rec: RecursionEngine): Retargetable[StorageProgram, WhatCanGoWrong \/ Program[ConcreteFilter]] = {
 
     import StorageProgram._
     import qq.protocol.FilterProtocol._
