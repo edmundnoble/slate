@@ -32,10 +32,9 @@ object ExpandableContentView {
 
     val base = style(
       width(100 %%),
-      addClassNames("mdl-cell", "mdl-cell--6-col", "mdl-color--grey-100", "mdl-color-text--grey-600"),
+      addClassNames("mdl-color--grey-100", "mdl-color-text--grey-600"),
       overflow.hidden,
       marginRight(20 px),
-      marginLeft(10 px),
       marginBottom(20 px),
       marginTop(5 px)
     )
@@ -53,13 +52,14 @@ object ExpandableContentView {
     val expandToggleButton = style(
       addClassNames("mdl-button", "mdl-js-button", "mdl-js-ripple-effect"),
       minWidth(56 px).important,
-      marginRight(20 px),
+      marginRight(10 px),
       marginTop(5 px),
       float.right,
       lineHeight.`0`.important
     )
 
     val headerLeft = style(
+      marginLeft(10 px),
       float left,
       marginTop(10 px),
       marginBottom(10 px)
@@ -81,6 +81,11 @@ object ExpandableContentView {
       addClassName("mdl-color-text--grey-500"),
       fontFamily(akrobat),
       display inline
+    )
+
+    val content = style(
+      marginLeft(10 px),
+      paddingRight(10 px)
     )
 
     val animationGroup = new dash.views.ScrollFadeContainer("expandableContentView")
@@ -131,9 +136,11 @@ object ExpandableContentView {
               i(buttonStyleForState(state): _*)
             )
           ),
-          div(
-            Styles.animationGroup(
-              state.expanded ?? props.model.content.map(TitledContentView.builder.build(_)): _*
+          div(Styles.content,
+            div(`class` := "mdl-list",
+              Styles.animationGroup(
+                state.expanded ?? props.model.content.map(TitledContentView.builder.build(_)): _*
+              )
             )
           )
         )

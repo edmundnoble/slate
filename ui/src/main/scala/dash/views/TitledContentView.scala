@@ -17,13 +17,16 @@ object TitledContentView {
     import scala.language.postfixOps
 
     val base = style(
-      display contents,
+      addClassNames("mdl-list__item", "mdl-list__item--three-line"),
+      padding(6 px).important,
+      display.inlineBlock.important,
+      height(4.5 em).important,
       pageBreakInside avoid,
-      position relative,
-      marginLeft(5 px),
-      marginRight(10 px),
-      marginTop(10 px),
-      marginBottom(10 px)
+      position relative
+      //      marginLeft(5 px),
+      //      marginRight(10 px),
+      //      marginTop(10 px),
+      //      marginBottom(10 px)
     )
 
     val fade = style(
@@ -41,14 +44,14 @@ object TitledContentView {
     val content = style(
       fontFamily(sanFrancisco),
       overflow hidden,
-      maxHeight(3.2 em),
+      maxHeight(2.4 em),
       minHeight(2.4 em),
       fontSize(14 px)
     )
 
     val title = style(
       width(100 %%),
-      addClassName("mdl-typography--headline"),
+      //      addClassName("mdl-typography--headline"),
       color(rgba(0, 0, 0, 0.86)),
       (textOverflow := "ellipsis").important,
       fontSize(17 px),
@@ -81,23 +84,25 @@ object TitledContentView {
 
     ReactComponentB[TitledContentModel]("Issue")
       .renderP((_, model) =>
-        span(key := model.title,
-          div(Styles.base,
-//            if (model.content.isEmpty)
-//              (Nil: List[TagMod]): TagMod
-//            else
-//              Styles.fade,
-            div(
+        li(Styles.base, key := model.title,
+          //            if (model.content.isEmpty)
+          //              (Nil: List[TagMod]): TagMod
+          //            else
+          //              Styles.fade,
+          span(`class` := "mdl-list__item-primary-content",
+            span(Styles.title,
               a(Styles.title,
                 model.title,
                 href := model.titleUrl
               )
             ),
-            if (model.content.isEmpty)
-              (Nil: List[TagMod]): TagMod
-            else
-              div(Styles.content,
-                model.content)
+            span(`class` := "mdl-list__item-text-body",
+              if (model.content.isEmpty)
+                (Nil: List[TagMod]): TagMod
+              else
+                div(Styles.content: TagMod,
+                  model.content: TagMod): TagMod
+            )
           )
         )
       )

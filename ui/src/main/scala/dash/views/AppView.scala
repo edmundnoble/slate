@@ -38,9 +38,15 @@ object AppView {
       addClassNames("mdl-color-text--grey-700", "mdl-card__title-text"),
       (textDecoration := "none").important,
       fontWeight._700,
+      textOverflow := "ellipsis",
       letterSpacing(1 px),
       fontFamily(dash.views.Styles.akrobat),
       display inline
+    )
+
+    val content = style(
+      width(100 %%),
+      overflow.hidden
     )
 
     val animationGroup = new dash.views.ScrollFadeContainer("filter-group")
@@ -76,7 +82,7 @@ object AppView {
               a(Styles.title, props.title.toUpperCase(), href := props.titleLink)
             )
           ),
-          div(// `class` := "mdl-grid",
+          div(Styles.content,
             Styles.animationGroup(
               props.model.content.fold[List[ReactNode]]({ ex =>
                 ErrorView.builder.build(ex) :: Nil
