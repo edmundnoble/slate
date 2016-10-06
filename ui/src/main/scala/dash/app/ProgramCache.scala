@@ -26,13 +26,11 @@ object ProgramCache {
   case class InvalidBase64(str: String) extends Exception(str + " is not base64")
   case class InvalidBytecode(fail: scodec.Attempt.Failure) extends Exception("error decoding program from cache: " + fail.cause)
 
-  type WhatCanGoWrong = QQCompilationException :+: ParseError :+: InvalidBase64 :+: InvalidBytecode :+: CNil
-
-  def inj[C <: Coproduct, I](i: I)(implicit Inj: Inject[C, I]): C = Inj(i)
+  type WhatCanGoWrong = ParseError :+: InvalidBase64 :+: InvalidBytecode :+: CNil
 
   // cache optimized, parsed programs using their hashcode as a key
   // store them as base64-encoded bytecode
-  def getCachedCompiledProgram(qqProgram: String): Retargetable[StorageProgram, WhatCanGoWrong \/ CompiledFilter[JSON]] = {
+  def getCachedProgram(qqProgram: String): Retargetable[StorageProgram, WhatCanGoWrong \/ Program[ConcreteFilter]] = {
 
     import StorageProgram._
     import qq.protocol.FilterProtocol._
@@ -68,10 +66,7 @@ object ProgramCache {
             )
           decodedProgram.pure[Retargetable[StorageProgram, ?]]
       }
-      compiledProgram = decodedOptimizedProgram.flatMap(
-        QQCompiler.compileProgram[Fix, JSON](JSONRuntime, DashPrelude, _).leftMap(inj[WhatCanGoWrong, QQCompilationException])
-      )
-    } yield compiledProgram
+    } yield decodedOptimizedProgram
   }
 
 }

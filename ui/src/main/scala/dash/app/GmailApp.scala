@@ -1,10 +1,13 @@
 package dash
 package app
 
+import qq.data.{ConcreteFilter, Program}
+import qq.macros.QQInterpolator._
+
 object GmailApp {
 
-  val program: String =
-    raw"""
+  val program: Program[ConcreteFilter] =
+    qq"""
 def authHeaders: { Authorization: "Bearer " + googleAuth };
 
 def listUnreadThreadParams: {

@@ -15,10 +15,11 @@ import monix.scalaz._
 import org.scalajs.dom
 import org.scalajs.dom.raw._
 import qq.Platform.Rec._
-import qq.cc.CompiledFilter
-import qq.data.JSON
+import qq.cc.{CompiledFilter, JSONRuntime, QQCompilationException, QQCompiler}
+import qq.data.{ConcreteFilter, JSON, Program}
 import shapeless.ops.coproduct.Unifier
 import qq.util._
+import shapeless.{:+:, Coproduct, Inl, Inr}
 
 import scala.concurrent.duration.FiniteDuration
 import scala.scalajs.js
@@ -32,7 +33,7 @@ import scalaz.syntax.apply._
 import scalaz.syntax.std.`try`._
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
-import scalaz.\/
+import scalaz.{Functor, \/}
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
@@ -61,35 +62,52 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   final class EmptyResponseException extends java.lang.Exception("Empty response")
 
-  case class DashProgram[P](id: Int, title: String, titleLink: String, program: P, input: JSON)
+  case class DashProgram[P](id: Int, title: String, titleLink: String, program: P, input: JSON) {
+    def map[B](f: P => B): DashProgram[B] = copy(program = f(program))
+  }
 
-  def programs: List[DashProgram[String]] = {
+  object DashProgram {
+    implicit def dashProgramFunctor: Functor[DashProgram] = new Functor[DashProgram] {
+      override def map[A, B](fa: DashProgram[A])(f: (A) => B): DashProgram[B] = fa.copy(program = f(fa.program))
+    }
+  }
+
+  def programs: List[DashProgram[Program[ConcreteFilter] \/ String]] = {
     val todoistState: String = List.fill(6) {
       java.lang.Integer.toHexString(scala.util.Random.nextInt(256))
     }.mkString
 
-    List(
-      DashProgram[String](1, "Gmail", "https://gmail.com", GmailApp.program, JSON.Obj()),
-      DashProgram[String](2, "Todoist", "https://todoist.com", TodoistApp.program,
+    List[DashProgram[Program[ConcreteFilter] \/ String]](
+      DashProgram(1, "Gmail", "https://gmail.com", GmailApp.program.left, JSON.Obj()),
+      DashProgram(2, "Todoist", "https://todoist.com", TodoistApp.program.left,
         JSON.Obj(
           "client_id" -> JSON.Str(Creds.todoistClientId),
           "client_secret" -> JSON.Str(Creds.todoistClientSecret),
           "redirect_uri" -> JSON.Str("https://ldhbkcmhfmoaepapkcopmigahjdiekil.chromiumapp.org/provider_cb"),
           "tok" -> JSON.Str(todoistState)
         )
+      ),
+      DashProgram(3, "JIRA", "https://dashboarder.atlassian.net", JIRAApp.program.left,
+        JSON.Obj(
+          "username" -> JSON.Str(Creds.jiraUsername),
+          "password" -> JSON.Str(Creds.jiraPassword)
+        )
       )
-//      DashProgram[String](3, "JIRA", "https://dashboarder.atlassian.net", JIRAApp.program,
-//        JSON.Obj(
-//          "username" -> JSON.Str(Creds.jiraUsername),
-//          "password" -> JSON.Str(Creds.jiraPassword)
-//        )
-//      )
     )
   }
 
-  def compiledPrograms: List[DashProgram[Task[WhatCanGoWrong \/ CompiledFilter[JSON]]]] =
+  def compiledPrograms: List[DashProgram[Task[(QQCompilationException :+: WhatCanGoWrong) \/ CompiledFilter[JSON]]]] =
     programs.map(program =>
-      program.copy(program = StorageProgram.runRetargetableProgram(DomStorage.Local, "program", ProgramCache.getCachedCompiledProgram(program.program)))
+      program.map { p =>
+        p.map(s =>
+          StorageProgram.runRetargetableProgram(DomStorage.Local, "program", ProgramCache.getCachedProgram(s))
+        ).leftMap(e => Task.now(e.right[WhatCanGoWrong]))
+          .merge[Task[WhatCanGoWrong \/ Program[ConcreteFilter]]]
+          .map(_.leftMap(e => Inr[QQCompilationException, WhatCanGoWrong](e)).flatMap(p =>
+            QQCompiler.compileProgram(JSONRuntime, DashPrelude, p).leftMap(e => Inl[QQCompilationException, WhatCanGoWrong](e)
+            )
+          ))
+      }
     )
 
   private def runCompiledPrograms: List[(Int, String, String, Task[List[JSON]])] =
@@ -97,7 +115,7 @@ object DashboarderApp extends scalajs.js.JSApp {
       case DashProgram(id, title, titleLink, program, input) =>
         (id, title, titleLink,
           program
-            .flatMap(_.leftMap(implicitly[Unifier.Aux[WhatCanGoWrong, Throwable]].apply).valueOrThrow)
+            .flatMap(_.leftMap(implicitly[Unifier.Aux[(QQCompilationException :+: WhatCanGoWrong), Throwable]].apply).valueOrThrow)
             .flatMap(_ (Map.empty)(input)))
     }(collection.breakOut)
 

@@ -235,8 +235,20 @@ object DashboarderBuild {
   lazy val qqjvm: Project = qq.jvm
   lazy val qqjs: Project = qq.js
 
+  lazy val qqmacros: CrossProject = crossProject.in(file("qqmacros"))
+    .settings(baseSettings: _*)
+    .settings(commonDeps: _*)
+    .settings(libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _))
+    .jsSettings(jsSettings: _*)
+    .jsSettings(ScalaJSPlugin.projectSettings: _*)
+    .dependsOn(qq)
+
+  lazy val qqmacrosjvm: Project = qqmacros.jvm
+  lazy val qqmacrosjs: Project = qqmacros.js
+
   lazy val ui: Project = project.in(file("ui"))
     .dependsOn(qqjs)
+    .dependsOn(qqmacrosjs)
     .settings(ScalaJSPlugin.projectSettings)
     .enablePlugins(ScalaJSPlugin)
     .settings(baseSettings)

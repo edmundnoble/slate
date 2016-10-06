@@ -1,10 +1,13 @@
 package dash
 package app
 
+import qq.data.{ConcreteFilter, Program}
+import qq.macros.QQInterpolator._
+
 object JIRAApp {
 
-  val program: String =
-    """
+  val program: Program[ConcreteFilter] =
+    qq"""
 def authHeaders: (.username + ":" + .password | b64Encode) | { Authorization: "Basic " + . };
 
 def extractIssues: .issues[] | {
@@ -37,9 +40,9 @@ def contentFromFilter: { title: .name,
                          titleUrl: .viewUrl,
                          content: [.issues[] | contentFromIssue] };
 
-$auth as authHeaders in
-  httpGet("https://dashboarder.atlassian.net/rest/api/2/filter/favourite"; {}; {}; $auth)
-      | extractFilters($auth)
+$$auth as authHeaders in
+  httpGet("https://dashboarder.atlassian.net/rest/api/2/filter/favourite"; {}; {}; $$auth)
+      | extractFilters($$auth)
       | contentFromFilter
 """
 
