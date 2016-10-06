@@ -23,10 +23,6 @@ object TitledContentView {
       height(4.5 em).important,
       pageBreakInside avoid,
       position relative
-      //      marginLeft(5 px),
-      //      marginRight(10 px),
-      //      marginTop(10 px),
-      //      marginBottom(10 px)
     )
 
     val fade = style(
