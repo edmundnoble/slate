@@ -14,7 +14,9 @@ class QQInterpolatorSmokeTest extends FreeSpec with Matchers {
     Recursion.Unsafe.Direct
 
   val testCases = List(
-    QQInterpolatorTestCase("paths", List(".", ". | .", ".lol", ".key.[1].hey"), List(qq".", qq". | .", qq".lol", qq".key.[1].hey"))
+    QQInterpolatorTestCase("paths",
+      List(".", ". | .", ".lol", ".key.[1].hey"),
+      List(qq".", qq". | .", qq".lol", qq".key.[1].hey"))
   )
 
   val _ =
