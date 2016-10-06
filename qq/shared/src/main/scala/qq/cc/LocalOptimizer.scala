@@ -3,9 +3,9 @@ package cc
 
 import matryoshka.Recursive.ops._
 import matryoshka._
-import qq.Platform.Rec._
 import qq.data._
 import qq.util.Recursion
+import qq.util.Recursion.RecursionEngine
 
 import scala.language.higherKinds
 import scalaz.syntax.functor._
@@ -73,13 +73,13 @@ object LocalOptimizer {
   repeatedly[T[FilterComponent]](collectEnlist[T] or idCompose[T] or constMathReduce[T])
 
   // localOptimizationsƒ recursively applied deep into a filter
-  @inline final def optimizeFilter[T[_[_]] : Recursive : Corecursive](filter: T[FilterComponent]): T[FilterComponent] =
+  @inline final def optimizeFilter[T[_[_]] : Recursive : Corecursive](filter: T[FilterComponent])(implicit rec: RecursionEngine): T[FilterComponent] =
   Recursion.transCataT(localOptimizationsƒ[T]).apply(filter)
 
-  @inline final def optimizeDefinition[T[_[_]] : Recursive : Corecursive](defn: Definition[T[FilterComponent]]): Definition[T[FilterComponent]] =
+  @inline final def optimizeDefinition[T[_[_]] : Recursive : Corecursive](defn: Definition[T[FilterComponent]])(implicit rec: RecursionEngine): Definition[T[FilterComponent]] =
     defn.copy(body = optimizeFilter(defn.body))
 
-  @inline final def optimizeProgram[T[_[_]] : Recursive : Corecursive](program: Program[T[FilterComponent]]): Program[T[FilterComponent]] =
+  @inline final def optimizeProgram[T[_[_]] : Recursive : Corecursive](program: Program[T[FilterComponent]])(implicit rec: RecursionEngine): Program[T[FilterComponent]] =
     program.copy(defns = program.defns.map(optimizeDefinition[T]), main = optimizeFilter(program.main))
 
 }

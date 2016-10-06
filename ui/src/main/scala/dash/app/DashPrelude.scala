@@ -13,6 +13,7 @@ import scalaz.syntax.apply._
 import monix.scalaz._
 import qq.Json
 import qq.Platform.Rec._
+import qq.util.Recursion.RecursionEngine
 
 object DashPrelude extends Prelude[JSON] {
 
@@ -79,6 +80,6 @@ object DashPrelude extends Prelude[JSON] {
 
   def httpPut: CompiledDefinition[JSON] = makeAjaxDefinition("httpPut", AjaxMethod.PUT)
 
-  override def all(runtime: QQRuntime[JSON]): OrCompilationError[IndexedSeq[CompiledDefinition[JSON]]] =
+  override def all(runtime: QQRuntime[JSON])(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition[JSON]]] =
     Vector(googleAuth, launchAuth, httpDelete, httpGet, httpPost, httpPatch, httpPut).right
 }

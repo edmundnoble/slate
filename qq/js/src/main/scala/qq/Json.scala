@@ -1,10 +1,9 @@
 package qq
 
 import qq.Platform.Js._
-import qq.Platform.Rec._
 import qq.data.JSON
 import qq.data.JSON.ObjList
-import qq.util.Recursion.RecursiveFunction
+import qq.util.Recursion.{RecursionEngine, RecursiveFunction}
 import qq.util.Unsafe
 import upickle.{Invalid, Js}
 
@@ -15,22 +14,19 @@ import scalaz.{Trampoline, \/}
 
 object Json {
 
-  def stringToJs(s: String): Invalid.Json \/ js.Any = {
+  def stringToJs(s: String): Invalid.Json \/ js.Any =
     try {
       js.JSON.parse(s).right
     } catch {
       case js.JavaScriptException(e: js.SyntaxError) =>
         Invalid.Json(e.message, s).left
     }
-  }
 
-  def jsToString(a: Any, space: Int = 0): String = {
+  def jsToString(a: Any, space: Int = 0): String =
     js.JSON.stringify(a.asInstanceOf[js.Any], null: js.Array[js.Any], js.Any.fromInt(space))
-  }
 
-  def jsonToString(a: Any, space: Int = 0): String = {
+  def jsonToString(a: Any, space: Int = 0)(implicit rec: RecursionEngine): String =
     jsToString(jsToJSONRec(a), space)
-  }
 
   import qq.Platform.Js.Unsafe._
 
@@ -68,9 +64,8 @@ object Json {
           .map(m => JSON.ObjMap(m))
     }
 
-  @inline final def stringToJSON(s: String): Invalid.Json \/ JSON = {
+  @inline final def stringToJSON(s: String)(implicit r: RecursionEngine): Invalid.Json \/ JSON =
     stringToJs(s).map(jsToJSONRec(_))
-  }
 
   @inline final val JSONToJsRec: RecursiveFunction[JSON, js.Any] =
     (value: JSON, loop: JSON => Trampoline[js.Any]) => value match {
@@ -90,7 +85,7 @@ object Json {
     }
 
 
-  @inline final def JSONToString(json: JSON, indent: Int = 0): String = {
+  @inline final def JSONToString(json: JSON, indent: Int = 0)(implicit rec: RecursionEngine): String = {
     js.JSON.stringify(
       JSONToJsRec(json),
       null: js.Function2[String, js.Any, js.Any],

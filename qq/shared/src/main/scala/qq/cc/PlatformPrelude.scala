@@ -2,6 +2,7 @@ package qq
 package cc
 
 import qq.data.CompiledDefinition
+import qq.util.Recursion.RecursionEngine
 
 import scalaz.\/
 import scalaz.syntax.either._
@@ -66,7 +67,7 @@ trait PlatformPrelude[J] extends Prelude[J] {
 
   def toStringDef: CompiledDefinition[J]
 
-  override def all(runtime: QQRuntime[J]): QQCompilationException \/ IndexedSeq[CompiledDefinition[J]] =
+  override def all(runtime: QQRuntime[J])(implicit rec: RecursionEngine): QQCompilationException \/ IndexedSeq[CompiledDefinition[J]] =
     Vector(
       `null`, `true`, `false`, orElse, b64Encode, includes, // exists, forall,
       length, keys, replaceAll, select, arrays, objects, iterables, booleans,

@@ -3,8 +3,9 @@ package cc
 
 import monix.eval.Task
 import qq.data.{CompiledDefinition, ConcreteFilter, Definition, QQDSL}
-import scalaz.syntax.plusEmpty._
+import qq.util.Recursion.RecursionEngine
 
+import scalaz.syntax.plusEmpty._
 import scalaz.syntax.either._
 
 object SharedPreludes {
@@ -12,7 +13,7 @@ object SharedPreludes {
   object Compiled {
 
     def apply[J]: Prelude[J] = new Prelude[J] {
-      override def all(runtime: QQRuntime[J]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] = {
+      override def all(runtime: QQRuntime[J])(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] = {
 
         val print: CompiledDefinition[J] =
           CompiledDefinition.noParamDefinition[J]("print",
@@ -40,7 +41,7 @@ object SharedPreludes {
     }
 
     def apply[J]: Prelude[J] = new Prelude[J] {
-      override def all(runtime: QQRuntime[J]): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
+      override def all(runtime: QQRuntime[J])(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
         QQCompiler.compileDefinitions(runtime, Prelude.empty, List(map))
     }
   }
