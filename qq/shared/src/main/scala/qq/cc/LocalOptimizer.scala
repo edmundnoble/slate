@@ -9,6 +9,7 @@ import qq.util.Recursion.RecursionEngine
 
 import scala.language.higherKinds
 import scalaz.syntax.functor._
+import scalaz.syntax.std.option._
 
 // QQ's local optimizer; not a whole-program optimizer, but optimizes a single filter.
 object LocalOptimizer {
@@ -28,11 +29,6 @@ object LocalOptimizer {
   // None => The optimization does not apply to this filter structure
   // Some(newFilter) => The optimization produced newFilter from this filter
   type LocalOptimization[F] = F => Option[F]
-
-  implicit final class localOptimizationOrOps[F](val localOptimization: LocalOptimization[F]) extends AnyVal {
-    @inline final def or(other: LocalOptimization[F]): LocalOptimization[F] =
-      (f: F) => localOptimization(f).orElse(other(f))
-  }
 
   // The identity filter is an identity with respect to composition of filters
   final def idCompose[T[_[_]] : Recursive : Corecursive]: LocalOptimization[T[FilterComponent]] = { fr =>
@@ -70,7 +66,7 @@ object LocalOptimizer {
   // a function applying each of the local optimizations available, in rounds,
   // until none of the optimizations applies anymore
   @inline final def localOptimizationsƒ[T[_[_]] : Recursive : Corecursive]: T[FilterComponent] => T[FilterComponent] =
-  repeatedly[T[FilterComponent]](collectEnlist[T] or idCompose[T] or constMathReduce[T])
+  repeatedly[T[FilterComponent]](tf => collectEnlist[T].apply(tf) orElse idCompose[T].apply(tf) orElse constMathReduce[T].apply(tf))
 
   // localOptimizationsƒ recursively applied deep into a filter
   @inline final def optimizeFilter[T[_[_]] : Recursive : Corecursive](filter: T[FilterComponent])(implicit rec: RecursionEngine): T[FilterComponent] =
