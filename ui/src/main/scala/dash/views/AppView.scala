@@ -35,7 +35,8 @@ object AppView {
     )
 
     val title = style(
-      addClassNames("mdl-color-text--grey-700", "mdl-card__title-text"),
+      addClassNames("mdl-card__title-text"),
+      color(c"#303030"),
       (textDecoration := "none").important,
       fontWeight._700,
       textOverflow := "ellipsis",

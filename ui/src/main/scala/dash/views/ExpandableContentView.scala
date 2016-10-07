@@ -138,7 +138,7 @@ object ExpandableContentView {
               i(buttonStyleForState(state))
             )
           ),
-          div(Styles.content,
+          span(Styles.content,
             Styles.animationGroup(
               state.expanded ?? props.model.content.map(TitledContentView.builder.build(_)): _*
             )
