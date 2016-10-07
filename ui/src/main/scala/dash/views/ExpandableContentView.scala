@@ -10,6 +10,7 @@ import scala.language.higherKinds
 import scalacss.Defaults._
 import scalaz.std.list._
 import scalaz.syntax.std.boolean._
+import Util._
 
 object ExpandableContentView {
   object Styles extends StyleSheet.Inline {
@@ -116,10 +117,9 @@ object ExpandableContentView {
 
     import scalacss.ScalaCssReact._
 
-    def buttonStyleForState(state: ExpandableState): Seq[TagMod] = {
-      val otherStyles = (Styles.filterButtonIcon: TagMod) :: ("expand_more": TagMod) :: Nil
-      if (state.expanded) (Styles.filterButtonExpanded: TagMod) :: otherStyles
-      else otherStyles
+    def buttonStyleForState(state: ExpandableState): TagMod = {
+      (state.expanded ?? (Styles.filterButtonExpanded: TagMod)) +
+        (Styles.filterButtonIcon: TagMod) + ("expand_more": TagMod)
     }
 
     ReactComponentB[ExpandableContentProps]("Expandable content view")
@@ -135,13 +135,13 @@ object ExpandableContentView {
             ),
             button(Styles.expandToggleButton,
               onClick --> $.modState(_.toggleExpanded),
-              i(buttonStyleForState(state): _*)
+              i(buttonStyleForState(state))
             )
           ),
           div(Styles.content,
-            //              Styles.animationGroup(
-            state.expanded ?? props.model.content.map(TitledContentView.builder.build(_))
-            //              )
+            Styles.animationGroup(
+              state.expanded ?? props.model.content.map(TitledContentView.builder.build(_)): _*
+            )
           )
         )
       }

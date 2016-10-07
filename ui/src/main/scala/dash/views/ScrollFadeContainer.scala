@@ -36,15 +36,15 @@ class ScrollFadeContainer(className: String)(implicit r: scalacss.internal.mutab
   )
 
   val leave: StyleA = style(leaveClassName)(
-    maxHeight(1200 px),
+    maxHeight(800 px),
     opacity(100)
   )
 
   val enterActive: StyleA = style(enterActiveClassName)(
-    maxHeight(1200 px),
+    maxHeight(800 px),
     opacity(100),
     transitionProperty := "maxHeight opacity",
-    transitionDuration(300.millis),
+    transitionDuration(400.millis),
     transitionTimingFunction.easeInOut
   )
 
@@ -52,7 +52,7 @@ class ScrollFadeContainer(className: String)(implicit r: scalacss.internal.mutab
     maxHeight.`0`,
     opacity(0),
     transitionProperty := "maxHeight opacity",
-    transitionDuration(300.millis),
+    transitionDuration(400.millis),
     transitionTimingFunction.easeInOut
   )
 
