@@ -11,9 +11,9 @@ $$calendarIds as httpGet("https://www.googleapis.com/calendar/v3/users/me/calend
 $$calendarId as $$calendarIds in {
   title: $$calendarId,
   content: httpGet("https://www.googleapis.com/calendar/v3/calendars/" + $$calendarId + "/events";
-                               {maxResults: 10, fields: "items(end,location,organizer,start,status,summary)"}; {}; authHeaders) | [.items.[] | {
-    title: .summary | print,
-    content: ""
+                   {maxResults: 10, fields: "items(end,location,organizer,start,status,summary)"}; {}; authHeaders) | [.items.[] | print | {
+    title: .summary,
+    content: .location | orElse("")
   }]
 }"""
 }
