@@ -57,7 +57,7 @@ object FilterProtocol {
 
   implicit def pathOperationFDiscriminated[A]: Discriminated[PathOperationF[A], Int] = Discriminated(uint(3))
 
-  implicit def pathGetDiscriminator[A]: Discriminator[PathOperationF[A], PathGet[A], Int] = Discriminator(0)
+  implicit def pathGetDiscriminator[A]: Discriminator[PathOperationF[A], PathGet.type, Int] = Discriminator(0)
   implicit def pathSetDiscriminator[A]: Discriminator[PathOperationF[A], PathSet[A], Int] = Discriminator(1)
   implicit def pathModifyDiscriminator[A]: Discriminator[PathOperationF[A], PathModify[A], Int] = Discriminator(2)
 

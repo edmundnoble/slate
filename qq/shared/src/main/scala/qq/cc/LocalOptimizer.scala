@@ -33,8 +33,8 @@ object LocalOptimizer {
   // The identity filter is an identity with respect to composition of filters
   final def idCompose[T[_[_]] : Recursive : Corecursive](fr: T[FilterComponent]): Option[T[FilterComponent]] = {
     fr.project.map(_.project) match {
-      case ComposeFilters(PathOperation(List(), PathGet()), s) => Some(embed[T](s))
-      case ComposeFilters(f, PathOperation(List(), PathGet())) => Some(embed[T](f))
+      case ComposeFilters(PathOperation(List(), PathGet), s) => Some(embed[T](s))
+      case ComposeFilters(f, PathOperation(List(), PathGet)) => Some(embed[T](f))
       case _ => None
     }
   }
@@ -42,8 +42,8 @@ object LocalOptimizer {
   // The collect and enlist operations are inverses
   final def collectEnlist[T[_[_]] : Recursive : Corecursive](fr: T[FilterComponent]): Option[T[FilterComponent]] = {
     fr.project.map(_.project.map(_.project)) match {
-      case EnlistFilter(ComposeFilters(f, PathOperation(List(CollectResults), PathGet()))) => Some(embed[T](f))
-      case EnlistFilter(PathOperation(List(CollectResults), PathGet())) => Some(embed[T](PathOperation(Nil, PathGet())))
+      case EnlistFilter(ComposeFilters(f, PathOperation(List(CollectResults), PathGet))) => Some(embed[T](f))
+      case EnlistFilter(PathOperation(List(CollectResults), PathGet)) => Some(embed[T](PathOperation(Nil, PathGet)))
       case _ => None
     }
   }

@@ -54,7 +54,7 @@ object QQInterpolator {
       }
 
     def pathOpLift[A](f: A => Trampoline[c.universe.Tree]): PathOperationF[A] => Trampoline[c.universe.Tree] = {
-      case PathGet() => Trampoline.done(q"qq.data.PathGet()")
+      case PathGet => Trampoline.done(q"qq.data.PathGet")
       case PathModify(m) => f(m).map { r => q"qq.data.PathModify($r)" }
       case PathSet(s) => f(s).map { r => q"qq.data.PathSet($r)" }
     }

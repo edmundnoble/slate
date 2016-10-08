@@ -49,7 +49,7 @@ object QQDSL {
       getPath(Nil)
 
     @inline implicit def getPath(components: List[PathComponent]): T[FilterComponent] = {
-      embed[T](PathOperation(components, PathGet()))
+      embed[T](PathOperation(components, PathGet))
     }
 
     @inline implicit def getPathS(component: PathComponent): T[FilterComponent] = {
