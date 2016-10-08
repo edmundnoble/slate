@@ -44,6 +44,11 @@ trait QQRuntime[J] {
 
   def equalJsValues(first: J, second: J): J
 
+  def lteJsValues(j1: J, j2: J): J = ???
+  def gteJsValues(j1: J, j2: J): J = ???
+  def lessThanJsValues(j1: J, j2: J): J = ???
+  def greaterThanJsValues(j1: J, j2: J): J = ???
+
   def not(v: J): Coeval[J]
 
   def collectResults: CompiledProgram[J]

@@ -3,11 +3,11 @@ package cc
 
 import matryoshka.Recursive
 import monix.eval.Task
+import monix.scalaz._
 import qq.data._
 import qq.util.Recursion.RecursionEngine
 import qq.util._
 
-import scala.annotation.switch
 import scala.language.higherKinds
 import scalaz.\/
 import scalaz.std.list._
@@ -37,10 +37,10 @@ object QQCompiler {
     case Divide => runtime.divideJsValues
     case Modulo => runtime.moduloJsValues
     case Equal => (j1: J, j2: J) => Task.now(runtime.equalJsValues(j1, j2))
-    case LTE => ???
-    case GTE => ???
-    case LessThan => ???
-    case GreaterThan =>  ???
+    case LTE => (j1: J, j2: J) => Task.now(runtime.lteJsValues(j1, j2))
+    case GTE => (j1: J, j2: J) => Task.now(runtime.gteJsValues(j1, j2))
+    case LessThan => (j1: J, j2: J) => Task.now(runtime.lessThanJsValues(j1, j2))
+    case GreaterThan =>  (j1: J, j2: J) => Task.now(runtime.greaterThanJsValues(j1, j2))
   }
 
   @inline final def evaluatePath[J](runtime: QQRuntime[J], components: List[PathComponent], operation: PathOperationF[CompiledProgram[J]]): CompiledProgram[J] = operation match {
