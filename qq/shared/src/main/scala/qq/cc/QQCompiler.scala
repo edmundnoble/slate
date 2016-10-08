@@ -7,11 +7,14 @@ import qq.data._
 import qq.util.Recursion.RecursionEngine
 import qq.util._
 
+import scala.annotation.switch
 import scala.language.higherKinds
+import scalaz.\/
+import scalaz.std.list._
 import scalaz.syntax.either._
-import scalaz.syntax.functor._
-import scalaz.syntax.std.option._
 import scalaz.syntax.plusEmpty._
+import scalaz.syntax.std.option._
+import scalaz.syntax.traverse._
 
 object QQCompiler {
 
@@ -40,11 +43,44 @@ object QQCompiler {
     case GreaterThan =>  ???
   }
 
+  @inline final def evaluatePath[J](runtime: QQRuntime[J], components: List[PathComponent], operation: PathOperationF[CompiledProgram[J]]): CompiledProgram[J] = operation match {
+    case PathGet =>
+      components
+        .map(makePathComponentGetter[J](runtime, _))
+        .nelFoldLeft1(CompiledProgram.id[J])(CompiledProgram.composePrograms[J])
+    case PathSet(set) => (j: J) =>
+      set(j).flatMap {
+        _.traverseM[Task, J] {
+          runtime.setPath(components, j, _)
+        }
+      }
+    case PathModify(modify) =>
+      components
+        .map(runtime.modifyPath)
+        .nelFoldLeft1(identity[CompiledProgram[J]])((f, s) => (i: CompiledProgram[J]) => f(s(i)))(modify)
+  }
+
+  @inline final def makePathComponentGetter[J](runtime: QQRuntime[J], component: PathComponent): CompiledProgram[J] = component match {
+    case CollectResults => runtime.collectResults
+    case SelectKey(key) => runtime.selectKey(key)
+    case SelectIndex(index) => runtime.selectIndex(index)
+    case SelectRange(start, end) => runtime.selectRange(start, end)
+  }
+
   def compileStep[J](runtime: QQRuntime[J],
                      definitions: IndexedSeq[CompiledDefinition[J]],
                      filter: FilterComponent[CompiledFilter[J]]): OrCompilationError[CompiledFilter[J]] = filter match {
-    case leaf: LeafComponent[J@unchecked] => runtime.evaluateLeaf(leaf).right
-    case PathOperation(components, operationF) => ((_: VarBindings[J]) => runtime.evaluatePath(components, operationF.map(_ (Map.empty)))).right
+    case Dereference(name) =>
+      ((bindings: VarBindings[J]) =>
+        bindings.get(name).cata(
+          p => (_: J) => Task.now(p.value :: Nil),
+          (_: J) => Task.raiseError(QQRuntimeException(s"Variable $name not bound"))
+        )).right
+    case ConstNumber(num) => runtime.constNumber(num).right
+    case ConstString(str) => runtime.constString(str).right
+    case ConstBoolean(bool) => runtime.constBoolean(bool).right
+    case FilterNot() => CompiledFilter.func[J] { j => Task.coeval(runtime.not(j).map(_ :: Nil)) }.right
+    case PathOperation(components, operationF) => ((_: VarBindings[J]) => evaluatePath[J](runtime, components, operationF.map(_ (Map.empty)))).right
     case ComposeFilters(f, s) => CompiledFilter.composeFilters(f, s).right
     case CallFilter(filterIdentifier, params) =>
       definitions.find(_.name == filterIdentifier).cata(

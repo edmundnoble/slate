@@ -7,9 +7,6 @@ import qq.data._
 
 import scala.language.higherKinds
 import scalaz.\/
-import scalaz.std.list._
-import scalaz.syntax.std.option._
-import scalaz.syntax.traverse._
 
 trait QQRuntime[J] {
 
@@ -17,49 +14,11 @@ trait QQRuntime[J] {
 
   def platformPrelude: PlatformPrelude[J]
 
-  def enjectFilter(obj: List[(\/[String, CompiledFilter[J]], CompiledFilter[J])]): CompiledFilter[J]
-
-  @inline final def evaluateLeaf(component: LeafComponent[J]): CompiledFilter[J] = component match {
-    case Dereference(name) =>
-      (bindings: VarBindings[J]) =>
-        bindings.get(name).cata(
-          p => (_: J) => Task.now(p.value :: Nil),
-          (_: J) => Task.raiseError(QQRuntimeException(s"Variable $name not bound"))
-        )
-    case ConstNumber(num) => constNumber(num)
-    case ConstString(str) => constString(str)
-    case ConstBoolean(bool) => constBoolean(bool)
-    case FilterNot() => CompiledFilter.func[J] { j => Task.coeval(not(j).map(_ :: Nil)) }
-  }
-
-  @inline final def makePathComponentGetter(component: PathComponent): CompiledProgram[J] = component match {
-    case CollectResults => collectResults
-    case SelectKey(key) => selectKey(key)
-    case SelectIndex(index) => selectIndex(index)
-    case SelectRange(start, end) => selectRange(start, end)
-  }
+  def enjectFilter(obj: List[(String \/ CompiledFilter[J], CompiledFilter[J])]): CompiledFilter[J]
 
   def setPath(components: List[PathComponent], biggerStructure: J, smallerStructure: J): Task[List[J]]
 
   def modifyPath(component: PathComponent)(f: CompiledProgram[J]): CompiledProgram[J]
-
-  @inline final def evaluatePath(components: List[PathComponent], operation: PathOperationF[CompiledProgram[J]]): CompiledProgram[J] = operation match {
-    case PathGet() =>
-      components
-        .map(makePathComponentGetter)
-        .nelFoldLeft1(CompiledProgram.id[J])(CompiledProgram.composePrograms[J])
-    case PathSet(set) => (j: J) =>
-      set(j).flatMap {
-        _.traverseM[Task, J] {
-          setPath(components, j, _)
-        }
-      }
-    case PathModify(modify) =>
-      components
-        .map(modifyPath)
-        .nelFoldLeft1(identity[CompiledProgram[J]])(
-          (f, s) => (i: CompiledProgram[J]) => f(s(i)))(modify)
-  }
 
   def selectKey(key: String): CompiledProgram[J]
 
