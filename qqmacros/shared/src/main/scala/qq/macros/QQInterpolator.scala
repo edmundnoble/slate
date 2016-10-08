@@ -43,6 +43,10 @@ object QQInterpolator {
         case Divide => q"qq.data.Divide"
         case Modulo => q"qq.data.Modulo"
         case Equal => q"qq.data.Equal"
+        case LTE => q"qq.data.LTE"
+        case GTE => q"qq.data.GTE"
+        case LessThan => q"qq.data.LessThan"
+        case GreaterThan =>  q"qq.data.GreaterThan"
       }
 
     implicit def pathLiftable: Liftable[PathComponent] =
