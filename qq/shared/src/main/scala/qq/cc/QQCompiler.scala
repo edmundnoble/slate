@@ -36,11 +36,11 @@ object QQCompiler {
     case Multiply => runtime.multiplyJsValues
     case Divide => runtime.divideJsValues
     case Modulo => runtime.moduloJsValues
-    case Equal => (j1: J, j2: J) => Task.now(runtime.equalJsValues(j1, j2))
-    case LTE => (j1: J, j2: J) => Task.now(runtime.lteJsValues(j1, j2))
-    case GTE => (j1: J, j2: J) => Task.now(runtime.gteJsValues(j1, j2))
-    case LessThan => (j1: J, j2: J) => Task.now(runtime.lessThanJsValues(j1, j2))
-    case GreaterThan =>  (j1: J, j2: J) => Task.now(runtime.greaterThanJsValues(j1, j2))
+    case Equal => (j1: J, j2: J) => runtime.equalJsValues(j1, j2)
+    case LTE => (j1: J, j2: J) => runtime.lteJsValues(j1, j2)
+    case GTE => (j1: J, j2: J) => runtime.gteJsValues(j1, j2)
+    case LessThan => (j1: J, j2: J) => runtime.lessThanJsValues(j1, j2)
+    case GreaterThan => (j1: J, j2: J) => runtime.greaterThanJsValues(j1, j2)
   }
 
   @inline final def evaluatePath[J](runtime: QQRuntime[J], components: List[PathComponent], operation: PathOperationF[CompiledProgram[J]]): CompiledProgram[J] = operation match {
@@ -103,7 +103,8 @@ object QQCompiler {
     case EnjectFilters(obj) => runtime.enjectFilter(obj).right
     case FilterMath(first, second, op) =>
       val operatorFunction = funFromMathOperator(runtime, op)
-      CompiledFilter.zipFiltersWith(first, second, operatorFunction).right
+      val converted = (j1: J, j2: J) => Task.coeval(operatorFunction(j1, j2))
+      CompiledFilter.zipFiltersWith(first, second, converted).right
   }
 
   def compileDefinitionStep[T[_[_]] : Recursive, J](runtime: QQRuntime[J])

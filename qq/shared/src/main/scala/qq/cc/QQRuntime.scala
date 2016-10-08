@@ -32,22 +32,25 @@ trait QQRuntime[J] {
 
   def constBoolean(bool: Boolean): CompiledFilter[J]
 
-  def addJsValues(first: J, second: J): Task[J]
+  def addJsValues(first: J, second: J): Coeval[J]
 
-  def subtractJsValues(first: J, second: J): Task[J]
+  def subtractJsValues(first: J, second: J): Coeval[J]
 
-  def multiplyJsValues(first: J, second: J): Task[J]
+  def multiplyJsValues(first: J, second: J): Coeval[J]
 
-  def divideJsValues(first: J, second: J): Task[J]
+  def divideJsValues(first: J, second: J): Coeval[J]
 
-  def moduloJsValues(first: J, second: J): Task[J]
+  def moduloJsValues(first: J, second: J): Coeval[J]
 
-  def equalJsValues(first: J, second: J): J
+  def equalJsValues(first: J, second: J): Coeval[J]
 
-  def lteJsValues(j1: J, j2: J): J = ???
-  def gteJsValues(j1: J, j2: J): J = ???
-  def lessThanJsValues(j1: J, j2: J): J = ???
-  def greaterThanJsValues(j1: J, j2: J): J = ???
+  def lteJsValues(j1: J, j2: J): Coeval[J]
+
+  def gteJsValues(j1: J, j2: J): Coeval[J]
+
+  def lessThanJsValues(j1: J, j2: J): Coeval[J]
+
+  def greaterThanJsValues(j1: J, j2: J): Coeval[J]
 
   def not(v: J): Coeval[J]
 

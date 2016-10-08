@@ -10,6 +10,7 @@ import scala.collection.immutable.Nil
 import scalaz.std.list._
 import scalaz.std.map._
 import scalaz.syntax.tag._
+import scalaz.syntax.apply._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, \/, \/-}
 
@@ -84,61 +85,89 @@ object JSONRuntime extends QQRuntime[JSON] {
   override def constBoolean(bool: Boolean): CompiledFilter[JSON] =
     CompiledFilter.const(if (bool) JSON.True else JSON.False)
 
-  override def addJsValues(first: JSON, second: JSON): Task[JSON] = (first, second) match {
+  override def addJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
-      Task.now(JSON.Num(f + s))
+      Coeval.now(JSON.Num(f + s))
     case (JSON.Str(f), JSON.Str(s)) =>
-      Task.now(JSON.Str(f + s))
+      Coeval.now(JSON.Str(f + s))
     case (f: JSON.Arr, s: JSON.Arr) =>
-      Task.now(JSON.Arr(f.value ++ s.value))
+      Coeval.now(JSON.Arr(f.value ++ s.value))
     case (f: JSON.Obj, s: JSON.Obj) =>
-      Task.now(JSON.ObjMap(f.toMap.value ++ s.toMap.value))
+      Coeval.now(JSON.ObjMap(f.toMap.value ++ s.toMap.value))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't add " + print(f) + " and " + print(s)))
+      Coeval.raiseError(QQRuntimeException("can't add " + print(f) + " and " + print(s)))
   }
 
-  override def subtractJsValues(first: JSON, second: JSON): Task[JSON] = (first, second) match {
+  override def subtractJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
-      Task.now(JSON.Num(f - s))
+      Coeval.now(JSON.Num(f - s))
     case (f: JSON.Arr, s: JSON.Arr) =>
-      Task.now(JSON.Arr(f.value.filter(!s.value.contains(_))))
+      Coeval.now(JSON.Arr(f.value.filter(!s.value.contains(_))))
     case (f: JSON.Obj, s: JSON.Obj) =>
       val contents: Map[String, JSON] = f.toMap.value -- s.map[String, Set[String]](_._1)(collection.breakOut)
-      Task.now(JSON.ObjMap(contents))
+      Coeval.now(JSON.ObjMap(contents))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't subtract " + print(f) + " and " + print(s)))
+      Coeval.raiseError(QQRuntimeException("can't subtract " + print(f) + " and " + print(s)))
   }
 
-  override def multiplyJsValues(first: JSON, second: JSON): Task[JSON] = (first, second) match {
-    case (JSON.Num(f), JSON.Num(s)) => Task.now(f * s)
-      Task.now(if (s == 0) JSON.Null else JSON.Num(f * s))
-    case (JSON.Str(f), JSON.Num(s)) => Task.now(JSON.Str(f + s))
+  override def multiplyJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
+    case (JSON.Num(f), JSON.Num(s)) => Coeval.now(f * s)
+      Coeval.now(if (s == 0) JSON.Null else JSON.Num(f * s))
+    case (JSON.Str(f), JSON.Num(s)) => Coeval.now(JSON.Str(f + s))
     case (f: JSON.Obj, s: JSON.Obj) =>
-      val firstMapTask = f.toMap.value.mapValues(Task.now(_).parallel)
-      val secondMapTask = s.toMap.value.mapValues(Task.now(_).parallel)
-      mapInstance[String].sequence[TaskParallel, JSON](
-        unionWith(firstMapTask, secondMapTask)(
-          (f, s) => Task.mapBoth(f.unwrap, s.unwrap)(addJsValues).flatten.parallel
+      val firstMapCoeval = f.toMap.value.mapValues(Coeval.now)
+      val secondMapCoeval = s.toMap.value.mapValues(Coeval.now)
+      mapInstance[String].sequence[Coeval, JSON](
+        unionWith(firstMapCoeval, secondMapCoeval)(
+          (f, s) => (f |@| s) (addJsValues).flatten
         )
-      ).unwrap.map(JSON.ObjMap)
+      ).map(JSON.ObjMap)
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't multiply " + print(f) + " and " + print(s)))
+      Coeval.raiseError(QQRuntimeException("can't multiply " + print(f) + " and " + print(s)))
   }
 
-  override def divideJsValues(first: JSON, second: JSON): Task[JSON] = (first, second) match {
-    case (JSON.Num(f), JSON.Num(s)) => Task.now(JSON.Num(f / s))
+  override def divideJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
+    case (JSON.Num(f), JSON.Num(s)) => Coeval.now(JSON.Num(f / s))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't divide " + print(f) + " by " + print(s)))
+      Coeval.raiseError(QQRuntimeException("can't divide " + print(f) + " by " + print(s)))
   }
 
-  override def moduloJsValues(first: JSON, second: JSON): Task[JSON] = (first, second) match {
-    case (JSON.Num(f), JSON.Num(s)) => Task.now(JSON.Num(f % s))
+  override def moduloJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
+    case (JSON.Num(f), JSON.Num(s)) => Coeval.now(JSON.Num(f % s))
     case (f, s) =>
-      Task.raiseError(QQRuntimeException("can't modulo " + print(f) + " by " + print(s)))
+      Coeval.raiseError(QQRuntimeException("can't modulo " + print(f) + " by " + print(s)))
   }
 
-  override def equalJsValues(first: JSON, second: JSON): JSON =
-    if (first == second) JSON.True else JSON.False
+  override def equalJsValues(first: JSON, second: JSON): Coeval[JSON]=
+    Coeval.now(if (first == second) JSON.True else JSON.False)
+
+  override def lteJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
+    case (JSON.Num(f), JSON.Num(s)) =>
+      Coeval.now(if (f <= s) JSON.True else JSON.False)
+    case (f, s) =>
+      Coeval.raiseError(QQRuntimeException("can't lte " + print(f) + " by " + print(s)))
+  }
+
+  override def gteJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
+    case (JSON.Num(f), JSON.Num(s)) =>
+      Coeval.now(if (f >= s) JSON.True else JSON.False)
+    case (f, s) =>
+      Coeval.raiseError(QQRuntimeException("can't gte " + print(f) + " by " + print(s)))
+  }
+
+  override def lessThanJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
+    case (JSON.Num(f), JSON.Num(s)) =>
+      Coeval.now(if (f < s) JSON.True else JSON.False)
+    case (f, s) =>
+      Coeval.raiseError(QQRuntimeException("can't lessThan " + print(f) + " by " + print(s)))
+  }
+
+  override def greaterThanJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
+    case (JSON.Num(f), JSON.Num(s)) =>
+      Coeval.now(if (f > s) JSON.True else JSON.False)
+    case (f, s) =>
+      Coeval.raiseError(QQRuntimeException("can't lessThan " + print(f) + " by " + print(s)))
+  }
 
   override def not(v: JSON): Coeval[JSON] = v match {
     case JSON.True => Coeval.now(JSON.False)

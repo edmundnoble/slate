@@ -1,6 +1,6 @@
 package qq
 
-import monix.eval.Task
+import monix.eval.{Coeval, Task}
 import qq.data.VarBinding
 
 import scalaz.\/
@@ -9,7 +9,7 @@ package object cc {
 
   type VarBindings[J] = Map[String, VarBinding[J]]
   type CompiledFilter[J] = VarBindings[J] => CompiledProgram[J]
-  type CompiledMathOperator[J] = (J, J) => Task[J]
+  type CompiledMathOperator[J] = (J, J) => Coeval[J]
   type CompiledProgram[J] = J => Task[List[J]]
 
   type OrCompilationError[T] = QQCompilationException \/ T

@@ -144,9 +144,8 @@ object DashboarderBuild {
 
     unpackedDevOpt <<= Def.task {
       val oldOpts = scalaJSOptimizerOptions.value
-      println((scalaJSLinkedFile in Compile).value.path)
       scalaJSOptimizerOptions := oldOpts.withPrettyPrintFullOptJS(true)
-      val file = defineChromeBuildTask("unpackedunopt", fullOptJS).value
+      val file = defineChromeBuildTask("unpackedunopt", fastOptJS).value
       //      scalaJSOptimizerOptions := oldOpts
       file
     },
