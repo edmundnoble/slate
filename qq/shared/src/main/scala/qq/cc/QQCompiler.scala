@@ -27,7 +27,7 @@ object QQCompiler {
     compileDefinitions(runtime, prelude, program.defns).flatMap(compileFilter(runtime, _, program.main))
   }
 
-  def funFromMathOperator[J](runtime: QQRuntime[J], op: MathOperator): (J, J) => Task[J] = op match {
+  def funFromMathOperator[J](runtime: QQRuntime[J], op: MathOperator): CompiledMathOperator[J] = op match {
     case Add => runtime.addJsValues
     case Subtract => runtime.subtractJsValues
     case Multiply => runtime.multiplyJsValues

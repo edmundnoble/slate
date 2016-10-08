@@ -9,7 +9,9 @@ package object cc {
 
   type VarBindings[J] = Map[String, VarBinding[J]]
   type CompiledFilter[J] = VarBindings[J] => CompiledProgram[J]
+  type CompiledMathOperator[J] = (J, J) => Task[J]
   type CompiledProgram[J] = J => Task[List[J]]
+
   type OrCompilationError[T] = QQCompilationException \/ T
 
   implicit final class ListToNelOps[A](val l: List[A]) extends AnyVal {
