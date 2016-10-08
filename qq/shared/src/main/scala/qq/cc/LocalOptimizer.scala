@@ -43,7 +43,7 @@ object LocalOptimizer {
   final def collectEnlist[T[_[_]] : Recursive : Corecursive](fr: T[FilterComponent]): Option[T[FilterComponent]] = {
     fr.project.map(_.project.map(_.project)) match {
       case EnlistFilter(ComposeFilters(f, PathOperation(List(CollectResults), PathGet()))) => Some(embed[T](f))
-      case EnlistFilter(PathOperation(List(CollectResults), PathGet())) => Some(embed[T](PathOperation(List(), PathGet())))
+      case EnlistFilter(PathOperation(List(CollectResults), PathGet())) => Some(embed[T](PathOperation(Nil, PathGet())))
       case _ => None
     }
   }
