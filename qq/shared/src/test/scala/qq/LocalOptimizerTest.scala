@@ -1,8 +1,9 @@
 package qq
 
 import qq.data.QQDSL.fix._
-import qq.data.{ConcreteFilter, FilterComponent}
+import qq.data.ConcreteFilter
 import qq.util.Recursion
+import qq.util.Recursion.RecursionEngine
 
 class LocalOptimizerTest extends QQSyncTestSuite {
 
@@ -37,7 +38,9 @@ class LocalOptimizerTest extends QQSyncTestSuite {
   "no stack overflow on deeply nested filters" taggedAs StackTest in {
     @annotation.tailrec def enlistRec(f: ConcreteFilter, i: Int): ConcreteFilter = if (i == 0) f else enlistRec(enlist(f), i - 1)
 
-    optimizeFilter(enlistRec(collectResults, 1000)) shouldBe enlistRec(id, 999)
+    val platformRecEngine: RecursionEngine = qq.Platform.Rec.defaultRecScheme
+
+    optimizeFilter(enlistRec(collectResults, 1000))(implicitly, implicitly, platformRecEngine) shouldBe enlistRec(id, 999)
   }
 
 }

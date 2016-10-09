@@ -103,6 +103,19 @@ object QQDSL {
     @inline def equal(first: T[FilterComponent], second: T[FilterComponent]): T[FilterComponent] =
       embed[T](FilterMath(first, second, Equal))
 
+    @inline def lte(first: T[FilterComponent], second: T[FilterComponent]): T[FilterComponent] =
+      embed[T](FilterMath(first, second, LTE))
+
+    @inline def gte(first: T[FilterComponent], second: T[FilterComponent]): T[FilterComponent] =
+      embed[T](FilterMath(first, second, GTE))
+
+    @inline def lessThan(first: T[FilterComponent], second: T[FilterComponent]): T[FilterComponent] =
+      embed[T](FilterMath(first, second, LessThan))
+
+    @inline def greaterThan(first: T[FilterComponent], second: T[FilterComponent]): T[FilterComponent] =
+      embed[T](FilterMath(first, second, GreaterThan))
+
+
     @inline def not: T[FilterComponent] =
       embed[T](FilterNot())
 

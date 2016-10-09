@@ -4,7 +4,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.Assertion
 import qq.cc.{JSONRuntime, QQCompiler, QQRuntime}
-import qq.data.{ConcreteFilter, JSON}
+import qq.data.{ConcreteFilter, JSON, QQDSL}
 import org.scalactic.NormMethods._
 
 import scala.concurrent.Future
@@ -136,6 +136,21 @@ class CompilerTest extends QQAsyncTestSuite {
       )
     )
 
+  val mathTests = {
+    val obj = JSON.Obj("fst" -> JSON.Num(1), "snd" -> JSON.Num(2))
+    List(
+      CompilerTestCase(obj, add(selectKey("fst"), selectKey("snd")), JSON.Num(3)),
+      CompilerTestCase(obj, multiply(selectKey("fst"), selectKey("snd")), JSON.Num(2)),
+      CompilerTestCase(obj, divide(selectKey("fst"), selectKey("snd")), JSON.Num(0.5)),
+      CompilerTestCase(obj, modulo(selectKey("fst"), selectKey("snd")), JSON.Num(1)),
+      CompilerTestCase(obj, QQDSL.fix.equal(selectKey("fst"), selectKey("snd")), JSON.False),
+      CompilerTestCase(obj, QQDSL.fix.lte(selectKey("fst"), selectKey("snd")), JSON.True),
+      CompilerTestCase(obj, QQDSL.fix.gte(selectKey("fst"), selectKey("snd")), JSON.False),
+      CompilerTestCase(obj, lessThan(selectKey("fst"), selectKey("snd")), JSON.True),
+      CompilerTestCase(obj, greaterThan(selectKey("fst"), selectKey("snd")), JSON.False)
+    )
+  }
+
   "select keys" in Future.traverse(selectKeyTests)(runTest)
   "select index" in Future.traverse(selectIndexTests)(runTest)
   "id" in Future.traverse(idTests)(runTest)
@@ -145,6 +160,6 @@ class CompilerTest extends QQAsyncTestSuite {
   "variables" in Future.traverse(variableTests)(runTest)
   "path setters" in Future.traverse(pathSetterTests)(runTest)
   "path modifiers" in Future.traverse(pathModifierTests)(runTest)
-
+  "math" in Future.traverse(mathTests)(runTest)
 
 }
