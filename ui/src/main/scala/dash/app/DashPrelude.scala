@@ -102,6 +102,42 @@ object DashPrelude extends Prelude[JSON] {
     Task.now(JSON.Str(toRFC3339(now)) :: Nil)
   })
 
+  def formatDatetimeFriendly: CompiledDefinition[JSON] = noParamDefinition[JSON]("formatDatetimeFriendly", CompiledFilter.func[JSON] {
+    case JSON.Str(s) =>
+      val asDate = js.Date.parse(s)
+      // Make a fuzzy time
+      val delta = Math.round((asDate - new js.Date().getTime()) / 1000)
+
+      val minute = 60
+      val hour = minute * 60
+      val day = hour * 24
+      val week = day * 7
+
+      val fuzzy =
+        if (delta < 30) {
+           "just then"
+        } else if (delta < minute) {
+           delta.toString + " seconds ago"
+        } else if (delta < 2 * minute) {
+           "in a minute"
+        } else if (delta < hour) {
+           Math.floor(delta / minute).toString + " minutes ago"
+        } else if (Math.floor(delta / hour) == 1) {
+          "in 1 hour"
+        } else if (delta < day) {
+           "in " + Math.floor(delta / hour).toString + " hours"
+        } else if (delta < day * 2) {
+           "tomorrow"
+        } else if (delta < week) {
+          "in " + Math.floor(delta / day) + " days"
+        } else {
+          "in " + Math.floor(delta / week) + " weeks"
+        }
+      Task.now(JSON.Str(fuzzy) :: Nil)
+    case k =>
+      Task.raiseError(QQRuntimeException("Can't format " + print(k) + " as a RFC3339 datetime"))
+  })
+
   override def all(runtime: QQRuntime[JSON])(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition[JSON]]] =
-    Vector(googleAuth, launchAuth, httpDelete, httpGet, httpPost, httpPatch, httpPut, nowRFC3339).right
+    Vector(googleAuth, launchAuth, httpDelete, httpGet, httpPost, httpPatch, httpPut, nowRFC3339, formatDatetimeFriendly).right
 }
