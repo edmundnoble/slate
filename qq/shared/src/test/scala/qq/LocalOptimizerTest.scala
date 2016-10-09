@@ -36,7 +36,9 @@ class LocalOptimizerTest extends QQSyncTestSuite {
   }
 
   "no stack overflow on deeply nested filters" taggedAs StackTest in {
-    @annotation.tailrec def enlistRec(f: ConcreteFilter, i: Int): ConcreteFilter = if (i == 0) f else enlistRec(enlist(f), i - 1)
+    @annotation.tailrec def enlistRec(f: ConcreteFilter, i: Int): ConcreteFilter =
+      if (i == 0) f
+      else enlistRec(enlist(f), i - 1)
 
     val platformRecEngine: RecursionEngine = qq.Platform.Rec.defaultRecScheme
 
