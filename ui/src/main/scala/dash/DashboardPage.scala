@@ -39,12 +39,12 @@ object DashboardPage {
     ReactComponentB[SearchPageProps]("Main search page")
       .stateless
       .render_P { props =>
-        div(`class` := "mdl-layout__container has-scrolling-header",
+        div(Styles.layoutContainer,
           div(`class` := "mdl-layout mdl-js-layout", "data-upgraded".reactAttr := ",MaterialLayout",
             id := "react-root",
             header(`class` := "mdl-layout__header mdl-shadow--2dp mdl-color--grey-100 is-casting-shadow",
               div(`class` := "mdl-layout__header-row",
-                span(`class` := "mdl-layout-title", Styles.appBarText, "Dashboarder".toUpperCase()),
+                span(Styles.appBarText, "Dashboarder".toUpperCase()),
                 div(`class` := "mdl-layout-spacer"),
                 div(`class` := "mdl-textfield mdl-js-textfield mdl-textfield--expandable is-upgraded",
                   label(`class` := "mdl-button mdl-js-button mdl-button--icon", `for` := "search"),
@@ -56,7 +56,7 @@ object DashboardPage {
                 )
               )
             ),
-            "main".reactTag(`class` := "mdl-layout__content",
+            "main".reactTag(Styles.layoutContent,
               div(Styles.container,
                   props.appProps.map(makeAppCell))
             )

@@ -40,6 +40,7 @@ object Styles extends StyleSheet.Inline {
   val pseudoContent: AV = content := "\"\""
 
   val appBarText: StyleA = style(
+    addClassName("mdl-layout-title"),
     color(c"#303030"),
     fontSize(160 %%),
     letterSpacing(2 px),
@@ -48,9 +49,18 @@ object Styles extends StyleSheet.Inline {
     fontFamily(akrobat)
   )
 
+  val layoutContainer: StyleA = style(
+      addClassName("mdl-layout__container")
+  )
+
+  val layoutContent = style(
+    addClassName("mdl-layout__content"),
+    overflowY.scroll.important
+  )
+
   val container: StyleA = style(
     addClassNames("mdl-grid", "page-content"),
-    width(90 %%),
+    width(95 %%),
     marginTop(25 px)
   )
 

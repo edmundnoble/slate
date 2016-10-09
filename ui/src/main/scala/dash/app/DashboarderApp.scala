@@ -162,7 +162,7 @@ object DashboarderApp extends scalajs.js.JSApp {
     val renderer = new StringRenderer.Raw(StringRenderer.formatTiny)
     val addStyles =
       Seq(Styles, ExpandableContentView.Styles, ErrorView.Styles, TitledContentView.Styles, AppView.Styles).map(_.renderA(renderer)).mkString("\n")
-    val aggregateStyles = PlatformExports.createStyleElement("html{\noverflow-y:scroll;\n}\n" + addStyles)
+    val aggregateStyles = PlatformExports.createStyleElement(addStyles)
     dom.document.head appendChild aggregateStyles
     Task.create[ReactComponentM[SearchPageProps, Unit, Unit, TopNode]] { (sch, cb) =>
       ReactDOM.render(searchPage, container,
