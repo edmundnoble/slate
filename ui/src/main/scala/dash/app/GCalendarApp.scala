@@ -1,7 +1,7 @@
 package dash.app
 
 import qq.data.{ConcreteFilter, Program}
-import qq.macros.QQInterpolator._
+import qq.macros.QQStager._
 
 object GCalendarApp {
   val program: Program[ConcreteFilter] =

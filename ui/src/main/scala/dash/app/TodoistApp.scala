@@ -2,7 +2,7 @@ package dash
 package app
 
 import qq.data.{ConcreteFilter, Program}
-import qq.macros.QQInterpolator._
+import qq.macros.QQStager._
 
 object TodoistApp {
   val program: Program[ConcreteFilter] =

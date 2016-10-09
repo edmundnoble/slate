@@ -19,7 +19,7 @@ import scalaz.syntax.bitraverse._
 import qq.Platform.Rec._
 
 // this is used to pre-prepare QQ programs at compile time
-object QQInterpolator {
+object QQStager {
 
   import scala.language.implicitConversions
 
@@ -125,6 +125,6 @@ object QQInterpolator {
 
 final class qqops()(val sc: StringContext) {
 
-  def qq(pieces: Any*): Program[ConcreteFilter] = macro QQInterpolator.qqimpl
+  def qq(pieces: Any*): Program[ConcreteFilter] = macro QQStager.qqimpl
 
 }
