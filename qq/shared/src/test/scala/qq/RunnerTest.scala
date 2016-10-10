@@ -1,17 +1,17 @@
 package qq
 
+import org.scalactic.NormMethods._
 import org.scalatest.Assertion
-import qq.cc.{JSONRuntime, QQRuntimeException, Runner}
+import qq.cc.{QQRuntimeException, Runner}
 import qq.data.JSON
 
 import scala.concurrent.Future
 import scalaz.\/
+import scalaz.std.list._
+import scalaz.std.scalaFuture._
 import scalaz.syntax.either._
 import scalaz.syntax.std.`try`._
-import org.scalactic.NormMethods._
 import scalaz.syntax.traverse._
-import scalaz.std.scalaFuture._
-import scalaz.std.list._
 
 case class RunnerTestCase(input: JSON, program: String, expectedOutputOrException: Exception \/ List[JSON])
 
@@ -19,7 +19,7 @@ class RunnerTest extends QQAsyncTestSuite {
 
   def runTest(test: RunnerTestCase): Future[Assertion] =
     Runner
-      .run(JSONRuntime, test.program)(List(test.input))
+      .run(test.program)(List(test.input))
       .materialize
       .map(_.map(_.map(_.norm)).toDisjunction should be(test.expectedOutputOrException.map(_.map(_.norm))))
       .runAsync

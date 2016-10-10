@@ -6,39 +6,44 @@ import java.util.regex.Pattern
 import monix.eval.{Coeval, Task}
 import monix.scalaz._
 import qq.data.{CompiledDefinition, JSON}
+import qq.util.Recursion.RecursionEngine
 import scodec.bits.ByteVector
-import upickle.Js
 
-import scalaz.std.list._
+import scalaz.\/
 import scalaz.syntax.either._
-import scalaz.syntax.traverse._
 import scalaz.syntax.apply._
 
-object JSONPrelude extends PlatformPrelude[JSON] {
+object JSONPrelude extends Prelude {
 
   import CompiledDefinition.noParamDefinition
 
-  def `null`: CompiledDefinition[JSON] = noParamDefinition("null", CompiledFilter.const(JSON.Null))
+  // null constant
+  def `null`: CompiledDefinition = noParamDefinition("null", CompiledFilter.const(JSON.Null))
 
-  def `true`: CompiledDefinition[JSON] = noParamDefinition("true", CompiledFilter.const(JSON.True))
+  // true constant
+  def `true`: CompiledDefinition = noParamDefinition("true", CompiledFilter.const(JSON.True))
 
-  def `false`: CompiledDefinition[JSON] = noParamDefinition("false", CompiledFilter.const(JSON.False))
+  // false constant
+  def `false`: CompiledDefinition = noParamDefinition("false", CompiledFilter.const(JSON.False))
 
-  def orElse: CompiledDefinition[JSON] = CompiledDefinition[JSON]("orElse", 1, {
+  // x | orElse(y): null coalescing operator
+  def orElse: CompiledDefinition = CompiledDefinition("orElse", 1, {
     case (default :: Nil) =>
-      ((bindings: VarBindings[JSON]) => (pf: JSON) =>
+      ((bindings: VarBindings) => (pf: JSON) =>
         pf match {
           case JSON.Null => default(bindings)(JSON.Null)
           case k => Task.now(k :: Nil)
         }).right[QQCompilationException]
   })
 
-  def b64Encode: CompiledDefinition[JSON] = noParamDefinition("b64Encode", CompiledFilter.func {
+  // base 64 encoding, duh
+  def b64Encode: CompiledDefinition = noParamDefinition("b64Encode", CompiledFilter.func {
     case JSON.Str(str) => Task.now(JSON.Str(ByteVector.encodeUtf8(str).right.getOrElse(ByteVector.empty).toBase64) :: Nil)
-    case k => Task.raiseError(QQRuntimeException("Tried to get base64 encoding of " + JSONRuntime.print(k)))
+    case k => Task.raiseError(QQRuntimeException("Tried to get base64 encoding of " + QQRuntime.print(k)))
   })
 
-  override def length: CompiledDefinition[JSON] =
+  // array/object length
+  def length: CompiledDefinition =
     noParamDefinition(
       "length", CompiledFilter.func {
         case arr: JSON.Arr => Task.now(JSON.Num(arr.value.length) :: Nil)
@@ -50,7 +55,8 @@ object JSONPrelude extends PlatformPrelude[JSON] {
       }
     )
 
-  override def keys: CompiledDefinition[JSON] =
+  // object keys
+  def keys: CompiledDefinition =
     noParamDefinition(
       "keys", CompiledFilter.func {
         case obj: JSON.Obj => Task.now(JSON.Arr(obj.map(p => JSON.Str(p._1))(collection.breakOut): _*) :: Nil)
@@ -58,49 +64,56 @@ object JSONPrelude extends PlatformPrelude[JSON] {
       }
     )
 
-  override def replaceAll: CompiledDefinition[JSON] =
-    CompiledDefinition[JSON](name = "replaceAll", numParams = 2,
-      body = CompiledDefinition.standardEffectDistribution[JSON] {
+  // regex replace
+  def replaceAll: CompiledDefinition =
+    CompiledDefinition(name = "replaceAll", numParams = 2,
+      body = CompiledDefinition.standardEffectDistribution {
         case (regexRaw :: replacementRaw :: Nil) => (j: JSON) =>
           val regexCoeval: Coeval[Pattern] = regexRaw match {
             case JSON.Str(string) => Coeval.now(Pattern.compile(string))
-            case k => Coeval.raiseError(NotARegex(JSONRuntime.print(k)))
+            case k => Coeval.raiseError(NotARegex(QQRuntime.print(k)))
           }
           val replacementCoeval: Coeval[String] = replacementRaw match {
             case JSON.Str(string) => Coeval.now(string)
-            case k => Coeval.raiseError(QQRuntimeException("can't replace with " + JSONRuntime.print(k)))
+            case k => Coeval.raiseError(QQRuntimeException("can't replace with " + QQRuntime.print(k)))
           }
           val valueRegexReplacementList = (regexCoeval |@| replacementCoeval) { (regex, replacement) =>
             j match {
               case JSON.Str(string) =>
                 Coeval.now(JSON.Str(regex.matcher(string).replaceAll(replacement)))
-              case k => Coeval.raiseError(QQRuntimeException("can't replace " + JSONRuntime.print(k)))
+              case k => Coeval.raiseError(QQRuntimeException("can't replace " + QQRuntime.print(k)))
             }
           }.flatten
           Task.coeval(valueRegexReplacementList)
       })
 
-  override def select: CompiledDefinition[JSON] = CompiledDefinition[JSON]("select", 1, {
-    case List(filterFun) => ((bindings: VarBindings[JSON]) => {
+  // filter
+  def select: CompiledDefinition = CompiledDefinition("select", 1, {
+    case List(filterFun) => ((bindings: VarBindings) => {
       (value: JSON) => filterFun(bindings)(value).map(_.filter(_ == JSON.True).map(_ => value))
-    }: CompiledProgram[JSON]).right
+    }: CompiledProgram).right
   })
 
-  override def arrays: CompiledDefinition[JSON] =
+  // array or object includes
+  def includes: CompiledDefinition = CompiledDefinition.undefinedOnPlatform("includes")
+
+  // type filters
+
+  def arrays: CompiledDefinition =
     noParamDefinition(
       "arrays", CompiledFilter.func {
         case arr: JSON.Arr => Task.now(arr :: Nil)
         case _ => Task.now(Nil)
       })
 
-  override def objects: CompiledDefinition[JSON] =
+  def objects: CompiledDefinition =
     noParamDefinition(
       "objects", CompiledFilter.func {
         case obj: JSON.Obj => Task.now(obj :: Nil)
         case _ => Task.now(Nil)
       })
 
-  override def iterables: CompiledDefinition[JSON] =
+  def iterables: CompiledDefinition =
     noParamDefinition(
       "iterables", CompiledFilter.func {
         case arr: JSON.Arr => Task.now(arr :: Nil)
@@ -108,42 +121,42 @@ object JSONPrelude extends PlatformPrelude[JSON] {
         case _ => Task.now(Nil)
       })
 
-  override def booleans: CompiledDefinition[JSON] =
+  def booleans: CompiledDefinition =
     noParamDefinition(
       "booleans", CompiledFilter.func {
         case bool@(JSON.True | JSON.False) => Task.now(bool :: Nil)
         case _ => Task.now(Nil)
       })
 
-  override def numbers: CompiledDefinition[JSON] =
+  def numbers: CompiledDefinition =
     noParamDefinition(
       "numbers", CompiledFilter.func {
         case num: JSON.Num => Task.now(num :: Nil)
         case _ => Task.now(Nil)
       })
 
-  override def strings: CompiledDefinition[JSON] =
+  def strings: CompiledDefinition =
     noParamDefinition(
       "strings", CompiledFilter.func {
         case str: JSON.Str => Task.now(str :: Nil)
         case _ => Task.now(Nil)
       })
 
-  override def nulls: CompiledDefinition[JSON] =
+  def nulls: CompiledDefinition =
     noParamDefinition(
       "nulls", CompiledFilter.func {
         case JSON.Null => Task.now(JSON.Null :: Nil)
         case _ => Task.now(Nil)
       })
 
-  override def values: CompiledDefinition[JSON] =
+  def values: CompiledDefinition =
     noParamDefinition(
       "values", CompiledFilter.func {
         case null => Task.now(Nil)
         case k => Task.now(k :: Nil)
       })
 
-  override def scalars: CompiledDefinition[JSON] =
+  def scalars: CompiledDefinition =
     noParamDefinition(
       "scalars", CompiledFilter.func {
         case _: JSON.Arr => Task.now(Nil)
@@ -151,13 +164,18 @@ object JSONPrelude extends PlatformPrelude[JSON] {
         case k => Task.now(k :: Nil)
       })
 
-  override def toStringDef: CompiledDefinition[JSON] =
+  def toStringDef: CompiledDefinition =
     noParamDefinition(
       "toString", CompiledFilter.func { j: JSON =>
         Task.now(JSON.Str(JSON.render(j)) :: Nil)
       }
     )
 
-  // array or object includes
-  override def includes: CompiledDefinition[JSON] = CompiledDefinition.undefinedOnPlatform("includes")
+  def all(implicit rec: RecursionEngine): QQCompilationException \/ IndexedSeq[CompiledDefinition] =
+    Vector(
+      `null`, `true`, `false`, orElse, b64Encode, includes, // exists, forall,
+      length, keys, replaceAll, select, arrays, objects, iterables, booleans,
+      numbers, strings, nulls, values, scalars, toStringDef
+    ).right
+
 }

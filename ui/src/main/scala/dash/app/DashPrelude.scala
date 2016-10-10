@@ -20,15 +20,15 @@ import qq.util.Recursion.RecursionEngine
 
 import scala.scalajs.js
 
-object DashPrelude extends Prelude[JSON] {
+object DashPrelude extends Prelude {
 
   import CompiledDefinition.noParamDefinition
 
-  def googleAuth: CompiledDefinition[JSON] =
+  def googleAuth: CompiledDefinition =
     noParamDefinition("googleAuth", _ => _ => identify.getAuthToken(interactive = true).map(JSON.Str(_) :: Nil))
 
-  def launchAuth: CompiledDefinition[JSON] =
-    CompiledDefinition[JSON]("launchAuth", 2, CompiledDefinition.standardEffectDistribution[JSON] {
+  def launchAuth: CompiledDefinition =
+    CompiledDefinition("launchAuth", 2, CompiledDefinition.standardEffectDistribution {
       case List(urlRaw, queryParamsRaw) => _ =>
         val urlCoeval = urlRaw match {
           case JSON.Str(s) => Coeval.now(s)
@@ -45,8 +45,8 @@ object DashPrelude extends Prelude[JSON] {
         } yield JSON.Obj("code" -> JSON.Str(accessToken))
     })
 
-  private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition[JSON](name, 4,
-    CompiledDefinition.standardEffectDistribution[JSON] {
+  private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition(name, 4,
+    CompiledDefinition.standardEffectDistribution {
       case List(urlRaw, queryParamsRaw, dataRaw, headersRaw) => _ =>
         implicit val ajaxTimeout = Ajax.Timeout(2000.millis)
         val urlCoeval = urlRaw match {
@@ -75,15 +75,15 @@ object DashPrelude extends Prelude[JSON] {
         } yield asJson
     })
 
-  def httpDelete: CompiledDefinition[JSON] = makeAjaxDefinition("httpDelete", AjaxMethod.DELETE)
+  def httpDelete: CompiledDefinition = makeAjaxDefinition("httpDelete", AjaxMethod.DELETE)
 
-  def httpGet: CompiledDefinition[JSON] = makeAjaxDefinition("httpGet", AjaxMethod.GET)
+  def httpGet: CompiledDefinition = makeAjaxDefinition("httpGet", AjaxMethod.GET)
 
-  def httpPost: CompiledDefinition[JSON] = makeAjaxDefinition("httpPost", AjaxMethod.POST)
+  def httpPost: CompiledDefinition = makeAjaxDefinition("httpPost", AjaxMethod.POST)
 
-  def httpPatch: CompiledDefinition[JSON] = makeAjaxDefinition("httpPatch", AjaxMethod.PATCH)
+  def httpPatch: CompiledDefinition = makeAjaxDefinition("httpPatch", AjaxMethod.PATCH)
 
-  def httpPut: CompiledDefinition[JSON] = makeAjaxDefinition("httpPut", AjaxMethod.PUT)
+  def httpPut: CompiledDefinition = makeAjaxDefinition("httpPut", AjaxMethod.PUT)
 
   final def toRFC3339(d: js.Date): String = {
     def pad(n: Int): String = {
@@ -97,12 +97,12 @@ object DashPrelude extends Prelude[JSON] {
       pad(d.getUTCSeconds()) + "Z"
   }
 
-  def nowRFC3339: CompiledDefinition[JSON] = noParamDefinition[JSON]("nowRFC3339", CompiledFilter.func[JSON] { _ =>
+  def nowRFC3339: CompiledDefinition = noParamDefinition("nowRFC3339", CompiledFilter.func { _ =>
     val now = new js.Date()
     Task.now(JSON.Str(toRFC3339(now)) :: Nil)
   })
 
-  def formatDatetimeFriendly: CompiledDefinition[JSON] = noParamDefinition[JSON]("formatDatetimeFriendly", CompiledFilter.func[JSON] {
+  def formatDatetimeFriendly: CompiledDefinition = noParamDefinition("formatDatetimeFriendly", CompiledFilter.func {
     case JSON.Str(s) =>
       val asDate = js.Date.parse(s)
       // Make a fuzzy time
@@ -138,6 +138,6 @@ object DashPrelude extends Prelude[JSON] {
       Task.raiseError(QQRuntimeException("Can't format " + print(k) + " as a RFC3339 datetime"))
   })
 
-  override def all(runtime: QQRuntime[JSON])(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition[JSON]]] =
+  override def all(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition]] =
     Vector(googleAuth, launchAuth, httpDelete, httpGet, httpPost, httpPatch, httpPut, nowRFC3339, formatDatetimeFriendly).right
 }

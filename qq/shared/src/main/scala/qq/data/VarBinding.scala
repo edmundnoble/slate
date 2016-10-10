@@ -1,4 +1,4 @@
 package qq
 package data
 
-case class VarBinding[J](name: String, value: J)
+case class VarBinding(name: String, value: JSON)

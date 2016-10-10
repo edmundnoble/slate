@@ -1,11 +1,10 @@
 package qq
 
 import monix.eval.Task
-import monix.execution.Scheduler
-import org.scalatest.Assertion
-import qq.cc.{JSONRuntime, QQCompiler, QQRuntime}
-import qq.data.{ConcreteFilter, JSON, QQDSL}
 import org.scalactic.NormMethods._
+import org.scalatest.Assertion
+import qq.cc.QQCompiler
+import qq.data.{ConcreteFilter, JSON, QQDSL}
 
 import scala.concurrent.Future
 
@@ -19,7 +18,7 @@ class CompilerTest extends QQAsyncTestSuite {
   def runTest(qqCompilerTest: CompilerTestCase): Future[Assertion] = qqCompilerTest match {
     case CompilerTestCase(input, filter, expectedOutput@_*) =>
       QQCompiler
-        .compileFilter(JSONRuntime, IndexedSeq.empty, filter)
+        .compileFilter(IndexedSeq.empty, filter)
         .fold[Task[Assertion]](
         err => Task.eval(fail("error occurred during compilation: \n" + err.toString)),
         program => program(Map.empty)(input).map { output =>

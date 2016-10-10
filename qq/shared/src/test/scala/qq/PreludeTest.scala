@@ -2,7 +2,7 @@ package qq
 
 import org.scalactic.NormMethods._
 import org.scalatest.Assertion
-import qq.cc.{JSONRuntime, Runner}
+import qq.cc.Runner
 import qq.data.JSON
 
 import scala.concurrent.Future
@@ -19,7 +19,7 @@ class PreludeTest extends QQAsyncTestSuite {
 
   def runTest(test: PreludeTestCase): Future[Assertion] =
     Runner
-      .run(JSONRuntime, test.program)(List(test.input))
+      .run(test.program)(List(test.input))
       .materialize
       .map(_.map(_.map(_.norm)).toDisjunction should be(test.expectedOutputOrException.map(_.map(_.norm))))
       .runAsync

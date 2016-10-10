@@ -12,79 +12,68 @@ import scala.language.higherKinds
 import scalaz.\/
 import scalaz.std.list._
 import scalaz.syntax.either._
-import scalaz.syntax.plusEmpty._
+import scalaz.syntax.monoid._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
 
 object QQCompiler {
 
-  def compileDefinitions[T[_[_]] : Recursive, J](runtime: QQRuntime[J],
-                                                 prelude: Prelude[J],
-                                                 definitions: Program.Definitions[T[FilterComponent]])(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] = {
-    definitions.foldLeft(prelude.all(runtime))(compileDefinitionStep[T, J](runtime))
+  def compileDefinitions[T[_[_]] : Recursive](prelude: Prelude,
+                                              definitions: Program.Definitions[T[FilterComponent]])(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition]] = {
+    definitions.foldLeft(prelude.all)(compileDefinitionStep[T])
   }
 
-  def compileProgram[T[_[_]] : Recursive, J](runtime: QQRuntime[J],
-                                             prelude: Prelude[J],
-                                             program: Program[T[FilterComponent]])(implicit rec: RecursionEngine): OrCompilationError[CompiledFilter[J]] = {
-    compileDefinitions(runtime, prelude, program.defns).flatMap(compileFilter(runtime, _, program.main))
+  def compileProgram[T[_[_]] : Recursive](prelude: Prelude,
+                                          program: Program[T[FilterComponent]])(implicit rec: RecursionEngine): OrCompilationError[CompiledFilter] =
+    compileDefinitions(prelude, program.defns).flatMap(compileFilter(_, program.main))
+
+  def funFromMathOperator(op: MathOperator): CompiledMathOperator = op match {
+    case Add => QQRuntime.addJsValues
+    case Subtract => QQRuntime.subtractJsValues
+    case Multiply => QQRuntime.multiplyJsValues
+    case Divide => QQRuntime.divideJsValues
+    case Modulo => QQRuntime.moduloJsValues
+    case Equal => QQRuntime.equalJsValues
+    case LTE => QQRuntime.lteJsValues
+    case GTE => QQRuntime.gteJsValues
+    case LessThan => QQRuntime.lessThanJsValues
+    case GreaterThan => QQRuntime.greaterThanJsValues
   }
 
-  def funFromMathOperator[J](runtime: QQRuntime[J], op: MathOperator): CompiledMathOperator[J] = op match {
-    case Add => runtime.addJsValues
-    case Subtract => runtime.subtractJsValues
-    case Multiply => runtime.multiplyJsValues
-    case Divide => runtime.divideJsValues
-    case Modulo => runtime.moduloJsValues
-    case Equal => (j1: J, j2: J) => runtime.equalJsValues(j1, j2)
-    case LTE => (j1: J, j2: J) => runtime.lteJsValues(j1, j2)
-    case GTE => (j1: J, j2: J) => runtime.gteJsValues(j1, j2)
-    case LessThan => (j1: J, j2: J) => runtime.lessThanJsValues(j1, j2)
-    case GreaterThan => (j1: J, j2: J) => runtime.greaterThanJsValues(j1, j2)
-  }
-
-  @inline final def evaluatePath[J](runtime: QQRuntime[J], components: List[PathComponent], operation: PathOperationF[CompiledProgram[J]]): CompiledProgram[J] = operation match {
+  @inline final def evaluatePath(components: List[PathComponent], operation: PathOperationF[CompiledProgram]): CompiledProgram = operation match {
     case PathGet =>
       components
-        .map(makePathComponentGetter[J](runtime, _))
-        .nelFoldLeft1(CompiledProgram.id[J])(CompiledProgram.composePrograms[J])
-    case PathSet(set) => (j: J) =>
+        .map(QQRuntime.makePathComponentGetter)
+        .nelFoldLeft1(CompiledProgram.id)(CompiledProgram.composePrograms)
+    case PathSet(set) => (j: JSON) =>
       set(j).flatMap {
-        _.traverseM[Task, J] {
-          runtime.setPath(components, j, _)
+        _.traverseM[Task, JSON] {
+          QQRuntime.setPath(components, j, _)
         }
       }
     case PathModify(modify) =>
       components
-        .map(runtime.modifyPath)
-        .nelFoldLeft1(identity[CompiledProgram[J]])((f, s) => (i: CompiledProgram[J]) => f(s(i)))(modify)
+        .map(QQRuntime.modifyPath)
+        .nelFoldLeft1(identity[CompiledProgram])((f, s) => (i: CompiledProgram) => f(s(i)))(modify)
   }
 
-  @inline final def makePathComponentGetter[J](runtime: QQRuntime[J], component: PathComponent): CompiledProgram[J] = component match {
-    case CollectResults => runtime.collectResults
-    case SelectKey(key) => runtime.selectKey(key)
-    case SelectIndex(index) => runtime.selectIndex(index)
-    case SelectRange(start, end) => runtime.selectRange(start, end)
-  }
-
-  def compileStep[J](runtime: QQRuntime[J],
-                     definitions: IndexedSeq[CompiledDefinition[J]],
-                     filter: FilterComponent[CompiledFilter[J]]): OrCompilationError[CompiledFilter[J]] = filter match {
+  def compileStep(definitions: IndexedSeq[CompiledDefinition],
+                  filter: FilterComponent[CompiledFilter]): OrCompilationError[CompiledFilter] = filter match {
     case Dereference(name) =>
-      ((bindings: VarBindings[J]) =>
+      ((bindings: VarBindings) =>
         bindings.get(name).cata(
-          p => (_: J) => Task.now(p.value :: Nil),
-          (_: J) => Task.raiseError(QQRuntimeException(s"Variable $name not bound"))
+          p => (_: JSON) => Task.now(p.value :: Nil),
+          (_: JSON) => Task.raiseError(QQRuntimeException(s"Variable $name not bound"))
         )).right
-    case ConstNumber(num) => runtime.constNumber(num).right
-    case ConstString(str) => runtime.constString(str).right
-    case ConstBoolean(bool) => runtime.constBoolean(bool).right
-    case FilterNot() => CompiledFilter.func[J] { j => Task.coeval(runtime.not(j).map(_ :: Nil)) }.right
-    case PathOperation(components, operationF) => ((_: VarBindings[J]) => evaluatePath[J](runtime, components, operationF.map(_ (Map.empty)))).right
+    case ConstNumber(num) => QQRuntime.constNumber(num).right
+    case ConstString(str) => QQRuntime.constString(str).right
+    case ConstBoolean(bool) => QQRuntime.constBoolean(bool).right
+    case FilterNot() => CompiledFilter.func { j => Task.coeval(QQRuntime.not(j).map(_ :: Nil)) }.right
+    case PathOperation(components, operationF) => ((_: VarBindings) => evaluatePath(components, operationF.map(_ (Map.empty)))).right
     case ComposeFilters(f, s) => CompiledFilter.composeFilters(f, s).right
     case CallFilter(filterIdentifier, params) =>
       definitions.find(_.name == filterIdentifier).cata(
-        { (defn: CompiledDefinition[J]) =>
+        { (defn: CompiledDefinition) =>
           if (params.length == defn.numParams) {
             defn.body(params)
           } else {
@@ -94,38 +83,36 @@ object QQCompiler {
         NoSuchMethod(filterIdentifier).left
       )
     case AsBinding(name, as, in) => CompiledFilter.asBinding(name, as, in).right
-    case EnlistFilter(f) => runtime.enlistFilter(f).right
+    case EnlistFilter(f) => QQRuntime.enlistFilter(f).right
     case SilenceExceptions(f) =>
-      ((varBindings: VarBindings[J]) =>
-        (jsv: J) =>
+      ((varBindings: VarBindings) =>
+        (jsv: JSON) =>
           f(varBindings)(jsv).onErrorRecover { case _: QQRuntimeException => Nil }).right[QQCompilationException]
     case EnsequenceFilters(first, second) => CompiledFilter.ensequenceCompiledFilters(first, second).right
-    case EnjectFilters(obj) => runtime.enjectFilter(obj).right
+    case EnjectFilters(obj) => QQRuntime.enjectFilter(obj).right
     case FilterMath(first, second, op) =>
-      val operatorFunction = funFromMathOperator(runtime, op)
-      val converted = (j1: J, j2: J) => Task.coeval(operatorFunction(j1, j2))
+      val operatorFunction = funFromMathOperator(op)
+      val converted = (j1: JSON, j2: JSON) => Task.coeval(operatorFunction(j1, j2))
       CompiledFilter.zipFiltersWith(first, second, converted).right
   }
 
-  def compileDefinitionStep[T[_[_]] : Recursive, J](runtime: QQRuntime[J])
-                                                   (soFar: OrCompilationError[IndexedSeq[CompiledDefinition[J]]],
-                                                    nextDefinition: Definition[T[FilterComponent]])(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
-    soFar.map { (definitionsSoFar: IndexedSeq[CompiledDefinition[J]]) =>
-      CompiledDefinition[J](nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter[J]]) => {
-        val paramsAsDefinitions: IndexedSeq[CompiledDefinition[J]] = (nextDefinition.params, params).zipped.map { (filterName, value) =>
-          CompiledDefinition[J](filterName, 0, (_: List[CompiledFilter[J]]) => value.right[QQCompilationException])
+  def compileDefinitionStep[T[_[_]] : Recursive](soFar: OrCompilationError[IndexedSeq[CompiledDefinition]],
+                                                 nextDefinition: Definition[T[FilterComponent]])(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition]] =
+    soFar.map { (definitionsSoFar: IndexedSeq[CompiledDefinition]) =>
+      CompiledDefinition(nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter]) => {
+        val paramsAsDefinitions: IndexedSeq[CompiledDefinition] = (nextDefinition.params, params).zipped.map { (filterName, value) =>
+          CompiledDefinition(filterName, 0, (_: List[CompiledFilter]) => value.right[QQCompilationException])
         }(collection.breakOut)
-        compileFilter(runtime, definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body)
+        compileFilter(definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body)
       }) +: definitionsSoFar
     }
 
-  def compileFilter[T[_[_]] : Recursive, J](runtime: QQRuntime[J],
-                                            definitions: IndexedSeq[CompiledDefinition[J]],
-                                            filter: T[FilterComponent])(implicit rec: RecursionEngine): OrCompilationError[CompiledFilter[J]] =
+  @inline final def compileFilter[T[_[_]] : Recursive](definitions: IndexedSeq[CompiledDefinition],
+                                                       filter: T[FilterComponent])(implicit rec: RecursionEngine): OrCompilationError[CompiledFilter] =
     for {
-      builtinDefinitions <- (SharedPreludes[J] <+> runtime.platformPrelude).all(runtime)
+      builtinDefinitions <- (SharedPreludes.all |+| JSONPrelude).all
       allDefinitions = builtinDefinitions ++ definitions
-      compileProgram = Recursion.cataM[T, FilterComponent, OrCompilationError, CompiledFilter[J]](compileStep(runtime, allDefinitions, _))
+      compileProgram = Recursion.cataM[T, FilterComponent, OrCompilationError, CompiledFilter](compileStep(allDefinitions, _))
       compiledProgram <- compileProgram(filter)
     } yield compiledProgram
 

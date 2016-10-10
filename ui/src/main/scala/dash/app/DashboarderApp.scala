@@ -15,7 +15,7 @@ import monix.scalaz._
 import org.scalajs.dom
 import org.scalajs.dom.raw._
 import qq.Platform.Rec._
-import qq.cc.{CompiledFilter, JSONRuntime, QQCompilationException, QQCompiler}
+import qq.cc.{CompiledFilter, QQRuntime, QQCompilationException, QQCompiler}
 import qq.data.{ConcreteFilter, JSON, Program}
 import shapeless.ops.coproduct.Unifier
 import qq.util._
@@ -97,16 +97,15 @@ object DashboarderApp extends scalajs.js.JSApp {
     )
   }
 
-  def compiledPrograms: List[DashProgram[Task[(QQCompilationException :+: WhatCanGoWrong) \/ CompiledFilter[JSON]]]] =
+  def compiledPrograms: List[DashProgram[Task[(QQCompilationException :+: WhatCanGoWrong) \/ CompiledFilter]]] =
     programs.map(program =>
       program.map { p =>
         p.map(s =>
           StorageProgram.runRetargetableProgram(DomStorage.Local, "program", ProgramCache.getCachedProgram(s))
         ).leftMap(e => Task.now(e.right[WhatCanGoWrong]))
           .merge[Task[WhatCanGoWrong \/ Program[ConcreteFilter]]]
-          .map(_.leftMap(e => Inr[QQCompilationException, WhatCanGoWrong](e)).flatMap(p =>
-            QQCompiler.compileProgram(JSONRuntime, DashPrelude, p).leftMap(e => Inl[QQCompilationException, WhatCanGoWrong](e)
-            )
+          .map(_.leftMap(Inr[QQCompilationException, WhatCanGoWrong]).flatMap(
+            QQCompiler.compileProgram(DashPrelude, _).leftMap(Inl[QQCompilationException, WhatCanGoWrong])
           ))
       }
     )
@@ -164,7 +163,7 @@ object DashboarderApp extends scalajs.js.JSApp {
       Seq(Styles, ExpandableContentView.Styles, ErrorView.Styles, TitledContentView.Styles, AppView.Styles).map(_.renderA(renderer)).mkString("\n")
     val aggregateStyles = PlatformExports.createStyleElement(addStyles)
     dom.document.head appendChild aggregateStyles
-    Task.create[ReactComponentM[SearchPageProps, Unit, Unit, TopNode]] { (sch, cb) =>
+    Task.create { (_, cb) =>
       ReactDOM.render(searchPage, container,
         js.ThisFunction.fromFunction1((t: ReactComponentM[SearchPageProps, Unit, Unit, TopNode]) => cb.apply(Success(t))))
       Cancelable.empty

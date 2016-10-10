@@ -3,8 +3,8 @@ package bench
 
 import japgolly.scalajs.benchmark.gui.BenchmarkGUI
 import org.scalajs.dom
-import qq.cc.{CompiledFilter, JSONRuntime, QQRuntime}
-import upickle.Invalid
+import qq.cc.CompiledFilter
+import qq.data.JSON
 
 import scala.scalajs.js.annotation.JSExport
 import scalaz.\/
@@ -28,28 +28,23 @@ object BenchmarkApp extends scalajs.js.JSApp {
   case class InputParams(size: Int)
 
   abstract class QQRuntimeParams {
-    type T
-    val runtime: QQRuntime[T]
-    val iso: String => T
+    val iso: String => JSON
   }
 
-  case object JSONRuntimeParams extends QQRuntimeParams {
+  case object QQRuntimeParams extends QQRuntimeParams {
     type T = qq.data.JSON
-    override val runtime: QQRuntime[qq.data.JSON] = JSONRuntime
     override val iso: (String) => T = qq.Json.stringToJSON(_).getOrElse(???)
   }
 
   abstract class BenchParams {
-    type T
-    val filt: CompiledFilter[T]
-    val in: T
+    val filt: CompiledFilter
+    val in: JSON
   }
 
   object BenchParams {
-    def apply[T0](filt0: CompiledFilter[T0], in0: T0): BenchParams {type T = T0} = new BenchParams {
-      override type T = T0
-      override val filt: CompiledFilter[T0] = filt0
-      override val in: T0 = in0
+    def apply(filt0: CompiledFilter, in0: JSON): BenchParams = new BenchParams {
+      override val filt: CompiledFilter = filt0
+      override val in: JSON = in0
     }
   }
 

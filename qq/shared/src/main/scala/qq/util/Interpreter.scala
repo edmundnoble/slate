@@ -2,9 +2,9 @@ package qq
 package util
 
 import monix.eval.Task
-import qq.cc.{CompiledFilter, JSONRuntime, Runner}
+import qq.cc.{CompiledFilter, Runner}
 import qq.data.JSON
-import upickle.{Js, json}
+import upickle.json
 import qq.Platform.Rec._
 
 import scalaz.\/
@@ -29,7 +29,7 @@ object Interpreter {
   def programInterpreter: Interpreter = taskSwitch orElse
     Interpreter("program:", {
       case program =>
-        Runner.parseAndCompile(JSONRuntime, program).fold(
+        Runner.parseAndCompile(program).fold(
           err => Task.eval {
             val () = Console.err.println("Error: " + err.merge[Exception].getMessage)
             ("", programInterpreter)
@@ -40,13 +40,13 @@ object Interpreter {
         ).right
     })
 
-  def programInterpreterOf(source: String, program: CompiledFilter[JSON]): Interpreter = taskSwitch orElse
+  def programInterpreterOf(source: String, program: CompiledFilter): Interpreter = taskSwitch orElse
     Interpreter("program " + source + ", input:", {
       case input =>
         val inputJs = JSON.upickleToJSONRec(json read input)
         val outputTask = program(Map.empty)(inputJs)
         outputTask.map { outputs =>
-          (outputs.map(JSON.render(_)).mkString(", "), programInterpreterOf(source, program))
+          (outputs.map(JSON.render).mkString(", "), programInterpreterOf(source, program))
         }.right
     })
 
@@ -59,13 +59,13 @@ object Interpreter {
   def inputInterpreterOf(source: String, input: JSON): Interpreter = taskSwitch orElse
     Interpreter("input " + source + ", program:", {
       case program =>
-        Runner.parseAndCompile(JSONRuntime, program).fold(
+        Runner.parseAndCompile(program).fold(
           err => Task.eval {
             val () = Console.err.println("Error: " + err.merge[Exception].getMessage)
             ("", programInterpreter)
           },
-          (compiledFilter: CompiledFilter[JSON]) => compiledFilter(Map.empty)(input).map { outputs =>
-            (outputs.map(JSON.render(_)).mkString(", "), inputInterpreterOf(source, input))
+          compiledFilter => compiledFilter(Map.empty)(input).map { outputs =>
+            (outputs.map(JSON.render).mkString(", "), inputInterpreterOf(source, input))
           }
         ).right
     })

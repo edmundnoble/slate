@@ -2,36 +2,33 @@ package qq
 package cc
 
 import monix.eval.Task
-import qq.data.{CompiledDefinition, ConcreteFilter, Definition, QQDSL}
+import qq.data._
 import qq.util.Recursion.RecursionEngine
 
-import scalaz.syntax.plusEmpty._
+import scalaz.syntax.monoid._
 import scalaz.syntax.either._
 
 object SharedPreludes {
 
-  object Compiled {
+  val compiled: Prelude = new Prelude {
+    override def all(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition]] = {
 
-    def apply[J]: Prelude[J] = new Prelude[J] {
-      override def all(runtime: QQRuntime[J])(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] = {
+      val print: CompiledDefinition =
+        CompiledDefinition.noParamDefinition("print",
+          CompiledFilter.func { (jsv: JSON) =>
+            println("debug: " + QQRuntime.print(jsv))
+            Task.now(jsv :: Nil)
+          }
+        )
 
-        val print: CompiledDefinition[J] =
-          CompiledDefinition.noParamDefinition[J]("print",
-            CompiledFilter.func { (jsv: J) =>
-              println("debug: " + runtime.print(jsv))
-              Task.now(jsv :: Nil)
-            }
-          )
+      val empty: CompiledDefinition =
+        CompiledDefinition.noParamDefinition("empty", CompiledFilter.constL(Nil))
 
-        val empty: CompiledDefinition[J] =
-          CompiledDefinition.noParamDefinition[J]("empty", CompiledFilter.constL(Nil))
-
-        IndexedSeq(print, empty).right
-      }
+      IndexedSeq(print, empty).right
     }
   }
 
-  object Raw {
+  val raw: Prelude = new Prelude {
     val map: Definition[ConcreteFilter] = {
       import QQDSL.fix._
       Definition("map",
@@ -40,12 +37,10 @@ object SharedPreludes {
       )
     }
 
-    def apply[J]: Prelude[J] = new Prelude[J] {
-      override def all(runtime: QQRuntime[J])(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition[J]]] =
-        QQCompiler.compileDefinitions(runtime, Prelude.empty, List(map))
-    }
+    override def all(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition]] =
+      QQCompiler.compileDefinitions(Prelude.empty, List(map))
   }
 
-  def apply[J]: Prelude[J] = Raw[J] <+> Compiled[J]
+  def all: Prelude = raw |+| compiled
 
 }
