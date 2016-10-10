@@ -1,9 +1,7 @@
 package qq
 package cc
 
-import monix.eval.{Coeval, Task}
 import monix.scalaz._
-import qq.data._
 
 import scala.language.higherKinds
 import scalaz.\/
