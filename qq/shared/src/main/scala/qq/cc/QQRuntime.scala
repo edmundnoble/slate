@@ -41,13 +41,13 @@ object QQRuntime {
     case SelectKey(key) => {
       case obj: JSON.Obj =>
         val asMap = obj.toMap
-        asMap.value.get(key).fold(Task.now((JSON.Null: JSON) :: Nil))(f).map(_.map(v => asMap.copy(value = asMap.value + (key -> v))))
+        asMap.value.get(key).fold(taskOfListOfNull)(f).map(_.map(v => asMap.copy(value = asMap.value + (key -> v))))
       case v => Task.raiseError(QQRuntimeException("Tried to select key " + key + " from " + print(v) + " but it's not an array"))
     }
     case SelectIndex(index) => {
       case arr: JSON.Arr =>
         if (arr.value.length <= index) {
-          Task.now(JSON.Null :: Nil)
+          taskOfListOfNull
         } else {
           f(arr.value(index)).map {
             _.map { v =>
@@ -70,7 +70,7 @@ object QQRuntime {
       case SelectKey(key) => biggerStructure match {
         case obj: JSON.Obj =>
           val asMap = obj.toMap
-          asMap.value.get(key).fold(Task.now((JSON.Null: JSON) :: Nil))(
+          asMap.value.get(key).fold(taskOfListOfNull)(
             setPath(rest, _, smallerStructure).map(_.map(nv => asMap.copy(value = asMap.value.updated(key, nv))))
           )
         case v => Task.raiseError(QQRuntimeException("Tried to select key " + key + " from " + print(v) + " but it's not an array"))
