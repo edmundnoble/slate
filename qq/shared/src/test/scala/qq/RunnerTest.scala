@@ -2,7 +2,7 @@ package qq
 
 import org.scalactic.NormMethods._
 import org.scalatest.Assertion
-import qq.cc.{QQRuntimeException, Runner}
+import qq.cc.{QQRuntimeException, Runner, TypeError}
 import qq.data.JSON
 
 import scala.concurrent.Future
@@ -122,7 +122,7 @@ class RunnerTest extends QQAsyncTestSuite {
     RunnerTestCase(JSON.Arr(JSON.Num(1)), "def f: . + 2; map(f)", List(JSON.Num(3)).right)
 
   val addNullException =
-    RunnerTestCase(JSON.Arr(), ".[0] + .[0]", QQRuntimeException("can't add null and null").left)
+    RunnerTestCase(JSON.Arr(), ".[0] + .[0]", new QQRuntimeException("can't add null and null").left)
 
   val silencedException =
     RunnerTestCase(JSON.Arr(), "(.[0] + .[0])?", List().right)

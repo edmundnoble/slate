@@ -4,9 +4,9 @@ package app
 import java.text.SimpleDateFormat
 import java.util.Date
 
-import dash.ajax.{Ajax, AjaxMethod}
+import dash.ajax.{Ajax, AjaxException, AjaxMethod}
 import monix.eval.{Coeval, Task}
-import qq.cc.{CompiledFilter, OrCompilationError, Prelude, QQRuntime, QQRuntimeException}
+import qq.cc.{CompiledFilter, OrCompilationError, Prelude, QQRuntime, QQRuntimeException, TypeError}
 import qq.data.{CompiledDefinition, JSON}
 import qq.util._
 
@@ -14,6 +14,7 @@ import scala.concurrent.duration._
 import scalaz.syntax.either._
 import scalaz.syntax.apply._
 import monix.scalaz._
+import org.scalajs.dom.XMLHttpRequest
 import qq.Json
 import qq.Platform.Rec._
 import qq.util.Recursion.RecursionEngine
@@ -32,11 +33,11 @@ object DashPrelude extends Prelude {
       case List(urlRaw, queryParamsRaw) => _ =>
         val urlCoeval = urlRaw match {
           case JSON.Str(s) => Coeval.now(s)
-          case k => Coeval.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not a URL"))
+          case k => Coeval.raiseError(QQRuntimeException(TypeError("ajax", "object" -> k)))
         }
         val queryParamsCoeval = queryParamsRaw match {
           case o: JSON.Obj => Coeval.now(o.toMap.value.mapValues(Json.JSONToJsRec(_)))
-          case k => Coeval.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not a query params object"))
+          case k => Coeval.raiseError(QQRuntimeException(TypeError("ajax", "object" -> k)))
         }
         for {
           urlWithQueryParams <- Task.coeval((urlCoeval |@| queryParamsCoeval) (Ajax.addQueryParams))
@@ -51,21 +52,21 @@ object DashPrelude extends Prelude {
         implicit val ajaxTimeout = Ajax.Timeout(2000.millis)
         val urlCoeval = urlRaw match {
           case JSON.Str(s) => Coeval.now(s)
-          case k => Coeval.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not a URL"))
+          case k => Coeval.raiseError(QQRuntimeException(TypeError("ajax", "string" -> k)))
         }
         val queryParamsCoeval = queryParamsRaw match {
           case o: JSON.Obj => Coeval.now(o.toMap.value.mapValues(Json.JSONToJsRec(_)))
-          case k => Coeval.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not query params/data"))
+          case k => Coeval.raiseError(QQRuntimeException(TypeError("ajax", "object" -> k)))
         }
         val dataCoeval = dataRaw match {
           case JSON.Str(s) => Coeval.now(s)
           case o: JSON.Obj => Coeval.now(JSON.render(o))
-          case k => Coeval.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not usable as POST data"))
+          case k => Coeval.raiseError(QQRuntimeException(TypeError("ajax", "string | object" -> k)))
         }
         val headersCoeval = headersRaw match {
           case o: JSON.ObjList if o.value.forall(_._2.isInstanceOf[JSON.Str]) => Coeval.now(o.toMap.value.mapValues(_.asInstanceOf[JSON.Str].value))
           case o: JSON.ObjMap if o.value.forall(_._2.isInstanceOf[JSON.Str]) => Coeval.now(o.toMap.value.mapValues(_.asInstanceOf[JSON.Str].value))
-          case k => Coeval.raiseError(QQRuntimeException(Json.jsonToString(k) + " is not headers"))
+          case k => Coeval.raiseError(QQRuntimeException(TypeError("ajax", "object" -> k)))
         }
         for {
           resp <- Task.coeval((urlCoeval |@| dataCoeval |@| queryParamsCoeval |@| headersCoeval) (
@@ -135,7 +136,7 @@ object DashPrelude extends Prelude {
         }
       Task.now(JSON.Str(fuzzy) :: Nil)
     case k =>
-      Task.raiseError(QQRuntimeException("Can't format " + print(k) + " as a RFC3339 datetime"))
+      Task.raiseError(QQRuntimeException(TypeError("formatDatetimeFriendly", "string" -> k)))
   })
 
   override def all(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition]] =

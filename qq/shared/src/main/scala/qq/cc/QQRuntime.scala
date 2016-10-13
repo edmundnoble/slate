@@ -33,14 +33,16 @@ object QQRuntime {
 
   def modifyPath(component: PathComponent)(f: CompiledProgram): CompiledProgram = component match {
     case CollectResults => {
-      case arr: JSON.Arr => arr.value.traverseM(f)
-      case v => Task.raiseError(QQRuntimeException("Tried to collect results from " + print(v) + " but it's not an array"))
+      case arr: JSON.Arr => arr.value.traverseM[Task, JSON](f)
+      case v => Task.raiseError(QQRuntimeException(TypeError(
+        "collect results from", "array" -> v)))
     }
     case SelectKey(key) => {
       case obj: JSON.Obj =>
         val asMap = obj.toMap
         asMap.value.get(key).fold(taskOfListOfNull)(f).map(_.map(v => asMap.copy(value = asMap.value + (key -> v))))
-      case v => Task.raiseError(QQRuntimeException("Tried to select key " + key + " from " + print(v) + " but it's not an array"))
+      case v => Task.raiseError(QQRuntimeException(TypeError(
+        "select key \"" + key + "\" in", "object" -> v)))
     }
     case SelectIndex(index) => {
       case arr: JSON.Arr =>
@@ -54,7 +56,8 @@ object QQRuntime {
           }
         }
       case v =>
-        Task.raiseError(QQRuntimeException("Tried to select index " + index + " from " + print(v) + " but it's not an array"))
+        Task.raiseError(QQRuntimeException(TypeError(
+          "select index " + index + " in", "array" -> v)))
     }
     case SelectRange(start, end) => ???
   }
@@ -63,7 +66,8 @@ object QQRuntime {
     case (component :: rest) => component match {
       case CollectResults => biggerStructure match {
         case arr: JSON.Arr => arr.value.traverseM(setPath(rest, _, smallerStructure))
-        case v => Task.raiseError(QQRuntimeException("Tried to collect results from " + print(v) + " but it's not an array"))
+        case v => Task.raiseError(QQRuntimeException(TypeError(
+          "collect results from", "array" -> v)))
       }
       case SelectKey(key) => biggerStructure match {
         case obj: JSON.Obj =>
@@ -71,7 +75,8 @@ object QQRuntime {
           asMap.value.get(key).fold(taskOfListOfNull)(
             setPath(rest, _, smallerStructure).map(_.map(nv => asMap.copy(value = asMap.value.updated(key, nv))))
           )
-        case v => Task.raiseError(QQRuntimeException("Tried to select key " + key + " from " + print(v) + " but it's not an array"))
+        case v => Task.raiseError(QQRuntimeException(TypeError(
+          "select key \"" + key + "\" from ", "array" -> v)))
       }
       case SelectIndex(index) => biggerStructure match {
         case arr: JSON.Arr =>
@@ -81,7 +86,8 @@ object QQRuntime {
             setPath(rest, arr.value(index), smallerStructure).map(_.map(v => JSON.Arr(arr.value.updated(index, v))))
           }
         case v =>
-          Task.raiseError(QQRuntimeException("Tried to select index " + index + " from " + print(v) + " but it's not an array"))
+          Task.raiseError(QQRuntimeException(TypeError(
+            "select index " + index + " in", "array" -> v)))
       }
       case SelectRange(start, end) => ???
     }
@@ -107,7 +113,10 @@ object QQRuntime {
     case (f: JSON.Obj, s: JSON.Obj) =>
       Coeval.now(JSON.ObjMap(f.toMap.value ++ s.toMap.value))
     case (f, s) =>
-      Coeval.raiseError(QQRuntimeException("can't add " + print(f) + " and " + print(s)))
+      Coeval.raiseError(QQRuntimeException(TypeError(
+        "add",
+        "number | string | array | object" -> f,
+        "number | string | array | object" -> s)))
   }
 
   def subtractJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
@@ -119,7 +128,10 @@ object QQRuntime {
       val contents: Map[String, JSON] = f.toMap.value -- s.map[String, Set[String]](_._1)(collection.breakOut)
       Coeval.now(JSON.ObjMap(contents))
     case (f, s) =>
-      Coeval.raiseError(QQRuntimeException("can't subtract " + print(f) + " and " + print(s)))
+      Coeval.raiseError(QQRuntimeException(TypeError(
+        "subtract",
+        "number | array | object" -> f,
+        "number | array | object" -> s)))
   }
 
   def multiplyJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
@@ -135,19 +147,22 @@ object QQRuntime {
         )
       ).map(JSON.ObjMap)
     case (f, s) =>
-      Coeval.raiseError(QQRuntimeException("can't multiply " + print(f) + " and " + print(s)))
+      Coeval.raiseError(QQRuntimeException(TypeError(
+        "multiply",
+        "number | string | object" -> f,
+        "number | object" -> s)))
   }
 
   def divideJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
     case (JSON.Num(f), JSON.Num(s)) => Coeval.now(JSON.Num(f / s))
     case (f, s) =>
-      Coeval.raiseError(QQRuntimeException("can't divide " + print(f) + " by " + print(s)))
+      Coeval.raiseError(QQRuntimeException(TypeError("divide", "number" -> f, "number" -> s)))
   }
 
   def moduloJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
     case (JSON.Num(f), JSON.Num(s)) => Coeval.now(JSON.Num(f % s))
     case (f, s) =>
-      Coeval.raiseError(QQRuntimeException("can't modulo " + print(f) + " by " + print(s)))
+      Coeval.raiseError(QQRuntimeException(TypeError("modulo", "number" -> f, "number" -> s)))
   }
 
   def equalJsValues(first: JSON, second: JSON): Coeval[JSON] =
@@ -157,34 +172,34 @@ object QQRuntime {
     case (JSON.Num(f), JSON.Num(s)) =>
       Coeval.now(if (f <= s) JSON.True else JSON.False)
     case (f, s) =>
-      Coeval.raiseError(QQRuntimeException("can't lte " + print(f) + " by " + print(s)))
+      Coeval.raiseError(QQRuntimeException(TypeError("lte", "number" -> f, "number" -> s)))
   }
 
   def gteJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
       Coeval.now(if (f >= s) JSON.True else JSON.False)
     case (f, s) =>
-      Coeval.raiseError(QQRuntimeException("can't gte " + print(f) + " by " + print(s)))
+      Coeval.raiseError(QQRuntimeException(TypeError("gte", "number" -> f, "number" -> s)))
   }
 
   def lessThanJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
       Coeval.now(if (f < s) JSON.True else JSON.False)
     case (f, s) =>
-      Coeval.raiseError(QQRuntimeException("can't lessThan " + print(f) + " by " + print(s)))
+      Coeval.raiseError(QQRuntimeException(TypeError("lessThan", "number" -> f, "number" -> s)))
   }
 
   def greaterThanJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
       Coeval.now(if (f > s) JSON.True else JSON.False)
     case (f, s) =>
-      Coeval.raiseError(QQRuntimeException("can't lessThan " + print(f) + " by " + print(s)))
+      Coeval.raiseError(QQRuntimeException(TypeError("greaterThan", "number" -> f, "number" -> s)))
   }
 
   def not(v: JSON): Coeval[JSON] = v match {
     case JSON.True => Coeval.now(JSON.False)
     case JSON.False => Coeval.now(JSON.True)
-    case k => Coeval.raiseError(TypeError("true|false", print(k)))
+    case k => Coeval.raiseError(QQRuntimeException(TypeError("not", "boolean" -> k)))
   }
 
   def enlistFilter(filter: CompiledFilter): CompiledFilter =
@@ -201,7 +216,7 @@ object QQRuntime {
         case Some(v) => Task.now(v :: Nil)
       }
     case v =>
-      Task.raiseError(QQRuntimeException("Tried to select key " + key + " in " + print(v) + " but it's not a dictionary"))
+      Task.raiseError(QQRuntimeException(TypeError("select key " + key, "object" -> v)))
   }
 
   def selectIndex(index: Int): CompiledProgram = {
@@ -219,7 +234,7 @@ object QQRuntime {
         taskOfListOfNull
       }
     case v =>
-      Task.raiseError(QQRuntimeException("Tried to select index " + index.toString + " in " + print(v) + " but it's not an array"))
+      Task.raiseError(QQRuntimeException(TypeError("select index " + index.toString, "array" -> v)))
   }
 
   def selectRange(start: Int, end: Int): CompiledProgram = {
@@ -231,9 +246,8 @@ object QQRuntime {
         Task.now(emptyArray :: Nil)
       }
     case v =>
-      Task.raiseError(QQRuntimeException("Tried to select range " +
-        start + ":" + end + " in " + print(v) +
-        " but it's not an array"))
+      Task.raiseError(QQRuntimeException(TypeError(
+        "select range " + start + ":" + end, "array" -> v)))
   }
 
   def collectResults: CompiledProgram = {
@@ -242,7 +256,8 @@ object QQRuntime {
     case dict: JSON.Obj =>
       Task.now(dict.map(_._2)(collection.breakOut))
     case v =>
-      Task.raiseError(QQRuntimeException("Tried to flatten " + print(v) + " but it's not an array"))
+      Task.raiseError(QQRuntimeException(TypeError(
+        "flatten", "array" -> v)))
   }
 
   def enjectFilter(obj: List[(String \/ CompiledFilter, CompiledFilter)]): CompiledFilter = {
@@ -261,7 +276,8 @@ object QQRuntime {
                     case JSON.Str(keyString) =>
                       Task.now(valueResults.map(keyString -> _))
                     case k =>
-                      Task.raiseError(QQRuntimeException("Tried to use " + print(k) + " as a key for an object but it's not a string"))
+                      Task.raiseError(QQRuntimeException(TypeError(
+                        "use as key", "string" -> k)))
                   }
                 } yield keyValuePairs).parallel
               case (-\/(filterName), filterValue) =>
@@ -270,6 +286,15 @@ object QQRuntime {
             kvPairsProducts = kvPairs.map(_.flatten).unconsFold(Nil, foldWithPrefixes[(String, JSON)](_, _: _*))
           } yield kvPairsProducts.map(JSON.ObjList)
     }
+  }
+
+  def printType(value: JSON): String = value match {
+    case _: JSON.Num => "number"
+    case JSON.True | JSON.False => "boolean"
+    case _: JSON.Arr => "array"
+    case _: JSON.Obj => "object"
+    case JSON.Null => "null"
+    case _: JSON.Str => "string"
   }
 
   def print(value: JSON): String = JSON.render(value)

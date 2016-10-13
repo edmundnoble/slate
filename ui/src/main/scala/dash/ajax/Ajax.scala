@@ -8,6 +8,7 @@ import monix.execution.Cancelable
 import org.scalajs.dom
 import org.scalajs.dom.{Event, FormData, XMLHttpRequest}
 import org.scalajs.dom.raw.Blob
+import qq.cc.{QQRuntimeError, QQRuntimeException}
 
 import scala.concurrent.duration._
 import scala.language.implicitConversions
@@ -20,8 +21,8 @@ import scala.scalajs.js.typedarray._
   * Contains the XMLHttpRequest that resulted in that response
   */
 case class AjaxException(xhr: dom.XMLHttpRequest, url: String)
-  extends Exception("Ajax " + (if (xhr.status == 0 && xhr.readyState == 4) " timeout " else s" error ${xhr.status} ") + s" $url") {
-  def isTimeout = xhr.status == 0 && xhr.readyState == 4
+  extends QQRuntimeError("Ajax " + (if (xhr.status == 0 && xhr.readyState == 4) " timeout " else s" error ${xhr.status} ") + s" $url") {
+  def isTimeout: Boolean = xhr.status == 0 && xhr.readyState == 4
 }
 
 /**
@@ -113,7 +114,7 @@ object Ajax {
           if ((req.status >= 200 && req.status < 300) || req.status == 304)
             callback.onSuccess(req)
           else
-            callback.onError(AjaxException(req, url))
+            callback.onError(QQRuntimeException(AjaxException(req, url)))
         }
       }
 

@@ -63,7 +63,7 @@ object QQCompiler {
       ((bindings: VarBindings) =>
         bindings.get(name).cata(
           p => (_: JSON) => Task.now(p.value :: Nil),
-          (_: JSON) => Task.raiseError(QQRuntimeException(s"Variable $name not bound"))
+          (_: JSON) => Task.raiseError(QQRuntimeException(NoSuchVariable(name)))
         )).right
     case ConstNumber(num) => QQRuntime.constNumber(num).right
     case ConstString(str) => QQRuntime.constString(str).right

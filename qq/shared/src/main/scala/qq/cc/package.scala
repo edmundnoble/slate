@@ -10,7 +10,8 @@ package object cc {
   type VarBindings = Map[String, VarBinding]
   type CompiledFilter = VarBindings => CompiledProgram
   type CompiledMathOperator = (JSON, JSON) => Coeval[JSON]
-  type CompiledProgram = JSON => Task[List[JSON]]
+  type QQEff[J] = Task[List[J]]
+  type CompiledProgram = JSON => QQEff[JSON]
 
   type OrCompilationError[T] = QQCompilationException \/ T
 

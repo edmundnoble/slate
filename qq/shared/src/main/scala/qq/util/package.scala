@@ -1,5 +1,6 @@
 package qq
 
+import monix.scalaz._
 import monix.eval.Task
 
 import scalaz.Tags.Parallel

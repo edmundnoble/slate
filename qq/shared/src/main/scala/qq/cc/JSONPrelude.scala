@@ -39,7 +39,7 @@ object JSONPrelude extends Prelude {
   // base 64 encoding, duh
   def b64Encode: CompiledDefinition = noParamDefinition("b64Encode", CompiledFilter.func {
     case JSON.Str(str) => Task.now(JSON.Str(ByteVector.encodeUtf8(str).right.getOrElse(ByteVector.empty).toBase64) :: Nil)
-    case k => Task.raiseError(QQRuntimeException("Tried to get base64 encoding of " + QQRuntime.print(k)))
+    case k => Task.raiseError(QQRuntimeException(TypeError("b64Encode", "string" -> k)))
   })
 
   // array/object length
@@ -51,7 +51,8 @@ object JSONPrelude extends Prelude {
         case obj: JSON.ObjMap => Task.now(JSON.Num(obj.value.size) :: Nil)
         case obj: JSON.ObjList => Task.now(JSON.Num(obj.value.size) :: Nil)
         case JSON.Null => Task.now((JSON.Num(0): JSON) :: Nil)
-        case k => Task.raiseError(QQRuntimeException("Tried to get length of " + k))
+        case k => Task.raiseError(QQRuntimeException(TypeError(
+          "length", "array | string | object | null" -> k)))
       }
     )
 
@@ -60,7 +61,7 @@ object JSONPrelude extends Prelude {
     noParamDefinition(
       "keys", CompiledFilter.func {
         case obj: JSON.Obj => Task.now(JSON.Arr(obj.map(p => JSON.Str(p._1))(collection.breakOut): _*) :: Nil)
-        case k => Task.raiseError(QQRuntimeException("Tried to get keys of " + k))
+        case k => Task.raiseError(QQRuntimeException(TypeError("keys", "object" -> k)))
       }
     )
 
@@ -71,17 +72,17 @@ object JSONPrelude extends Prelude {
         case (regexRaw :: replacementRaw :: Nil) => (j: JSON) =>
           val regexCoeval: Coeval[Pattern] = regexRaw match {
             case JSON.Str(string) => Coeval.now(Pattern.compile(string))
-            case k => Coeval.raiseError(NotARegex(QQRuntime.print(k)))
+            case k => Coeval.raiseError(QQRuntimeException(NotARegex(QQRuntime.print(k))))
           }
           val replacementCoeval: Coeval[String] = replacementRaw match {
             case JSON.Str(string) => Coeval.now(string)
-            case k => Coeval.raiseError(QQRuntimeException("can't replace with " + QQRuntime.print(k)))
+            case k => Coeval.raiseError(QQRuntimeException(TypeError("replace", "string" -> k)))
           }
           val valueRegexReplacementList = (regexCoeval |@| replacementCoeval) { (regex, replacement) =>
             j match {
               case JSON.Str(string) =>
                 Coeval.now(JSON.Str(regex.matcher(string).replaceAll(replacement)))
-              case k => Coeval.raiseError(QQRuntimeException("can't replace " + QQRuntime.print(k)))
+              case k => Coeval.raiseError(QQRuntimeException(TypeError("replace", "string" -> k)))
             }
           }.flatten
           Task.coeval(valueRegexReplacementList)
