@@ -147,8 +147,8 @@ class CompilerTest extends QQAsyncTestSuite {
       CompilerTestCase(obj, QQDSL.fix.gte(selectKey("fst"), selectKey("snd")), JSON.False),
       CompilerTestCase(obj, lessThan(selectKey("fst"), selectKey("snd")), JSON.True),
       CompilerTestCase(obj, greaterThan(selectKey("fst"), selectKey("snd")), JSON.False),
-      CompilerTestCase(obj, multiply("fst", selectKey("snd")), JSON.Str("fstfst")),
-      CompilerTestCase(obj, multiply("fst", 0), JSON.Null)
+      CompilerTestCase(obj, multiply("fst", 0), JSON.Null),
+      CompilerTestCase(obj, multiply("fst", 2), JSON.Str("fstfst"))
     )
   }
 
