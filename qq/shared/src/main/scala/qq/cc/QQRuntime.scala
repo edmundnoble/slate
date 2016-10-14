@@ -135,9 +135,8 @@ object QQRuntime {
   }
 
   def multiplyJsValues(first: JSON, second: JSON): Coeval[JSON] = (first, second) match {
-    case (JSON.Num(f), JSON.Num(s)) => Coeval.now(f * s)
-      Coeval.now(if (s == 0) JSON.Null else JSON.Num(f * s))
-    case (JSON.Str(f), JSON.Num(s)) => Coeval.now(JSON.Str(f + s))
+    case (JSON.Num(f), JSON.Num(s)) => Coeval.now(JSON.Num(f * s))
+    case (JSON.Str(f), JSON.Num(s)) => Coeval.now(if (s == 0) JSON.Null else JSON.Str(f * s.toInt))
     case (f: JSON.Obj, s: JSON.Obj) =>
       val firstMapCoeval = f.toMap.value.mapValues(Coeval.now)
       val secondMapCoeval = s.toMap.value.mapValues(Coeval.now)
