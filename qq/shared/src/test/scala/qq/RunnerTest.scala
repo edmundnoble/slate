@@ -53,7 +53,7 @@ class RunnerTest extends QQAsyncTestSuite {
       ".titles[]",
       List(JSON.Str("lol1"), JSON.Str("wat1")).right
     ),
-    RunnerTestCase(JSON.Num(1), ".[]", QQRuntimeException("Tried to flatten 1 but it's not an array").left)
+    RunnerTestCase(JSON.Num(1), ".[]", QQRuntimeException(TypeError("flatten", "array" -> JSON.Num(1))).left)
   )
 
   val enjectedFilters = RunnerTestCase(
@@ -122,7 +122,11 @@ class RunnerTest extends QQAsyncTestSuite {
     RunnerTestCase(JSON.Arr(JSON.Num(1)), "def f: . + 2; map(f)", List(JSON.Num(3)).right)
 
   val addNullException =
-    RunnerTestCase(JSON.Arr(), ".[0] + .[0]", new QQRuntimeException("can't add null and null").left)
+    RunnerTestCase(JSON.Arr(), ".[0] + .[0]", QQRuntimeException(TypeError(
+      "add",
+      "number | string | array | object" -> JSON.Null,
+      "number | string | array | object" -> JSON.Null
+    )).left)
 
   val silencedException =
     RunnerTestCase(JSON.Arr(), "(.[0] + .[0])?", List().right)
