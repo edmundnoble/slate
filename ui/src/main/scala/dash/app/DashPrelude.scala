@@ -75,8 +75,8 @@ object DashPrelude extends Prelude {
               case e: QQRuntimeException => e.errors.failure[XMLHttpRequest]
             }
           )).sequence
-          asJson <- resp.disjunction.flatMap(_.disjunction).traverse(r => Json.stringToJSON(r.responseText).fold(Task.raiseError(_), Task.now(_)))
-        } yield asJson.validation
+          asJson <- resp.flatten.traverse(r => Json.stringToJSON(r.responseText).fold(Task.raiseError(_), Task.now(_)))
+        } yield asJson
     })
 
   def httpDelete: CompiledDefinition = makeAjaxDefinition("httpDelete", AjaxMethod.DELETE)
