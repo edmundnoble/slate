@@ -79,7 +79,7 @@ object QQRuntime {
         case SelectIndex(index) => biggerStructure match {
           case arr: JSON.Arr =>
             if (arr.value.length <= index) {
-              Task.raiseError(???)
+              ???
             } else {
               setPath(rest, arr.value(index), smallerStructure).map(_.map(_.map(v => JSON.Arr(arr.value.updated(index, v)))))
             }

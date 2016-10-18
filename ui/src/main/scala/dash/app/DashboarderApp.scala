@@ -3,11 +3,11 @@ package app
 
 import dash.DashboardPage.{AppBarState, SearchPageProps}
 import dash.Util._
-import dash.app.ProgramCache.WhatCanGoWrong
+import dash.app.ProgramCache.ErrorGettingCachedProgram
 import dash.models.{AppModel, ExpandableContentModel}
 import dash.views.AppView.AppProps
 import japgolly.scalajs.react.{Addons, ReactComponentM, ReactDOM, TopNode}
-import monix.eval.Task
+import monix.eval.{Coeval, Task}
 import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.observers.Subscriber.Sync
 import monix.reactive.{Observable, OverflowStrategy}
@@ -20,6 +20,7 @@ import qq.data.{ConcreteFilter, JSON, Program}
 import shapeless.ops.coproduct.Unifier
 import qq.util._
 import shapeless.{:+:, Inl, Inr}
+import upickle.Invalid.Data
 
 import scala.concurrent.duration.FiniteDuration
 import scala.scalajs.js
@@ -30,6 +31,7 @@ import scalaz.syntax.either._
 import scalaz.std.list._
 import scalaz.syntax.tag._
 import scalaz.syntax.apply._
+import scalaz.syntax.bind._
 import scalaz.syntax.std.`try`._
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
@@ -97,63 +99,83 @@ object DashboarderApp extends scalajs.js.JSApp {
     )
   }
 
-  def compiledPrograms: List[DashProgram[Task[(QQCompilationException :+: WhatCanGoWrong) \/ CompiledFilter]]] =
+  type ErrorCompilingPrograms = QQCompilationException :+: ErrorGettingCachedProgram
+
+  def compiledPrograms: List[DashProgram[Task[ErrorCompilingPrograms \/ CompiledFilter]]] =
     programs.map(program =>
-      program.map { p =>
-        p.map(s =>
+      program.map { programPrecompiledOrString =>
+        programPrecompiledOrString.fold(e => Task.now(e.right[ErrorGettingCachedProgram]), s =>
           StorageProgram.runRetargetableProgram(DomStorage.Local, "program", ProgramCache.getCachedProgram(s))
-        ).leftMap(e => Task.now(e.right[WhatCanGoWrong]))
-          .merge[Task[WhatCanGoWrong \/ Program[ConcreteFilter]]]
-          .map(_.leftMap(Inr[QQCompilationException, WhatCanGoWrong]).flatMap(
-            QQCompiler.compileProgram(DashPrelude, _).leftMap(Inl[QQCompilationException, WhatCanGoWrong])
-          ))
+        ).map(_.leftMap(Inr[QQCompilationException, ErrorGettingCachedProgram]).flatMap(
+          QQCompiler.compileProgram(DashPrelude, _).leftMap(Inl[QQCompilationException, ErrorGettingCachedProgram])
+        ))
       }
     )
 
-  private def runCompiledPrograms: List[(Int, String, String, Task[ValidationNel[QQRuntimeError, List[JSON]]])] =
+  type ErrorRunningPrograms = QQRuntimeException :+: ErrorCompilingPrograms
+
+  private def runCompiledPrograms: List[(Int, String, String, Task[ErrorRunningPrograms \/ List[JSON]])] =
     compiledPrograms.map {
       case DashProgram(id, title, titleLink, program, input) =>
         (id, title, titleLink,
           program
-            .flatMap(_.leftMap(implicitly[Unifier.Aux[(QQCompilationException :+: WhatCanGoWrong), Throwable]].apply).valueOrThrow)
-            .flatMap(_ (Map.empty)(input)))
-    }(collection.breakOut)
-
-  private def deserializeProgramOutput: List[(Int, String, String, Task[List[ExpandableContentModel]])] = runCompiledPrograms.map {
-    case (id, title, titleLink, program) =>
-      (id, title, titleLink,
-        program.flatMap(
-          _.fold(es => Task.raiseError(QQRuntimeException(es)), Task.now)).flatMap(_.traverse[TaskParallel, ExpandableContentModel] { json =>
-            val upickle = JSON.JSONToUpickleRec.apply(json)
-            Task.delay(ExpandableContentModel.pkl.read(upickle)).materialize.map(
-              _.recoverWith {
-                case ex => Failure(
-                  new Exception("Deserialization error, trying to deserialize " + JSON.render(json), ex)
-                )
+            .map(_.leftMap(Inr[QQRuntimeException, ErrorCompilingPrograms]))
+            .flatMap(_.traverse[Task, ErrorRunningPrograms, ErrorRunningPrograms \/ List[JSON]] { f =>
+              val r = f(Map.empty)(input).materialize.map { e =>
+                e.get.leftMap(exs => Inl[QQRuntimeException, ErrorCompilingPrograms](QQRuntimeException(exs))).disjunction
               }
-            ).dematerialize.parallel
-          }.unwrap
-        ))
+              r
+            }).map(_.flatMap(identity))
+        )
+    }
+
+  type ErrorDeserializingProgramOutput = upickle.Invalid.Data :+: ErrorRunningPrograms
+
+  private def deserializeProgramOutput: List[(Int, String, String, Task[ErrorDeserializingProgramOutput \/ List[ExpandableContentModel]])] = runCompiledPrograms.map {
+    case (id, title, titleLink, program) =>
+      (id, title, titleLink, {
+        val z: Task[ErrorDeserializingProgramOutput \/ List[ExpandableContentModel]] =
+          program.map {
+            (y: ErrorRunningPrograms \/ List[JSON]) =>
+              val x = y.leftMap(Inr[upickle.Invalid.Data, ErrorRunningPrograms]).flatMap {
+                jsons =>
+                  jsons.traverse[ErrorDeserializingProgramOutput \/ ?, ExpandableContentModel] {
+                    json =>
+                      val upickleJson = JSON.JSONToUpickleRec.apply(json)
+                      Coeval.delay(ExpandableContentModel.pkl.read(upickleJson).right).onErrorRecover {
+                        case ex: upickle.Invalid.Data => Inl[upickle.Invalid.Data, ErrorRunningPrograms](ex).left
+                      }.value
+                  }
+              }
+              x
+          }
+        z
+      })
   }
 
   def getContent: Observable[SearchPageProps] =
     raceFold(deserializeProgramOutput.map {
       case (id, title, titleLink, program) =>
-        val errorsCaughtProgram = program.materialize.map { t =>
-          t.failed.foreach {
-            logger.error("error while retrieving programs", _)
-          }
-          AppProps(id, title, titleLink, AppModel(t.toDisjunction))
+        val errorsCaughtProgram = program.map {
+          t =>
+            t.swap
+              .map(implicitly[Unifier.Aux[ErrorDeserializingProgramOutput, Throwable]].apply)
+              .foreach {
+                logger.warn("error while running programs", _)
+              }
+            AppProps(id, title, titleLink, AppModel(t))
         }
         errorsCaughtProgram
     }(collection.breakOut))(
-      runCompiledPrograms.map(t => AppProps(t._1, t._2, t._3, AppModel(Nil.right))).sortBy(_.title)
-    )((l, ap) => (ap :: l.filterNot(_.title == ap.title)).sortBy(_.title))
-      .map(SearchPageProps(_))
+      runCompiledPrograms.map(t => AppProps(t._1, t._2, t._3, AppModel(Nil.right)))
+    )((l, ap) => ap :: l.filterNot(_.title == ap.title))
+      .map(appProps => SearchPageProps(appProps.sortBy(_.title)))
 
   def render(container: Element, wheelPosY: Observable[Double], content: SearchPageProps)(
     implicit scheduler: Scheduler): Task[ReactComponentM[SearchPageProps, Unit, Unit, TopNode]] = {
+
     import dash.views._
+
     val searchPage =
       DashboardPage
         .makeDashboardPage(wheelPosY.map(AppBarState(_)))
@@ -163,16 +185,19 @@ object DashboarderApp extends scalajs.js.JSApp {
       Seq(Styles, ExpandableContentView.Styles, ErrorView.Styles, TitledContentView.Styles, AppView.Styles).map(_.renderA(renderer)).mkString("\n")
     val aggregateStyles = PlatformExports.createStyleElement(addStyles)
     dom.document.head appendChild aggregateStyles
-    Task.create { (_, cb) =>
-      ReactDOM.render(searchPage, container,
-        js.ThisFunction.fromFunction1((t: ReactComponentM[SearchPageProps, Unit, Unit, TopNode]) => cb.apply(Success(t))))
-      Cancelable.empty
+    Task.create {
+      (_, cb) =>
+        ReactDOM.render(searchPage, container,
+          js.ThisFunction.fromFunction1((t: ReactComponentM[SearchPageProps, Unit, Unit, TopNode]) => cb.apply(Success(t))))
+        Cancelable.empty
     }
   }
 
   @JSExport
   def main(): Unit = {
+
     import monix.execution.Scheduler.Implicits.global
+
     if (!js.isUndefined(Addons.Perf)) {
       logger.info("Starting perf")
       Addons.Perf.start()
@@ -180,8 +205,9 @@ object DashboarderApp extends scalajs.js.JSApp {
     }
     val container =
       dom.document.body.children.namedItem("container")
-    val _ = getContent.flatMap { props =>
-      Observable.fromTask(render(container, Observable.never, props))
+    val _ = getContent.flatMap {
+      props =>
+        Observable.fromTask(render(container, Observable.never, props))
     }.subscribe()
     if (!js.isUndefined(Addons.Perf)) {
       logger.info("Stopping perf")

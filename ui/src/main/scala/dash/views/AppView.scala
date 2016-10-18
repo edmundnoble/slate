@@ -68,8 +68,7 @@ object AppView {
       Reusability.byRefOr_==
   }
 
-  def builder(implicit sch: Scheduler
-             ): ReactComponentB[AppProps, AppState, Unit, TopNode] = {
+  def builder(implicit sch: Scheduler): ReactComponentB[AppProps, AppState, Unit, TopNode] = {
     import japgolly.scalajs.react.vdom.all._
 
     import scalacss.ScalaCssReact._
@@ -86,7 +85,7 @@ object AppView {
           div(Styles.content,
             Styles.animationGroup(
               props.model.content.fold[List[ReactNode]]({ ex =>
-                ErrorView.builder.build(ex) :: Nil
+                ErrorView.builder(ex) :: Nil
               }, _.map { model =>
                 ExpandableContentView.builder.build(ExpandableContentProps(model, initiallyExpanded = false))
               }): _*

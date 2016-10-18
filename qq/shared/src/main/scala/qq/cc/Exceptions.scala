@@ -20,7 +20,7 @@ case class WrongNumParams(name: String, correct: Int, you: Int) extends QQCompil
 )
 
 case class QQRuntimeException(errors: NonEmptyList[QQRuntimeError])
-  extends RuntimeException("QQ errors: \n" + errors.map(_.message).list.toList.mkString("\n")) {
+  extends RuntimeException(errors.map(_.message).list.toList.mkString("\n")) {
   override def equals(obj: scala.Any): Boolean = obj match {
     case other: QQRuntimeException =>
       errors.map(_.message) == other.errors.map(_.message)

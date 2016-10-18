@@ -28,16 +28,16 @@ object ProgramCache {
   case class InvalidBase64(str: String) extends Exception(str + " is not base64")
   case class InvalidBytecode(fail: scodec.Attempt.Failure) extends Exception("error decoding program from cache: " + fail.cause)
 
-  type WhatCanGoWrong = ParseError :+: InvalidBase64 :+: InvalidBytecode :+: CNil
+  type ErrorGettingCachedProgram = ParseError :+: InvalidBase64 :+: InvalidBytecode :+: CNil
 
   // cache optimized, parsed programs using their hashcode as a key
   // store them as base64-encoded bytecode
-  def getCachedProgram(qqProgram: String)(implicit rec: RecursionEngine): Retargetable[StorageProgram, WhatCanGoWrong \/ Program[ConcreteFilter]] = {
+  def getCachedProgram(qqProgram: String)(implicit rec: RecursionEngine): Retargetable[StorageProgram, ErrorGettingCachedProgram \/ Program[ConcreteFilter]] = {
 
     import StorageProgram._
     import qq.protocol.FilterProtocol._
 
-    val injectError = inj[WhatCanGoWrong]
+    val injectError = inj[ErrorGettingCachedProgram]
 
     for {
       hash <- ReaderT.ask[StorageProgram, String].map(_ + " " + qqProgram.hashCode.toString)
@@ -56,7 +56,7 @@ object ProgramCache {
           asBase64.fold(
             _.left.pure[Retargetable[StorageProgram, ?]],
             (s: String) =>
-              ReaderT.kleisli[StorageProgram, String, WhatCanGoWrong \/ Program[ConcreteFilter]](_ => update(hash, s).map(_ => preparedProgram))
+              ReaderT.kleisli[StorageProgram, String, ErrorGettingCachedProgram \/ Program[ConcreteFilter]](_ => update(hash, s).map(_ => preparedProgram))
           )
         case Some(encodedProgram) =>
           val encodedProgramBits =

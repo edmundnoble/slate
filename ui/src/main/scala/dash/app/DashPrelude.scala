@@ -1,9 +1,10 @@
 package dash
 package app
 
-import dash.ajax.{Ajax, AjaxMethod}
+import dash.ajax.{Ajax, AjaxException, AjaxMethod}
 import monix.eval.{Coeval, Task}
 import monix.scalaz._
+import org.scalajs.dom.XMLHttpRequest
 import qq.Json
 import qq.Platform.Rec._
 import qq.cc.{CompiledFilter, OrCompilationError, Prelude, QQRuntimeError, QQRuntimeException}
@@ -54,7 +55,6 @@ object DashPrelude extends Prelude {
           case JSON.Str(s) => s.successNel
           case k => typeError("ajax", "string" -> k).failureNel
         }
-        println(urlValidated)
         val queryParamsValidated: ValidationNel[QQRuntimeError, Map[String, Any]] = queryParamsRaw match {
           case o: JSON.Obj => o.toMap.value.mapValues(Json.JSONToJsRec(_)).successNel
           case k => typeError("ajax", "object" -> k).failureNel
@@ -71,10 +71,12 @@ object DashPrelude extends Prelude {
         }
         for {
           resp <- ((urlValidated |@| dataValidated |@| queryParamsValidated |@| headersValidated) (
-            Ajax(ajaxMethod, _, _, _, _, withCredentials = false, "").onErrorRestart(1)
+            Ajax(ajaxMethod, _, _, _, _, withCredentials = false, "").onErrorRestart(1).map(_.successNel[QQRuntimeError]).onErrorHandle[ValidationNel[QQRuntimeError, XMLHttpRequest]] {
+              case e: QQRuntimeException => e.errors.failure[XMLHttpRequest]
+            }
           )).sequence
-          asJson <- resp.traverse(r => Json.stringToJSON(r.responseText).fold(Task.raiseError(_), Task.now))
-        } yield asJson
+          asJson <- resp.disjunction.flatMap(_.disjunction).traverse(r => Json.stringToJSON(r.responseText).fold(Task.raiseError(_), Task.now(_)))
+        } yield asJson.validation
     })
 
   def httpDelete: CompiledDefinition = makeAjaxDefinition("httpDelete", AjaxMethod.DELETE)
