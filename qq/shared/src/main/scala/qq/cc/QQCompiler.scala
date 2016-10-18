@@ -9,9 +9,10 @@ import qq.util.Recursion.RecursionEngine
 import qq.util._
 
 import scala.language.higherKinds
-import scalaz.\/
+import scalaz.{NonEmptyList, ValidationNel, \/}
 import scalaz.std.list._
 import scalaz.syntax.either._
+import scalaz.syntax.validation._
 import scalaz.syntax.monoid._
 import scalaz.syntax.std.option._
 import scalaz.syntax.traverse._
@@ -46,10 +47,14 @@ object QQCompiler {
         .map(QQRuntime.makePathComponentGetter)
         .nelFoldLeft1(CompiledProgram.id)(CompiledProgram.composePrograms)
     case PathSet(set) => (j: JSON) =>
-      set(j).flatMap {
-        _.traverseM[Task, JSON] {
+      set(j).flatMap { a =>
+        a.traverse(_.traverse {
           QQRuntime.setPath(components, j, _)
-        }
+        })
+      }.map { a =>
+        val x = a.map(_.traverse[ValidationNel[QQRuntimeError, ?], List[JSON]](identity))
+        val x2 = x.map(_.map(_.flatten))
+        x2.flatten
       }
     case PathModify(modify) =>
       components
@@ -60,15 +65,15 @@ object QQCompiler {
   def compileStep(definitions: IndexedSeq[CompiledDefinition],
                   filter: FilterComponent[CompiledFilter]): OrCompilationError[CompiledFilter] = filter match {
     case Dereference(name) =>
-      ((bindings: VarBindings) =>
-        bindings.get(name).cata(
-          p => (_: JSON) => Task.now(p.value :: Nil),
-          (_: JSON) => Task.raiseError(QQRuntimeException(NoSuchVariable(name)))
-        )).right
+      ((bindings: VarBindings) => (_: JSON) =>
+        Task.now(bindings.get(name).cata(
+          p => (p.value :: Nil).success,
+          NoSuchVariable(name).failure
+        ).toValidationNel[QQRuntimeError, List[JSON]])).right
     case ConstNumber(num) => QQRuntime.constNumber(num).right
     case ConstString(str) => QQRuntime.constString(str).right
     case ConstBoolean(bool) => QQRuntime.constBoolean(bool).right
-    case FilterNot() => CompiledFilter.func { j => Task.coeval(QQRuntime.not(j).map(_ :: Nil)) }.right
+    case FilterNot() => CompiledFilter.func { j => Task.now(QQRuntime.not(j).map(_ :: Nil)) }.right
     case PathOperation(components, operationF) => ((_: VarBindings) => evaluatePath(components, operationF.map(_ (Map.empty)))).right
     case ComposeFilters(f, s) => CompiledFilter.composeFilters(f, s).right
     case CallFilter(filterIdentifier, params) =>
@@ -87,12 +92,14 @@ object QQCompiler {
     case SilenceExceptions(f) =>
       ((varBindings: VarBindings) =>
         (jsv: JSON) =>
-          f(varBindings)(jsv).onErrorRecover { case _: QQRuntimeException => Nil }).right[QQCompilationException]
+          f(varBindings)(jsv).map(_ ||| Nil.successNel[QQRuntimeError])).right
     case EnsequenceFilters(first, second) => CompiledFilter.ensequenceCompiledFilters(first, second).right
     case EnjectFilters(obj) => QQRuntime.enjectFilter(obj).right
     case FilterMath(first, second, op) =>
       val operatorFunction = funFromMathOperator(op)
-      val converted = (j1: JSON, j2: JSON) => Task.coeval(operatorFunction(j1, j2))
+      val converted = (j1: JSON, j2: JSON) => Task.now(operatorFunction(j1, j2))
+      // this is incorrect behavior according to JQ and intuitively.
+      // TODO: replace with standard effect distribution
       CompiledFilter.zipFiltersWith(first, second, converted).right
   }
 

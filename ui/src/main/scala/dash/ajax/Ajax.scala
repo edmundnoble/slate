@@ -15,6 +15,7 @@ import scala.language.implicitConversions
 import scala.scalajs.js
 import scala.scalajs.js.typedarray.TypedArrayBufferOps._
 import scala.scalajs.js.typedarray._
+import scalaz.NonEmptyList
 
 /**
   * Thrown when `Ajax.get` or `Ajax.post` receives a non-20X response code.
@@ -114,7 +115,7 @@ object Ajax {
           if ((req.status >= 200 && req.status < 300) || req.status == 304)
             callback.onSuccess(req)
           else
-            callback.onError(QQRuntimeException(AjaxException(req, url)))
+            callback.onError(QQRuntimeException(NonEmptyList(AjaxException(req, url))))
         }
       }
 

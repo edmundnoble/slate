@@ -3,15 +3,14 @@ package qq
 import monix.eval.{Coeval, Task}
 import qq.data.{JSON, VarBinding}
 
-import scalaz.\/
+import scalaz.{ValidationNel, \/}
 
 package object cc {
 
   type VarBindings = Map[String, VarBinding]
   type CompiledFilter = VarBindings => CompiledProgram
-  type CompiledMathOperator = (JSON, JSON) => Coeval[JSON]
-  type QQEff[J] = Task[List[J]]
-  type CompiledProgram = JSON => QQEff[JSON]
+  type CompiledMathOperator = (JSON, JSON) => ValidationNel[QQRuntimeError, JSON]
+  type CompiledProgram = JSON => Task[ValidationNel[QQRuntimeError, List[JSON]]]
 
   type OrCompilationError[T] = QQCompilationException \/ T
 

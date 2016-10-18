@@ -14,11 +14,12 @@ import shapeless.{:+:, CNil, Coproduct}
 import scalaz.{ReaderT, \/}
 import scalaz.syntax.either._
 import scalaz.syntax.applicative._
+import scalaz.syntax.std.option._
 import scalaz.std.list._
 
 object ProgramCache {
 
-  def prepareProgram(program: String)(implicit rec: RecursionEngine): \/[Parsed.Failure, Program[Fix[FilterComponent]]] = {
+  def prepareProgram(program: String)(implicit rec: RecursionEngine): Parsed.Failure \/ Program[Fix[FilterComponent]] = {
     val parsedQQProgram = Parser.program.parse(program).toDisjunction.map(_.value)
     val optimizedProgram = parsedQQProgram.map(LocalOptimizer.optimizeProgram[Fix])
     optimizedProgram
@@ -36,34 +37,36 @@ object ProgramCache {
     import StorageProgram._
     import qq.protocol.FilterProtocol._
 
+    val injectError = inj[WhatCanGoWrong]
+
     for {
       hash <- ReaderT.ask[StorageProgram, String].map(_ + " " + qqProgram.hashCode.toString)
       programInStorage <- ReaderT.kleisli[StorageProgram, String, Option[String]](_ => get(hash))
       decodedOptimizedProgram <- programInStorage match {
         case None =>
           val preparedProgram = prepareProgram(qqProgram)
-            .leftMap(inj[WhatCanGoWrong, ParseError] _ compose ParseError.apply)
+            .leftMap(e => injectError(ParseError(e)))
           val encodedProgram =
             preparedProgram.flatMap(
               programCodec
                 .encode(_).toDisjunction
-                .bimap(inj[WhatCanGoWrong, InvalidBytecode] _ compose InvalidBytecode, _.value)
+                .bimap(e => injectError(InvalidBytecode(e)), _.value)
             )
           val asBase64 = encodedProgram.map(_.toBase64)
           asBase64.fold(
-            _.left[Program[ConcreteFilter]].pure[Retargetable[StorageProgram, ?]],
+            _.left.pure[Retargetable[StorageProgram, ?]],
             (s: String) =>
               ReaderT.kleisli[StorageProgram, String, WhatCanGoWrong \/ Program[ConcreteFilter]](_ => update(hash, s).map(_ => preparedProgram))
           )
         case Some(encodedProgram) =>
           val encodedProgramBits =
             BitVector.fromBase64(encodedProgram)
-              .fold(inj[WhatCanGoWrong, InvalidBase64](InvalidBase64(encodedProgram)).left[BitVector])(_.right)
+              .toRightDisjunction(injectError(InvalidBase64(encodedProgram)))
           val decodedProgram =
             encodedProgramBits.flatMap(
               programCodec
                 .decode(_).toDisjunction
-                .bimap(inj[WhatCanGoWrong, InvalidBytecode] _ compose InvalidBytecode, _.value.value)
+                .bimap(e => injectError(InvalidBytecode(e)), _.value.value)
             )
           decodedProgram.pure[Retargetable[StorageProgram, ?]]
       }

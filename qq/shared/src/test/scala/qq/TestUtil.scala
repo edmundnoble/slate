@@ -7,7 +7,7 @@ import qq.util.Recursion
 import qq.util.Recursion.RecursionEngine
 
 import scala.language.implicitConversions
-import scalaz.\/
+import scalaz.{Validation, \/}
 
 trait TestUtil {
 
@@ -31,6 +31,9 @@ trait TestUtil {
   }
 
   implicit def convertDisjunctionToValuable[E, A](dis: E \/ A)(implicit pos: org.scalactic.source.Position): Valuable[A] =
+    new Valuable(dis.toOption, pos)
+
+  implicit def convertValidationToValuable[E, A](dis: Validation[E, A])(implicit pos: org.scalactic.source.Position): Valuable[A] =
     new Valuable(dis.toOption, pos)
 
   implicit val recEngine: RecursionEngine =

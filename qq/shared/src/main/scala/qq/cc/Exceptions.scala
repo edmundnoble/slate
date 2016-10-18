@@ -2,8 +2,10 @@ package qq
 package cc
 
 import qq.data.JSON
+import scalaz.syntax.foldable._
+import scalaz.std.string._
 
-import scalaz.Semigroup
+import scalaz.{NonEmptyList, Semigroup}
 
 class QQCompilationException(message: String) extends RuntimeException(message)
 
@@ -17,11 +19,11 @@ case class WrongNumParams(name: String, correct: Int, you: Int) extends QQCompil
   "Wrong number of params for filter " + name + ": passed " + you.toString + ", wanted " + correct.toString
 )
 
-case class QQRuntimeException(errors: QQRuntimeError*)
-  extends RuntimeException("QQ errors: \n" + errors.iterator.map(_.message).mkString("\n")) {
+case class QQRuntimeException(errors: NonEmptyList[QQRuntimeError])
+  extends RuntimeException("QQ errors: \n" + errors.map(_.message).list.toList.mkString("\n")) {
   override def equals(obj: scala.Any): Boolean = obj match {
     case other: QQRuntimeException =>
-      (errors, other.errors).zipped.forall(_.message == _.message)
+      errors.map(_.message) == other.errors.map(_.message)
     case _ => false
   }
 }
@@ -29,8 +31,15 @@ case class QQRuntimeException(errors: QQRuntimeError*)
 object QQRuntimeException {
   implicit def qqruntimeExceptionSemigroup: Semigroup[QQRuntimeException] = new Semigroup[QQRuntimeException] {
     override def append(f1: QQRuntimeException, f2: => QQRuntimeException): QQRuntimeException =
-      QQRuntimeException(f1.errors ++ f2.errors: _*)
+      QQRuntimeException(f1.errors append f2.errors)
   }
+
+  def typeError(operation: String, typesAndValues: (String, JSON)*): QQRuntimeError =
+    TypeError(operation, typesAndValues: _*)
+  def notARegex(asStr: String): QQRuntimeError =
+    NotARegex(asStr)
+  def noSuchVariable(variableName: String): QQRuntimeError =
+    NoSuchVariable(variableName)
 }
 
 abstract class QQRuntimeError(val message: String)

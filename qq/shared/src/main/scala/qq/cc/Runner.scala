@@ -8,7 +8,7 @@ import qq.data.JSON
 import qq.util.Recursion.RecursionEngine
 import qq.util._
 
-import scalaz.\/
+import scalaz.{ValidationNel, \/}
 import scalaz.std.list._
 import scalaz.syntax.either._
 import scalaz.syntax.tag._
@@ -28,10 +28,13 @@ object Runner {
   }
 
   // parse, compile, and run
-  def run(qqProgram: String)(input: List[JSON])(implicit rec: RecursionEngine): Task[List[JSON]] = {
-    parseAndCompile(qqProgram).fold(
-      ex => Task.raiseError(ex.merge[Exception]),
-      f => input.traverseM[TaskParallel, JSON](f(Map.empty)(_).parallel).unwrap
+  def run(qqProgram: String)(input: List[JSON])(implicit rec: RecursionEngine): (QQCompilationException \/ ParseError) \/ Task[ValidationNel[QQRuntimeError, List[JSON]]] = {
+    parseAndCompile(qqProgram).map(
+      f => {
+        val r = Task.gather(input.map(f(Map.empty)(_)))
+        val x = r.map(_.traverse[ValidationNel[QQRuntimeError, ?], List[JSON]](identity))
+        x.map(_.map(_.flatten))
+      }
     )
   }
 

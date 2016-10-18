@@ -2,7 +2,7 @@ package qq
 package util
 
 import monix.eval.Task
-import qq.cc.{CompiledFilter, Runner}
+import qq.cc.{CompiledFilter, QQRuntimeException, Runner}
 import qq.data.JSON
 import upickle.json
 import qq.Platform.Rec._
@@ -44,7 +44,7 @@ object Interpreter {
     Interpreter("program " + source + ", input:", {
       case input =>
         val inputJs = JSON.upickleToJSONRec(json read input)
-        val outputTask = program(Map.empty)(inputJs)
+        val outputTask = program(Map.empty)(inputJs).flatMap(_.fold(es => Task.raiseError(QQRuntimeException(es)), Task.now))
         outputTask.map { outputs =>
           (outputs.map(JSON.render).mkString(", "), programInterpreterOf(source, program))
         }.right
@@ -64,7 +64,7 @@ object Interpreter {
             val () = Console.err.println("Error: " + err.merge[Exception].getMessage)
             ("", programInterpreter)
           },
-          compiledFilter => compiledFilter(Map.empty)(input).map { outputs =>
+          compiledFilter => compiledFilter(Map.empty)(input).flatMap(_.fold(es => Task.raiseError(QQRuntimeException(es)), Task.now)).map { outputs =>
             (outputs.map(JSON.render).mkString(", "), inputInterpreterOf(source, input))
           }
         ).right

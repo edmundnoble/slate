@@ -7,14 +7,16 @@ import scodec.bits.BitVector
 import shapeless.Lazy
 
 import scala.language.{higherKinds, implicitConversions}
+import scalaz.Leibniz.===
 import scalaz.Tags.Parallel
 import scalaz.syntax.either._
 import scalaz.syntax.tag._
-import scalaz.{@@, Monad, \/}
+import scalaz.{@@, Leibniz, Monad, Validation, \/}
 
 trait UtilImplicits {
 
   implicit def taskParallelOpsConv[A](task: Task[A]): taskParallelOps[A] = new taskParallelOps(task)
+  implicit def validationFlattenOpsConv[E, A](va: Validation[E, A]): validationFlattenOps[E, A] = new validationFlattenOps(va)
 
   // Monad with ap inconsistent with bind, for parallel operations on Tasks
   // (used for task-parallelism in QQ's compiler)
@@ -75,4 +77,11 @@ trait UtilImplicits {
 
 final class taskParallelOps[A](val task: Task[A]) extends AnyVal {
   def parallel: Task[A] @@ Parallel = scalaz.Tags.Parallel(task)
+}
+
+final class validationFlattenOps[E, A](val va: Validation[E, A]) extends AnyVal {
+  def flatten[A1](implicit ev: Validation[E, A1] === A): Validation[E, A1] = va match {
+    case f:scalaz.Failure[E] => f
+    case scalaz.Success(v) => Leibniz.symm[Nothing, Any, Validation[E, A1], A](ev)(v)
+  }
 }

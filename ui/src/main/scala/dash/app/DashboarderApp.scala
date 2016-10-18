@@ -15,11 +15,11 @@ import monix.scalaz._
 import org.scalajs.dom
 import org.scalajs.dom.raw._
 import qq.Platform.Rec._
-import qq.cc.{CompiledFilter, QQRuntime, QQCompilationException, QQCompiler}
+import qq.cc.{CompiledFilter, QQCompilationException, QQCompiler, QQRuntimeError, QQRuntimeException}
 import qq.data.{ConcreteFilter, JSON, Program}
 import shapeless.ops.coproduct.Unifier
 import qq.util._
-import shapeless.{:+:, Coproduct, Inl, Inr}
+import shapeless.{:+:, Inl, Inr}
 
 import scala.concurrent.duration.FiniteDuration
 import scala.scalajs.js
@@ -33,7 +33,7 @@ import scalaz.syntax.apply._
 import scalaz.syntax.std.`try`._
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
-import scalaz.{Functor, \/}
+import scalaz.{Functor, ValidationNel, \/}
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
@@ -110,7 +110,7 @@ object DashboarderApp extends scalajs.js.JSApp {
       }
     )
 
-  private def runCompiledPrograms: List[(Int, String, String, Task[List[JSON]])] =
+  private def runCompiledPrograms: List[(Int, String, String, Task[ValidationNel[QQRuntimeError, List[JSON]]])] =
     compiledPrograms.map {
       case DashProgram(id, title, titleLink, program, input) =>
         (id, title, titleLink,
@@ -123,7 +123,7 @@ object DashboarderApp extends scalajs.js.JSApp {
     case (id, title, titleLink, program) =>
       (id, title, titleLink,
         program.flatMap(
-          _.traverse[TaskParallel, ExpandableContentModel] { json =>
+          _.fold(es => Task.raiseError(QQRuntimeException(es)), Task.now)).flatMap(_.traverse[TaskParallel, ExpandableContentModel] { json =>
             val upickle = JSON.JSONToUpickleRec.apply(json)
             Task.delay(ExpandableContentModel.pkl.read(upickle)).materialize.map(
               _.recoverWith {

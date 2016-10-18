@@ -7,6 +7,7 @@ import qq.util.Recursion.RecursionEngine
 
 import scalaz.syntax.monoid._
 import scalaz.syntax.either._
+import scalaz.syntax.validation._
 
 object SharedPreludes {
 
@@ -17,7 +18,7 @@ object SharedPreludes {
         CompiledDefinition.noParamDefinition("print",
           CompiledFilter.func { (jsv: JSON) =>
             println("debug: " + QQRuntime.print(jsv))
-            Task.now(jsv :: Nil)
+            Task.now((jsv :: Nil).successNel)
           }
         )
 
