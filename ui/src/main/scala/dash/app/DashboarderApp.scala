@@ -120,11 +120,10 @@ object DashboarderApp extends scalajs.js.JSApp {
         (id, title, titleLink,
           program
             .map(_.leftMap(Inr[QQRuntimeException, ErrorCompilingPrograms]))
-            .flatMap(_.traverse[Task, ErrorRunningPrograms, ErrorRunningPrograms \/ List[JSON]] { f =>
-              val r = f(Map.empty)(input).materialize.map { e =>
-                e.get.leftMap(exs => Inl[QQRuntimeException, ErrorCompilingPrograms](QQRuntimeException(exs))).disjunction
+            .flatMap(_.traverse[Task, ErrorRunningPrograms, ErrorRunningPrograms \/ List[JSON]] {
+              _ (Map.empty)(input).map {
+                _.leftMap(exs => Inl[QQRuntimeException, ErrorCompilingPrograms](QQRuntimeException(exs))).disjunction
               }
-              r
             }).map(_.flatMap(identity))
         )
     }
