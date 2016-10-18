@@ -3,13 +3,12 @@ package app
 
 import matryoshka.Fix
 import qq.cc._
-import qq.data.{ConcreteFilter, FilterComponent, JSON, Program}
+import qq.data.{ConcreteFilter, FilterComponent, Program}
 import scodec.bits.BitVector
 import Util._
 import fastparse.core.{ParseError, Parsed}
 import qq.util.Recursion.RecursionEngine
-import shapeless.ops.coproduct.Inject
-import shapeless.{:+:, CNil, Coproduct}
+import shapeless.{:+:, CNil}
 
 import scalaz.{ReaderT, \/}
 import scalaz.syntax.either._
@@ -32,16 +31,16 @@ object ProgramCache {
 
   // cache optimized, parsed programs using their hashcode as a key
   // store them as base64-encoded bytecode
-  def getCachedProgram(qqProgram: String)(implicit rec: RecursionEngine): Retargetable[StorageProgram, ErrorGettingCachedProgram \/ Program[ConcreteFilter]] = {
+  def getCachedProgram(qqProgram: String)(implicit rec: RecursionEngine): StorageProgram[ErrorGettingCachedProgram \/ Program[ConcreteFilter]] = {
 
     import StorageProgram._
     import qq.protocol.FilterProtocol._
 
     val injectError = inj[ErrorGettingCachedProgram]
+    val hash = qqProgram.hashCode.toString
 
     for {
-      hash <- ReaderT.ask[StorageProgram, String].map(_ + " " + qqProgram.hashCode.toString)
-      programInStorage <- ReaderT.kleisli[StorageProgram, String, Option[String]](_ => get(hash))
+      programInStorage <- get(hash)
       decodedOptimizedProgram <- programInStorage match {
         case None =>
           val preparedProgram = prepareProgram(qqProgram)
@@ -54,9 +53,9 @@ object ProgramCache {
             )
           val asBase64 = encodedProgram.map(_.toBase64)
           asBase64.fold(
-            _.left.pure[Retargetable[StorageProgram, ?]],
+            _.left.pure[StorageProgram],
             (s: String) =>
-              ReaderT.kleisli[StorageProgram, String, ErrorGettingCachedProgram \/ Program[ConcreteFilter]](_ => update(hash, s).map(_ => preparedProgram))
+              update(hash, s).map(_ => preparedProgram)
           )
         case Some(encodedProgram) =>
           val encodedProgramBits =
@@ -68,7 +67,7 @@ object ProgramCache {
                 .decode(_).toDisjunction
                 .bimap(e => injectError(InvalidBytecode(e)), _.value.value)
             )
-          decodedProgram.pure[Retargetable[StorageProgram, ?]]
+          decodedProgram.pure[StorageProgram]
       }
     } yield decodedOptimizedProgram
   }

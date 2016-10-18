@@ -2,6 +2,7 @@ package dash
 package app
 
 import dash.DashboardPage.{AppBarState, SearchPageProps}
+import dash.StorageAction.StorageActionF
 import dash.Util._
 import dash.app.ProgramCache.ErrorGettingCachedProgram
 import dash.models.{AppModel, ExpandableContentModel}
@@ -35,7 +36,7 @@ import scalaz.syntax.bind._
 import scalaz.syntax.std.`try`._
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
-import scalaz.{Functor, ValidationNel, \/}
+import scalaz.{Coyoneda, Functor, ReaderT, ValidationNel, \/, ~>}
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
@@ -105,7 +106,12 @@ object DashboarderApp extends scalajs.js.JSApp {
     programs.map(program =>
       program.map { programPrecompiledOrString =>
         programPrecompiledOrString.fold(e => Task.now(e.right[ErrorGettingCachedProgram]), s =>
-          StorageProgram.runRetargetableProgram(DomStorage.Local, "program", ProgramCache.getCachedProgram(s))
+          StorageProgram.runRetargetableProgram(DomStorage.Local, "program",
+            ProgramCache.getCachedProgram(s).mapSuspension(new (Coyoneda[StorageAction, ?] ~> Retargetable[Coyoneda[StorageAction, ?], ?]) {
+
+//              Coyoneda.liftT[StorageAction, ReaderT[StorageAction, String, ?]](StorageProgram.retargetNt)
+              override def apply[A](fa: Coyoneda[StorageAction, A]): Retargetable[Coyoneda[StorageAction, ?], A] = StorageProgram.retargetNt(" ").apply(fa)
+            }))
         ).map(_.leftMap(Inr[QQCompilationException, ErrorGettingCachedProgram]).flatMap(
           QQCompiler.compileProgram(DashPrelude, _).leftMap(Inl[QQCompilationException, ErrorGettingCachedProgram])
         ))

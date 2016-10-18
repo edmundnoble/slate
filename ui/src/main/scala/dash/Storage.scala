@@ -4,7 +4,7 @@ import monix.eval.Task
 import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
 
 import scalaz.std.string._
-import scalaz.{==>>, Applicative, BindRec, Coyoneda, ReaderT, State, WriterT, ~>}
+import scalaz.{==>>, Applicative, BindRec, Coyoneda, Free, Functor, ReaderT, State, WriterT, ~>}
 
 // Operations on a Storage with F[_] effects
 // To abstract over storage that has different effects performed by its operations
@@ -80,7 +80,7 @@ object StorageProgram {
       override def apply[Y](fa: StorageAction[Y]): F[Y] = fa.run(storage)
     })
 
-  @inline def logProgram: StorageAction ~> WriterT[StorageActionF, Vector[String], ?] =
+  @inline def logNt: StorageAction ~> WriterT[StorageActionF, Vector[String], ?] =
     new (StorageAction ~> WriterT[StorageActionF, Vector[String], ?]) {
       override def apply[Y](fa: StorageAction[Y]): WriterT[StorageActionF, Vector[String], Y] = {
         val keys = fa match {
@@ -92,22 +92,29 @@ object StorageProgram {
       }
     }
 
-  @inline def retargetProgram: StorageAction ~> ReaderT[StorageAction, String, ?] =
-    new (StorageAction ~> ReaderT[StorageAction, String, ?]) {
-      override def apply[Y](fa: StorageAction[Y]): ReaderT[StorageAction, String, Y] = {
-        ReaderT.kleisli[StorageAction, String, Y]((prefix: String) => fa match {
+  @inline def retargetNt(delim: String): StorageActionF ~> Retargetable[StorageActionF, ?] =
+    new (StorageActionF ~> Retargetable[StorageActionF, ?]) {
+      override def apply[Y](fa: StorageActionF[Y]): Retargetable[StorageActionF, Y] = {
+        ReaderT.kleisli[StorageActionF, String, Y]((prefix: String) => Coyoneda[StorageAction, fa.I, Y](fa.fi.asInstanceOf[StorageAction[Y]] match {
           // TODO: clean up with access to SI-9760 fix
-          case StorageAction.Get(k) => StorageAction.Get(prefix + " " + k).asInstanceOf[StorageAction[Y]]
-          case StorageAction.Update(k, v) => StorageAction.Update(prefix + " " + k, v).asInstanceOf[StorageAction[Y]]
-          case StorageAction.Remove(k) => StorageAction.Remove(prefix + " " + k).asInstanceOf[StorageAction[Y]]
-        })
+          case StorageAction.Get(k) => StorageAction.Get(prefix + delim + k).asInstanceOf[StorageAction[fa.I]]
+          case StorageAction.Update(k, v) => StorageAction.Update(prefix + delim + k, v).asInstanceOf[StorageAction[fa.I]]
+          case StorageAction.Remove(k) => StorageAction.Remove(prefix + delim + k).asInstanceOf[StorageAction[fa.I]]
+        })(fa.k))
       }
     }
 
-  @inline def runRetargetableProgram[F[_] : Applicative : BindRec, A](storage: Storage[F], index: String, program: Retargetable[StorageProgram, A]): F[A] =
-    foldMapFCRec(program.run(index), new (StorageAction ~> F) {
-      override def apply[Y](fa: StorageAction[Y]): F[Y] = fa.run(storage)
+  implicit def retargetableFunctor[F[_] : Functor] = new Functor[Retargetable[F, ?]] {
+    override def map[A, B](fa: Retargetable[F, A])(f: (A) => B): Retargetable[F, B] = fa.map(f)
+  }
+
+  @inline def runRetargetableProgram[F[_] : Applicative : BindRec, A](storage: Storage[F], index: String, program: Free[Retargetable[Coyoneda[StorageAction, ?], ?], A]): F[A] = {
+    val ran = program.mapSuspension(new (Retargetable[Coyoneda[StorageAction, ?], ?] ~> Coyoneda[StorageAction, ?]) {
+      override def apply[Y](fa: Retargetable[Coyoneda[dash.StorageAction, ?], Y]): Coyoneda[StorageAction, Y] =
+        fa.run(index)
     })
+    runProgram(storage, ran)
+  }
 }
 
 // Implementation for dom.ext.Storage values
@@ -120,11 +127,9 @@ sealed class DomStorage(underlying: SStorage) extends Storage[Task] {
 }
 
 object DomStorage {
-
   case object Local extends DomStorage(LocalStorage)
 
   case object Session extends DomStorage(SessionStorage)
-
 }
 
 // Implementation for pure maps
