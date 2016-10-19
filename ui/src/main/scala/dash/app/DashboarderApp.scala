@@ -151,17 +151,10 @@ object DashboarderApp extends scalajs.js.JSApp {
   def render(container: Element, content: SearchPageProps)(
     implicit scheduler: Scheduler): Task[ReactComponentM[SearchPageProps, Unit, Unit, TopNode]] = {
 
-    import dash.views._
-
     val searchPage =
       DashboardPage
         .makeDashboardPage
         .build(content)
-    val renderer = new StringRenderer.Raw(StringRenderer.formatTiny)
-    val addStyles =
-      Seq(Styles, ExpandableContentView.Styles, ErrorView.Styles, TitledContentView.Styles, AppView.Styles).map(_.renderA(renderer)).mkString("\n")
-    val aggregateStyles = PlatformExports.createStyleElement(addStyles)
-    dom.document.head appendChild aggregateStyles
     Task.create {
       (_, cb) =>
         ReactDOM.render(searchPage, container,
@@ -182,6 +175,7 @@ object DashboarderApp extends scalajs.js.JSApp {
     }
     val container =
       dom.document.body.children.namedItem("container")
+    appendStyles()
     val _ = getContent.flatMap {
       props =>
         Observable.fromTask(render(container, props))
@@ -194,4 +188,12 @@ object DashboarderApp extends scalajs.js.JSApp {
     }
   }
 
+  private def appendStyles() = {
+    import dash.views._
+    val renderer = new StringRenderer.Raw(StringRenderer.formatTiny)
+    val addStyles =
+      Seq(Styles, ExpandableContentView.Styles, ErrorView.Styles, TitledContentView.Styles, AppView.Styles).map(_.renderA(renderer)).mkString("\n")
+    val aggregateStyles = PlatformExports.createStyleElement(addStyles)
+    dom.document.head appendChild aggregateStyles
+  }
 }

@@ -103,12 +103,14 @@ object StorageProgram {
   @inline def retargetNt(delim: String): StorageActionF ~> Retargetable[StorageActionF, ?] =
     new (StorageActionF ~> Retargetable[StorageActionF, ?]) {
       override def apply[Y](fa: StorageActionF[Y]): Retargetable[StorageActionF, Y] = {
-        ReaderT.kleisli[StorageActionF, String, Y]((prefix: String) => Coyoneda[StorageAction, fa.I, Y](fa.fi.asInstanceOf[StorageAction[Y]] match {
+        ReaderT.kleisli[StorageActionF, String, Y]((prefix: String) => fa.trans(new (StorageAction ~> StorageAction) {
           // TODO: clean up with access to SI-9760 fix
-          case StorageAction.Get(k) => StorageAction.Get(prefix + delim + k).asInstanceOf[StorageAction[fa.I]]
-          case StorageAction.Update(k, v) => StorageAction.Update(prefix + delim + k, v).asInstanceOf[StorageAction[fa.I]]
-          case StorageAction.Remove(k) => StorageAction.Remove(prefix + delim + k).asInstanceOf[StorageAction[fa.I]]
-        })(fa.k))
+          override def apply[A](fa: StorageAction[A]): StorageAction[A] = fa match {
+            case StorageAction.Get(k) => StorageAction.Get(prefix + delim + k).asInstanceOf[StorageAction[A]]
+            case StorageAction.Update(k, v) => StorageAction.Update(prefix + delim + k, v).asInstanceOf[StorageAction[A]]
+            case StorageAction.Remove(k) => StorageAction.Remove(prefix + delim + k).asInstanceOf[StorageAction[A]]
+          }
+        }))
       }
     }
 
