@@ -1,10 +1,9 @@
 package qq
 
-import monix.scalaz._
+import cats.~>
+import monix.cats._
 import monix.eval.Task
-
-import scalaz.Tags.Parallel
-import scalaz.{@@, ~>}
+import shapeless.tag._
 
 package object util extends UtilImplicits {
   type TaskParallel[A] = Task[A] @@ Parallel
@@ -22,6 +21,17 @@ package object util extends UtilImplicits {
         case Some(v) => Vector.empty[A] :+ v
       }
   }
+
+  final def unionWithKey[K, A](m1: Map[K, A], m2: Map[K, A])(f: (K, A, A) => A): Map[K, A] = {
+    val diff = m2 -- m1.keySet
+    val aug = m1 map {
+      case (k, v) => if (m2 contains k) k -> f(k, v, m2(k)) else (k, v)
+    }
+    aug ++ diff
+  }
+
+  final def unionWith[K, A](m1: Map[K, A], m2: Map[K, A])(f: (A, A) => A): Map[K, A] =
+    unionWithKey(m1, m2)((_, x, y) => f(x, y))
 
   @inline def toMapWith[K, V](f: V => K)(seq: Seq[V]): Map[K, V] =
     seq.map(d => f(d) -> d)(collection.breakOut)

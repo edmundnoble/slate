@@ -3,10 +3,7 @@ package qq
 import monix.eval.Task
 import qq.util.{Interpreter, InterpreterExitException}
 
-import
-import cats.
-
-import scalaz.syntax.either._
+import cats.implicits._
 
 class InterpreterTest extends QQAsyncTestSuite {
 

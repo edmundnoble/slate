@@ -11,7 +11,7 @@ import monix.eval.{Coeval, Task}
 import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.observers.Subscriber.Sync
 import monix.reactive.{Observable, OverflowStrategy}
-import monix.scalaz._
+import monix.cats._
 import org.scalajs.dom
 import org.scalajs.dom.raw._
 import qq.Platform.Rec._
@@ -27,12 +27,9 @@ import scala.scalajs.js.annotation.JSExport
 import scala.util.Success
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
-import scalaz.std.list._
-import scalaz.syntax.apply._
-import scalaz.syntax.either._
-import scalaz.syntax.tag._
-import scalaz.syntax.traverse._
-import scalaz.{Functor, \/}
+import cats.implicits._
+import cats.Functor
+import cats.data.Xor
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
@@ -51,12 +48,12 @@ object DashboarderApp extends scalajs.js.JSApp {
     }
   }
 
-  def programs: List[DashProgram[Program[ConcreteFilter] \/ String]] = {
+  def programs: List[DashProgram[Program[ConcreteFilter] Xor String]] = {
     val todoistState: String = List.fill(6) {
       java.lang.Integer.toHexString(scala.util.Random.nextInt(256))
     }.mkString
 
-    List[DashProgram[Program[ConcreteFilter] \/ String]](
+    List[DashProgram[Program[ConcreteFilter] Xor String]](
       DashProgram(1, "Gmail", "https://gmail.com", GmailApp.program.left, JSON.Obj()),
       DashProgram(2, "Todoist", "https://todoist.com", TodoistApp.program.left,
         JSON.Obj(
@@ -78,7 +75,7 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   type ErrorCompilingPrograms = QQCompilationException :+: ErrorGettingCachedProgram
 
-  def compiledPrograms: List[DashProgram[Task[ErrorCompilingPrograms \/ CompiledFilter]]] =
+  def compiledPrograms: List[DashProgram[Task[ErrorCompilingPrograms Xor CompiledFilter]]] =
     programs.map(program =>
       program.map { programPrecompiledOrString =>
         programPrecompiledOrString.fold(e => Task.now(e.right[ErrorGettingCachedProgram]), s =>
@@ -92,15 +89,15 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   type ErrorRunningPrograms = QQRuntimeException :+: ErrorCompilingPrograms
 
-  private def runCompiledPrograms: List[(Int, String, String, Task[ErrorRunningPrograms \/ List[JSON]])] =
+  private def runCompiledPrograms: List[(Int, String, String, Task[ErrorRunningPrograms Xor List[JSON]])] =
     compiledPrograms.map {
       case DashProgram(id, title, titleLink, program, input) =>
         (id, title, titleLink,
           program
             .map(_.leftMap(Inr[QQRuntimeException, ErrorCompilingPrograms]))
-            .flatMap(_.traverse[Task, ErrorRunningPrograms, ErrorRunningPrograms \/ List[JSON]] {
+            .flatMap(_.traverse[Task, ErrorRunningPrograms, ErrorRunningPrograms Xor List[JSON]] {
               _ (Map.empty)(input).map {
-                _.leftMap(exs => Inl(QQRuntimeException(exs))).disjunction
+                _.leftMap(exs => Inl(QQRuntimeException(exs))).toXor
               }
             }).map(_.flatMap(identity))
         )
@@ -108,18 +105,18 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   type ErrorDeserializingProgramOutput = upickle.Invalid.Data :+: ErrorRunningPrograms
 
-  private def deserializeProgramOutput: List[(Int, String, String, Task[ErrorDeserializingProgramOutput \/ List[ExpandableContentModel]])] = runCompiledPrograms.map {
+  private def deserializeProgramOutput: List[(Int, String, String, Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]])] = runCompiledPrograms.map {
     case (id, title, titleLink, program) =>
       (id, title, titleLink, {
-        val z: Task[ErrorDeserializingProgramOutput \/ List[ExpandableContentModel]] =
+        val z: Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]] =
           program.map {
-            (y: ErrorRunningPrograms \/ List[JSON]) =>
+            (y: ErrorRunningPrograms Xor List[JSON]) =>
               val x = y.leftMap(Inr[upickle.Invalid.Data, ErrorRunningPrograms]).flatMap {
                 jsons =>
-                  jsons.traverse[ErrorDeserializingProgramOutput \/ ?, ExpandableContentModel] {
+                  jsons.traverse[ErrorDeserializingProgramOutput Xor ?, ExpandableContentModel] {
                     json =>
                       val upickleJson = JSON.JSONToUpickleRec.apply(json)
-                      Coeval.delay(ExpandableContentModel.pkl.read(upickleJson).right).onErrorRecover {
+                      Coeval.apply(ExpandableContentModel.pkl.read(upickleJson).right).onErrorRecover {
                         case ex: upickle.Invalid.Data => Inl(ex).left
                       }.value
                   }

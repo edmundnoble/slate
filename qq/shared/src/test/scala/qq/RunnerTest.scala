@@ -6,15 +6,11 @@ import qq.cc.{QQRuntimeError, QQRuntimeException, Runner, TypeError}
 import qq.data.JSON
 
 import scala.concurrent.Future
-import scalaz.{ValidationNel, \/}
-import scalaz.std.list._
-import scalaz.std.scalaFuture._
-import scalaz.syntax.validation._
-import scalaz.syntax.std.`try`._
-import scalaz.syntax.traverse._
+import cats.implicits._
 import QQRuntimeException._
+import cats.data.ValidatedNel
 
-case class RunnerTestCase(input: JSON, program: String, expectedOutputOrException: ValidationNel[QQRuntimeError, List[JSON]])
+case class RunnerTestCase(input: JSON, program: String, expectedOutputOrException: ValidatedNel[QQRuntimeError, List[JSON]])
 
 class RunnerTest extends QQAsyncTestSuite {
 
@@ -27,34 +23,34 @@ class RunnerTest extends QQAsyncTestSuite {
 
   val identityProgram: RunnerTestCase = {
     val dict = JSON.Obj("1" -> JSON.Num(2), "3" -> JSON.Num(4))
-    RunnerTestCase(dict, ".", List(dict).successNel)
+    RunnerTestCase(dict, ".", List(dict).validNel)
   }
 
   val selectKeyProgram = RunnerTestCase(
     JSON.Obj("lol" -> JSON.Str("test")),
     ".lol",
-    List(JSON.Str("test")).successNel
+    List(JSON.Str("test")).validNel
   )
 
   val ensequencedFilters = RunnerTestCase(
     JSON.Obj("lol" -> JSON.Str("lol1"), "wat" -> JSON.Str("wat1")),
     ".lol, .wat",
-    List(JSON.Str("lol1"), JSON.Str("wat1")).successNel
+    List(JSON.Str("lol1"), JSON.Str("wat1")).validNel
   )
 
   val enlistedFilters = RunnerTestCase(
     JSON.Obj("lol" -> JSON.Str("lol1"), "wat" -> JSON.Str("wat1")),
     "[.lol, .wat]",
-    List(JSON.Arr(JSON.Str("lol1"), JSON.Str("wat1"))).successNel
+    List(JSON.Arr(JSON.Str("lol1"), JSON.Str("wat1"))).validNel
   )
 
   val collectResults = List(
     RunnerTestCase(
       JSON.Obj("titles" -> JSON.Arr(JSON.Str("lol1"), JSON.Str("wat1"))),
       ".titles[]",
-      List(JSON.Str("lol1"), JSON.Str("wat1")).successNel
+      List(JSON.Str("lol1"), JSON.Str("wat1")).validNel
     ),
-    RunnerTestCase(JSON.Num(1), ".[]", typeError("flatten", "array" -> JSON.Num(1)).failureNel)
+    RunnerTestCase(JSON.Num(1), ".[]", typeError("flatten", "array" -> JSON.Num(1)).invalidNel)
   )
 
   val enjectedFilters = RunnerTestCase(
@@ -81,65 +77,65 @@ class RunnerTest extends QQAsyncTestSuite {
         "title2" -> JSON.Str("More JQ"),
         "user" -> JSON.Str("stedolan")
       )
-    ).successNel)
+    ).validNel)
 
   val pipes = RunnerTestCase(
     JSON.Arr(JSON.Obj("name" -> JSON.Str("JSON"), "good" -> JSON.True), JSON.Obj("name" -> JSON.Str("XML"), "good" -> JSON.False)),
     ".[] | .name",
-    List(JSON.Str("JSON"), JSON.Str("XML")).successNel
+    List(JSON.Str("JSON"), JSON.Str("XML")).validNel
   )
 
   val lengthTest = RunnerTestCase(
     JSON.Arr(JSON.Arr(JSON.Num(1), JSON.Num(2)), JSON.Str("string"), JSON.Obj("a" -> JSON.Num(2)), JSON.Null),
     ".[] | length",
-    List(JSON.Num(2), JSON.Num(6), JSON.Num(1), JSON.Num(0)).successNel
+    List(JSON.Num(2), JSON.Num(6), JSON.Num(1), JSON.Num(0)).validNel
   )
 
   val keys = RunnerTestCase(
     JSON.Obj("abc" -> JSON.Num(1), "abcd" -> JSON.Num(2), "Foo" -> JSON.Num(3)),
     "keys",
-    List(JSON.Arr(JSON.Str("abc"), JSON.Str("abcd"), JSON.Str("Foo"))).successNel
+    List(JSON.Arr(JSON.Str("abc"), JSON.Str("abcd"), JSON.Str("Foo"))).validNel
   )
 
   val add = RunnerTestCase(
     JSON.Arr(JSON.Num(1), JSON.Arr(JSON.Num(1)), JSON.Str("test")),
     ".[] | (. + .)",
-    List(JSON.Num(2), JSON.Arr(JSON.Num(1), JSON.Num(1)), JSON.Str("testtest")).successNel
+    List(JSON.Num(2), JSON.Arr(JSON.Num(1), JSON.Num(1)), JSON.Str("testtest")).validNel
   )
 
   val multiply = RunnerTestCase(
     JSON.Obj("nested" -> JSON.Obj("nested" -> JSON.Obj("nested" -> JSON.Obj("nested" -> JSON.Num(1))))),
     ".[] | (. * .nested)",
-    List(JSON.Obj("nested" -> JSON.Obj("nested" -> JSON.Num(1)))).successNel
+    List(JSON.Obj("nested" -> JSON.Obj("nested" -> JSON.Num(1)))).validNel
   )
 
   val maths =
-    RunnerTestCase(JSON.Num(4), ". % (. / 2)", List(JSON.Num(0)).successNel)
+    RunnerTestCase(JSON.Num(4), ". % (. / 2)", List(JSON.Num(0)).validNel)
 
   val bedmas =
-    RunnerTestCase(JSON.Num(5), ". + . * .", List(JSON.Num(30)).successNel)
+    RunnerTestCase(JSON.Num(5), ". + . * .", List(JSON.Num(30)).validNel)
 
   val map =
-    RunnerTestCase(JSON.Arr(JSON.Num(1)), "def f: . + 2; map(f)", List(JSON.Num(3)).successNel)
+    RunnerTestCase(JSON.Arr(JSON.Num(1)), "def f: . + 2; map(f)", List(JSON.Num(3)).validNel)
 
   val addNullException =
     RunnerTestCase(JSON.Arr(), ".[0] + .[0]", typeError(
       "add",
       "number | string | array | object" -> JSON.Null,
       "number | string | array | object" -> JSON.Null
-    ).failureNel)
+    ).invalidNel)
 
   val silencedException =
-    RunnerTestCase(JSON.Arr(), "(.[0] + .[0])?", List().successNel)
+    RunnerTestCase(JSON.Arr(), "(.[0] + .[0])?", List().validNel)
 
   val emptyObjectProgram =
-    RunnerTestCase(JSON.Null, "{}", List(JSON.Obj()).successNel)
+    RunnerTestCase(JSON.Null, "{}", List(JSON.Obj()).validNel)
 
   val constants =
-    RunnerTestCase(JSON.Null, "true, false, null", List(JSON.True, JSON.False, JSON.Null).successNel)
+    RunnerTestCase(JSON.Null, "true, false, null", List(JSON.True, JSON.False, JSON.Null).validNel)
 
   val base64Encode =
-    RunnerTestCase(JSON.Str("hi"), "b64Encode", List(JSON.Str("aGk=")).successNel)
+    RunnerTestCase(JSON.Str("hi"), "b64Encode", List(JSON.Str("aGk=")).validNel)
 
   "identity" in runTest(identityProgram)
   "ensequenced filters" in runTest(ensequencedFilters)

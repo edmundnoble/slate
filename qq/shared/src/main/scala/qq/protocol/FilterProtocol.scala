@@ -10,7 +10,7 @@ import qq.util._
 import scodec.codecs.implicits._
 import shapeless._
 
-import scalaz.\/
+import cats.data.Xor
 
 object FilterProtocol {
 

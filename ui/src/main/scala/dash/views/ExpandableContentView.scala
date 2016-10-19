@@ -8,8 +8,7 @@ import monix.execution.Scheduler
 
 import scala.language.higherKinds
 import scalacss.Defaults._
-import scalaz.std.list._
-import scalaz.syntax.std.boolean._
+import cats.implicits._
 import Util._
 
 object ExpandableContentView {
@@ -118,7 +117,7 @@ object ExpandableContentView {
     import scalacss.ScalaCssReact._
 
     def buttonStyleForState(state: ExpandableState): TagMod = {
-      (state.expanded ?? (Styles.filterButtonExpanded: TagMod)) +
+      (if (state.expanded) (Styles.filterButtonExpanded: TagMod) else EmptyTag) +
         (Styles.filterButtonIcon: TagMod) + ("expand_more": TagMod)
     }
 
@@ -140,7 +139,8 @@ object ExpandableContentView {
           ),
           span(Styles.content,
             Styles.animationGroup(
-              state.expanded ?? props.model.content.map(TitledContentView.builder.build(_)): _*
+              (if (state.expanded) props.model.content.map(TitledContentView.builder.build(_))
+              else Nil): _*
             )
           )
         )

@@ -7,7 +7,7 @@ import qq.cc.CompiledFilter
 import qq.data.JSON
 
 import scala.scalajs.js.annotation.JSExport
-import scalaz.\/
+import cats.data.Xor
 
 @JSExport
 object BenchmarkApp extends scalajs.js.JSApp {

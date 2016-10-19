@@ -1,7 +1,6 @@
 package dash
 package app
 
-import matryoshka.Fix
 import qq.cc._
 import qq.data.{ConcreteFilter, FilterComponent, Program}
 import scodec.bits.BitVector
@@ -10,17 +9,17 @@ import fastparse.core.{ParseError, Parsed}
 import qq.util.Recursion.RecursionEngine
 import shapeless.{:+:, CNil}
 
-import scalaz.{Coyoneda, Free, ReaderT, \/, ~>}
-import scalaz.syntax.either._
-import scalaz.syntax.applicative._
-import scalaz.syntax.std.option._
-import scalaz.std.list._
+import cats.implicits._
+import cats.free.{Coyoneda, Free}
+import cats.data.{Xor, ReaderT}
+import cats.implicits._
+import cats.implicits._
 
 object ProgramCache {
 
-  def prepareProgram(program: String)(implicit rec: RecursionEngine): Parsed.Failure \/ Program[Fix[FilterComponent]] = {
-    val parsedQQProgram = Parser.program.parse(program).toDisjunction.map(_.value)
-    val optimizedProgram = parsedQQProgram.map(LocalOptimizer.optimizeProgram[Fix])
+  def prepareProgram(program: String)(implicit rec: RecursionEngine): Parsed.Failure Xor Program[ConcreteFilter] = {
+    val parsedQQProgram = Parser.program.parse(program).toXor.map(_.value)
+    val optimizedProgram = parsedQQProgram.map(LocalOptimizer.optimizeProgram)
     optimizedProgram
   }
 
@@ -31,7 +30,7 @@ object ProgramCache {
 
   // cache optimized, parsed programs using their hashcode as a key
   // store them as base64-encoded bytecode
-  def getCachedProgram(qqProgram: String)(implicit rec: RecursionEngine): StorageProgram[ErrorGettingCachedProgram \/ Program[ConcreteFilter]] = {
+  def getCachedProgram(qqProgram: String)(implicit rec: RecursionEngine): StorageProgram[ErrorGettingCachedProgram Xor Program[ConcreteFilter]] = {
 
     import StorageProgram._
     import qq.protocol.FilterProtocol._
@@ -48,7 +47,7 @@ object ProgramCache {
           val encodedProgram =
             preparedProgram.flatMap(
               programCodec
-                .encode(_).toDisjunction
+                .encode(_).toXor
                 .bimap(e => injectError(InvalidBytecode(e)), _.value)
             )
           val asBase64 = encodedProgram.map(_.toBase64)
@@ -60,11 +59,11 @@ object ProgramCache {
         case Some(encodedProgram) =>
           val encodedProgramBits =
             BitVector.fromBase64(encodedProgram)
-              .toRightDisjunction(injectError(InvalidBase64(encodedProgram)))
+              .toRightXor(injectError(InvalidBase64(encodedProgram)))
           val decodedProgram =
             encodedProgramBits.flatMap(
               programCodec
-                .decode(_).toDisjunction
+                .decode(_).toXor
                 .bimap(e => injectError(InvalidBytecode(e)), _.value.value)
             )
           decodedProgram.pure[StorageProgram]

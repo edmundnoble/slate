@@ -8,14 +8,9 @@ import qq.util.Recursion.RecursiveFunction
 
 import scala.language.experimental.macros
 import scala.reflect.macros.whitebox
-import language.experimental.macros
-import scalaz.Free.Trampoline
-import scalaz.{Free, Trampoline, \/}
-import scalaz.syntax.traverse._
-import scalaz.std.list._
-import scalaz.std.tuple._
-import scalaz.syntax.apply._
-import scalaz.syntax.bitraverse._
+import cats.Eval
+import cats.data.Xor
+import cats.implicits._
 import qq.Platform.Rec._
 
 // this is used to pre-prepare QQ programs at compile time
@@ -29,8 +24,8 @@ object QQStager {
     import c.universe._
     def lift[T: Liftable](value: T): Tree = implicitly[Liftable[T]].apply(value)
 
-    implicit def disjunctionLiftable[E: Liftable, A: Liftable]: Liftable[E \/ A] =
-      Liftable[E \/ A](_.fold(e => q"scalaz.-\/(${lift[E](e)})", a => q"scalaz.\/-(${lift[A](a)})"))
+    implicit def disjunctionLiftable[E: Liftable, A: Liftable]: Liftable[E Xor A] =
+      Liftable[E Xor A](_.fold(e => q"cats.data.Xor.Left(${lift[E](e)})", a => q"cats.data.Xor.right(${lift[A](a)})"))
 
     implicit def definitionLiftable[F: Liftable]: Liftable[Definition[F]] =
       Liftable { case Definition(name, params, body) => q"qq.data.Definition(${lift(name)}, ${lift(params)}, ${lift(body)})" }
@@ -57,23 +52,23 @@ object QQStager {
         case SelectRange(s, e) => q"qq.data.SelectRange(${lift(s)}, ${lift(e)})"
       }
 
-    def pathOpLift[A](f: A => Trampoline[c.universe.Tree]): PathOperationF[A] => Trampoline[c.universe.Tree] = {
-      case PathGet => Trampoline.done(q"qq.data.PathGet")
+    def pathOpLift[A](f: A => Eval[c.universe.Tree]): PathOperationF[A] => Eval[c.universe.Tree] = {
+      case PathGet => Eval.now(q"qq.data.PathGet")
       case PathModify(m) => f(m).map { r => q"qq.data.PathModify($r)" }
       case PathSet(s) => f(s).map { r => q"qq.data.PathSet($r)" }
     }
 
     val liftFilter: RecursiveFunction[ConcreteFilter, c.universe.Tree] = new RecursiveFunction[ConcreteFilter, c.universe.Tree] {
-      override def run(value: ConcreteFilter, loop: ConcreteFilter => Trampoline[c.universe.Tree]): Trampoline[c.universe.Tree] = {
-        val sub: Trampoline[c.universe.Tree] = value.unFix match {
+      override def run(value: ConcreteFilter, loop: ConcreteFilter => Eval[c.universe.Tree]): Eval[c.universe.Tree] = {
+        val sub: Eval[c.universe.Tree] = value.unFix match {
           case PathOperation(pc, op) => pathOpLift(loop)(op) map { o => q"qq.data.PathOperation[qq.data.ConcreteFilter](${lift(pc)}, $o)" }
-          case AsBinding(name, as, in) => (loop(as) |@| loop(in)) { (a, i) => q"qq.data.AsBinding[qq.data.ConcreteFilter](${lift(name)}, $a, $i)" }
-          case Dereference(name) => Trampoline.done(q"qq.data.Dereference[qq.data.ConcreteFilter](${lift(name)})")
-          case ComposeFilters(first, second) => (loop(first) |@| loop(second)) { (f, s) => q"qq.data.ComposeFilters[qq.data.ConcreteFilter]($f, $s)" }
+          case AsBinding(name, as, in) => (loop(as) |@| loop(in)).map { (a, i) => q"qq.data.AsBinding[qq.data.ConcreteFilter](${lift(name)}, $a, $i)" }
+          case Dereference(name) => Eval.now(q"qq.data.Dereference[qq.data.ConcreteFilter](${lift(name)})")
+          case ComposeFilters(first, second) => (loop(first) |@| loop(second)).map { (f, s) => q"qq.data.ComposeFilters[qq.data.ConcreteFilter]($f, $s)" }
           case SilenceExceptions(child) => loop(child) map { f => q"qq.data.SilenceExceptions[qq.data.ConcreteFilter]($f)" }
           case EnlistFilter(child) => loop(child) map { f => q"qq.data.EnlistFilter[qq.data.ConcreteFilter]($f)" }
-          case EnsequenceFilters(first, second) => (loop(first) |@| loop(second)) { (f, s) => q"qq.data.EnsequenceFilters[qq.data.ConcreteFilter]($f, $s)" }
-          case EnjectFilters(obj) => obj.traverse[Trampoline, (c.universe.Tree, c.universe.Tree)] { case (k, v) =>
+          case EnsequenceFilters(first, second) => (loop(first) |@| loop(second)).map { (f, s) => q"qq.data.EnsequenceFilters[qq.data.ConcreteFilter]($f, $s)" }
+          case EnjectFilters(obj) => obj.traverse[Eval, (c.universe.Tree, c.universe.Tree)] { case (k, v) =>
             for {
               ke <- k.traverse(loop).map(e => lift(e.leftMap(lift(_))))
               ve <- loop(v)
@@ -81,13 +76,13 @@ object QQStager {
           }
             .map { o => q"qq.data.EnjectFilters[qq.data.ConcreteFilter](${lift(o)})" }
           case CallFilter(name: String, params) => params.traverse(loop).map { p => q"qq.data.CallFilter[qq.data.ConcreteFilter](${lift(name)}, $p)" }
-          case FilterNot() => Trampoline.done(q"qq.data.FilterNot[qq.data.ConcreteFilter]()")
-          case ConstNumber(v) => Trampoline.done(q"qq.data.ConstNumber[qq.data.ConcreteFilter](${lift(v)})")
-          case ConstBoolean(v) => Trampoline.done(q"qq.data.ConstBoolean[qq.data.ConcreteFilter](${lift(v)})")
-          case ConstString(v) => Trampoline.done(q"qq.data.ConstString[qq.data.ConcreteFilter](${lift(v)})")
-          case FilterMath(first, second, op) => (loop(first) |@| loop(second)) { (f, s) => q"qq.data.FilterMath[qq.data.ConcreteFilter]($f, $s, ${lift(op)})" }
+          case FilterNot() => Eval.now(q"qq.data.FilterNot[qq.data.ConcreteFilter]()")
+          case ConstNumber(v) => Eval.now(q"qq.data.ConstNumber[qq.data.ConcreteFilter](${lift(v)})")
+          case ConstBoolean(v) => Eval.now(q"qq.data.ConstBoolean[qq.data.ConcreteFilter](${lift(v)})")
+          case ConstString(v) => Eval.now(q"qq.data.ConstString[qq.data.ConcreteFilter](${lift(v)})")
+          case FilterMath(first, second, op) => (loop(first) |@| loop(second)).map { (f, s) => q"qq.data.FilterMath[qq.data.ConcreteFilter]($f, $s, ${lift(op)})" }
         }
-        sub.map(f => q"matryoshka.Fix[qq.data.FilterComponent]($f)")
+        sub.map(f => q"qq.util.Fix[qq.data.FilterComponent]($f)")
       }
     }
 

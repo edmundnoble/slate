@@ -5,9 +5,9 @@ import monix.eval.Task
 import qq.data._
 import qq.util.Recursion.RecursionEngine
 
-import scalaz.syntax.monoid._
-import scalaz.syntax.either._
-import scalaz.syntax.validation._
+import cats.implicits._
+import cats.implicits._
+import cats.implicits._
 
 object SharedPreludes {
 
@@ -18,7 +18,7 @@ object SharedPreludes {
         CompiledDefinition.noParamDefinition("print",
           CompiledFilter.func { (jsv: JSON) =>
             println("debug: " + QQRuntime.print(jsv))
-            Task.now((jsv :: Nil).successNel)
+            Task.now((jsv :: Nil).validNel)
           }
         )
 
@@ -31,7 +31,7 @@ object SharedPreludes {
 
   val raw: Prelude = new Prelude {
     val map: Definition[ConcreteFilter] = {
-      import QQDSL.fix._
+      import QQDSL._
       Definition("map",
         params = List("x"),
         body = compose(collectResults, call("x"))

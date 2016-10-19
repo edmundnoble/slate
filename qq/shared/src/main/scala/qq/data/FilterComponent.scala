@@ -1,12 +1,12 @@
 package qq
 package data
 
-import matryoshka.{Corecursive, Fix}
+import cats.data.Xor
+import cats.{Applicative, Eval, Traverse}
 
 import scala.language.higherKinds
-import scalaz.std.list._
-import scalaz.syntax.traverse._
-import scalaz.{Applicative, Traverse, \/}
+import cats.implicits._
+import qq.util.Fix
 
 // A single node of the QQ AST. Type parameter is used for child nodes.
 sealed abstract class FilterComponent[A]
@@ -47,8 +47,8 @@ final case class EnlistFilter[A](f: A) extends FilterComponent[A]
 // Associative.
 final case class EnsequenceFilters[A](first: A, second: A) extends FilterComponent[A]
 
-// Creates a JSON object from some (string \/ filter, filter) pairs.
-final case class EnjectFilters[A](obj: List[((String \/ A), A)]) extends FilterComponent[A]
+// Creates a JSON object from some (string or filter, filter) pairs.
+final case class EnjectFilters[A](obj: List[((String Xor A), A)]) extends FilterComponent[A]
 
 // Calls another filter or filter operator.
 final case class CallFilter[A](name: String, params: List[A]) extends FilterComponent[A]
@@ -92,24 +92,29 @@ object FilterComponent {
 
   implicit def qqFilterComponentTraverse = new Traverse[FilterComponent] {
 
-    override def traverseImpl[G[_], A, B](fa: FilterComponent[A])(f: (A) => G[B])(implicit G: Applicative[G]): G[FilterComponent[B]] = {
+    override def traverse[G[_], A, B](fa: FilterComponent[A])(f: (A) => G[B])(implicit G: Applicative[G]): G[FilterComponent[B]] = {
       fa match {
-        case l: LeafComponent[_] => G.point(l.retag[B])
+        case l: LeafComponent[_] => G.pure(l.retag[B])
         case PathOperation(components, operationF) => operationF.traverse(f).map(PathOperation(components, _))
-        case AsBinding(name, as, in) => G.apply2(f(as), f(in))(AsBinding(name, _, _))
+        case AsBinding(name, as, in) => G.map2(f(as), f(in))(AsBinding(name, _, _))
         case CallFilter(name, params) => params.traverse(f).map(CallFilter(name, _))
-        case FilterMath(first, second, op) => G.apply2(f(first), f(second))(FilterMath(_, _, op))
-        case ComposeFilters(first, second) => G.apply2(f(first), f(second))(ComposeFilters(_, _))
+        case FilterMath(first, second, op) => G.map2(f(first), f(second))(FilterMath(_, _, op))
+        case ComposeFilters(first, second) => G.map2(f(first), f(second))(ComposeFilters(_, _))
         case SilenceExceptions(a) => G.map(f(a))(SilenceExceptions(_))
         case EnlistFilter(a) => G.map(f(a))(EnlistFilter(_))
-        case EnsequenceFilters(first, second) => G.apply2(f(first), f(second))(EnsequenceFilters(_, _))
-        case EnjectFilters(obj) => obj.traverse[G, (String \/ B, B)] { case (k, v) => G.tuple2(k.traverse(f), f(v)) }.map(EnjectFilters(_))
+        case EnsequenceFilters(first, second) => G.map2(f(first), f(second))(EnsequenceFilters(_, _))
+        case EnjectFilters(obj) => obj.traverse[G, (String Xor B, B)] { case (k, v) => G.tuple2(k.traverse(f), f(v)) }.map(EnjectFilters(_))
       }
     }
+    // TODO
+    override def foldLeft[A, B](fa: FilterComponent[A], b: B)(f: (B, A) => B): B =
+      ???
+    override def foldRight[A, B](fa: FilterComponent[A], lb: Eval[B])(f: (A, Eval[B]) => Eval[B]): Eval[B] =
+      ???
   }
 
   // Partially apply F[_] parameter as FilterComponent for Corecursive.embed
-  @inline final def embed[T[_[_]]]
-  (v: FilterComponent[T[FilterComponent]])(implicit C: Corecursive[T]): T[FilterComponent] = C.embed[FilterComponent](v)
+  @inline final def embed
+  (v: FilterComponent[ConcreteFilter]): ConcreteFilter = Fix(v)
 }
 

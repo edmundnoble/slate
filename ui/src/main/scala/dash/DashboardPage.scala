@@ -8,7 +8,7 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 
 import scalacss.Defaults._
-import scalaz.\/
+import cats.data.Xor
 
 object DashboardPage {
 

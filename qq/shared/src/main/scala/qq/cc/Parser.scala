@@ -1,6 +1,7 @@
 package qq
 package cc
 
+import cats.Monad
 import fastparse.Utils.CharBitSet
 import fastparse.all._
 import fastparse.core.ParseCtx
@@ -9,20 +10,20 @@ import fastparse.{Implicits, parsers}
 import qq.data._
 
 import scala.collection.mutable
-import scalaz.syntax.either._
-import scalaz.syntax.foldable1._
-import scalaz.syntax.monad._
-import scalaz.syntax.std.option._
-import scalaz.{-\/, Monad, NonEmptyList, \/}
+import cats.implicits._
+import cats.data.Xor
 
 object Parser {
 
   implicit object ParserMonad extends Monad[Parser] {
-    override def point[A](a: => A): Parser[A] =
+    override def pure[A](a: A): Parser[A] =
       parsers.Transformers.Mapper(parsers.Terminals.Pass, (_: Unit) => a)
 
-    override def bind[A, B](fa: Parser[A])(f: (A) => Parser[B]): Parser[B] =
+    override def flatMap[A, B](fa: Parser[A])(f: (A) => Parser[B]): Parser[B] =
       parsers.Transformers.FlatMapped(fa, f)
+
+    // TODO: Can I make this work?
+    override def tailRecM[A, B](a: A)(f: (A) => Parser[Either[A, B]]): Parser[B] = defaultTailRecM(a)(f)
   }
 
   implicit def listRepeater[T]: Implicits.Repeater[T, List[T]] = new Implicits.Repeater[T, List[T]] {
@@ -37,7 +38,7 @@ object Parser {
     def result(acc: Acc): List[T] = acc.result()
   }
 
-  import QQDSL.{fix => dsl}
+  import qq.data.{QQDSL => dsl}
 
   val dot: P0 = P(".")
   val quote: P0 = P("\"")
@@ -81,7 +82,7 @@ object Parser {
 
   val selectIndex: P[PathComponent] = P(
     for {
-      fun <- wspStr("-").!.? map (_.cata(_ => (i: Int) => -i, identity[Int] _))
+      fun <- wspStr("-").!.? map (_.fold(identity[Int] _)(_ => (i: Int) => -i))
       number <- numericLiteral
     } yield dsl.selectIndex(fun(number))
   )
@@ -97,13 +98,13 @@ object Parser {
   val pathComponent: P[List[PathComponent]] = P(
     for {
       s <- simplePathComponent
-      f <- "[]".!.?.map(_.cata(_ => dsl.collectResults :: Nil, Nil))
+      f <- "[]".!.?.map(_.fold(List.empty[PathComponent])(_ => dsl.collectResults :: Nil))
     } yield s :: f
   )
 
   val fullPath: P[List[PathComponent]] = P(
     dot ~
-      ((wspStr("[]") >| (dsl.collectResults :: Nil)) | pathComponent)
+      ((wspStr("[]").as(dsl.collectResults :: Nil)) | pathComponent)
         .rep(sep = dot)
         .map(_.nelFoldLeft1(Nil)(_ ++ _))
   )
@@ -162,10 +163,10 @@ object Parser {
   )
 
   // The reason I avoid using basicFilter is to avoid a parsing ambiguity with ensequencedFilters
-  val enjectPair: P[(String \/ ConcreteFilter, ConcreteFilter)] = P(
+  val enjectPair: P[(String Xor ConcreteFilter, ConcreteFilter)] = P(
     ((("(" ~/ filter ~ ")").map(_.right[String]) |
       (stringLiteral | escapedStringLiteral).map(_.left[ConcreteFilter])) ~ ":" ~ whitespace ~ piped) |
-      filterIdentifier.map(id => -\/(id) -> dsl.getPath(List(dsl.selectKey(id))))
+      filterIdentifier.map(id => id.left -> dsl.getPath(List(dsl.selectKey(id))))
   )
 
   val enjectedFilter: P[ConcreteFilter] = P(
@@ -174,7 +175,7 @@ object Parser {
 
   // binary operators with the same precedence level
   def binaryOperators[A](rec: P[A], ops: (String, (A, A) => A)*): P[A] = {
-    def makeParser(text: String, function: (A, A) => A): P[(A, A) => A] = wspStr(text) >| function
+    def makeParser(text: String, function: (A, A) => A): P[(A, A) => A] = wspStr(text).as(function)
 
     def foldOperators(begin: A, operators: List[((A, A) => A, A)]): A =
       operators.foldLeft(begin) { case (f, (combFun, nextF)) => combFun(f, nextF) }

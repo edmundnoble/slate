@@ -1,7 +1,7 @@
 package qq
 package data
 
-import scalaz.Functor
+import cats.Functor
 
 // parameters are represented as strings for now, sorry performance
 final case class Definition[F](name: String,

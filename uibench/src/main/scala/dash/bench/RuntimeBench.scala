@@ -5,7 +5,6 @@ import dash.bench.BenchmarkApp._
 import japgolly.scalajs.benchmark.Benchmark.Builder
 import japgolly.scalajs.benchmark._
 import japgolly.scalajs.benchmark.gui.{GuiParam, GuiParams, GuiSuite}
-import matryoshka.Fix
 import monix.eval.Task
 import monocle.Iso
 import qq.cc.QQCompiler
@@ -24,16 +23,14 @@ object RuntimeBench {
   import japgolly.scalajs.react.vdom.prefix_<^._
 
   @inline final def runRuntimeBench(params: BenchParams): Task[List[JSON]] =
-    params.filt(Map.empty)(params.in)
+    params.filt(Map.empty)(params.in).map(_.getOrElse(???))
 
   val qqRuntimeSuite: GuiSuite[(QQRuntimeParams, Int)] =
     GuiSuite.apply[(QQRuntimeParams, Int)](
       Suite[(QQRuntimeParams, Int)]("QQ Runtime Benchmarks")(
-        runtimeSetup(size => (Util.buildRec[Fix](QQDSL.fix.compose(_, QQDSL.fix.id), size, QQDSL.fix.id), "[]"))("compose with id")(runRuntimeBench),
-
-        runtimeSetup(size => (QQDSL.fix.getPathS(QQDSL.fix.selectKey(s"k$size")), "{" + Stream.tabulate(size)(i => raw""""k$i":"$i"""").mkString(",") + "}"))("select key")(runRuntimeBench),
-
-        runtimeSetup(size => (Util.buildRec[Fix](QQDSL.fix.add(_, QQDSL.fix.constNumber(1)), size, QQDSL.fix.id), s"$size"))("plus")(runRuntimeBench)
+        runtimeSetup(size => (Util.buildRec(QQDSL.compose(_, QQDSL.id), size, QQDSL.id), "[]"))("compose with id")(runRuntimeBench),
+        runtimeSetup(size => (QQDSL.getPathS(QQDSL.selectKey(s"k$size")), "{" + Stream.tabulate(size)(i => raw""""k$i":"$i"""").mkString(",") + "}"))("select key")(runRuntimeBench),
+        runtimeSetup(size => (Util.buildRec(QQDSL.add(_, QQDSL.constNumber(1)), size, QQDSL.id), s"$size"))("plus")(runRuntimeBench)
       ),
       GuiParams.two(
         Iso.id[(QQRuntimeParams, Int)],

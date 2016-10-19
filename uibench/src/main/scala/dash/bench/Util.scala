@@ -1,20 +1,19 @@
 package dash
 package bench
 
-import matryoshka.{Corecursive, Recursive}
-import qq.data.{FilterComponent, QQDSL}
+import qq.data.{ConcreteFilter, FilterComponent, QQDSL}
 
 import scala.annotation.tailrec
 
 object Util {
 
   @tailrec
-  def buildRec[T[_[_]] : Recursive : Corecursive](transform: T[FilterComponent] => T[FilterComponent], count: Int, start: T[FilterComponent]): T[FilterComponent] = {
+  def buildRec(transform: ConcreteFilter => ConcreteFilter, count: Int, start: ConcreteFilter): ConcreteFilter = {
     if (count == 0) start
     else buildRec(transform, count - 1, transform(start))
   }
 
-  def composeBuildRec[T[_[_]] : Recursive : Corecursive](i: Int, f: T[FilterComponent]) =
-    Util.buildRec[T](QQDSL.dsl[T].compose(_, f), i, f)
+  def composeBuildRec(i: Int, f: ConcreteFilter) =
+    Util.buildRec(QQDSL.compose(_, f), i, f)
 
 }

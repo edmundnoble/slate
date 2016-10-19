@@ -13,7 +13,7 @@ case class CompilerTestCase(input: JSON, program: ConcreteFilter, expectedOutput
 
 class CompilerTest extends QQAsyncTestSuite {
 
-  import qq.data.QQDSL.fix._
+  import qq.data.QQDSL._
 
   def runTest(qqCompilerTest: CompilerTestCase): Future[Assertion] = qqCompilerTest match {
     case CompilerTestCase(input, filter, expectedOutput@_*) =>
@@ -142,9 +142,9 @@ class CompilerTest extends QQAsyncTestSuite {
       CompilerTestCase(obj, multiply(selectKey("fst"), selectKey("snd")), JSON.Num(2)),
       CompilerTestCase(obj, divide(selectKey("fst"), selectKey("snd")), JSON.Num(0.5)),
       CompilerTestCase(obj, modulo(selectKey("fst"), selectKey("snd")), JSON.Num(1)),
-      CompilerTestCase(obj, QQDSL.fix.equal(selectKey("fst"), selectKey("snd")), JSON.False),
-      CompilerTestCase(obj, QQDSL.fix.lte(selectKey("fst"), selectKey("snd")), JSON.True),
-      CompilerTestCase(obj, QQDSL.fix.gte(selectKey("fst"), selectKey("snd")), JSON.False),
+      CompilerTestCase(obj, QQDSL.equal(selectKey("fst"), selectKey("snd")), JSON.False),
+      CompilerTestCase(obj, QQDSL.lte(selectKey("fst"), selectKey("snd")), JSON.True),
+      CompilerTestCase(obj, QQDSL.gte(selectKey("fst"), selectKey("snd")), JSON.False),
       CompilerTestCase(obj, lessThan(selectKey("fst"), selectKey("snd")), JSON.True),
       CompilerTestCase(obj, greaterThan(selectKey("fst"), selectKey("snd")), JSON.False),
       CompilerTestCase(obj, multiply("fst", 0), JSON.Null),

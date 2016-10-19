@@ -7,12 +7,12 @@ import qq.data.JSON
 import upickle.json
 import qq.Platform.Rec._
 
-import scalaz.\/
-import scalaz.syntax.either._
+import cats.data.Xor
+import cats.implicits._
 
 // I think this is just a free monad transformer
-final case class Interpreter(name: String, resumePartial: PartialFunction[String, InterpreterExitException.type \/ Task[(String, Interpreter)]]) {
-  @inline def resume: String => Option[InterpreterExitException.type \/ Task[(String, Interpreter)]] = resumePartial.lift
+final case class Interpreter(name: String, resumePartial: PartialFunction[String, InterpreterExitException.type Xor Task[(String, Interpreter)]]) {
+  @inline def resume: String => Option[InterpreterExitException.type Xor Task[(String, Interpreter)]] = resumePartial.lift
   @inline def orElse(other: Interpreter): Interpreter = Interpreter(other.name, resumePartial.orElse(other.resumePartial))
 }
 

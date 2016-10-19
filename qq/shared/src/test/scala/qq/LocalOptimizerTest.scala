@@ -1,6 +1,6 @@
 package qq
 
-import qq.data.QQDSL.fix._
+import qq.data.QQDSL._
 import qq.data.ConcreteFilter
 import qq.util.Recursion
 import qq.util.Recursion.RecursionEngine
@@ -42,7 +42,7 @@ class LocalOptimizerTest extends QQSyncTestSuite {
 
     val platformRecEngine: RecursionEngine = qq.Platform.Rec.defaultRecScheme
 
-    optimizeFilter(enlistRec(collectResults, 1000))(implicitly, implicitly, platformRecEngine) shouldBe enlistRec(id, 999)
+    optimizeFilter(enlistRec(collectResults, 1000))(platformRecEngine) shouldBe enlistRec(id, 999)
   }
 
 }

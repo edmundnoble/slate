@@ -5,11 +5,11 @@ import org.scalatest.matchers.{BeMatcher, MatchResult}
 import qq.cc.Parser
 import qq.data.{ConcreteFilter, Definition, JSON, Program}
 
-import scalaz.\/
+import cats.implicits._
 
 class ParserTest extends QQSyncTestSuite {
 
-  import qq.data.QQDSL.fix._
+  import qq.data.QQDSL._
 
   val emptySized: List[String] = Nil
 
@@ -108,19 +108,19 @@ class ParserTest extends QQSyncTestSuite {
   }
 
   "parse enjected pairs" - {
-    "string key" in (Parser.enjectPair.parse("hello: id").get.value shouldBe \/.left("hello") -> call("id"))
-    "escaped string key" in (Parser.enjectPair.parse("\"hello\": id").get.value shouldBe \/.left("hello") -> call("id"))
-    "filter key" in (Parser.enjectPair.parse("(hello): id").get.value shouldBe \/.right(call("hello")) -> call("id"))
-    "sugar" in (Parser.enjectPair.parse("user").get.value shouldBe \/.left("user") -> getPathS(selectKey("user")))
+    "string key" in (Parser.enjectPair.parse("hello: id").get.value shouldBe "hello".left -> call("id"))
+    "escaped string key" in (Parser.enjectPair.parse("\"hello\": id").get.value shouldBe "hello".left -> call("id"))
+    "filter key" in (Parser.enjectPair.parse("(hello): id").get.value shouldBe call("hello").right -> call("id"))
+    "sugar" in (Parser.enjectPair.parse("user").get.value shouldBe "user".left -> getPathS(selectKey("user")))
   }
 
   "parse enjected filters" in {
     Parser.filter.parse("{ sugar, user: \"user\", title: .titles[] }").get.value shouldBe
       enject(
         List(
-          \/.left("sugar") -> getPathS(selectKey("sugar")),
-          \/.left("user") -> constString("user"),
-          \/.left("title") -> getPath(List(selectKey("titles"), collectResults))
+          "sugar".left -> getPathS(selectKey("sugar")),
+          "user".left -> constString("user"),
+          "title".left -> getPath(List(selectKey("titles"), collectResults))
         )
       )
   }

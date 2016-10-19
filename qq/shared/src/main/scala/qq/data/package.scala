@@ -1,6 +1,6 @@
 package qq
 
-import matryoshka.Fix
+import qq.util.Fix
 
 package object data {
   // a filter AST which is not being streamed

@@ -2,10 +2,10 @@ package dash
 
 import monix.eval.Task
 import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
-
-import scalaz.std.string._
-import scalaz.{==>>, Applicative, BindRec, Coyoneda, Free, Functor, ReaderT, State, WriterT, ~>}
-import scalaz.syntax.applicative._
+import cats.{Applicative, Functor, Monad, RecursiveTailRecM, ~>}
+import cats.data.{ReaderT, State, WriterT}
+import cats.free.{Coyoneda, Free}
+import cats.implicits._
 
 // Operations on a Storage with F[_] effects
 // To abstract over storage that has different effects performed by its operations
@@ -22,19 +22,17 @@ abstract class Storage[F[_]] {
 
 object Storage {
 
-  import scalaz.Isomorphism._
-
-  // finally tagless encoding isomorphism
-  def storageStorageActionNatIso[F[_]]: Storage[F] <=> (StorageAction ~> F) = new (Storage[F] <=> (StorageAction ~> F)) {
-    override def to: (Storage[F]) => StorageAction ~> F = (stor: Storage[F]) => new (StorageAction ~> F) {
-      override def apply[A](fa: StorageAction[A]): F[A] = fa.run(stor)
-    }
-    override def from: StorageAction ~> F => Storage[F] = (nat: StorageAction ~> F) => new Storage[F] {
-      override def apply(key: String): F[Option[String]] = nat(StorageAction.Get(key))
-      override def update(key: String, data: String): F[Unit] = nat(StorageAction.Update(key, data))
-      override def remove(key: String): F[Unit] = nat(StorageAction.Remove(key))
-    }
-  }
+  //   finally tagless encoding isomorphism
+  //  def storageStorageActionNatIso[F[_]]: Storage[F] <=> (StorageAction ~> F) = new (Storage[F] <=> (StorageAction ~> F)) {
+  //    override def to: (Storage[F]) => StorageAction ~> F = (stor: Storage[F]) => new (StorageAction ~> F) {
+  //      override def apply[A](fa: StorageAction[A]): F[A] = fa.run(stor)
+  //    }
+  //    override def from: StorageAction ~> F => Storage[F] = (nat: StorageAction ~> F) => new Storage[F] {
+  //      override def apply(key: String): F[Option[String]] = nat(StorageAction.Get(key))
+  //      override def update(key: String, data: String): F[Unit] = nat(StorageAction.Update(key, data))
+  //      override def remove(key: String): F[Unit] = nat(StorageAction.Remove(key))
+  //    }
+  //  }
 }
 
 // Finally tagless storage action functor (http://okmij.org/ftp/tagless-final/)
@@ -68,7 +66,7 @@ object StorageProgram {
   import Util._
 
   @inline final def get(key: String): StorageProgram[Option[String]] =
-    liftFC(Get(key))
+    liftFC[StorageAction, Option[String]](Get(key))
 
   @inline final def update(key: String, value: String): StorageProgram[Unit] =
     liftFC(Update(key, value))
@@ -79,11 +77,11 @@ object StorageProgram {
   @inline final def getOrSet(key: String, value: => String): StorageProgram[String] = {
     for {
       cur <- get(key)
-      o <- cur.fold(update(key, value) >| value)(_.pure[StorageProgram])
+      o <- cur.fold(update(key, value).as(value))(_.pure[StorageProgram])
     } yield o
   }
 
-  @inline def runProgram[F[_] : Applicative : BindRec, A](storage: Storage[F], program: StorageProgram[A]): F[A] =
+  @inline def runProgram[F[_] : Monad : RecursiveTailRecM, A](storage: Storage[F], program: StorageProgram[A]): F[A] =
     foldMapFCRec(program, new (StorageAction ~> F) {
       override def apply[Y](fa: StorageAction[Y]): F[Y] = fa.run(storage)
     })
@@ -96,14 +94,14 @@ object StorageProgram {
           case StorageAction.Update(k, _) => Vector.empty[String] :+ k
           case StorageAction.Remove(_) => Vector.empty[String]
         }
-        WriterT.put[StorageActionF, Vector[String], Y](Coyoneda.lift(fa))(keys)
+        WriterT.putT[StorageActionF, Vector[String], Y](Coyoneda.lift(fa))(keys)
       }
     }
 
   @inline def retargetNt(delim: String): StorageActionF ~> Retargetable[StorageActionF, ?] =
     new (StorageActionF ~> Retargetable[StorageActionF, ?]) {
       override def apply[Y](fa: StorageActionF[Y]): Retargetable[StorageActionF, Y] = {
-        ReaderT.kleisli[StorageActionF, String, Y]((prefix: String) => fa.trans(new (StorageAction ~> StorageAction) {
+        ReaderT.apply[StorageActionF, String, Y]((prefix: String) => fa.transform(new (StorageAction ~> StorageAction) {
           // TODO: clean up with access to SI-9760 fix
           override def apply[A](fa: StorageAction[A]): StorageAction[A] = fa match {
             case StorageAction.Get(k) => StorageAction.Get(prefix + delim + k).asInstanceOf[StorageAction[A]]
@@ -114,12 +112,13 @@ object StorageProgram {
       }
     }
 
-  final def retarget[A](program: StorageProgram[A], delim: String): Free[dash.Retargetable[Coyoneda[StorageAction, ?], ?], A] = program.mapSuspension(new (Coyoneda[StorageAction, ?] ~> Retargetable[Coyoneda[StorageAction, ?], ?]) {
-    override def apply[Y](fa: Coyoneda[StorageAction, Y]): Retargetable[Coyoneda[StorageAction, ?], Y] = StorageProgram.retargetNt(delim).apply(fa)
-  })
+  final def retarget[A](program: StorageProgram[A], delim: String): Free[dash.Retargetable[Coyoneda[StorageAction, ?], ?], A] =
+    program.compile(new (Coyoneda[StorageAction, ?] ~> Retargetable[Coyoneda[StorageAction, ?], ?]) {
+      override def apply[Y](fa: Coyoneda[StorageAction, Y]): Retargetable[Coyoneda[StorageAction, ?], Y] = StorageProgram.retargetNt(delim).apply(fa)
+    })
 
-  @inline def runRetargetableProgram[F[_] : Applicative : BindRec, A](storage: Storage[F], index: String, program: Free[Retargetable[Coyoneda[StorageAction, ?], ?], A]): F[A] = {
-    val ran = program.mapSuspension(new (Retargetable[Coyoneda[StorageAction, ?], ?] ~> Coyoneda[StorageAction, ?]) {
+  @inline def runRetargetableProgram[F[_] : Monad : RecursiveTailRecM, A](storage: Storage[F], index: String, program: Free[Retargetable[Coyoneda[StorageAction, ?], ?], A]): F[A] = {
+    val ran = program.compile(new (Retargetable[Coyoneda[StorageAction, ?], ?] ~> Coyoneda[StorageAction, ?]) {
       override def apply[Y](fa: Retargetable[Coyoneda[dash.StorageAction, ?], Y]): Coyoneda[StorageAction, Y] =
         fa.run(index)
     })
@@ -143,11 +142,11 @@ object DomStorage {
 }
 
 // Implementation for pure maps
-object PureStorage extends Storage[State[String ==>> String, ?]] {
-  override def apply(key: String): State[String ==>> String, Option[String]] = State.get.map(_.lookup(key))
+object PureStorage extends Storage[State[Map[String, String], ?]] {
+  override def apply(key: String): State[Map[String, String], Option[String]] = State.get.map(_.get(key))
 
-  override def update(key: String, data: String): State[String ==>> String, Unit] = State.modify(_.insert(key, data))
+  override def update(key: String, data: String): State[Map[String, String], Unit] = State.modify(_ + (key -> data))
 
-  override def remove(key: String): State[String ==>> String, Unit] = State.modify(_ - key)
+  override def remove(key: String): State[Map[String, String], Unit] = State.modify(_ - key)
 }
 

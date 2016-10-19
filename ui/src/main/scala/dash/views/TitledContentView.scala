@@ -4,7 +4,7 @@ package views
 import dash.models.TitledContentModel
 import japgolly.scalajs.react.{ReactComponentB, _}
 import japgolly.scalajs.react.extra.Reusability
-import scalaz.syntax.std.boolean._
+import cats.implicits._
 import Util._
 
 import scalacss.Defaults._
@@ -93,15 +93,15 @@ object TitledContentView {
     ReactComponentB[TitledContentModel]("Issue")
       .renderP((_, model) =>
         li(Styles.base, key := model.title,
-          model.content.isEmpty !? (Styles.tallCell: TagMod),
-          div(model.content.isEmpty ?? (Styles.tall: TagMod),
+          model.content.nonEmpty ?= (Styles.tallCell: TagMod),
+          div(model.content.isEmpty ?= (Styles.tall: TagMod),
             span(Styles.title,
               a(Styles.title,
                 model.title,
                 href := model.titleUrl
               )
             ),
-            model.content.isEmpty !?
+            model.content.nonEmpty ?=
               (div(Styles.content,
                 model.content): TagMod)
           )

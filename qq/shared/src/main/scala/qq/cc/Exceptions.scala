@@ -1,11 +1,10 @@
 package qq
 package cc
 
+import cats.Semigroup
+import cats.data.NonEmptyList
+import cats.syntax.semigroup._
 import qq.data.JSON
-import scalaz.syntax.foldable._
-import scalaz.std.string._
-
-import scalaz.{NonEmptyList, Semigroup}
 
 class QQCompilationException(message: String) extends RuntimeException(message)
 
@@ -20,7 +19,7 @@ case class WrongNumParams(name: String, correct: Int, you: Int) extends QQCompil
 )
 
 case class QQRuntimeException(errors: NonEmptyList[QQRuntimeError])
-  extends RuntimeException(errors.map(_.message).list.toList.mkString("\n")) {
+  extends RuntimeException(errors.map(_.message).toList.mkString("\n")) {
   override def equals(obj: scala.Any): Boolean = obj match {
     case other: QQRuntimeException =>
       errors.map(_.message) == other.errors.map(_.message)
@@ -30,8 +29,8 @@ case class QQRuntimeException(errors: NonEmptyList[QQRuntimeError])
 
 object QQRuntimeException {
   implicit def qqruntimeExceptionSemigroup: Semigroup[QQRuntimeException] = new Semigroup[QQRuntimeException] {
-    override def append(f1: QQRuntimeException, f2: => QQRuntimeException): QQRuntimeException =
-      QQRuntimeException(f1.errors append f2.errors)
+    override def combine(f1: QQRuntimeException, f2: QQRuntimeException): QQRuntimeException =
+      QQRuntimeException(f1.errors |+| f2.errors)
   }
 
   def typeError(operation: String, typesAndValues: (String, JSON)*): QQRuntimeError =

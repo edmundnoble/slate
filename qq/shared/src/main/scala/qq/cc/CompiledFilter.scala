@@ -1,28 +1,24 @@
 package qq
 package cc
 
+import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import monix.eval.Task
-import monix.scalaz._
+import monix.cats._
 import qq.data.{JSON, VarBinding}
 import qq.util._
-
-import scalaz.syntax.tag._
-import scalaz.std.list._
-import scalaz.syntax.traverse._
-import scalaz.syntax.apply._
-import scalaz.syntax.validation._
-import scalaz.{Monoid, NonEmptyList, Validation, ValidationNel}
+import cats.Monoid
+import cats.implicits._
 
 object CompiledFilter {
 
   @inline final def id: CompiledFilter =
-    _ => j => Task.now((j :: Nil).successNel)
+    _ => j => Task.now((j :: Nil).validNel)
 
   @inline final def const(value: JSON): CompiledFilter =
-    _ => _ => Task.now((value :: Nil).successNel)
+    _ => _ => Task.now((value :: Nil).validNel)
 
   @inline final def constL(values: List[JSON]): CompiledFilter =
-    _ => _ => Task.now(values.successNel)
+    _ => _ => Task.now(values.validNel)
 
   @inline final def func(f: CompiledProgram): CompiledFilter =
     _ => f
@@ -32,45 +28,42 @@ object CompiledFilter {
 
   def ensequenceCompiledFilters
   (first: CompiledFilter, second: CompiledFilter): CompiledFilter =
-    bindings => jsv => Task.mapBoth(first(bindings)(jsv), second(bindings)(jsv))((f, s) => (f |@| s) {
-      _ ++ _
-    })
+    bindings => jsv => Task.mapBoth(first(bindings)(jsv), second(bindings)(jsv))((f, s) => (f |@| s).map (_ ++ _))
 
   def zipFiltersWith
-  (first: CompiledFilter, second: CompiledFilter, fun: (JSON, JSON) => Task[ValidationNel[QQRuntimeError, JSON]]): CompiledFilter =
+  (first: CompiledFilter, second: CompiledFilter, fun: (JSON, JSON) => Task[ValidatedNel[QQRuntimeError, JSON]]): CompiledFilter =
     bindings => jsv =>
       Task.mapBoth(first(bindings)(jsv), second(bindings)(jsv)) { (f, s) =>
-        val x: ValidationNel[QQRuntimeError, List[Task[ValidationNel[QQRuntimeError, JSON]]]] = (f |@| s) ((fu, fs) => (fu, fs).zipped.map(fun))
-        val x2: Task[Validation[NonEmptyList[QQRuntimeError], List[ValidationNel[QQRuntimeError, JSON]]]] = x.traverse(_.traverse[Task, ValidationNel[QQRuntimeError, JSON]](identity))
-        val x3: Task[Validation[NonEmptyList[QQRuntimeError], List[JSON]]] = x2.map(_.map(_.traverse[ValidationNel[QQRuntimeError, ?], JSON](identity)).flatten)
+        val x: ValidatedNel[QQRuntimeError, List[Task[ValidatedNel[QQRuntimeError, JSON]]]] = (f |@| s).map ((fu, fs) => (fu, fs).zipped.map(fun))
+        val x2: Task[Validated[NonEmptyList[QQRuntimeError], List[ValidatedNel[QQRuntimeError, JSON]]]] = x.traverse(_.traverse[Task, ValidatedNel[QQRuntimeError, JSON]](identity))
+        val x3: Task[Validated[NonEmptyList[QQRuntimeError], List[JSON]]] = x2.map(_.map(_.traverse[ValidatedNel[QQRuntimeError, ?], JSON](identity)).flatten)
         x3
       }.flatten
 
   def asBinding(name: String, as: CompiledFilter, in: CompiledFilter): CompiledFilter =
     bindings => v => {
-      import Validation.FlatMap._
-      val res: Task[ValidationNel[QQRuntimeError, List[JSON]]] =
+      val res: Task[ValidatedNel[QQRuntimeError, List[JSON]]] =
         as(bindings)(v)
-      val newBindings: Task[ValidationNel[QQRuntimeError, List[VarBinding]]] =
+      val newBindings: Task[ValidatedNel[QQRuntimeError, List[VarBinding]]] =
         res.map(_.map(_.map(VarBinding(name, _))))
-      val allBindings: Task[ValidationNel[QQRuntimeError, List[Map[String, VarBinding]]]] =
+      val allBindings: Task[ValidatedNel[QQRuntimeError, List[Map[String, VarBinding]]]] =
         newBindings.map(_.map(_.map(b => bindings + (b.name -> b))))
-      val apped: Task[ValidationNel[QQRuntimeError, List[Task[ValidationNel[QQRuntimeError, List[JSON]]]]]] =
+      val apped: Task[ValidatedNel[QQRuntimeError, List[Task[ValidatedNel[QQRuntimeError, List[JSON]]]]]] =
         allBindings.map(_.map(_.map(in(_)(v))))
-      val t: Task[ValidationNel[QQRuntimeError, List[ValidationNel[QQRuntimeError, List[JSON]]]]] =
-        apped.flatMap(_.traverse(_.traverse(identity[Task[ValidationNel[QQRuntimeError, List[JSON]]]])))
-      val r: Task[ValidationNel[QQRuntimeError, ValidationNel[QQRuntimeError, List[List[JSON]]]]] =
-        t.map(_.map(_.traverse[ValidationNel[QQRuntimeError, ?], List[JSON]](identity)))
-      val x: Task[ValidationNel[QQRuntimeError, List[JSON]]] =
+      val t: Task[ValidatedNel[QQRuntimeError, List[ValidatedNel[QQRuntimeError, List[JSON]]]]] =
+        apped.flatMap(_.traverse(_.traverse(identity[Task[ValidatedNel[QQRuntimeError, List[JSON]]]])))
+      val r: Task[ValidatedNel[QQRuntimeError, ValidatedNel[QQRuntimeError, List[List[JSON]]]]] =
+        t.map(_.map(_.traverse[ValidatedNel[QQRuntimeError, ?], List[JSON]](identity)))
+      val x: Task[ValidatedNel[QQRuntimeError, List[JSON]]] =
         r.map(_.flatMap(_.map(_.flatten)))
       x
     }
 
   implicit def compiledFilterMonoid: Monoid[CompiledFilter] = new Monoid[CompiledFilter] {
-    override def append(a: CompiledFilter, b: => CompiledFilter): CompiledFilter =
+    override def combine(a: CompiledFilter, b: CompiledFilter): CompiledFilter =
       composeFilters(a, b)
 
-    override def zero: CompiledFilter =
+    override def empty: CompiledFilter =
       id
   }
 

@@ -9,8 +9,8 @@ import dash.Util.observableReusability
 import dash.views.ExpandableContentView.ExpandableContentProps
 
 import scalacss.Defaults._
-import scalaz.\/
-import scalaz.syntax.either._
+import cats.data.Xor
+import cats.implicits._
 
 object AppView {
 

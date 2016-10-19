@@ -1,5 +1,6 @@
 package qq
 
+import cats.data.{Validated, Xor}
 import org.scalactic.Uniformity
 import org.scalatest.OptionValues._
 import qq.data.JSON
@@ -7,7 +8,6 @@ import qq.util.Recursion
 import qq.util.Recursion.RecursionEngine
 
 import scala.language.implicitConversions
-import scalaz.{Validation, \/}
 
 trait TestUtil {
 
@@ -30,10 +30,10 @@ trait TestUtil {
     case _ => j
   }
 
-  implicit def convertDisjunctionToValuable[E, A](dis: E \/ A)(implicit pos: org.scalactic.source.Position): Valuable[A] =
+  implicit def convertDisjunctionToValuable[E, A](dis: E Xor A)(implicit pos: org.scalactic.source.Position): Valuable[A] =
     new Valuable(dis.toOption, pos)
 
-  implicit def convertValidationToValuable[E, A](dis: Validation[E, A])(implicit pos: org.scalactic.source.Position): Valuable[A] =
+  implicit def convertValidatedToValuable[E, A](dis: Validated[E, A])(implicit pos: org.scalactic.source.Position): Valuable[A] =
     new Valuable(dis.toOption, pos)
 
   implicit val recEngine: RecursionEngine =
