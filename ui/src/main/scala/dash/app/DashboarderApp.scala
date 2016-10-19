@@ -1,8 +1,7 @@
 package dash
 package app
 
-import dash.DashboardPage.{AppBarState, SearchPageProps}
-import dash.StorageAction.StorageActionF
+import dash.DashboardPage.SearchPageProps
 import dash.Util._
 import dash.app.ProgramCache.ErrorGettingCachedProgram
 import dash.models.{AppModel, ExpandableContentModel}
@@ -16,50 +15,27 @@ import monix.scalaz._
 import org.scalajs.dom
 import org.scalajs.dom.raw._
 import qq.Platform.Rec._
-import qq.cc.{CompiledFilter, QQCompilationException, QQCompiler, QQRuntimeError, QQRuntimeException}
+import qq.cc.{CompiledFilter, QQCompilationException, QQCompiler, QQRuntimeException}
 import qq.data.{ConcreteFilter, JSON, Program}
-import shapeless.ops.coproduct.Unifier
 import qq.util._
+import shapeless.ops.coproduct.Unifier
 import shapeless.{:+:, Inl, Inr}
-import upickle.Invalid.Data
 
 import scala.concurrent.duration.FiniteDuration
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
-import scala.util.{Failure, Success}
-import scalaz.syntax.traverse._
-import scalaz.syntax.either._
-import scalaz.std.list._
-import scalaz.syntax.tag._
-import scalaz.syntax.apply._
-import scalaz.syntax.bind._
-import scalaz.syntax.std.`try`._
+import scala.util.Success
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
-import scalaz.{Coyoneda, Functor, ReaderT, ValidationNel, \/, ~>}
+import scalaz.std.list._
+import scalaz.syntax.apply._
+import scalaz.syntax.either._
+import scalaz.syntax.tag._
+import scalaz.syntax.traverse._
+import scalaz.{Functor, \/}
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
-
-  def wheelPositionY: Observable[Double] =
-    Observable.create[Double](OverflowStrategy.Unbounded) { (s: Sync[Double]) =>
-      var posY = 0.0
-      val wheelHandler = js.Any.fromFunction1((ev: WheelEvent) => {
-        if (ev.deltaY == 0) {
-          posY = 0
-        } else {
-          posY += ev.deltaY
-        }
-        s.onNext(posY)
-        js.Any.fromUnit(())
-      })
-
-      dom.window.addEventListener[WheelEvent]("wheel", wheelHandler)
-
-      Cancelable { () =>
-        dom.window.removeEventListener[WheelEvent]("wheel", wheelHandler)
-      }
-    }.throttleLast(new FiniteDuration(30, java.util.concurrent.TimeUnit.MILLISECONDS))
 
   private[this] val logger = LoggerFactory.getLogger("DashboarderApp")
 
@@ -107,13 +83,9 @@ object DashboarderApp extends scalajs.js.JSApp {
       program.map { programPrecompiledOrString =>
         programPrecompiledOrString.fold(e => Task.now(e.right[ErrorGettingCachedProgram]), s =>
           StorageProgram.runRetargetableProgram(DomStorage.Local, "program",
-            ProgramCache.getCachedProgram(s).mapSuspension(new (Coyoneda[StorageAction, ?] ~> Retargetable[Coyoneda[StorageAction, ?], ?]) {
-
-//              Coyoneda.liftT[StorageAction, ReaderT[StorageAction, String, ?]](StorageProgram.retargetNt)
-              override def apply[A](fa: Coyoneda[StorageAction, A]): Retargetable[Coyoneda[StorageAction, ?], A] = StorageProgram.retargetNt(" ").apply(fa)
-            }))
-        ).map(_.leftMap(Inr[QQCompilationException, ErrorGettingCachedProgram]).flatMap(
-          QQCompiler.compileProgram(DashPrelude, _).leftMap(Inl[QQCompilationException, ErrorGettingCachedProgram])
+            StorageProgram.retarget(ProgramCache.getCachedProgram(s), " "))
+        ).map(_.leftMap(Inr.apply).flatMap(
+          QQCompiler.compileProgram(DashPrelude, _).leftMap(Inl.apply)
         ))
       }
     )
@@ -128,7 +100,7 @@ object DashboarderApp extends scalajs.js.JSApp {
             .map(_.leftMap(Inr[QQRuntimeException, ErrorCompilingPrograms]))
             .flatMap(_.traverse[Task, ErrorRunningPrograms, ErrorRunningPrograms \/ List[JSON]] {
               _ (Map.empty)(input).map {
-                _.leftMap(exs => Inl[QQRuntimeException, ErrorCompilingPrograms](QQRuntimeException(exs))).disjunction
+                _.leftMap(exs => Inl(QQRuntimeException(exs))).disjunction
               }
             }).map(_.flatMap(identity))
         )
@@ -148,7 +120,7 @@ object DashboarderApp extends scalajs.js.JSApp {
                     json =>
                       val upickleJson = JSON.JSONToUpickleRec.apply(json)
                       Coeval.delay(ExpandableContentModel.pkl.read(upickleJson).right).onErrorRecover {
-                        case ex: upickle.Invalid.Data => Inl[upickle.Invalid.Data, ErrorRunningPrograms](ex).left
+                        case ex: upickle.Invalid.Data => Inl(ex).left
                       }.value
                   }
               }
@@ -176,14 +148,14 @@ object DashboarderApp extends scalajs.js.JSApp {
     )((l, ap) => ap :: l.filterNot(_.title == ap.title))
       .map(appProps => SearchPageProps(appProps.sortBy(_.title)))
 
-  def render(container: Element, wheelPosY: Observable[Double], content: SearchPageProps)(
+  def render(container: Element, content: SearchPageProps)(
     implicit scheduler: Scheduler): Task[ReactComponentM[SearchPageProps, Unit, Unit, TopNode]] = {
 
     import dash.views._
 
     val searchPage =
       DashboardPage
-        .makeDashboardPage(wheelPosY.map(AppBarState(_)))
+        .makeDashboardPage
         .build(content)
     val renderer = new StringRenderer.Raw(StringRenderer.formatTiny)
     val addStyles =
@@ -193,7 +165,7 @@ object DashboarderApp extends scalajs.js.JSApp {
     Task.create {
       (_, cb) =>
         ReactDOM.render(searchPage, container,
-          js.ThisFunction.fromFunction1((t: ReactComponentM[SearchPageProps, Unit, Unit, TopNode]) => cb.apply(Success(t))))
+          js.ThisFunction.fromFunction1[ReactComponentM[SearchPageProps, Unit, Unit, TopNode], Unit](t => cb.apply(Success(t))))
         Cancelable.empty
     }
   }
@@ -212,7 +184,7 @@ object DashboarderApp extends scalajs.js.JSApp {
       dom.document.body.children.namedItem("container")
     val _ = getContent.flatMap {
       props =>
-        Observable.fromTask(render(container, Observable.never, props))
+        Observable.fromTask(render(container, props))
     }.subscribe()
     if (!js.isUndefined(Addons.Perf)) {
       logger.info("Stopping perf")

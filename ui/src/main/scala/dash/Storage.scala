@@ -5,6 +5,7 @@ import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
 
 import scalaz.std.string._
 import scalaz.{==>>, Applicative, BindRec, Coyoneda, Free, Functor, ReaderT, State, WriterT, ~>}
+import scalaz.syntax.applicative._
 
 // Operations on a Storage with F[_] effects
 // To abstract over storage that has different effects performed by its operations
@@ -75,6 +76,13 @@ object StorageProgram {
   @inline final def remove(key: String): StorageProgram[Unit] =
     liftFC(Remove(key))
 
+  @inline final def getOrSet(key: String, value: => String): StorageProgram[String] = {
+    for {
+      cur <- get(key)
+      o <- cur.fold(update(key, value) >| value)(_.pure[StorageProgram])
+    } yield o
+  }
+
   @inline def runProgram[F[_] : Applicative : BindRec, A](storage: Storage[F], program: StorageProgram[A]): F[A] =
     foldMapFCRec(program, new (StorageAction ~> F) {
       override def apply[Y](fa: StorageAction[Y]): F[Y] = fa.run(storage)
@@ -104,9 +112,9 @@ object StorageProgram {
       }
     }
 
-  implicit def retargetableFunctor[F[_] : Functor] = new Functor[Retargetable[F, ?]] {
-    override def map[A, B](fa: Retargetable[F, A])(f: (A) => B): Retargetable[F, B] = fa.map(f)
-  }
+  final def retarget[A](program: StorageProgram[A], delim: String): Free[dash.Retargetable[Coyoneda[StorageAction, ?], ?], A] = program.mapSuspension(new (Coyoneda[StorageAction, ?] ~> Retargetable[Coyoneda[StorageAction, ?], ?]) {
+    override def apply[Y](fa: Coyoneda[StorageAction, Y]): Retargetable[Coyoneda[StorageAction, ?], Y] = StorageProgram.retargetNt(delim).apply(fa)
+  })
 
   @inline def runRetargetableProgram[F[_] : Applicative : BindRec, A](storage: Storage[F], index: String, program: Free[Retargetable[Coyoneda[StorageAction, ?], ?], A]): F[A] = {
     val ran = program.mapSuspension(new (Retargetable[Coyoneda[StorageAction, ?], ?] ~> Coyoneda[StorageAction, ?]) {

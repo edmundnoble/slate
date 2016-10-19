@@ -20,13 +20,6 @@ object DashboardPage {
   def makeAppCell(result: AppProps)(implicit sch: Scheduler): ReactElement =
     AppView.builder.build(result)
 
-  case class AppBarState(scrollY: Double)
-
-  object AppBarState {
-    implicit val reusability: Reusability[AppBarState] =
-      Reusability.byRefOr_==[AppBarState]
-  }
-
   case class SearchPageProps(appProps: List[AppProps])
 
   object SearchPageProps {
@@ -34,7 +27,7 @@ object DashboardPage {
       Reusability.caseClass[SearchPageProps]
   }
 
-  def makeDashboardPage(appbarProps: Observable[AppBarState])(implicit sch: Scheduler
+  def makeDashboardPage(implicit sch: Scheduler
   ): ReactComponentB[SearchPageProps, Unit, Unit, TopNode] =
     ReactComponentB[SearchPageProps]("Main search page")
       .stateless

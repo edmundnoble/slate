@@ -10,7 +10,7 @@ import fastparse.core.{ParseError, Parsed}
 import qq.util.Recursion.RecursionEngine
 import shapeless.{:+:, CNil}
 
-import scalaz.{ReaderT, \/}
+import scalaz.{Coyoneda, Free, ReaderT, \/, ~>}
 import scalaz.syntax.either._
 import scalaz.syntax.applicative._
 import scalaz.syntax.std.option._
