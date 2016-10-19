@@ -13,12 +13,15 @@ object DashboarderBuild {
 
   lazy val commonDeps: Seq[Setting[_]] = Seq(
     libraryDependencies ++= Seq(
+      "org.atnos" %%% "eff-cats" % "2.0-preview-2",
+      "org.atnos" %%% "eff-cats-monix" % "2.0-preview-2",
       "org.scalatest" %%% "scalatest" % "3.0.0" % "test",
       "com.lihaoyi" %%% "upickle" % "0.4.1",
       "com.lihaoyi" %%% "fastparse" % "0.3.7",
       "org.scalaz" %%% "scalaz-core" % "7.2.6",
       "io.monix" %%% "monix" % "2.0.4",
       "io.monix" %%% "monix-scalaz-72" % "2.0.4",
+      "io.monix" %%% "monix-cats" % "2.0.4",
       "com.slamdata" %%% "matryoshka-core" % "0.11.0",
       "org.scodec" %%% "scodec-bits" % "1.1.0",
       "org.scodec" %%% "scodec-core" % "1.10.2"
