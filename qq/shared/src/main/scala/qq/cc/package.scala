@@ -1,15 +1,25 @@
 package qq
 
-import cats.data.{ValidatedNel, Xor}
+import cats.{Eval, Traverse}
+import cats.data._
+import cats.implicits._
 import monix.eval.Task
 import qq.data.{JSON, VarBinding}
+import org.atnos.eff._
+import org.atnos.eff.Eff._
 
 package object cc {
 
+  type RuntimeError[A] = ValidatedNel[QQRuntimeError, A]
   type VarBindings = Map[String, VarBinding]
-  type CompiledFilter = VarBindings => CompiledProgram
+  type VarEnv[A] = Reader[VarBindings, A]
+
   type CompiledMathOperator = (JSON, JSON) => ValidatedNel[QQRuntimeError, JSON]
-  type CompiledProgram = JSON => Task[ValidatedNel[QQRuntimeError, List[JSON]]]
+  type CompiledProgramStack = Fx.fx3[Task, RuntimeError, List]
+  type CompiledProgram = Arrs[CompiledProgramStack, JSON, JSON]
+  type CompiledFilterStack = Fx.append[Fx.fx1[VarEnv], CompiledProgramStack]
+  type CompiledFilterResult[A] = Eff[CompiledFilterStack, A]
+  type CompiledFilter = Arrs[CompiledFilterStack, JSON, JSON]
 
   type OrCompilationError[T] = QQCompilationException Xor T
 

@@ -3,8 +3,9 @@ package cc
 
 import cats.Semigroup
 import cats.data.NonEmptyList
-import cats.syntax.semigroup._
+import cats.implicits._
 import qq.data.JSON
+import org.atnos.eff._, Eff._, syntax.all._
 
 class QQCompilationException(message: String) extends RuntimeException(message)
 
@@ -33,12 +34,12 @@ object QQRuntimeException {
       QQRuntimeException(f1.errors |+| f2.errors)
   }
 
-  def typeError(operation: String, typesAndValues: (String, JSON)*): QQRuntimeError =
-    TypeError(operation, typesAndValues: _*)
-  def notARegex(asStr: String): QQRuntimeError =
-    NotARegex(asStr)
-  def noSuchVariable(variableName: String): QQRuntimeError =
-    NoSuchVariable(variableName)
+  def typeError(operation: String, typesAndValues: (String, JSON)*): CompiledFilterResult[JSON] =
+    NonEmptyList.of[QQRuntimeError](TypeError(operation, typesAndValues: _*)).invalid.send[CompiledFilterStack]
+  def notARegex(asStr: String): CompiledFilterResult[JSON] =
+    NonEmptyList.of[QQRuntimeError](NotARegex(asStr)).invalid.send[CompiledFilterStack]
+  def noSuchVariable(variableName: String): CompiledFilterResult[JSON] =
+    NonEmptyList.of[QQRuntimeError](NoSuchVariable(variableName)).invalid.send[CompiledFilterStack]
 }
 
 abstract class QQRuntimeError(val message: String)

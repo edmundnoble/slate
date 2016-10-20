@@ -8,56 +8,42 @@ import qq.data.{JSON, VarBinding}
 import qq.util._
 import cats.Monoid
 import cats.implicits._
+import org.atnos.eff._, Eff._, syntax.all._
 
 object CompiledFilter {
 
+  @inline final def singleton(filt: JSON => Eff[CompiledFilterStack, JSON]): Arrs[CompiledFilterStack, JSON, JSON] =
+    Arrs.singleton(filt)
+
   @inline final def id: CompiledFilter =
-    _ => j => Task.now((j :: Nil).validNel)
+    singleton(_.pureEff)
 
   @inline final def const(value: JSON): CompiledFilter =
-    _ => _ => Task.now((value :: Nil).validNel)
+    singleton(_ => value.pureEff)
 
   @inline final def constL(values: List[JSON]): CompiledFilter =
-    _ => _ => Task.now(values.validNel)
+    singleton(_ => list.fromList(values).into[CompiledFilterStack])
 
   @inline final def func(f: CompiledProgram): CompiledFilter =
-    _ => f
+    singleton(f(_).into)
 
-  def composeFilters(f: CompiledFilter, s: CompiledFilter): CompiledFilter = bindings =>
-    CompiledProgram.composePrograms(f(bindings), s(bindings))
+  @inline final def composeFilters(f: CompiledFilter, s: CompiledFilter): CompiledFilter =
+    Arrs(f.functions ++ s.functions)
 
-  def ensequenceCompiledFilters
+  @inline final def ensequenceCompiledFilters
   (first: CompiledFilter, second: CompiledFilter): CompiledFilter =
-    bindings => jsv => Task.mapBoth(first(bindings)(jsv), second(bindings)(jsv))((f, s) => (f |@| s).map (_ ++ _))
+    singleton(j =>
+      Eff.collapse(list.runList(second(j)).ap(list.runList(first(j)).map(l => (l2: List[JSON]) => l ++ l2)).into[CompiledFilterStack])
+    )
 
-  def zipFiltersWith
-  (first: CompiledFilter, second: CompiledFilter, fun: (JSON, JSON) => Task[ValidatedNel[QQRuntimeError, JSON]]): CompiledFilter =
-    bindings => jsv =>
-      Task.mapBoth(first(bindings)(jsv), second(bindings)(jsv)) { (f, s) =>
-        val x: ValidatedNel[QQRuntimeError, List[Task[ValidatedNel[QQRuntimeError, JSON]]]] = (f |@| s).map ((fu, fs) => (fu, fs).zipped.map(fun))
-        val x2: Task[Validated[NonEmptyList[QQRuntimeError], List[ValidatedNel[QQRuntimeError, JSON]]]] = x.traverse(_.traverse[Task, ValidatedNel[QQRuntimeError, JSON]](identity))
-        val x3: Task[Validated[NonEmptyList[QQRuntimeError], List[JSON]]] = x2.map(_.map(_.traverse[ValidatedNel[QQRuntimeError, ?], JSON](identity)).flatten)
-        x3
-      }.flatten
-
-  def asBinding(name: String, as: CompiledFilter, in: CompiledFilter): CompiledFilter =
-    bindings => v => {
-      val res: Task[ValidatedNel[QQRuntimeError, List[JSON]]] =
-        as(bindings)(v)
-      val newBindings: Task[ValidatedNel[QQRuntimeError, List[VarBinding]]] =
-        res.map(_.map(_.map(VarBinding(name, _))))
-      val allBindings: Task[ValidatedNel[QQRuntimeError, List[Map[String, VarBinding]]]] =
-        newBindings.map(_.map(_.map(b => bindings + (b.name -> b))))
-      val apped: Task[ValidatedNel[QQRuntimeError, List[Task[ValidatedNel[QQRuntimeError, List[JSON]]]]]] =
-        allBindings.map(_.map(_.map(in(_)(v))))
-      val t: Task[ValidatedNel[QQRuntimeError, List[ValidatedNel[QQRuntimeError, List[JSON]]]]] =
-        apped.flatMap(_.traverse(_.traverse(identity[Task[ValidatedNel[QQRuntimeError, List[JSON]]]])))
-      val r: Task[ValidatedNel[QQRuntimeError, ValidatedNel[QQRuntimeError, List[List[JSON]]]]] =
-        t.map(_.map(_.traverse[ValidatedNel[QQRuntimeError, ?], List[JSON]](identity)))
-      val x: Task[ValidatedNel[QQRuntimeError, List[JSON]]] =
-        r.map(_.flatMap(_.map(_.flatten)))
-      x
-    }
+  def asBinding(name: String, as: CompiledFilter, in: CompiledFilter): CompiledFilter = singleton { (j: JSON) =>
+    for {
+      bindings <- reader.ask[CompiledFilterStack, VarBindings]
+      result <- as.apply(j)
+      newBinding = VarBinding(name, result)
+      inRan <- reader.runReader(bindings + (newBinding.name -> newBinding))(in(j)).into[CompiledFilterStack]
+    } yield inRan
+  }
 
   implicit def compiledFilterMonoid: Monoid[CompiledFilter] = new Monoid[CompiledFilter] {
     override def combine(a: CompiledFilter, b: CompiledFilter): CompiledFilter =

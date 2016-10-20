@@ -54,6 +54,7 @@ object QQCompiler {
   final def compileStep(definitions: Map[String, CompiledDefinition],
                         filter: FilterComponent[CompiledFilter]): OrCompilationError[CompiledFilter] = filter match {
     case Dereference(name) =>
+      eff.Arrs
       ((bindings: VarBindings) => (_: JSON) =>
         Task.now(bindings.get(name).fold(noSuchVariable(name).invalidNel[List[JSON]])(v => (v.value :: Nil).validNel))).right
     case ConstNumber(num) => QQRuntime.constNumber(num).right
