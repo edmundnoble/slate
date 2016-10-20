@@ -172,11 +172,12 @@ object DashboarderApp extends scalajs.js.JSApp {
     }
     val container =
       dom.document.body.children.namedItem("container")
-    appendStyles()
-    val _ = getContent.flatMap {
-      props =>
-        Observable.fromTask(render(container, props))
-    }.subscribe()
+    val _ =
+      (for {
+        _ <- Observable.fromTask(appendStyles())
+        props <- getContent
+        _ <- Observable.fromTask(render(container, props))
+      } yield ()).subscribe()
     if (!js.isUndefined(Addons.Perf)) {
       logger.info("Stopping perf")
       Addons.Perf.stop()
@@ -185,7 +186,7 @@ object DashboarderApp extends scalajs.js.JSApp {
     }
   }
 
-  private def appendStyles() = {
+  private def appendStyles() = Task.delay {
     import dash.views._
     val renderer = new StringRenderer.Raw(StringRenderer.formatTiny)
     val addStyles =
