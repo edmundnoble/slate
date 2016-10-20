@@ -18,7 +18,7 @@ class CompilerTest extends QQAsyncTestSuite {
   def runTest(qqCompilerTest: CompilerTestCase): Future[Assertion] = qqCompilerTest match {
     case CompilerTestCase(input, filter, expectedOutput@_*) =>
       QQCompiler
-        .compileFilter(IndexedSeq.empty, filter)
+        .compileFilter(Vector.empty, filter)
         .fold[Task[Assertion]](
         err => Task.eval(fail("error occurred during compilation: \n" + err.toString)),
         program => program(Map.empty)(input).map { output =>

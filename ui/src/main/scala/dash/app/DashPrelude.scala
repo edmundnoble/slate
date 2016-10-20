@@ -139,6 +139,6 @@ object DashPrelude extends Prelude {
       Task.now((typeError("formatDatetimeFriendly", "string" -> k): QQRuntimeError).invalidNel[List[JSON]])
   })
 
-  override def all(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition]] =
+  override def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] =
     Vector(googleAuth, launchAuth, httpDelete, httpGet, httpPost, httpPatch, httpPut, nowRFC3339, formatDatetimeFriendly).right
 }

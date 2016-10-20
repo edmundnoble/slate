@@ -172,7 +172,7 @@ object JSONPrelude extends Prelude {
       }
     )
 
-  def all(implicit rec: RecursionEngine): QQCompilationException Xor IndexedSeq[CompiledDefinition] =
+  def all(implicit rec: RecursionEngine): QQCompilationException Xor Vector[CompiledDefinition] =
     Vector(
       `null`, `true`, `false`, orElse, b64Encode, includes, // exists, forall,
       length, keys, replaceAll, select, arrays, objects, iterables, booleans,

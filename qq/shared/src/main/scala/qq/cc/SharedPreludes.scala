@@ -6,13 +6,11 @@ import qq.data._
 import qq.util.Recursion.RecursionEngine
 
 import cats.implicits._
-import cats.implicits._
-import cats.implicits._
 
-object SharedPreludes {
+object SharedPreludes extends Prelude {
 
   val compiled: Prelude = new Prelude {
-    override def all(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition]] = {
+    override def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] = {
 
       val print: CompiledDefinition =
         CompiledDefinition.noParamDefinition("print",
@@ -25,7 +23,7 @@ object SharedPreludes {
       val empty: CompiledDefinition =
         CompiledDefinition.noParamDefinition("empty", CompiledFilter.constL(Nil))
 
-      IndexedSeq(print, empty).right
+      Vector(print, empty).right
     }
   }
 
@@ -38,10 +36,11 @@ object SharedPreludes {
       )
     }
 
-    override def all(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition]] =
+    override def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] =
       QQCompiler.compileDefinitions(Prelude.empty, List(map))
   }
 
-  def all: Prelude = raw |+| compiled
+  def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] =
+    compiled.all |+| raw.all
 
 }

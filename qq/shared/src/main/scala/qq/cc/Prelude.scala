@@ -3,20 +3,20 @@ package cc
 
 import qq.data.CompiledDefinition
 import qq.util.Recursion.RecursionEngine
-
 import cats.implicits._
 import cats.Monoid
+import cats.data.Xor
 
 object Prelude {
   val empty = new Prelude {
-    override def all(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition]] = IndexedSeq.empty.right
+    override def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] = Vector.empty.right
   }
 
   implicit val preludeMonoid: Monoid[Prelude] = new Monoid[Prelude] {
     override def empty: Prelude = Prelude.empty
 
     override def combine(f1: Prelude, f2: Prelude): Prelude = new Prelude {
-      override def all(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition]] = for {
+      override def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] = for {
         fst <- f1.all
         snd <- f2.all
       } yield fst ++ snd
@@ -25,6 +25,6 @@ object Prelude {
 }
 
 trait Prelude {
-  def all(implicit rec: RecursionEngine): OrCompilationError[IndexedSeq[CompiledDefinition]]
+  def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]]
 }
 
