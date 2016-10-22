@@ -164,7 +164,7 @@ object Parser {
 
   // The reason I avoid using basicFilter is to avoid a parsing ambiguity with ensequencedFilters
   val enjectPair: P[(String Xor ConcreteFilter, ConcreteFilter)] = P(
-    ((("(" ~/ filter ~ ")").map(_.right[String]) |
+    ((("(" ~/ whitespace ~ filter ~ whitespace ~ ")").map(_.right[String]) |
       (stringLiteral | escapedStringLiteral).map(_.left[ConcreteFilter])) ~ ":" ~ whitespace ~ piped) |
       filterIdentifier.map(id => id.left -> dsl.getPath(List(dsl.selectKey(id))))
   )
@@ -204,7 +204,7 @@ object Parser {
     P(binaryOperators[ConcreteFilter](factor, "*" -> dsl.multiply _, "/" -> dsl.divide _, "%" -> dsl.modulo _))
 
   val factor: P[ConcreteFilter] =
-    P(("(" ~/ withEquals ~ ")") | asBinding | smallFilter | enjectedFilter | enlistedFilter)
+    P(("(" ~/ whitespace ~ withEquals ~ whitespace ~ ")") | asBinding | smallFilter | enjectedFilter | enlistedFilter)
 
   val filter: P[ConcreteFilter] = P(
     for {
@@ -214,7 +214,7 @@ object Parser {
   )
 
   val arguments: P[List[String]] = P(
-    "(" ~/ filterIdentifier.rep(min = 1, sep = whitespace ~ "," ~/ whitespace) ~ ")"
+    "(" ~/ whitespace ~ filterIdentifier.rep(min = 1, sep = whitespace ~ "," ~/ whitespace) ~ whitespace ~ ")"
   )
 
   val definition: P[Definition[ConcreteFilter]] = P(

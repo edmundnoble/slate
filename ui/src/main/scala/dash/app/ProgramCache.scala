@@ -2,17 +2,14 @@ package dash
 package app
 
 import qq.cc._
-import qq.data.{ConcreteFilter, FilterComponent, Program}
+import qq.data.{ConcreteFilter, Program}
 import scodec.bits.BitVector
 import Util._
 import fastparse.core.{ParseError, Parsed}
 import qq.util.Recursion.RecursionEngine
 import shapeless.{:+:, CNil}
 
-import cats.implicits._
-import cats.free.{Coyoneda, Free}
-import cats.data.{Xor, ReaderT}
-import cats.implicits._
+import cats.data.Xor
 import cats.implicits._
 
 object ProgramCache {
@@ -53,8 +50,7 @@ object ProgramCache {
           val asBase64 = encodedProgram.map(_.toBase64)
           asBase64.fold(
             _.left.pure[StorageProgram],
-            (s: String) =>
-              update(hash, s).map(_ => preparedProgram)
+            update(hash, _).as(preparedProgram)
           )
         case Some(encodedProgram) =>
           val encodedProgramBits =

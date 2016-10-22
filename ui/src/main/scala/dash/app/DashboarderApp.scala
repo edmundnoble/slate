@@ -54,8 +54,8 @@ object DashboarderApp extends scalajs.js.JSApp {
     }.mkString
 
     List[DashProgram[Program[ConcreteFilter] Xor String]](
-      DashProgram(1, "Gmail", "https://gmail.com", GmailApp.program.left, JSON.Obj()),
-      DashProgram(2, "Todoist", "https://todoist.com", TodoistApp.program.left,
+      DashProgram(1, "Gmail", "https://gmail.com", GmailApp.program, JSON.Obj()),
+      DashProgram(2, "Todoist", "https://todoist.com", TodoistApp.program,
         JSON.Obj(
           "client_id" -> JSON.Str(Creds.todoistClientId),
           "client_secret" -> JSON.Str(Creds.todoistClientSecret),
@@ -63,13 +63,13 @@ object DashboarderApp extends scalajs.js.JSApp {
           "tok" -> JSON.Str(todoistState)
         )
       ),
-      DashProgram(3, "JIRA", "https://dashboarder.atlassian.net", JIRAApp.program.left,
+      DashProgram(3, "JIRA", "https://dashboarder.atlassian.net", JIRAApp.program,
         JSON.Obj(
           "username" -> JSON.Str(Creds.jiraUsername),
           "password" -> JSON.Str(Creds.jiraPassword)
         )
       ),
-      DashProgram(4, "Google Calendar", "https://calendar.google.com", GCalendarApp.program.left, JSON.Obj())
+      DashProgram(4, "Google Calendar", "https://calendar.google.com", GCalendarApp.program, JSON.Obj())
     )
   }
 

@@ -1,12 +1,14 @@
 package dash
 package app
 
+import cats.data.Xor
 import qq.data.{ConcreteFilter, Program}
 import qq.macros.QQStager._
+import cats.syntax.xor._
 
 object JIRAApp {
 
-  val program: Program[ConcreteFilter] =
+  val program: Program[ConcreteFilter] Xor String =
     qq"""
 def authHeaders: (.username + ":" + .password | b64Encode) | { Authorization: "Basic " + . };
 
@@ -44,6 +46,6 @@ $$auth as authHeaders in
   httpGet("https://dashboarder.atlassian.net/rest/api/2/filter/favourite"; {}; {}; $$auth)
       | extractFilters($$auth)
       | contentFromFilter
-"""
+""".left
 
 }
