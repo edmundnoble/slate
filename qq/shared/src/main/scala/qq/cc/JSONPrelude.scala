@@ -33,13 +33,13 @@ object JSONPrelude extends Prelude {
     case (default :: Nil) =>
       CompiledFilter.singleton((j: JSON) =>
         if (j == JSON.Null) default(JSON.Null)
-        else j.pureEff
+        else j.pureEff[CompiledFilterStack]
       ).right
   })
 
   // base 64 encoding, duh
   def b64Encode: CompiledDefinition = noParamDefinition("b64Encode", CompiledFilter.singleton {
-    case JSON.Str(str) => JSON.Str(ByteVector.encodeUtf8(str).right.getOrElse(ByteVector.empty).toBase64).pureEff
+    case JSON.Str(str) => JSON.str(ByteVector.encodeUtf8(str).right.getOrElse(ByteVector.empty).toBase64).pureEff[CompiledFilterStack]
     case k => typeError("b64Encode", "string" -> k)
   })
 
@@ -47,11 +47,11 @@ object JSONPrelude extends Prelude {
   def length: CompiledDefinition =
     noParamDefinition(
       "length", CompiledFilter.singleton {
-        case arr: JSON.Arr => JSON.Num(arr.value.length).pureEff
-        case JSON.Str(str) => JSON.Num(str.length).pureEff
-        case obj: JSON.ObjMap => JSON.Num(obj.value.size).pureEff
-        case obj: JSON.ObjList => JSON.Num(obj.value.size).pureEff
-        case JSON.Null => JSON.Num(0).pureEff
+        case arr: JSON.Arr => JSON.num(arr.value.length).pureEff[CompiledFilterStack]
+        case JSON.Str(str) => JSON.num(str.length).pureEff[CompiledFilterStack]
+        case obj: JSON.ObjMap => JSON.num(obj.value.size).pureEff[CompiledFilterStack]
+        case obj: JSON.ObjList => JSON.num(obj.value.size).pureEff[CompiledFilterStack]
+        case JSON.Null => JSON.num(0).pureEff[CompiledFilterStack]
         case k => typeError("length", "array | string | object | null" -> k)
       }
     )
@@ -59,8 +59,8 @@ object JSONPrelude extends Prelude {
   // object keys
   def keys: CompiledDefinition =
     noParamDefinition(
-      "keys", CompiledFilter.func {
-        case obj: JSON.Obj => JSON.Arr(obj.map(p => JSON.Str(p._1))(collection.breakOut): _*).pureEff
+      "keys", CompiledFilter.singleton {
+        case obj: JSON.Obj => JSON.arr(obj.map(p => JSON.str(p._1))(collection.breakOut): _*).pureEff[CompiledFilterStack]
         case k => typeError("keys", "object" -> k)
       }
     )
@@ -72,27 +72,27 @@ object JSONPrelude extends Prelude {
         case (regexRaw :: replacementRaw :: Nil) => (j: JSON) =>
           val regexValidated: Validated[NonEmptyList[QQRuntimeError], Pattern] = regexRaw match {
             case JSON.Str(string) => Pattern.compile(string).validNel
-            case k => NonEmptyList(NotARegex(QQRuntime.print(k))).invalid
+            case k => NonEmptyList.of[QQRuntimeError](NotARegex(QQRuntime.print(k))).invalid
           }
           val replacementValidated: Validated[NonEmptyList[QQRuntimeError], String] = replacementRaw match {
             case JSON.Str(string) => string.validNel
-            case k => NonEmptyList(TypeError("replace", "string" -> k)).invalid
+            case k => NonEmptyList.of[QQRuntimeError](TypeError("replace", "string" -> k)).invalid
           }
           val valueRegexReplacementList: Validated[NonEmptyList[QQRuntimeError], JSON] = (regexValidated |@| replacementValidated).map { (regex, replacement) =>
             j match {
               case JSON.Str(string) =>
                 (JSON.Str(regex.matcher(string).replaceAll(replacement)): JSON).validNel[QQRuntimeError]
-              case k => TypeError("replace", "string" -> k).invalid[JSON]
+              case k => NonEmptyList.of[QQRuntimeError](TypeError("replace", "string" -> k)).invalid[JSON]
             }
           }.flatten
-          Task.now(valueRegexReplacementList)
+          valueRegexReplacementList.send[CompiledFilterStack]
       })
 
   // filter
   def select: CompiledDefinition = CompiledDefinition("select", 1, {
-    case List(filterFun) => ((bindings: VarBindings) => {
-      (value: JSON) => filterFun(bindings)(value).map(_.map(_.filter(_ == JSON.True).map(_ => value)))
-    }: CompiledProgram).right
+    case List(filterFun) => CompiledFilter.singleton {
+      (value: JSON) => list.runList(filterFun(value)).map(_.filter(_ == JSON.True).map(_ => value)).into[CompiledFilterStack].collapse
+    }.right
   })
 
   // array or object includes
@@ -102,73 +102,73 @@ object JSONPrelude extends Prelude {
 
   def arrays: CompiledDefinition =
     noParamDefinition(
-      "arrays", CompiledFilter.func {
-        case arr: JSON.Arr => Task.now((arr :: Nil).validNel)
-        case _ => Task.now(Nil.validNel)
+      "arrays", CompiledFilter.singleton {
+        case arr: JSON.Arr => (arr: JSON).pureEff[CompiledFilterStack]
+        case _ => list.empty
       })
 
   def objects: CompiledDefinition =
     noParamDefinition(
-      "objects", CompiledFilter.func {
-        case obj: JSON.Obj => Task.now((obj :: Nil).validNel)
-        case _ => Task.now(Nil.validNel)
+      "objects", CompiledFilter.singleton {
+        case obj: JSON.Obj => (obj: JSON).pureEff[CompiledFilterStack]
+        case _ => list.empty
       })
 
   def iterables: CompiledDefinition =
     noParamDefinition(
-      "iterables", CompiledFilter.func {
-        case arr: JSON.Arr => Task.now((arr :: Nil).validNel)
-        case obj: JSON.Obj => Task.now((obj :: Nil).validNel)
-        case _ => Task.now(Nil.validNel)
+      "iterables", CompiledFilter.singleton {
+        case arr: JSON.Arr => (arr: JSON).pureEff[CompiledFilterStack]
+        case obj: JSON.Obj => (obj: JSON).pureEff[CompiledFilterStack]
+        case _ => list.empty
       })
 
   def booleans: CompiledDefinition =
     noParamDefinition(
-      "booleans", CompiledFilter.func {
-        case bool@(JSON.True | JSON.False) => Task.now((bool :: Nil).validNel)
-        case _ => Task.now(Nil.validNel)
+      "booleans", CompiledFilter.singleton {
+        case bool@(JSON.True | JSON.False) => (bool: JSON).pureEff[CompiledFilterStack]
+        case _ => list.empty
       })
 
   def numbers: CompiledDefinition =
     noParamDefinition(
-      "numbers", CompiledFilter.func {
-        case num: JSON.Num => Task.now((num :: Nil).validNel)
-        case _ => Task.now(Nil.validNel)
+      "numbers", CompiledFilter.singleton {
+        case num: JSON.Num => (num: JSON).pureEff[CompiledFilterStack]
+        case _ => list.empty
       })
 
   def strings: CompiledDefinition =
     noParamDefinition(
-      "strings", CompiledFilter.func {
-        case str: JSON.Str => Task.now((str :: Nil).validNel)
-        case _ => Task.now(Nil.validNel)
+      "strings", CompiledFilter.singleton {
+        case str: JSON.Str => (str: JSON).pureEff[CompiledFilterStack]
+        case _ => list.empty
       })
 
   def nulls: CompiledDefinition =
     noParamDefinition(
-      "nulls", CompiledFilter.func {
-        case JSON.Null => Task.now((JSON.Null :: Nil).validNel)
-        case _ => Task.now(Nil.validNel)
+      "nulls", CompiledFilter.singleton {
+        case JSON.Null => (JSON.Null: JSON).pureEff[CompiledFilterStack]
+        case _ => list.empty
       })
 
   def values: CompiledDefinition =
     noParamDefinition(
-      "values", CompiledFilter.func {
-        case null => Task.now(Nil.validNel)
-        case k => Task.now((k :: Nil).validNel)
+      "values", CompiledFilter.singleton {
+        case JSON.Null => list.empty
+        case k => k.pureEff[CompiledFilterStack]
       })
 
   def scalars: CompiledDefinition =
     noParamDefinition(
-      "scalars", CompiledFilter.func {
-        case _: JSON.Arr => Task.now(Nil.validNel)
-        case _: JSON.Obj => Task.now(Nil.validNel)
-        case k => Task.now((k :: Nil).validNel)
+      "scalars", CompiledFilter.singleton {
+        case _: JSON.Arr => list.empty
+        case _: JSON.Obj => list.empty
+        case k => k.pureEff[CompiledFilterStack]
       })
 
   def toStringDef: CompiledDefinition =
     noParamDefinition(
-      "toString", CompiledFilter.func { j: JSON =>
-        Task.now((JSON.Str(JSON.render(j)) :: Nil).validNel)
+      "toString", CompiledFilter.singleton { j: JSON =>
+        (JSON.Str(JSON.render(j)): JSON).pureEff[CompiledFilterStack]
       }
     )
 

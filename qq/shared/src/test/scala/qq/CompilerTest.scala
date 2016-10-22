@@ -3,7 +3,7 @@ package qq
 import monix.eval.Task
 import org.scalactic.NormMethods._
 import org.scalatest.Assertion
-import qq.cc.QQCompiler
+import qq.cc.{CompiledFilter, QQCompiler}
 import qq.data.{ConcreteFilter, JSON, QQDSL}
 
 import scala.concurrent.Future
@@ -21,7 +21,7 @@ class CompilerTest extends QQAsyncTestSuite {
         .compileFilter(Vector.empty, filter)
         .fold[Task[Assertion]](
         err => Task.eval(fail("error occurred during compilation: \n" + err.toString)),
-        program => program(Map.empty)(input).map { output =>
+        program => CompiledFilter.run(input, Map.empty, program).map { output =>
           output.value.map(_.norm) shouldBe expectedOutput.toList.map(_.norm)
         })
         .runAsync

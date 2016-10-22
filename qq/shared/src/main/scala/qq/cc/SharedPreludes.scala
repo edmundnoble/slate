@@ -1,9 +1,9 @@
 package qq
 package cc
 
-import monix.eval.Task
 import qq.data._
 import qq.util.Recursion.RecursionEngine
+import org.atnos.eff._, syntax.all._
 
 import cats.implicits._
 
@@ -14,9 +14,9 @@ object SharedPreludes extends Prelude {
 
       val print: CompiledDefinition =
         CompiledDefinition.noParamDefinition("print",
-          CompiledFilter.func { (jsv: JSON) =>
+          CompiledFilter.singleton { (jsv: JSON) =>
             println("debug: " + QQRuntime.print(jsv))
-            Task.now((jsv :: Nil).validNel)
+            jsv.pureEff
           }
         )
 

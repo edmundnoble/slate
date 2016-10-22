@@ -15,6 +15,9 @@ object CompiledFilter {
   @inline final def singleton(filt: JSON => Eff[CompiledFilterStack, JSON]): Arrs[CompiledFilterStack, JSON, JSON] =
     Arrs.singleton(filt)
 
+  @inline final def constE(result: Eff[CompiledFilterStack, JSON]): Arrs[CompiledFilterStack, JSON, JSON] =
+    Arrs.singleton(_ => result)
+
   @inline final def id: CompiledFilter =
     singleton(_.pureEff)
 
@@ -22,7 +25,7 @@ object CompiledFilter {
     singleton(_ => value.pureEff)
 
   @inline final def constL(values: List[JSON]): CompiledFilter =
-    singleton(_ => list.fromList(values).into[CompiledFilterStack])
+    constE(values.send)
 
   @inline final def func(f: CompiledProgram): CompiledFilter =
     singleton(f(_).into)
@@ -40,9 +43,25 @@ object CompiledFilter {
     for {
       bindings <- reader.ask[CompiledFilterStack, VarBindings]
       result <- as.apply(j)
-      newBinding = VarBinding(name, result)
-      inRan <- reader.runReader(bindings + (newBinding.name -> newBinding))(in(j)).into[CompiledFilterStack]
+      inRan <- reader.runReader(bindings + (name -> VarBinding(name, result)))(in(j)).into[CompiledFilterStack]
     } yield inRan
+  }
+
+  def run(in: JSON, bindings: VarBindings, filter: CompiledFilter): Task[ValidatedNel[QQRuntimeError, List[JSON]]] = {
+    runStack(bindings, filter(in))
+  }
+
+  def runStack[A](bindings: VarBindings, result: CompiledFilterResult[A]): Task[ValidatedNel[QQRuntimeError, List[A]]] = {
+    detachA[Task, ValidatedNel[QQRuntimeError, List[A]]](
+      validated
+        .by[NonEmptyList[QQRuntimeError]]
+        .runErrorParallel[Fx.fx2[ValidatedNel[QQRuntimeError, ?], Task], Fx.fx1[Task], List[A]](
+        ???
+//        list.runList[CompiledProgramStack, Fx.fx2[ValidatedNel[QQRuntimeError, ?], Task], A](
+//          reader.runReader[CompiledFilterStack, CompiledProgramStack, VarBindings, A](bindings)(result)
+//        )
+      )
+    )
   }
 
   implicit def compiledFilterMonoid: Monoid[CompiledFilter] = new Monoid[CompiledFilter] {

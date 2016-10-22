@@ -1,12 +1,15 @@
 package qq
 package cc
 
-import cats.data.{NonEmptyList, Validated, ValidatedNel}
+import cats.data.{NonEmptyList, Validated, ValidatedNel, Xor}
 import monix.eval.Task
 import monix.cats._
 import qq.data._
 import qq.util.Recursion.RecursionEngine
 import qq.util._
+import org.atnos.eff._
+import Eff._
+import syntax.all._
 
 import scala.language.higherKinds
 import cats.implicits._
@@ -33,18 +36,8 @@ object QQCompiler {
       components
         .map(QQRuntime.makePathComponentGetter)
         .nelFoldLeft1(CompiledProgram.id)(CompiledProgram.composePrograms)
-    case PathSet(set) => (j: JSON) =>
-      set(j).flatMap {
-        _.traverse(_.traverse {
-          QQRuntime.setPath(components, j, _)
-        })
-      }.map { a =>
-        val x: ValidatedNel[QQRuntimeError, ValidatedNel[QQRuntimeError, List[List[JSON]]]] =
-          a.map(_.traverse[ValidatedNel[QQRuntimeError, ?], List[JSON]](identity))
-        val x2: Validated[NonEmptyList[QQRuntimeError], List[JSON]] =
-          x.flatMap(_.map(_.flatten))
-        x2
-      }
+    case PathSet(set) =>
+      set
     case PathModify(modify) =>
       components
         .map(QQRuntime.modifyPath)
@@ -52,16 +45,24 @@ object QQCompiler {
   }
 
   final def compileStep(definitions: Map[String, CompiledDefinition],
-                        filter: FilterComponent[CompiledFilter]): OrCompilationError[CompiledFilter] = filter match {
+                        filter: FilterComponent[CompiledFilter]): QQCompilationException Xor CompiledFilter = filter match {
     case Dereference(name) =>
-      eff.Arrs
-      ((bindings: VarBindings) => (_: JSON) =>
-        Task.now(bindings.get(name).fold(noSuchVariable(name).invalidNel[List[JSON]])(v => (v.value :: Nil).validNel))).right
+      CompiledFilter.singleton {
+        (_: JSON) =>
+          for {
+            bindings <- reader.ask[CompiledFilterStack, VarBindings]
+            result <- bindings.get(name).fold(noSuchVariable[CompiledFilterStack, JSON](name))(_.value.pureEff[CompiledFilterStack])
+          } yield result
+      }.right
     case ConstNumber(num) => QQRuntime.constNumber(num).right
     case ConstString(str) => QQRuntime.constString(str).right
     case ConstBoolean(bool) => QQRuntime.constBoolean(bool).right
-    case FilterNot() => CompiledFilter.func { j => Task.now(QQRuntime.not(j).map(_ :: Nil)) }.right
-    case PathOperation(components, operationF) => ((_: VarBindings) => evaluatePath(components, operationF.map(_ (Map.empty)))).right
+    case FilterNot() => CompiledFilter.singleton { j => QQRuntime.not(j).send[CompiledFilterStack] }.right
+    case PathOperation(components, operationF) =>
+      ???
+//      CompiledFilter.func(evaluatePath(components,
+//      operationF.map(f => CompiledProgram.singleton((j: JSON) => reader.runReader[CompiledFilterStack, CompiledProgramStack, VarBindings, JSON](Map.empty)(f(j))))
+//    )).right
     case ComposeFilters(f, s) => CompiledFilter.composeFilters(f, s).right
     case CallFilter(filterIdentifier, params) =>
       definitions.get(filterIdentifier).fold((NoSuchMethod(filterIdentifier): QQCompilationException).left[CompiledFilter]) { (defn: CompiledDefinition) =>
@@ -72,18 +73,22 @@ object QQCompiler {
       }
     case AsBinding(name, as, in) => CompiledFilter.asBinding(name, as, in).right
     case EnlistFilter(f) => QQRuntime.enlistFilter(f).right
-    case SilenceExceptions(f) =>
-      ((varBindings: VarBindings) =>
-        (jsv: JSON) =>
-          f(varBindings)(jsv).map(_.orElse(Nil.validNel[QQRuntimeError]))).right
+    case SilenceExceptions(f) => CompiledFilter.singleton { (jsv: JSON) =>
+      val listExposed: Eff[CompiledFilterStack, List[JSON]] =
+        list.runList(f(jsv)).into[CompiledFilterStack]
+      val errExposed: Eff[CompiledFilterStack, ValidatedNel[QQRuntimeError, List[JSON]]] =
+        validated.by[NonEmptyList[QQRuntimeError]].runErrorParallel(listExposed).into[CompiledFilterStack]
+      val recovered: Eff[CompiledFilterStack, ValidatedNel[QQRuntimeError, List[JSON]]] =
+        errExposed.map(_.orElse(Nil.valid[NonEmptyList[QQRuntimeError]]))
+
+      Eff.collapse(Eff.collapse(recovered))
+    }.right[QQCompilationException]
     case EnsequenceFilters(first, second) => CompiledFilter.ensequenceCompiledFilters(first, second).right
     case EnjectFilters(obj) => QQRuntime.enjectFilter(obj).right
     case FilterMath(first, second, op) =>
-      val operatorFunction = funFromMathOperator(op)
-      val converted = (j1: JSON, j2: JSON) => Task.now(operatorFunction(j1, j2))
-      // this is incorrect behavior according to JQ and intuitively.
-      // TODO: replace with standard effect distribution
-      CompiledFilter.zipFiltersWith(first, second, converted).right
+      CompiledFilter.singleton { j =>
+        (first(j) |@| second(j)).map((v1, v2) => Eff.send[ValidatedNel[QQRuntimeError, ?], CompiledFilterStack, JSON](funFromMathOperator(op)(v1, v2))).flatten
+      }.right
   }
 
   final def compileDefinitionStep(soFar: OrCompilationError[Vector[CompiledDefinition]],

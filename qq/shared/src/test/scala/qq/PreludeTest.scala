@@ -15,7 +15,7 @@ class PreludeTest extends QQAsyncTestSuite {
 
   def runTest(test: PreludeTestCase): Future[Assertion] =
     Runner
-      .run(test.program)(List(test.input))
+      .run(test.program)(test.input)
       .value
       .map(_.map(_.map(_.norm)) should be(test.expectedOutputOrException.map(_.map(_.norm))))
       .runAsync

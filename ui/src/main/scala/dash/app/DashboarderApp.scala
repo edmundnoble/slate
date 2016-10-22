@@ -95,8 +95,8 @@ object DashboarderApp extends scalajs.js.JSApp {
         (id, title, titleLink,
           program
             .map(_.leftMap(Inr[QQRuntimeException, ErrorCompilingPrograms]))
-            .flatMap(_.traverse[Task, ErrorRunningPrograms, ErrorRunningPrograms Xor List[JSON]] {
-              _ (Map.empty)(input).map {
+            .flatMap(_.traverse[Task, ErrorRunningPrograms, ErrorRunningPrograms Xor List[JSON]] { compiled =>
+              CompiledFilter.run(input, Map.empty, compiled).map {
                 _.leftMap(exs => Inl(QQRuntimeException(exs))).toXor
               }
             }).map(_.flatMap(identity))

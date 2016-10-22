@@ -68,13 +68,25 @@ object JSON {
   }
 
   case object True extends JSON
+  def `true`: JSON = True
+
   case object False extends JSON
+  def `false`: JSON = False
+
   case object Null extends JSON
+  def `null`: JSON = Null
+
   final case class Str(value: String) extends AnyVal with JSON
+  def str(value: String): JSON = Str(value)
+
   final case class Num(value: Double) extends AnyVal with JSON
+  def num(value: Double): JSON = Num(value)
+
   sealed trait Obj extends Any with JSON {
     def toMap: ObjMap
+
     def toList: ObjList
+
     def map[B, That](f: ((String, JSON)) => B)(implicit cbf: CanBuildFrom[Any, B, That]): That
   }
   object Obj {
@@ -94,8 +106,11 @@ object JSON {
     override def map[B, That](f: ((String, JSON)) => B)(implicit cbf: CanBuildFrom[Any, B, That]): That =
       value.map(f)(cbf)
   }
+  def obj(values: (String, JSON)*): JSON = Obj(values: _*)
+
   final case class Arr(value: List[JSON]) extends AnyVal with JSON
   object Arr {
     def apply(values: JSON*): Arr = Arr(values.toList)
   }
+  def arr(values: JSON*): JSON = Arr(values.toList)
 }

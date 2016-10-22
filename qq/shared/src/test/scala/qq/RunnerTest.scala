@@ -16,7 +16,7 @@ class RunnerTest extends QQAsyncTestSuite {
 
   def runTest(test: RunnerTestCase): Future[Assertion] =
     Runner
-      .run(test.program)(List(test.input))
+      .run(test.program)(test.input)
       .value
       .map(_.map(_.map(_.norm)) should be(test.expectedOutputOrException.map(_.map(_.norm))))
       .runAsync
@@ -50,7 +50,7 @@ class RunnerTest extends QQAsyncTestSuite {
       ".titles[]",
       List(JSON.Str("lol1"), JSON.Str("wat1")).validNel
     ),
-    RunnerTestCase(JSON.Num(1), ".[]", typeError("flatten", "array" -> JSON.Num(1)).invalidNel)
+    RunnerTestCase(JSON.Num(1), ".[]", TypeError("flatten", "array" -> JSON.Num(1)).invalidNel)
   )
 
   val enjectedFilters = RunnerTestCase(

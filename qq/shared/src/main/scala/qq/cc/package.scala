@@ -10,12 +10,13 @@ import org.atnos.eff.Eff._
 
 package object cc {
 
-  type RuntimeError[A] = ValidatedNel[QQRuntimeError, A]
+  type RuntimeError[+A] = ValidatedNel[QQRuntimeError, A]
   type VarBindings = Map[String, VarBinding]
   type VarEnv[A] = Reader[VarBindings, A]
 
   type CompiledMathOperator = (JSON, JSON) => ValidatedNel[QQRuntimeError, JSON]
-  type CompiledProgramStack = Fx.fx3[Task, RuntimeError, List]
+  type CompiledProgramStack = Fx.fx3[Task, ValidatedNel[QQRuntimeError, ?], List]
+  type CompiledProgramResult[A] = Eff[CompiledProgramStack, A]
   type CompiledProgram = Arrs[CompiledProgramStack, JSON, JSON]
   type CompiledFilterStack = Fx.append[Fx.fx1[VarEnv], CompiledProgramStack]
   type CompiledFilterResult[A] = Eff[CompiledFilterStack, A]

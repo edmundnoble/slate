@@ -34,12 +34,12 @@ object QQRuntimeException {
       QQRuntimeException(f1.errors |+| f2.errors)
   }
 
-  def typeError(operation: String, typesAndValues: (String, JSON)*): CompiledFilterResult[JSON] =
-    NonEmptyList.of[QQRuntimeError](TypeError(operation, typesAndValues: _*)).invalid.send[CompiledFilterStack]
-  def notARegex(asStr: String): CompiledFilterResult[JSON] =
-    NonEmptyList.of[QQRuntimeError](NotARegex(asStr)).invalid.send[CompiledFilterStack]
-  def noSuchVariable(variableName: String): CompiledFilterResult[JSON] =
-    NonEmptyList.of[QQRuntimeError](NoSuchVariable(variableName)).invalid.send[CompiledFilterStack]
+  def typeError[S <: Fx : validated._validatedNel[QQRuntimeError, ?], A](operation: String, typesAndValues: (String, JSON)*): Eff[S, A] =
+    validated.invalid(NonEmptyList.of[QQRuntimeError](TypeError(operation, typesAndValues: _*)))
+  def notARegex[S <: Fx : validated._validatedNel[QQRuntimeError, ?], A](asStr: String): CompiledFilterResult[A] =
+    validated.invalid(NonEmptyList.of[QQRuntimeError](NotARegex(asStr)))
+  def noSuchVariable[S <: Fx : validated._validatedNel[QQRuntimeError, ?], A](variableName: String): CompiledFilterResult[A] =
+    validated.invalid(NonEmptyList.of[QQRuntimeError](NoSuchVariable(variableName)))
 }
 
 abstract class QQRuntimeError(val message: String)

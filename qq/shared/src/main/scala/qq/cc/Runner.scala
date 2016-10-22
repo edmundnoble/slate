@@ -1,7 +1,7 @@
 package qq
 package cc
 
-import cats.data.{ValidatedNel, Xor}
+import cats.data.{NonEmptyList, ValidatedNel, Xor}
 import fastparse.core.{ParseError, Parsed}
 import monix.eval.Task
 import monix.cats._
@@ -9,6 +9,7 @@ import qq.data.JSON
 import qq.util.Recursion.RecursionEngine
 import qq.util._
 import cats.implicits._
+import org.atnos.eff._, Eff._, syntax.all._
 
 // tools for running parts of the compiler together
 object Runner {
@@ -24,15 +25,9 @@ object Runner {
   }
 
   // parse, compile, and run
-  def run(qqProgram: String)(input: List[JSON])(implicit rec: RecursionEngine): (QQCompilationException Xor ParseError) Xor Task[ValidatedNel[QQRuntimeError, List[JSON]]] = {
-    parseAndCompile(qqProgram).map(
-      f => {
-        val r = Task.gather(input.map(f(Map.empty)(_)))
-        val x: Task[ValidatedNel[QQRuntimeError, List[List[JSON]]]] =
-          r.map(_.traverse[ValidatedNel[QQRuntimeError, ?], List[JSON]](identity))
-        x.map(_.map(_.flatten))
-      }
-    )
+  def run(qqProgram: String)(input: JSON)
+         (implicit rec: RecursionEngine): (QQCompilationException Xor ParseError) Xor Task[ValidatedNel[QQRuntimeError, List[JSON]]] = {
+    parseAndCompile(qqProgram).map(CompiledFilter.run(input, Map.empty, _))
   }
 
 }
