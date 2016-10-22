@@ -7,7 +7,7 @@ import monix.cats._
 import org.scalajs.dom.XMLHttpRequest
 import qq.Json
 import qq.Platform.Rec._
-import qq.cc.{CompiledFilter, CompiledFilterStack, OrCompilationError, Prelude, QQRuntimeError, QQRuntimeException, TypeError}
+import qq.cc.{CompiledFilter, CompiledFilterStack, OrCompilationError, OrRuntimeErr, Prelude, QQRuntimeError, QQRuntimeException, TypeError}
 import qq.data.{CompiledDefinition, JSON}
 import qq.util.Recursion.RecursionEngine
 import qq.util._
@@ -77,7 +77,7 @@ object DashPrelude extends Prelude {
               .onErrorHandle[ValidatedNel[QQRuntimeError, XMLHttpRequest]] {
               case e: QQRuntimeException => e.errors.invalid[XMLHttpRequest]
             }
-          ).sequence).send[Fx.fx2[Task, ValidatedNel[QQRuntimeError, ?]]].collapse.collapse
+          ).sequence).send[Fx.fx2[Task, OrRuntimeErr]].collapse.collapse
           asJson = Json.stringToJSON(resp.responseText).fold(Task.raiseError(_), Task.now(_))
         } yield asJson).into[CompiledFilterStack].collapse
     })

@@ -50,7 +50,7 @@ class RunnerTest extends QQAsyncTestSuite {
       ".titles[]",
       List(JSON.Str("lol1"), JSON.Str("wat1")).validNel
     ),
-    RunnerTestCase(JSON.Num(1), ".[]", TypeError("flatten", "array" -> JSON.Num(1)).invalidNel)
+    RunnerTestCase(JSON.Num(1), ".[]", (TypeError("flatten", "array" -> JSON.Num(1)): QQRuntimeError).invalidNel)
   )
 
   val enjectedFilters = RunnerTestCase(
@@ -119,11 +119,11 @@ class RunnerTest extends QQAsyncTestSuite {
     RunnerTestCase(JSON.Arr(JSON.Num(1)), "def f: . + 2; map(f)", List(JSON.Num(3)).validNel)
 
   val addNullException =
-    RunnerTestCase(JSON.Arr(), ".[0] + .[0]", typeError(
+    RunnerTestCase(JSON.Arr(), ".[0] + .[0]", (TypeError(
       "add",
       "number | string | array | object" -> JSON.Null,
       "number | string | array | object" -> JSON.Null
-    ).invalidNel)
+    ): QQRuntimeError).invalidNel)
 
   val silencedException =
     RunnerTestCase(JSON.Arr(), "(.[0] + .[0])?", List().validNel)

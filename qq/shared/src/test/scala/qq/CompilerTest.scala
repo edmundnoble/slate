@@ -5,11 +5,13 @@ import org.scalactic.NormMethods._
 import org.scalatest.Assertion
 import qq.cc.{CompiledFilter, QQCompiler}
 import qq.data.{ConcreteFilter, JSON, QQDSL}
+import qq.util.Recursion
+import qq.util.Recursion.RecursionEngine
 
 import scala.concurrent.Future
 
 // data representation of a compiler test case
-case class CompilerTestCase(input: JSON, program: ConcreteFilter, expectedOutput: JSON*)
+case class CompilerTestCase(input: JSON, program: ConcreteFilter, expectedOutput: JSON*)(implicit val recEngine: RecursionEngine)
 
 class CompilerTest extends QQAsyncTestSuite {
 
@@ -18,7 +20,7 @@ class CompilerTest extends QQAsyncTestSuite {
   def runTest(qqCompilerTest: CompilerTestCase): Future[Assertion] = qqCompilerTest match {
     case CompilerTestCase(input, filter, expectedOutput@_*) =>
       QQCompiler
-        .compileFilter(Vector.empty, filter)
+        .compileFilter(Vector.empty, filter)(qqCompilerTest.recEngine)
         .fold[Task[Assertion]](
         err => Task.eval(fail("error occurred during compilation: \n" + err.toString)),
         program => CompiledFilter.run(input, Map.empty, program).map { output =>
@@ -77,7 +79,7 @@ class CompilerTest extends QQAsyncTestSuite {
     @annotation.tailrec
     def fun(f: ConcreteFilter, i: Int): ConcreteFilter = if (i == 0) f else fun(id | f | id, i - 1)
     List(
-      CompilerTestCase(JSON.False, fun(id, 1000), JSON.False)
+      CompilerTestCase(JSON.False, fun(id, 1000), JSON.False)(qq.Platform.Rec.defaultRecScheme)
     )
   }
 

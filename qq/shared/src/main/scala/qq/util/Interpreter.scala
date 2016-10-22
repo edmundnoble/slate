@@ -46,17 +46,10 @@ object Interpreter {
     Interpreter("program " + source + ", input:", {
       case input =>
         val inputJs: JSON = JSON.upickleToJSONRec(json read input)
-        val ranProgram: Eff[CompiledProgramStack, JSON] =
-          reader.runReader[CompiledFilterStack, CompiledProgramStack, VarBindings, JSON](Map.empty)(program(inputJs))
-        val outputTask: Eff[Fx.fx2[Task, List], ValidatedNel[QQRuntimeError, JSON]] =
-          ???
-//          validated.by[NonEmptyList[QQRuntimeError]].runErrorParallel[CompiledProgramStack, Fx.fx2[Task, List], JSON](ranProgram)
-        val removeErr: Eff[Fx.fx2[Task, List], JSON] =
-          outputTask.map(_.fold(es => Task.raiseError(QQRuntimeException(es)), Task.now)).collapse
-        ???
-//        detachA[Task, List[JSON]](list.runList(removeErr)).map { outputs =>
-//          (outputs.map(JSON.render).mkString(", "), programInterpreterOf(source, program))
-//        }.right
+        val ranProgram = CompiledFilter.run(inputJs, Map.empty, program)
+        ranProgram.flatMap(_.fold[Task[(String, Interpreter)]]({ errs => Task.raiseError(QQRuntimeException(errs)) }, { outputs =>
+          Task.now((outputs.map(JSON.render).mkString(", "), programInterpreterOf(source, program)))
+        })).right
     })
 
   def inputInterpreter: Interpreter = taskSwitch orElse Interpreter("input:", {
@@ -68,18 +61,17 @@ object Interpreter {
   def inputInterpreterOf(source: String, input: JSON): Interpreter = taskSwitch orElse
     Interpreter("input " + source + ", program:", {
       case program =>
-        ???
-//        Runner.parseAndCompile(program).fold(
-//          err => Task.eval {
-//            val () = Console.err.println("Error: " + err.merge[Exception].getMessage)
-//            ("", programInterpreter)
-//          }, { compiledFilter =>
-//            val result = compiledFilter(Map.empty)(input)
-//            result.flatMap(_.fold(es => Task.raiseError(QQRuntimeException(es)), Task.now)).map { outputs =>
-//              (outputs.map(JSON.render).mkString(", "), inputInterpreterOf(source, input))
-//            }
-//          }
-//        ).right
+        Runner.parseAndCompile(program).fold(
+          err => Task.eval {
+            val () = Console.err.println("Error: " + err.merge[Exception].getMessage)
+            ("", programInterpreter)
+          }, { compiledFilter =>
+            val result = CompiledFilter.run(input, Map.empty, compiledFilter)
+            result.flatMap(_.fold(es => Task.raiseError(QQRuntimeException(es)), Task.now)).map { outputs =>
+              (outputs.map(JSON.render).mkString(", "), inputInterpreterOf(source, input))
+            }
+          }
+        ).right
     })
 
   def mainMenu: Interpreter = taskSwitch

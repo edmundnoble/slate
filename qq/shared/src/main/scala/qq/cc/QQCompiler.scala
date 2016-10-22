@@ -37,7 +37,9 @@ object QQCompiler {
         .map(QQRuntime.makePathComponentGetter)
         .nelFoldLeft1(CompiledProgram.id)(CompiledProgram.composePrograms)
     case PathSet(set) =>
-      set
+      CompiledProgram.singleton { j =>
+        set(j).flatMap(QQRuntime.setPath(components, j, _).into[CompiledProgramStack])
+      }
     case PathModify(modify) =>
       components
         .map(QQRuntime.modifyPath)
@@ -59,10 +61,12 @@ object QQCompiler {
     case ConstBoolean(bool) => QQRuntime.constBoolean(bool).right
     case FilterNot() => CompiledFilter.singleton { j => QQRuntime.not(j).send[CompiledFilterStack] }.right
     case PathOperation(components, operationF) =>
-      ???
-//      CompiledFilter.func(evaluatePath(components,
-//      operationF.map(f => CompiledProgram.singleton((j: JSON) => reader.runReader[CompiledFilterStack, CompiledProgramStack, VarBindings, JSON](Map.empty)(f(j))))
-//    )).right
+      type mem = Member.Aux[VarEnv, CompiledFilterStack, CompiledProgramStack]
+      CompiledFilter.singleton {
+        (j: JSON) => evaluatePath(components,
+          operationF.map(f => CompiledProgram.singleton((j: JSON) => reader.runReader[CompiledFilterStack, CompiledProgramStack, VarBindings, JSON](Map.empty)(f(j))(implicitly[mem])))
+        )(j).into[CompiledFilterStack]
+      }.right
     case ComposeFilters(f, s) => CompiledFilter.composeFilters(f, s).right
     case CallFilter(filterIdentifier, params) =>
       definitions.get(filterIdentifier).fold((NoSuchMethod(filterIdentifier): QQCompilationException).left[CompiledFilter]) { (defn: CompiledDefinition) =>
@@ -87,7 +91,7 @@ object QQCompiler {
     case EnjectFilters(obj) => QQRuntime.enjectFilter(obj).right
     case FilterMath(first, second, op) =>
       CompiledFilter.singleton { j =>
-        (first(j) |@| second(j)).map((v1, v2) => Eff.send[ValidatedNel[QQRuntimeError, ?], CompiledFilterStack, JSON](funFromMathOperator(op)(v1, v2))).flatten
+        (first(j) |@| second(j)).map((v1, v2) => Eff.send[OrRuntimeErr, CompiledFilterStack, JSON](funFromMathOperator(op)(v1, v2))).flatten
       }.right
   }
 
