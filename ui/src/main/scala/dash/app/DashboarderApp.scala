@@ -108,22 +108,18 @@ object DashboarderApp extends scalajs.js.JSApp {
   private def deserializeProgramOutput: List[(Int, String, String, Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]])] = runCompiledPrograms.map {
     case (id, title, titleLink, program) =>
       (id, title, titleLink, {
-        val z: Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]] =
-          program.map {
-            (y: ErrorRunningPrograms Xor List[JSON]) =>
-              val x = y.leftMap(Inr[upickle.Invalid.Data, ErrorRunningPrograms]).flatMap {
-                jsons =>
-                  jsons.traverse[ErrorDeserializingProgramOutput Xor ?, ExpandableContentModel] {
-                    json =>
-                      val upickleJson = JSON.JSONToUpickleRec.apply(json)
-                      Coeval.apply(ExpandableContentModel.pkl.read(upickleJson).right).onErrorRecover {
-                        case ex: upickle.Invalid.Data => Inl(ex).left
-                      }.value
-                  }
+        program.map {
+          _.leftMap(Inr[upickle.Invalid.Data, ErrorRunningPrograms]).flatMap {
+            jsons =>
+              jsons.traverse[ErrorDeserializingProgramOutput Xor ?, ExpandableContentModel] {
+                json =>
+                  val upickleJson = JSON.JSONToUpickleRec.apply(json)
+                  Coeval.apply(ExpandableContentModel.pkl.read(upickleJson).right).onErrorRecover {
+                    case ex: upickle.Invalid.Data => Inl(ex).left
+                  }.value
               }
-              x
           }
-        z
+        }
       })
   }
 
@@ -132,15 +128,14 @@ object DashboarderApp extends scalajs.js.JSApp {
       case (id, title, titleLink, program) =>
         val errorsCaughtProgram = program.map {
           t =>
-            t.swap
-              .map(implicitly[Unifier.Aux[ErrorDeserializingProgramOutput, Throwable]].apply)
-              .foreach {
-                logger.warn("error while running programs", _)
-              }
+            t.swap.foreach { err =>
+              logger.warn("error while running programs",
+                implicitly[Unifier.Aux[ErrorDeserializingProgramOutput, Throwable]].apply(err))
+            }
             AppProps(id, title, titleLink, AppModel(t))
         }
         errorsCaughtProgram
-    }(collection.breakOut))(
+    })(
       runCompiledPrograms.map(t => AppProps(t._1, t._2, t._3, AppModel(Nil.right)))
     )((l, ap) => ap :: l.filterNot(_.title == ap.title))
       .map(appProps => SearchPageProps(appProps.sortBy(_.title)))
@@ -155,7 +150,7 @@ object DashboarderApp extends scalajs.js.JSApp {
     Task.create {
       (_, cb) =>
         ReactDOM.render(searchPage, container,
-          js.ThisFunction.fromFunction1[ReactComponentM[SearchPageProps, Unit, Unit, TopNode], Unit](t => cb.apply(Success(t))))
+          js.ThisFunction.fromFunction1[ReactComponentM[SearchPageProps, Unit, Unit, TopNode], Unit](t => cb(Success(t))))
         Cancelable.empty
     }
   }
@@ -186,6 +181,7 @@ object DashboarderApp extends scalajs.js.JSApp {
     }
   }
 
+  // TODO: cache
   private def appendStyles() = Task.delay {
     import dash.views._
     val renderer = new StringRenderer.Raw(StringRenderer.formatTiny)
