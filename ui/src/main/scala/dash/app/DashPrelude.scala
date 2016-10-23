@@ -37,8 +37,9 @@ object DashPrelude extends Prelude {
           case JSON.Str(s) => s.validNel
           case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
         }
-        val queryParamsVerified: OrRuntimeErr[ Map[String, Any]] = queryParamsRaw match {
-          case o: JSON.Obj => o.toMap.value.mapValues(Json.JSONToJsRec(_)).validNel
+        val queryParamsVerified: OrRuntimeErr[JSON.ObjList] = queryParamsRaw match {
+          case o: JSON.ObjMap => JSON.ObjList(o.value.toList).validNel
+          case o: JSON.ObjList => o.validNel
           case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
         }
         val urlWithQueryParams = Applicative[OrRuntimeErr].map2(urlVerified, queryParamsVerified)(Ajax.addQueryParams)
@@ -58,8 +59,9 @@ object DashPrelude extends Prelude {
           case JSON.Str(s) => s.validNel
           case k => (TypeError("ajax", "string" -> k): QQRuntimeError).invalidNel
         }
-        val queryParamsValidated: OrRuntimeErr[Map[String, Any]] = queryParamsRaw match {
-          case o: JSON.Obj => o.toMap.value.mapValues(Json.JSONToJsRec(_)).validNel
+        val queryParamsValidated: OrRuntimeErr[JSON.ObjList] = queryParamsRaw match {
+          case o: JSON.ObjMap => JSON.ObjList(o.value.toList).validNel
+          case o: JSON.ObjList => o.validNel
           case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
         }
         val dataValidated: OrRuntimeErr[String] = dataRaw match {

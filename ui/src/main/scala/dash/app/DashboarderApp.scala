@@ -9,8 +9,7 @@ import dash.views.AppView.AppProps
 import japgolly.scalajs.react.{Addons, ReactComponentM, ReactDOM, TopNode}
 import monix.eval.{Coeval, Task}
 import monix.execution.{Cancelable, Scheduler}
-import monix.reactive.observers.Subscriber.Sync
-import monix.reactive.{Observable, OverflowStrategy}
+import monix.reactive.Observable
 import monix.cats._
 import org.scalajs.dom
 import org.scalajs.dom.raw._
@@ -21,7 +20,6 @@ import qq.util._
 import shapeless.ops.coproduct.Unifier
 import shapeless.{:+:, Inl, Inr}
 
-import scala.concurrent.duration.FiniteDuration
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
 import scala.util.Success
@@ -110,14 +108,13 @@ object DashboarderApp extends scalajs.js.JSApp {
       (id, title, titleLink, {
         program.map {
           _.leftMap(Inr[upickle.Invalid.Data, ErrorRunningPrograms]).flatMap {
-            jsons =>
-              jsons.traverse[ErrorDeserializingProgramOutput Xor ?, ExpandableContentModel] {
-                json =>
-                  val upickleJson = JSON.JSONToUpickleRec.apply(json)
-                  Coeval.apply(ExpandableContentModel.pkl.read(upickleJson).right).onErrorRecover {
-                    case ex: upickle.Invalid.Data => Inl(ex).left
-                  }.value
-              }
+            _.traverse[ErrorDeserializingProgramOutput Xor ?, ExpandableContentModel] {
+              json =>
+                val upickleJson = JSON.JSONToUpickleRec.apply(json)
+                Coeval.apply(ExpandableContentModel.pkl.read(upickleJson).right).onErrorRecover {
+                  case ex: upickle.Invalid.Data => Inl(ex).left
+                }.value
+            }
           }
         }
       })

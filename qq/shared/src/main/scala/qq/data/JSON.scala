@@ -50,6 +50,11 @@ object JSON {
     }
   }
 
+  def renderBare(v: JSON): String = v match {
+    case JSON.Str(s) => s
+    case _ => render(v)
+  }
+
   def render(v: JSON): String = {
     def renderRec(v: JSON): Vector[String] = v match {
       case JSON.Str(s) => Vector("\"", s, "\"")

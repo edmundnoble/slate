@@ -10,6 +10,8 @@ import org.scalajs.dom
 import org.scalajs.dom.{Event, FormData, XMLHttpRequest}
 import org.scalajs.dom.raw.Blob
 import qq.cc.{QQRuntimeError, QQRuntimeException}
+import qq.data.JSON
+import qq.data.JSON.ObjList
 
 import scala.concurrent.duration._
 import scala.language.implicitConversions
@@ -66,7 +68,7 @@ object Ajax {
 
   @inline final def get(url: String,
                         data: PostData = null,
-                        queryParams: Map[String, Any] = Map.empty,
+                        queryParams: ObjList = JSON.Obj(),
                         headers: Map[String, String] = Map.empty,
                         withCredentials: Boolean = false,
                         responseType: String = "")(implicit timeout: Timeout): Task[XMLHttpRequest] = {
@@ -75,7 +77,7 @@ object Ajax {
 
   @inline final def post(url: String,
                          data: PostData = null,
-                         queryParams: Map[String, Any] = Map.empty,
+                         queryParams: ObjList = JSON.Obj(),
                          headers: Map[String, String] = Map.empty,
                          withCredentials: Boolean = false,
                          responseType: String = "")(implicit timeout: Timeout): Task[XMLHttpRequest] = {
@@ -84,7 +86,7 @@ object Ajax {
 
   @inline final def put(url: String,
                         data: PostData = null,
-                        queryParams: Map[String, Any] = Map.empty,
+                        queryParams: ObjList = JSON.Obj(),
                         headers: Map[String, String] = Map.empty,
                         withCredentials: Boolean = false,
                         responseType: String = "")(implicit timeout: Timeout): Task[XMLHttpRequest] = {
@@ -93,7 +95,7 @@ object Ajax {
 
   @inline final def delete(url: String,
                            data: PostData = null,
-                           queryParams: Map[String, Any] = Map.empty,
+                           queryParams: ObjList = JSON.Obj(),
                            headers: Map[String, String] = Map.empty,
                            withCredentials: Boolean = false,
                            responseType: String = "")(implicit timeout: Timeout): Task[XMLHttpRequest] = {
@@ -103,7 +105,7 @@ object Ajax {
   def apply(method: String,
             url: String,
             data: PostData,
-            queryParams: Map[String, Any],
+            queryParams: ObjList,
             headers: Map[String, String],
             withCredentials: Boolean,
             responseType: String)(implicit timeout: Timeout): Task[dom.XMLHttpRequest] = {
@@ -134,18 +136,18 @@ object Ajax {
     }
   }
 
-  def addQueryParams(url: String, queryParams: Map[String, Any]): String = {
+  def addQueryParams(url: String, queryParams: ObjList): String = {
     val queryString =
-      queryParams.map { case (k, v) => k + "=" + v }.mkString("&")
+      queryParams.value.map { case (k, v) => k + "=" + JSON.renderBare(v) }.mkString("&")
 
-    val urlWithQuery = if (queryParams.isEmpty) url else url + "?" + queryString
+    val urlWithQuery = if (queryParams.value.isEmpty) url else url + "?" + queryString
     urlWithQuery
   }
 
   def apply(method: AjaxMethod,
             url: String,
             data: PostData,
-            queryParams: Map[String, Any],
+            queryParams: ObjList,
             headers: Map[String, String],
             withCredentials: Boolean,
             responseType: String)(implicit timeout: Timeout): Task[dom.XMLHttpRequest] =
