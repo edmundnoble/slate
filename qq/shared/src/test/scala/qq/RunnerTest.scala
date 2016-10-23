@@ -3,12 +3,12 @@ package qq
 import org.scalactic.NormMethods._
 import org.scalatest.Assertion
 import qq.cc.{QQRuntimeError, QQRuntimeException, Runner, TypeError}
-import qq.data.JSON
+import qq.data.{JSON, QQDSL}
 
 import scala.concurrent.Future
 import cats.implicits._
 import QQRuntimeException._
-import cats.data.ValidatedNel
+import cats.data.{NonEmptyList, ValidatedNel}
 
 case class RunnerTestCase(input: JSON, program: String, expectedOutputOrException: ValidatedNel[QQRuntimeError, List[JSON]])
 
@@ -137,6 +137,16 @@ class RunnerTest extends QQAsyncTestSuite {
   val base64Encode =
     RunnerTestCase(JSON.Str("hi"), "b64Encode", List(JSON.Str("aGk=")).validNel)
 
+  val multipleErrorTests = List(
+    RunnerTestCase(JSON.Obj("a" -> JSON.Arr(JSON.Obj("b" -> JSON.Null), JSON.Obj("b" -> JSON.Null))),
+      ".a.[].b.c",
+      NonEmptyList.of[QQRuntimeError](
+        TypeError("select key c", "object" -> JSON.Null),
+        TypeError("select key c", "object" -> JSON.Null)
+      ).invalid
+    )
+  )
+
   "identity" in runTest(identityProgram)
   "ensequenced filters" in runTest(ensequencedFilters)
   "enlisted filter" in runTest(enlistedFilters)
@@ -156,5 +166,6 @@ class RunnerTest extends QQAsyncTestSuite {
   "empty object" in runTest(emptyObjectProgram)
   "constants" in runTest(constants)
   "base64 encode" in runTest(base64Encode)
+  "multiple errors" ignore Future.traverse(multipleErrorTests)(runTest)
 
 }
