@@ -27,7 +27,7 @@ object DashPrelude extends Prelude {
   import CompiledDefinition.noParamDefinition
 
   def googleAuth: CompiledDefinition =
-    noParamDefinition("googleAuth", CompiledFilter.constE(identify.getAuthToken(interactive = true).map[JSON](JSON.Str(_)).send))
+    noParamDefinition("googleAuth", CompiledFilter.constE(identify.getAuthToken(interactive = true).map[List[JSON]](JSON.Str(_) :: Nil).send))
 
   def launchAuth: CompiledDefinition =
     CompiledDefinition("launchAuth", 2, CompiledDefinition.standardEffectDistribution {
@@ -44,7 +44,7 @@ object DashPrelude extends Prelude {
         for {
           webAuthResult <- urlWithQueryParams.send[CompiledFilterStack].flatMap(identify.launchWebAuthFlow(interactive = true, _).send[CompiledFilterStack])
           accessToken = webAuthResult.substring(webAuthResult.indexOf("&code=") + "&code=".length)
-        } yield JSON.obj("code" -> JSON.Str(accessToken))
+        } yield JSON.obj("code" -> JSON.Str(accessToken)) :: Nil
     })
 
   private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition(name, 4,
@@ -78,7 +78,7 @@ object DashPrelude extends Prelude {
               case e: QQRuntimeException => e.errors.invalid[XMLHttpRequest]
             }
           ).sequence).send[Fx.fx2[Task, OrRuntimeErr]].collapse.collapse
-          asJson = Json.stringToJSON(resp.responseText).fold(Task.raiseError(_), Task.now(_))
+          asJson = Json.stringToJSON(resp.responseText).fold(Task.raiseError(_), t => Task.now(t :: Nil))
         } yield asJson).into[CompiledFilterStack].collapse
     })
 
@@ -105,7 +105,7 @@ object DashPrelude extends Prelude {
   }
 
   def nowRFC3339: CompiledDefinition =
-    noParamDefinition("nowRFC3339", CompiledFilter.constE(Task.eval(JSON.str(toRFC3339(new js.Date()))).send))
+    noParamDefinition("nowRFC3339", CompiledFilter.constE(Task.eval(JSON.str(toRFC3339(new js.Date())) :: Nil).send))
 
   def formatDatetimeFriendly: CompiledDefinition = noParamDefinition("formatDatetimeFriendly", CompiledFilter.singleton {
     case JSON.Str(s) =>
@@ -138,9 +138,9 @@ object DashPrelude extends Prelude {
         } else {
           "in " + Math.floor(delta / week) + " weeks"
         }
-      JSON.str(fuzzy).pureEff[CompiledFilterStack]
+      (JSON.str(fuzzy) :: Nil).pureEff[CompiledFilterStack]
     case k =>
-      typeError[CompiledFilterStack, JSON]("formatDatetimeFriendly", "string" -> k)
+      typeError[CompiledFilterStack, List[JSON]]("formatDatetimeFriendly", "string" -> k)
   })
 
   override def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] =
