@@ -38,7 +38,11 @@ object QQCompiler {
         .nelFoldLeft1(CompiledProgram.id)(CompiledProgram.composePrograms)
     case PathSet(set) =>
       CompiledProgram.singleton { j =>
-        set(j).flatMap(QQRuntime.setPath(components, j, _).into[CompiledProgramStack])
+        set(j).flatMap {
+          _.traverse {
+            QQRuntime.setPath(components, j, _).into[CompiledProgramStack]
+          }.map(_.flatten)
+        }
       }
     case PathModify(modify) =>
       components
@@ -54,18 +58,23 @@ object QQCompiler {
           for {
             bindings <- reader.ask[CompiledFilterStack, VarBindings]
             result <- bindings.get(name).fold(noSuchVariable[CompiledFilterStack, JSON](name))(_.value.pureEff[CompiledFilterStack])
-          } yield result
+          } yield (result :: Nil)
       }.right
     case ConstNumber(num) => QQRuntime.constNumber(num).right
     case ConstString(str) => QQRuntime.constString(str).right
     case ConstBoolean(bool) => QQRuntime.constBoolean(bool).right
-    case FilterNot() => CompiledFilter.singleton { j => QQRuntime.not(j).send[CompiledFilterStack] }.right
+    case FilterNot() => CompiledFilter.singleton { j => QQRuntime.not(j).map(_ :: Nil).send[CompiledFilterStack] }.right
     case PathOperation(components, operationF) =>
       type mem = Member.Aux[VarEnv, CompiledFilterStack, CompiledProgramStack]
       CompiledFilter.singleton {
-        (j: JSON) => evaluatePath(components,
-          operationF.map(f => CompiledProgram.singleton((j: JSON) => reader.runReader[CompiledFilterStack, CompiledProgramStack, VarBindings, JSON](Map.empty)(f(j))(implicitly[mem])))
-        )(j).into[CompiledFilterStack]
+        (j: JSON) =>
+          evaluatePath(components,
+            operationF.map(f =>
+              CompiledProgram.singleton(j =>
+                reader.runReader[CompiledFilterStack, CompiledProgramStack, VarBindings, List[JSON]](Map.empty)(f(j))(implicitly[mem])
+              )
+            )
+          )(j).into[CompiledFilterStack]
       }.right
     case ComposeFilters(f, s) => CompiledFilter.composeFilters(f, s).right
     case CallFilter(filterIdentifier, params) =>
@@ -78,20 +87,20 @@ object QQCompiler {
     case AsBinding(name, as, in) => CompiledFilter.asBinding(name, as, in).right
     case EnlistFilter(f) => QQRuntime.enlistFilter(f).right
     case SilenceExceptions(f) => CompiledFilter.singleton { (jsv: JSON) =>
-      val listExposed: Eff[CompiledFilterStack, List[JSON]] =
-        list.runList(f(jsv)).into[CompiledFilterStack]
       val errExposed: Eff[CompiledFilterStack, ValidatedNel[QQRuntimeError, List[JSON]]] =
-        validated.by[NonEmptyList[QQRuntimeError]].runErrorParallel(listExposed).into[CompiledFilterStack]
+        validated.by[NonEmptyList[QQRuntimeError]].runErrorParallel(f(jsv)).into[CompiledFilterStack]
       val recovered: Eff[CompiledFilterStack, ValidatedNel[QQRuntimeError, List[JSON]]] =
         errExposed.map(_.orElse(Nil.valid[NonEmptyList[QQRuntimeError]]))
 
-      Eff.collapse(Eff.collapse(recovered))
+      Eff.collapse(recovered)
     }.right[QQCompilationException]
     case EnsequenceFilters(first, second) => CompiledFilter.ensequenceCompiledFilters(first, second).right
     case EnjectFilters(obj) => QQRuntime.enjectFilter(obj).right
     case FilterMath(first, second, op) =>
       CompiledFilter.singleton { j =>
-        (first(j) |@| second(j)).map((v1, v2) => Eff.send[OrRuntimeErr, CompiledFilterStack, JSON](funFromMathOperator(op)(v1, v2))).flatten
+        (first(j) |@| second(j)).map((v1, v2) =>
+          (for {v1a <- v1; v2a <- v2} yield Eff.send[OrRuntimeErr, CompiledFilterStack, JSON](funFromMathOperator(op)(v1a, v2a))).traverseA(identity)
+        ).flatten
       }.right
   }
 

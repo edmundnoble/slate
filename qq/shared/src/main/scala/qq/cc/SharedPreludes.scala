@@ -16,7 +16,7 @@ object SharedPreludes extends Prelude {
         CompiledDefinition.noParamDefinition("print",
           CompiledFilter.singleton { (jsv: JSON) =>
             println("debug: " + QQRuntime.print(jsv))
-            jsv.pureEff
+            (jsv :: Nil).pureEff
           }
         )
 

@@ -9,7 +9,9 @@ import cats.Eval
 import cats.implicits._
 import qq.cc.ListToNelOps
 
-sealed trait JSON extends Any
+sealed trait JSON {
+  override def toString: String = JSON.render(this)
+}
 
 object JSON {
 
@@ -76,13 +78,13 @@ object JSON {
   case object Null extends JSON
   def `null`: JSON = Null
 
-  final case class Str(value: String) extends AnyVal with JSON
+  final case class Str(value: String) extends JSON
   def str(value: String): JSON = Str(value)
 
-  final case class Num(value: Double) extends AnyVal with JSON
+  final case class Num(value: Double) extends JSON
   def num(value: Double): JSON = Num(value)
 
-  sealed trait Obj extends Any with JSON {
+  sealed trait Obj extends JSON {
     def toMap: ObjMap
 
     def toList: ObjList
@@ -94,13 +96,13 @@ object JSON {
     private[Obj] val empty = ObjList(Nil)
     def apply(): ObjList = empty
   }
-  final case class ObjList(value: List[(String, JSON)]) extends AnyVal with Obj {
+  final case class ObjList(value: List[(String, JSON)]) extends Obj {
     override def toMap: ObjMap = ObjMap(value.toMap)
     override def toList: ObjList = this
     override def map[B, That](f: ((String, JSON)) => B)(implicit cbf: CanBuildFrom[Any, B, That]): That =
       value.map(f)(cbf)
   }
-  final case class ObjMap(value: Map[String, JSON]) extends AnyVal with Obj {
+  final case class ObjMap(value: Map[String, JSON]) extends Obj {
     override def toMap: ObjMap = this
     override def toList: ObjList = ObjList(value.toList)
     override def map[B, That](f: ((String, JSON)) => B)(implicit cbf: CanBuildFrom[Any, B, That]): That =
@@ -108,7 +110,7 @@ object JSON {
   }
   def obj(values: (String, JSON)*): JSON = Obj(values: _*)
 
-  final case class Arr(value: List[JSON]) extends AnyVal with JSON
+  final case class Arr(value: List[JSON]) extends JSON
   object Arr {
     def apply(values: JSON*): Arr = Arr(values.toList)
   }

@@ -19,74 +19,77 @@ object QQRuntime {
 
   import QQRuntimeException._
 
-  val taskOfListOfNull: CompiledFilterResult[JSON] = EffMonad[CompiledFilterStack].pure(JSON.Null)
+  val taskOfListOfNull: CompiledFilterResult[List[JSON]] = (JSON.`null` :: Nil).pureEff[CompiledFilterStack]
   val emptyArray: JSON = JSON.Arr()
 
   @inline final def makePathComponentGetter(component: PathComponent): CompiledProgram = component match {
     case CollectResults => QQRuntime.collectResults
     case SelectKey(key) => QQRuntime.selectKey(key)
-    case SelectIndex(index) => QQRuntime.selectIndex(index)
-    case SelectRange(start, end) => QQRuntime.selectRange(start, end)
+    case SelectIndex(index: Int) => QQRuntime.selectIndex(index)
+    case SelectRange(start: Int, end: Int) => QQRuntime.selectRange(start, end)
   }
 
-  def modifyPath(component: PathComponent)(f: CompiledProgram): CompiledProgram = CompiledProgram.singleton(component match {
-    case CollectResults => {
-      case arr: JSON.Arr => Eff.collapse(arr.value.traverse[CompiledProgramResult, JSON](f(_)))
-      case v => typeError("collect results from", "array" -> v)
-    }
-    case SelectKey(key) => {
-      case obj: JSON.Obj =>
-        val asMap = obj.toMap
-        asMap.value.get(key).fold((JSON.Null: JSON).pureEff[CompiledProgramStack])(f(_)).map(v => asMap.copy(value = asMap.value + (key -> v)))
-      case v => typeError("select key \"" + key + "\" in", "object" -> v)
-    }
-    case SelectIndex(index) => {
-      case arr: JSON.Arr =>
-        if (arr.value.length <= index) {
-          (JSON.Null: JSON).pureEff[CompiledProgramStack]
-        } else {
-          f(arr.value(index)).map { v =>
-            JSON.Arr(arr.value.updated(index, v))
+  def modifyPath(component: PathComponent)(f: CompiledProgram): CompiledProgram = CompiledProgram.singleton(
+    component match {
+      case CollectResults => {
+        case arr: JSON.Arr => arr.value.traverseA(f(_)).map(_.flatten)
+        case v: JSON => typeError("collect results from", "array" -> v)
+      }
+      case SelectKey(key) => {
+        case obj: JSON.Obj =>
+          val asMap = obj.toMap
+          asMap.value.get(key).fold((JSON.`null` :: Nil).pureEff[CompiledProgramStack])(f(_))
+            .map(_.map(v => asMap.copy(value = asMap.value + (key -> v))))
+        case v: JSON => typeError("select key \"" + key + "\" in", "object" -> v)
+      }
+      case SelectIndex(index: Int) => {
+        case arr: JSON.Arr =>
+          if (arr.value.length <= index) {
+            (JSON.`null` :: Nil).pureEff[CompiledProgramStack]
+          } else {
+            f(arr.value(index)).map(_.map { v =>
+              JSON.arr(arr.value.updated(index, v): _*)
+            })
           }
-        }
-      case v =>
-        typeError("select index " + index + " in", "array" -> v)
+        case v: JSON =>
+          typeError("select index " + index + " in", "array" -> v)
+      }
+      case SelectRange(start: Int, end: Int) => ???
     }
-    case SelectRange(start, end) => ???
-  })
+  )
 
-  type SetPathStack = Fx.fx3[OrRuntimeErr, Task, List]
+  type SetPathStack = Fx.fx2[OrRuntimeErr, Task]
   type SetPathResult[A] = Eff[SetPathStack, A]
 
-  def setPath(components: List[PathComponent], biggerStructure: JSON, smallerStructure: JSON): Eff[SetPathStack, JSON] =
+  def setPath(components: List[PathComponent], biggerStructure: JSON, smallerStructure: JSON): Eff[SetPathStack, List[JSON]] =
     components match {
       case (component :: rest) => component match {
         case CollectResults => biggerStructure match {
-          case arr: JSON.Arr => Eff.collapse[SetPathStack, List, JSON](arr.value.traverse[Eff[SetPathStack, ?], JSON](setPath(rest, _, smallerStructure)))
-          case v => typeError[SetPathStack, JSON]("collect results from", "array" -> v)
+          case arr: JSON.Arr => arr.value.traverseA[SetPathStack, List[JSON]](setPath(rest, _, smallerStructure)).map(_.flatten)
+          case v: JSON => typeError[SetPathStack, List[JSON]]("collect results from", "array" -> v)
         }
         case SelectKey(key) => biggerStructure match {
           case obj: JSON.Obj =>
             val asMap = obj.toMap
             println(asMap)
-            asMap.value.get(key).fold((JSON.Null: JSON).pureEff[SetPathStack])(
-              setPath(rest, _, smallerStructure).map(nv => asMap.copy(value = asMap.value.updated(key, nv)): JSON)
+            asMap.value.get(key).fold((JSON.`null` :: Nil).pureEff[SetPathStack])(
+              setPath(rest, _, smallerStructure).map(_.map(nv => asMap.copy(value = asMap.value.updated(key, nv)): JSON))
             )
-          case v => typeError[SetPathStack, JSON]("select key \"" + key + "\" from ", "array" -> v)
+          case v: JSON => typeError[SetPathStack, List[JSON]]("select key \"" + key + "\" from ", "array" -> v)
         }
-        case SelectIndex(index) => biggerStructure match {
+        case SelectIndex(index: Int) => biggerStructure match {
           case arr: JSON.Arr =>
             if (arr.value.length <= index) {
               ???
             } else {
-              setPath(rest, arr.value(index), smallerStructure).map(v => JSON.Arr(arr.value.updated(index, v)))
+              setPath(rest, arr.value(index), smallerStructure).map(_.map(v => JSON.Arr(arr.value.updated(index, v))))
             }
-          case v =>
-            typeError[SetPathStack, JSON]("select index " + index + " in", "array" -> v)
+          case v: JSON =>
+            typeError[SetPathStack, List[JSON]]("select index " + index + " in", "array" -> v)
         }
-        case SelectRange(start, end) => ???
+        case SelectRange(start: Int, end: Int) => ???
       }
-      case Nil => smallerStructure.pureEff[SetPathStack]
+      case Nil => (smallerStructure :: Nil).pureEff[SetPathStack]
     }
 
   def constNumber(num: Double): CompiledFilter =
@@ -98,7 +101,7 @@ object QQRuntime {
   def constBoolean(bool: Boolean): CompiledFilter =
     CompiledFilter.const(if (bool) JSON.True else JSON.False)
 
-  def addJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
+  def addJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
       JSON.Num(f + s).valid
     case (JSON.Str(f), JSON.Str(s)) =>
@@ -114,7 +117,7 @@ object QQRuntime {
         "number | string | array | object" -> s): QQRuntimeError).invalidNel
   }
 
-  def subtractJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
+  def subtractJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
       JSON.Num(f - s).valid
     case (f: JSON.Arr, s: JSON.Arr) =>
@@ -129,7 +132,7 @@ object QQRuntime {
         "number | array | object" -> s): QQRuntimeError).invalidNel
   }
 
-  def multiplyJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
+  def multiplyJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
     case (JSON.Num(f), JSON.Num(s)) => JSON.Num(f * s).valid
     case (JSON.Str(f), JSON.Num(s)) => (if (s == 0) JSON.Null else JSON.Str(f * s.toInt)).valid
     case (f: JSON.Obj, s: JSON.Obj) =>
@@ -147,13 +150,13 @@ object QQRuntime {
         "number | object" -> s): QQRuntimeError).invalidNel
   }
 
-  def divideJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
+  def divideJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
     case (JSON.Num(f), JSON.Num(s)) => JSON.Num(f / s).valid
     case (f, s) =>
       (TypeError("divide", "number" -> f, "number" -> s): QQRuntimeError).invalidNel
   }
 
-  def moduloJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
+  def moduloJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
     case (JSON.Num(f), JSON.Num(s)) => JSON.Num(f % s).valid
     case (f, s) =>
       (TypeError("modulo", "number" -> f, "number" -> s): QQRuntimeError).invalidNel
@@ -162,28 +165,28 @@ object QQRuntime {
   def equalJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] =
     (if (first == second) JSON.True else JSON.False).valid
 
-  def lteJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
+  def lteJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
       (if (f <= s) JSON.True else JSON.False).valid
     case (f, s) =>
       (TypeError("lte", "number" -> f, "number" -> s): QQRuntimeError).invalidNel
   }
 
-  def gteJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
+  def gteJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
       (if (f >= s) JSON.True else JSON.False).valid
     case (f, s) =>
       (TypeError("gte", "number" -> f, "number" -> s): QQRuntimeError).invalidNel
   }
 
-  def lessThanJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
+  def lessThanJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
       (if (f < s) JSON.True else JSON.False).valid
     case (f, s) =>
       (TypeError("lessThan", "number" -> f, "number" -> s): QQRuntimeError).invalidNel
   }
 
-  def greaterThanJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
+  def greaterThanJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
       (if (f > s) JSON.True else JSON.False).valid
     case (f, s) =>
@@ -193,22 +196,24 @@ object QQRuntime {
   def not(v: JSON): OrRuntimeErr[JSON] = v match {
     case JSON.True => JSON.False.valid
     case JSON.False => JSON.True.valid
-    case k => (TypeError("not", "boolean" -> k): QQRuntimeError).invalidNel
+    case k: JSON => (TypeError("not", "boolean" -> k): QQRuntimeError).invalidNel
   }
 
   def enlistFilter(filter: CompiledFilter): CompiledFilter =
     CompiledFilter.singleton(j =>
-      list.runList(filter(j)).map(JSON.Arr(_): JSON).into[CompiledFilterStack]
+      filter(j).map {
+        JSON.Arr(_) :: Nil
+      }
     )
 
   def selectKey(key: String): CompiledProgram = CompiledProgram.singleton {
     case f: JSON.Obj =>
       f.toMap.value.get(key) match {
-        case None => EffMonad[CompiledProgramStack].pure[JSON](JSON.Null)
-        case Some(v) => EffMonad[CompiledProgramStack].pure(v)
+        case None => EffMonad[CompiledProgramStack].pure(JSON.`null` :: Nil)
+        case Some(v: JSON) => EffMonad[CompiledProgramStack].pure(v :: Nil)
       }
-    case v =>
-      typeError[CompiledProgramStack, JSON]("select key " + key, "object" -> v)
+    case v: JSON =>
+      typeError[CompiledProgramStack, List[JSON]]("select key " + key, "object" -> v)
   }
 
   def selectIndex(index: Int): CompiledProgram = CompiledProgram.singleton {
@@ -216,61 +221,61 @@ object QQRuntime {
       val seq = f.value
       if (index >= -seq.length) {
         if (index >= 0 && index < seq.length) {
-          seq(index).pureEff[CompiledProgramStack]
+          (seq(index) :: Nil).pureEff[CompiledProgramStack]
         } else if (index < 0) {
-          seq(seq.length + index).pureEff[CompiledProgramStack]
+          (seq(seq.length + index) :: Nil).pureEff[CompiledProgramStack]
         } else {
-          (JSON.Null: JSON).pureEff[CompiledProgramStack]
+          (JSON.`null` :: Nil).pureEff[CompiledProgramStack]
         }
       } else {
-        (JSON.Null: JSON).pureEff[CompiledProgramStack]
+        (JSON.`null` :: Nil).pureEff[CompiledProgramStack]
       }
-    case v =>
-      typeError[CompiledProgramStack, JSON]("select index " + index.toString, "array" -> v)
+    case v: JSON =>
+      typeError[CompiledProgramStack, List[JSON]]("select index " + index.toString, "array" -> v)
   }
 
   def selectRange(start: Int, end: Int): CompiledProgram = CompiledProgram.singleton {
     case f: JSON.Arr =>
       val seq = f.value
       if (start < end && start < seq.length) {
-        (JSON.Arr(seq.slice(start, end)): JSON).pureEff[CompiledProgramStack]
+        (JSON.arr(seq.slice(start, end): _*) :: Nil).pureEff[CompiledProgramStack]
       } else {
-        emptyArray.pureEff[CompiledProgramStack]
+        (emptyArray :: Nil).pureEff[CompiledProgramStack]
       }
-    case v =>
-      typeError[CompiledProgramStack, JSON]("select range " + start + ":" + end, "array" -> v)
+    case v: JSON =>
+      typeError[CompiledProgramStack, List[JSON]]("select range " + start + ":" + end, "array" -> v)
   }
 
   def collectResults: CompiledProgram = CompiledProgram.singleton {
     case arr: JSON.Arr =>
-      list.fromList(arr.value)
+      arr.value.pureEff
     case dict: JSON.Obj =>
-      list.fromList(dict.map(_._2)(collection.breakOut))
-    case v =>
-      typeError[CompiledProgramStack, JSON]("flatten", "array" -> v)
+      dict.map[JSON, List[JSON]](_._2)(collection.breakOut).pureEff
+    case v: JSON =>
+      typeError[CompiledProgramStack, List[JSON]]("flatten", "array" -> v)
   }
 
   def enjectFilter(obj: List[(String Xor CompiledFilter, CompiledFilter)]): CompiledFilter = {
     if (obj.isEmpty) {
-      CompiledFilter.singleton(_ => (JSON.Obj(): JSON).pureEff)
+      CompiledFilter.singleton(_ => (JSON.obj() :: Nil).pureEff)
     } else {
       CompiledFilter.singleton(
         (jsv: JSON) =>
-          obj.traverse[Eff[CompiledFilterStack, ?], (String, JSON)] {
+          obj.traverseA[CompiledFilterStack, List[(String, JSON)]] {
             case (Xor.Right(filterKey), filterValue) =>
               for {
                 keyResults <- filterKey(jsv)
                 valueResults <- filterValue(jsv)
-                keyValuePairs <- keyResults match {
-                  case JSON.Str(keyString) => (keyString -> valueResults).pureEff[CompiledFilterStack]
-                  case k => typeError[CompiledFilterStack, (String, JSON)]("use as key", "string" -> k)
+                keyValuePairs <- keyResults.traverseA {
+                  case JSON.Str(keyString) => valueResults.map(keyString -> _).pureEff[CompiledFilterStack]
+                  case k => typeError[CompiledFilterStack, List[(String, JSON)]]("use as key", "string" -> k)
                 }
-              } yield keyValuePairs
+              } yield keyValuePairs.flatten
             case (Xor.Left(filterName), filterValue) =>
               for {
                 valueResult <- filterValue(jsv)
-              } yield filterName -> valueResult
-          }.map(JSON.ObjList(_))
+              } yield valueResult.map(filterName -> _)
+          }.map(_.unconsFold(Nil, foldWithPrefixes(_, _: _*)).map(JSON.ObjList(_)))
       )
     }
   }

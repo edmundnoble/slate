@@ -166,6 +166,6 @@ class RunnerTest extends QQAsyncTestSuite {
   "empty object" in runTest(emptyObjectProgram)
   "constants" in runTest(constants)
   "base64 encode" in runTest(base64Encode)
-  "multiple errors" ignore Future.traverse(multipleErrorTests)(runTest)
+  "multiple errors" in multipleErrorTests.traverse(runTest)
 
 }

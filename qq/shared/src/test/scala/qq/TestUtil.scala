@@ -24,7 +24,7 @@ trait TestUtil {
   }
 
   def toCanonical(j: JSON): JSON = j match {
-    case (l: JSON.ObjList) => JSON.ObjList(l.value.map { case (k, v) => k -> toCanonical(v) }.sortBy(_._1))
+    case (l: JSON.ObjList) => JSON.ObjList(l.value.map { case (k, v) => k -> toCanonical(v) }.sortBy(_._1)(Ordering[String].reverse))
     case (m: JSON.ObjMap) => toCanonical(m.toList)
     case JSON.Arr(values) => JSON.Arr(values.map(toCanonical))
     case _ => j
