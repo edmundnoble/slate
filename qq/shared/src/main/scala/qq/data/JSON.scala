@@ -67,7 +67,7 @@ object JSON {
       case JSON.True => "true" +: Vector.empty[String]
       case JSON.False => "false" +: Vector.empty[String]
       case JSON.Null => "null" +: Vector.empty[String]
-      case JSON.Arr(v) => "[" +: v.map(renderRec).nelFoldLeft1(Vector.empty[String])((a, b) => (a :+ ",\n") ++ b) :+ "]"
+      case JSON.Arr(vs) => "[" +: vs.map(renderRec).nelFoldLeft1(Vector.empty[String])((a, b) => (a :+ ",\n") ++ b) :+ "]"
       case o: JSON.Obj => "{" +: o.toList.value.map { case (k, nv) => Vector(k, ": ") ++ renderRec(nv) }.nelFoldLeft1(Vector.empty[String])((a, b) => (a :+ ",\n") ++ b) :+ "}"
     }
 
