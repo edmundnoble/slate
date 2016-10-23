@@ -23,14 +23,11 @@ object CompiledFilter {
   @inline final def id: CompiledFilter =
     singleton(j => (j :: Nil).pureEff)
 
-  @inline final def const(value: JSON): CompiledFilter =
-    constE((value :: Nil).pureEff)
-
   @inline final def constL(values: List[JSON]): CompiledFilter =
     constE(values.pureEff)
 
-  @inline final def func(f: CompiledProgram): CompiledFilter =
-    singleton(f(_).into)
+  @inline final def const(value: JSON): CompiledFilter =
+    constL(value :: Nil)
 
   @inline final def composeFilters(f: CompiledFilter, s: CompiledFilter): CompiledFilter =
 
@@ -51,12 +48,13 @@ object CompiledFilter {
   }
 
   def runStack[A](bindings: VarBindings, result: CompiledFilterResult[List[A]]): Task[ValidatedNel[QQRuntimeError, List[A]]] = {
+    // TODO: investigate the compiler crash that happens without providing these type arguments explicitly
     type mem = eff.Member.Aux[VarEnv, CompiledFilterStack, CompiledProgramStack]
     type mem2 = eff.Member.Aux[List, CompiledProgramStack, Fx.fx2[Task, OrRuntimeErr]]
     type mem3 = eff.Member.Aux[OrRuntimeErr, Fx.fx2[Task, OrRuntimeErr], Fx.fx1[Task]]
     val read: Eff[CompiledProgramStack, List[A]] =
       eff.reader.runReader[CompiledFilterStack, CompiledProgramStack, VarBindings, List[A]](bindings)(result)(implicitly[mem])
-    val erred: Eff[Fx.fx1[Task], Validated[NonEmptyList[QQRuntimeError], List[A]]] =
+    val erred: Eff[Fx.fx1[Task], OrRuntimeErr[List[A]]] =
       validated
         .by[NonEmptyList[QQRuntimeError]]
         .runErrorParallel[Fx.fx2[Task, OrRuntimeErr], Fx.fx1[Task], List[A]](read)(implicitly[mem3])

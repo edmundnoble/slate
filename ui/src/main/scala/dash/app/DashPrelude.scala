@@ -1,8 +1,8 @@
 package dash
 package app
 
-import dash.ajax.{Ajax, AjaxException, AjaxMethod}
-import monix.eval.{Coeval, Task}
+import dash.ajax.{Ajax, AjaxMethod}
+import monix.eval.Task
 import monix.cats._
 import org.scalajs.dom.XMLHttpRequest
 import qq.Json
@@ -15,10 +15,10 @@ import qq.util._
 import scala.concurrent.duration._
 import scala.scalajs.js
 import scala.scalajs.js.Any
-import cats.data.{NonEmptyList, Validated, ValidatedNel}
+import cats.data.{ValidatedNel}
+import cats.Applicative
 import cats.implicits._
 import org.atnos.eff._
-import Eff._
 import syntax.all._
 
 object DashPrelude extends Prelude {
@@ -27,22 +27,24 @@ object DashPrelude extends Prelude {
   import CompiledDefinition.noParamDefinition
 
   def googleAuth: CompiledDefinition =
-    noParamDefinition("googleAuth", CompiledFilter.constE(identify.getAuthToken(interactive = true).map[List[JSON]](JSON.Str(_) :: Nil).send))
+    noParamDefinition("googleAuth",
+      CompiledFilter.constE(identify.getAuthToken(interactive = true).map[List[JSON]](JSON.Str(_) :: Nil).send[CompiledFilterStack]))
 
   def launchAuth: CompiledDefinition =
     CompiledDefinition("launchAuth", 2, CompiledDefinition.standardEffectDistribution {
       case List(urlRaw, queryParamsRaw) => _ =>
-        val urlVerified: ValidatedNel[QQRuntimeError, String] = urlRaw match {
+        val urlVerified: OrRuntimeErr[ String] = urlRaw match {
           case JSON.Str(s) => s.validNel
           case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
         }
-        val queryParamsVerified: ValidatedNel[QQRuntimeError, Map[String, Any]] = queryParamsRaw match {
+        val queryParamsVerified: OrRuntimeErr[ Map[String, Any]] = queryParamsRaw match {
           case o: JSON.Obj => o.toMap.value.mapValues(Json.JSONToJsRec(_)).validNel
           case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
         }
-        val urlWithQueryParams = (urlVerified |@| queryParamsVerified).map(Ajax.addQueryParams)
+        val urlWithQueryParams = Applicative[OrRuntimeErr].map2(urlVerified, queryParamsVerified)(Ajax.addQueryParams)
         for {
-          webAuthResult <- urlWithQueryParams.send[CompiledFilterStack].flatMap(identify.launchWebAuthFlow(interactive = true, _).send[CompiledFilterStack])
+          webAuthResult <-
+          urlWithQueryParams.send[CompiledFilterStack].flatMap(identify.launchWebAuthFlow(interactive = true, _).send[CompiledFilterStack])
           accessToken = webAuthResult.substring(webAuthResult.indexOf("&code=") + "&code=".length)
         } yield JSON.obj("code" -> JSON.Str(accessToken)) :: Nil
     })
@@ -50,34 +52,37 @@ object DashPrelude extends Prelude {
   private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition(name, 4,
     CompiledDefinition.standardEffectDistribution {
       case List(urlRaw, queryParamsRaw, dataRaw, headersRaw) => _ =>
+        type Stack = Fx.fx2[Task, OrRuntimeErr]
         implicit val ajaxTimeout = Ajax.Timeout(2000.millis)
         val urlValidated: ValidatedNel[QQRuntimeError, String] = urlRaw match {
           case JSON.Str(s) => s.validNel
           case k => (TypeError("ajax", "string" -> k): QQRuntimeError).invalidNel
         }
-        val queryParamsValidated: ValidatedNel[QQRuntimeError, Map[String, Any]] = queryParamsRaw match {
+        val queryParamsValidated: OrRuntimeErr[Map[String, Any]] = queryParamsRaw match {
           case o: JSON.Obj => o.toMap.value.mapValues(Json.JSONToJsRec(_)).validNel
           case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
         }
-        val dataValidated: ValidatedNel[QQRuntimeError, String] = dataRaw match {
+        val dataValidated: OrRuntimeErr[String] = dataRaw match {
           case JSON.Str(s) => s.validNel
           case o: JSON.Obj => JSON.render(o).validNel
           case k => ((TypeError("ajax", "string | object" -> k): QQRuntimeError): QQRuntimeError).invalidNel
         }
-        val headersValidated: ValidatedNel[QQRuntimeError, Map[String, String]] = headersRaw match {
+        val headersValidated: OrRuntimeErr[Map[String, String]] = headersRaw match {
           case o: JSON.ObjList if o.value.forall(_._2.isInstanceOf[JSON.Str]) => o.toMap.value.mapValues(_.asInstanceOf[JSON.Str].value).validNel
           case o: JSON.ObjMap if o.value.forall(_._2.isInstanceOf[JSON.Str]) => o.toMap.value.mapValues(_.asInstanceOf[JSON.Str].value).validNel
           case k => ((TypeError("ajax", "object" -> k): QQRuntimeError): QQRuntimeError).invalidNel
         }
         (for {
-          resp <- ((urlValidated |@| dataValidated |@| queryParamsValidated |@| headersValidated).map(
-            Ajax(ajaxMethod, _, _, _, _, withCredentials = false, "")
-              .onErrorRestart(1)
-              .map(_.validNel[QQRuntimeError])
-              .onErrorHandle[ValidatedNel[QQRuntimeError, XMLHttpRequest]] {
-              case e: QQRuntimeException => e.errors.invalid[XMLHttpRequest]
-            }
-          ).sequence).send[Fx.fx2[Task, OrRuntimeErr]].collapse.collapse
+          resp <-
+          Eff.collapse[Stack, OrRuntimeErr, XMLHttpRequest](
+            Applicative[OrRuntimeErr].map4(urlValidated, dataValidated, queryParamsValidated, headersValidated)(
+              Ajax(ajaxMethod, _, _, _, _, withCredentials = false, "")
+                .onErrorRestart(1)
+                .map(_.validNel[QQRuntimeError])
+                .onErrorHandle[ValidatedNel[QQRuntimeError, XMLHttpRequest]] {
+                case e: QQRuntimeException => e.errors.invalid[XMLHttpRequest]
+              }
+            ).sequence[Task, OrRuntimeErr[XMLHttpRequest]].map(_.flatten).send[Stack])
           asJson = Json.stringToJSON(resp.responseText).fold(Task.raiseError(_), t => Task.now(t :: Nil))
         } yield asJson).into[CompiledFilterStack].collapse
     })
@@ -105,7 +110,8 @@ object DashPrelude extends Prelude {
   }
 
   def nowRFC3339: CompiledDefinition =
-    noParamDefinition("nowRFC3339", CompiledFilter.constE(Task.eval(JSON.str(toRFC3339(new js.Date())) :: Nil).send))
+    noParamDefinition("nowRFC3339",
+      CompiledFilter.constE(Task.eval(JSON.str(toRFC3339(new js.Date())) :: Nil).send[CompiledFilterStack]))
 
   def formatDatetimeFriendly: CompiledDefinition = noParamDefinition("formatDatetimeFriendly", CompiledFilter.singleton {
     case JSON.Str(s) =>

@@ -39,7 +39,7 @@ object QQCompiler {
     case PathSet(set) =>
       CompiledProgram.singleton { j =>
         set(j).flatMap {
-          _.traverse {
+          _.traverseA {
             QQRuntime.setPath(components, j, _).into[CompiledProgramStack]
           }.map(_.flatten)
         }
@@ -58,12 +58,14 @@ object QQCompiler {
           for {
             bindings <- reader.ask[CompiledFilterStack, VarBindings]
             result <- bindings.get(name).fold(noSuchVariable[CompiledFilterStack, JSON](name))(_.value.pureEff[CompiledFilterStack])
-          } yield (result :: Nil)
+          } yield result :: Nil
       }.right
     case ConstNumber(num) => QQRuntime.constNumber(num).right
     case ConstString(str) => QQRuntime.constString(str).right
     case ConstBoolean(bool) => QQRuntime.constBoolean(bool).right
-    case FilterNot() => CompiledFilter.singleton { j => QQRuntime.not(j).map(_ :: Nil).send[CompiledFilterStack] }.right
+    case FilterNot() => CompiledFilter.singleton { j =>
+      Eff.send[OrRuntimeErr, CompiledFilterStack, List[JSON]](QQRuntime.not(j).map(_ :: Nil))
+    }.right
     case PathOperation(components, operationF) =>
       type mem = Member.Aux[VarEnv, CompiledFilterStack, CompiledProgramStack]
       CompiledFilter.singleton {
@@ -87,12 +89,12 @@ object QQCompiler {
     case AsBinding(name, as, in) => CompiledFilter.asBinding(name, as, in).right
     case EnlistFilter(f) => QQRuntime.enlistFilter(f).right
     case SilenceExceptions(f) => CompiledFilter.singleton { (jsv: JSON) =>
-      val errExposed: Eff[CompiledFilterStack, ValidatedNel[QQRuntimeError, List[JSON]]] =
+      val errExposed: Eff[CompiledFilterStack, OrRuntimeErr[List[JSON]]] =
         validated.by[NonEmptyList[QQRuntimeError]].runErrorParallel(f(jsv)).into[CompiledFilterStack]
-      val recovered: Eff[CompiledFilterStack, ValidatedNel[QQRuntimeError, List[JSON]]] =
+      val recovered: Eff[CompiledFilterStack, OrRuntimeErr[List[JSON]]] =
         errExposed.map(_.orElse(Nil.valid[NonEmptyList[QQRuntimeError]]))
 
-      Eff.collapse(recovered)
+      Eff.collapse[CompiledFilterStack, OrRuntimeErr, List[JSON]](recovered)
     }.right[QQCompilationException]
     case EnsequenceFilters(first, second) => CompiledFilter.ensequenceCompiledFilters(first, second).right
     case EnjectFilters(obj) => QQRuntime.enjectFilter(obj).right

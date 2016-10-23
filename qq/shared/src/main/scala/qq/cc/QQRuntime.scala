@@ -13,6 +13,7 @@ import scala.collection.immutable.Nil
 import cats.implicits._
 import org.atnos.eff._
 import Eff._
+import cats.Applicative
 import syntax.all._
 
 object QQRuntime {
@@ -33,14 +34,14 @@ object QQRuntime {
     component match {
       case CollectResults => {
         case arr: JSON.Arr => arr.value.traverseA(f(_)).map(_.flatten)
-        case v: JSON => typeError("collect results from", "array" -> v)
+        case v: JSON => typeError[CompiledProgramStack, List[JSON]]("collect results from", "array" -> v)
       }
       case SelectKey(key) => {
         case obj: JSON.Obj =>
           val asMap = obj.toMap
           asMap.value.get(key).fold((JSON.`null` :: Nil).pureEff[CompiledProgramStack])(f(_))
             .map(_.map(v => asMap.copy(value = asMap.value + (key -> v))))
-        case v: JSON => typeError("select key \"" + key + "\" in", "object" -> v)
+        case v: JSON => typeError[CompiledProgramStack, List[JSON]]("select key \"" + key + "\" in", "object" -> v)
       }
       case SelectIndex(index: Int) => {
         case arr: JSON.Arr =>
@@ -52,7 +53,7 @@ object QQRuntime {
             })
           }
         case v: JSON =>
-          typeError("select index " + index + " in", "array" -> v)
+          typeError[CompiledProgramStack, List[JSON]]("select index " + index + " in", "array" -> v)
       }
       case SelectRange(start: Int, end: Int) => ???
     }
@@ -140,7 +141,7 @@ object QQRuntime {
       val secondMapValid = s.toMap.value.mapValues(_.valid[NonEmptyList[QQRuntimeError]])
       Unsafe.mapTraverse[String].sequence[OrRuntimeErr, JSON](
         qq.util.unionWith(firstMapValid, secondMapValid)(
-          (f, s) => (f |@| s).map(addJsValues).flatten
+          Applicative[OrRuntimeErr].map2(_, _)(addJsValues).flatten
         )
       ).map(JSON.ObjMap)
     case (f, s) =>
@@ -275,7 +276,7 @@ object QQRuntime {
               for {
                 valueResult <- filterValue(jsv)
               } yield valueResult.map(filterName -> _)
-          }.map(_.unconsFold(Nil, foldWithPrefixes(_, _: _*)).map(JSON.ObjList(_)))
+          }.map(_.unconsFold(Nil, foldWithPrefixes(_, _: _*)).map(JSON.ObjList))
       )
     }
   }
