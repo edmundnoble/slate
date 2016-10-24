@@ -72,7 +72,6 @@ object QQRuntime {
         case SelectKey(key) => biggerStructure match {
           case obj: JSON.Obj =>
             val asMap = obj.toMap
-            println(asMap)
             asMap.value.get(key).fold((JSON.`null` :: Nil).pureEff[SetPathStack])(
               setPath(rest, _, smallerStructure).map(_.map(nv => asMap.copy(value = asMap.value.updated(key, nv)): JSON))
             )

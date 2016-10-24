@@ -113,7 +113,6 @@ object FilterComponent {
       ???
   }
 
-  // Partially apply F[_] parameter as FilterComponent for Corecursive.embed
   @inline final def embed
   (v: FilterComponent[ConcreteFilter]): ConcreteFilter = Fix(v)
 }

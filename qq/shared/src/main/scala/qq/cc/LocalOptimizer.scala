@@ -2,7 +2,7 @@ package qq
 package cc
 
 import qq.data._
-import qq.util.Recursion
+import qq.util.{Fix, Recursion}
 import qq.util.Recursion.RecursionEngine
 
 import scala.language.higherKinds
@@ -29,46 +29,54 @@ object LocalOptimizer {
   type LocalOptimization[F] = F => Option[F]
 
   // The identity filter is an identity with respect to composition of filters
-  final def idCompose(fr: ConcreteFilter): Option[ConcreteFilter] = {
-    fr.unFix.map(_.unFix) match {
-      case ComposeFilters(PathOperation(List(), PathGet), s) => Some(embed(s))
-      case ComposeFilters(f, PathOperation(List(), PathGet)) => Some(embed(f))
+  final def idCompose(fr: FilterComponent[ConcreteFilter]): Option[FilterComponent[ConcreteFilter]] = {
+    fr match {
+      case ComposeFilters(Fix(PathOperation(List(), PathGet)), Fix(s)) => Some(s)
+      case ComposeFilters(Fix(f), Fix(PathOperation(List(), PathGet))) => Some(f)
       case _ => None
     }
   }
 
   // The collect and enlist operations are inverses
-  final def collectEnlist(fr: ConcreteFilter): Option[ConcreteFilter] = {
-    fr.unFix.map(_.unFix.map(_.unFix)) match {
-      case EnlistFilter(ComposeFilters(f, PathOperation(List(CollectResults), PathGet))) => Some(embed(f))
-      case EnlistFilter(PathOperation(List(CollectResults), PathGet)) => Some(embed(PathOperation(Nil, PathGet)))
+  final def collectEnlist(fr: FilterComponent[ConcreteFilter]): Option[FilterComponent[ConcreteFilter]] = {
+    fr match {
+      case EnlistFilter(Fix(ComposeFilters(Fix(f), Fix(PathOperation(List(CollectResults), PathGet))))) => Some(f)
+      case EnlistFilter(Fix(PathOperation(List(CollectResults), PathGet))) => Some(PathOperation(Nil, PathGet))
       case _ => None
     }
   }
 
   // reduces constant math filters to their results
-  final def constMathReduce(fr: ConcreteFilter): Option[ConcreteFilter] = {
-    fr.unFix.map(_.unFix) match {
-      case FilterMath(ConstNumber(f), ConstNumber(s), op) => op match {
-        case Add => Some(embed(ConstNumber(f + s)))
-        case Subtract => Some(embed(ConstNumber(f - s)))
-        case Multiply => Some(embed(ConstNumber(f * s)))
-        case Divide => Some(embed(ConstNumber(f / s)))
-        case Modulo => Some(embed(ConstNumber(f % s)))
-        case Equal => Some(embed(ConstBoolean(f == s)))
-        case LTE => Some(embed(ConstBoolean(f <= s)))
-        case GTE => Some(embed(ConstBoolean(f >= s)))
-        case LessThan => Some(embed(ConstBoolean(f < s)))
-        case GreaterThan => Some(embed(ConstBoolean(f > s)))
-      }
-      case _ => None
+  final def constMathReduce(fr: FilterComponent[ConcreteFilter]): Option[FilterComponent[ConcreteFilter]] = fr match {
+    case FilterMath(Fix(ConstNumber(f)), Fix(ConstNumber(s)), op) => op match {
+      case Add => Some(ConstNumber(f + s))
+      case Subtract => Some(ConstNumber(f - s))
+      case Multiply => Some(ConstNumber(f * s))
+      case Divide => Some(ConstNumber(f / s))
+      case Modulo => Some(ConstNumber(f % s))
+      case Equal => Some(ConstBoolean(f == s))
+      case LTE => Some(ConstBoolean(f <= s))
+      case GTE => Some(ConstBoolean(f >= s))
+      case LessThan => Some(ConstBoolean(f < s))
+      case GreaterThan => Some(ConstBoolean(f > s))
     }
+    case _ => None
+  }
+
+  final def unlet(fr: FilterComponent[ConcreteFilter]): Option[FilterComponent[ConcreteFilter]] = fr match {
+    case AsBinding(n, Fix(a), Fix(i))
+      if i == Dereference(n) || i == PathOperation(Nil, PathGet) =>
+      Some(a)
+    case _ => None
   }
 
   // a function applying each of the local optimizations available, in rounds,
   // until none of the optimizations applies anymore
   @inline final def localOptimizationsƒ(tf: ConcreteFilter): ConcreteFilter =
-  repeatedly[ConcreteFilter](tf => collectEnlist(tf) orElse idCompose(tf) orElse constMathReduce(tf))(tf)
+  repeatedly[ConcreteFilter] { tf =>
+    val unfixed = tf.unFix
+    (collectEnlist(unfixed) orElse idCompose(unfixed) orElse constMathReduce(unfixed) orElse unlet(unfixed)) map embed
+  }(tf)
 
   // localOptimizationsƒ recursively applied deep into a filter
   @inline final def optimizeFilter(filter: ConcreteFilter)(implicit rec: RecursionEngine): ConcreteFilter =
