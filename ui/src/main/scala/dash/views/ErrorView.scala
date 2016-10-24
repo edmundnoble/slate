@@ -1,4 +1,5 @@
-package dash.views
+package dash
+package views
 
 import dash.app.DashboarderApp.ErrorDeserializingProgramOutput
 import dash.app.ProgramCache.{InvalidBase64, InvalidBytecode}

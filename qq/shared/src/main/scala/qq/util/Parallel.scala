@@ -1,3 +1,4 @@
-package qq.util
+package qq
+package util
 
 sealed trait Parallel

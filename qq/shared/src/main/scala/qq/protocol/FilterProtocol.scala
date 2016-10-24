@@ -1,4 +1,5 @@
-package qq.protocol
+package qq
+package protocol
 
 import qq.data._
 

@@ -1,4 +1,5 @@
-package qq.macros
+package qq
+package macros
 
 import org.scalatest.{FreeSpec, Matchers}
 import qq.cc.{LocalOptimizer, Parser}

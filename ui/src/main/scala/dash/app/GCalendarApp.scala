@@ -1,4 +1,5 @@
-package dash.app
+package dash
+package app
 
 import cats.data.Xor
 import qq.data.{ConcreteFilter, Program}

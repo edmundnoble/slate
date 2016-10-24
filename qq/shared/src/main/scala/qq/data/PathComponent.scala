@@ -1,4 +1,5 @@
-package qq.data
+package qq
+package data
 
 import scala.language.higherKinds
 import cats.{Applicative, Eval, Traverse}

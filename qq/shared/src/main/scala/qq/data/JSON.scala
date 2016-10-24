@@ -1,4 +1,5 @@
-package qq.data
+package qq
+package data
 
 import qq.util.Recursion.RecursiveFunction
 import qq.util.Unsafe
