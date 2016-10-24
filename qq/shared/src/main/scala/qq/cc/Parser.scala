@@ -214,7 +214,7 @@ object Parser {
   )
 
   val arguments: P[List[String]] = P(
-    "(" ~/ whitespace ~ filterIdentifier.rep(min = 1, sep = whitespace ~ "," ~/ whitespace) ~ whitespace ~ ")"
+    "(" ~/ whitespace ~ filterIdentifier.rep(min = 1, sep = whitespace ~ ";" ~/ whitespace) ~ whitespace ~ ")"
   )
 
   val definition: P[Definition[ConcreteFilter]] = P(
