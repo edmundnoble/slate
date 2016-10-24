@@ -18,8 +18,6 @@ object QQStager {
 
   import scala.language.implicitConversions
 
-  implicit def toqqops(sc: StringContext): qqops = new qqops()(sc)
-
   def qqimpl(c: whitebox.Context)(pieces: c.Tree*): c.Tree = {
     import c.universe._
     def lift[T: Liftable](value: T): Tree = implicitly[Liftable[T]].apply(value)
@@ -116,10 +114,11 @@ object QQStager {
     lift(optimizedProgram)
   }
 
+  final implicit class qqops(val sc: StringContext) {
+
+    def qq(pieces: Any*): Program[ConcreteFilter] = macro QQStager.qqimpl
+
+  }
+
 }
 
-final class qqops()(val sc: StringContext) {
-
-  def qq(pieces: Any*): Program[ConcreteFilter] = macro QQStager.qqimpl
-
-}
