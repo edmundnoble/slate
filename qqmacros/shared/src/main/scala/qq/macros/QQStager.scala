@@ -23,7 +23,10 @@ object QQStager {
     def lift[T: Liftable](value: T): Tree = implicitly[Liftable[T]].apply(value)
 
     implicit def disjunctionLiftable[E: Liftable, A: Liftable]: Liftable[E Xor A] =
-      Liftable[E Xor A](_.fold(e => q"cats.data.Xor.Left(${lift[E](e)})", a => q"cats.data.Xor.right(${lift[A](a)})"))
+      Liftable[E Xor A](_.fold(
+        e => q"cats.data.Xor.Left(${lift[E](e)})",
+        a => q"cats.data.Xor.right(${lift[A](a)})"
+      ))
 
     implicit def definitionLiftable[F: Liftable]: Liftable[Definition[F]] =
       Liftable { case Definition(name, params, body) => q"qq.data.Definition(${lift(name)}, ${lift(params)}, ${lift(body)})" }
@@ -39,7 +42,7 @@ object QQStager {
         case LTE => q"qq.data.LTE"
         case GTE => q"qq.data.GTE"
         case LessThan => q"qq.data.LessThan"
-        case GreaterThan =>  q"qq.data.GreaterThan"
+        case GreaterThan => q"qq.data.GreaterThan"
       }
 
     implicit def pathLiftable: Liftable[PathComponent] =

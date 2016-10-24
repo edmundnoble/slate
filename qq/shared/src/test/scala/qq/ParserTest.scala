@@ -11,8 +11,6 @@ class ParserTest extends QQSyncTestSuite {
 
   import qq.data.QQDSL._
 
-  val emptySized: List[String] = Nil
-
   "parse plain dots" in {
     Parser.dot.parse(".").get.value.shouldBe(())
   }
@@ -86,7 +84,11 @@ class ParserTest extends QQSyncTestSuite {
 
   "parse definitions" in {
     Parser.definition.parse("def id: .;").get.value shouldBe
-      Definition("id", emptySized, id)
+      Definition("id", Nil, id)
+    Parser.definition.parse("def id(f): .;").get.value shouldBe
+      Definition("id", List("f"), id)
+    Parser.definition.parse("def id(f; s): .;").get.value shouldBe
+      Definition("id", List("f", "s"), id)
   }
 
   "parse constants" - {
@@ -129,7 +131,7 @@ class ParserTest extends QQSyncTestSuite {
     "with just a body" in (Parser.program.parse("id").get.value shouldBe
       Program[ConcreteFilter](List.empty[Definition[ConcreteFilter]], call("id")))
     "with small definitions" in (Parser.program.parse("def id: .; id").get.value shouldBe
-      Program[ConcreteFilter](List(Definition[ConcreteFilter]("id", emptySized, id)), call("id")))
+      Program[ConcreteFilter](List(Definition[ConcreteFilter]("id", Nil, id)), call("id")))
     "with whitespace at the start" in (Parser.program.parse(" .").get.value shouldBe
       Program[ConcreteFilter](List.empty[Definition[ConcreteFilter]], id))
     "with whitespace at the end" in (Parser.program.parse(". ").get.value shouldBe
