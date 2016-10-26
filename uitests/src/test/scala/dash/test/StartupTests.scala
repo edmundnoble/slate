@@ -10,8 +10,8 @@ class StartupTests extends UITestSuite {
     reactRoot shouldBe displayed
   }
 
-  "title should be Dashboarder" taggedAs WebTest in {
-    pageTitle shouldBe "Dashboarder"
+  "title should be Slate" taggedAs WebTest in {
+    pageTitle shouldBe "Slate"
   }
 
 }

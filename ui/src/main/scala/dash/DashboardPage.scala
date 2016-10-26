@@ -37,7 +37,7 @@ object DashboardPage {
             id := "react-root",
             header(`class` := "mdl-layout__header mdl-shadow--2dp mdl-color--grey-100 is-casting-shadow",
               div(`class` := "mdl-layout__header-row",
-                span(Styles.appBarText, "Dashboarder".toUpperCase()),
+                span(Styles.appBarText, "Slate".toUpperCase()),
                 div(`class` := "mdl-layout-spacer"),
                 div(`class` := "mdl-textfield mdl-js-textfield mdl-textfield--expandable is-upgraded",
                   label(`class` := "mdl-button mdl-js-button mdl-button--icon", `for` := "search"),
