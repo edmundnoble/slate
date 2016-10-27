@@ -159,7 +159,7 @@ object Parser {
   val smallFilter: P[ConcreteFilter] = P(constInt | constString | paths | dereference | callFilter)
 
   val enlistedFilter: P[ConcreteFilter] = P(
-    "[" ~/ filter.map(dsl.enlist) ~ "]"
+    "[" ~/ whitespace ~ filter.map(dsl.enlist) ~ whitespace ~ "]"
   )
 
   // The reason I avoid using basicFilter is to avoid a parsing ambiguity with ensequencedFilters

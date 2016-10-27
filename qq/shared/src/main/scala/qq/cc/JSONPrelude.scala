@@ -172,9 +172,38 @@ object JSONPrelude extends Prelude {
       }
     )
 
+  def take: CompiledDefinition =
+    CompiledDefinition("take", 1, CompiledDefinition.standardEffectDistribution {
+      case List(num) =>
+        val numVerified: OrRuntimeErr[Int] = num match {
+          case JSON.Num(n) if n == n.toInt => n.toInt.valid
+          case k => NonEmptyList.of[QQRuntimeError](TypeError("take", "integer" -> k)).invalid
+        }
+        // TODO: deal with n > arr.length
+        CompiledFilter.singleton {
+          case JSON.Arr(arr) => numVerified.map(n => (JSON.Arr(arr.slice(0, n)): JSON) :: Nil).send[CompiledFilterStack]
+          case k => NonEmptyList.of[QQRuntimeError](TypeError("take", "array" -> k)).invalid.send[CompiledFilterStack]
+        }
+    })
+
+  def drop: CompiledDefinition =
+    CompiledDefinition("drop", 1, CompiledDefinition.standardEffectDistribution {
+      case List(num) =>
+        val numVerified: OrRuntimeErr[Int] = num match {
+          case JSON.Num(n) if n == n.toInt => n.toInt.valid
+          case k => NonEmptyList.of[QQRuntimeError](TypeError("drop", "integer" -> k)).invalid
+        }
+        // TODO: deal with n > arr.length
+        CompiledFilter.singleton {
+          case JSON.Arr(arr) => numVerified.map(n => (JSON.Arr(arr.slice(n, arr.length)): JSON) :: Nil).send[CompiledFilterStack]
+          case k => NonEmptyList.of[QQRuntimeError](TypeError("drop", "array" -> k)).invalid.send[CompiledFilterStack]
+        }
+    })
+
+
   def all(implicit rec: RecursionEngine): QQCompilationException Xor Vector[CompiledDefinition] =
     Vector(
-      `null`, `true`, `false`, orElse, b64Encode, includes, // exists, forall,
+      `null`, `true`, `false`, orElse, b64Encode, includes, take, drop, // exists, forall,
       length, keys, replaceAll, select, arrays, objects, iterables, booleans,
       numbers, strings, nulls, values, scalars, toStringDef
     ).right

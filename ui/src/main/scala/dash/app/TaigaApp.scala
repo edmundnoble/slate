@@ -8,14 +8,19 @@ import cats.syntax.xor._
 object TaigaApp {
 
   val program: Program[ConcreteFilter] Xor String =
-    qq"""
-def authInfo: { username, password, type: "normal" };
-def loginResult: httpPost("https://api.taiga.io/api/v1/auth"; {}; authInfo; {Content-Type: "application/json"});
-def authHeaders: { Authorization: "Bearer " + (loginResult | .auth_token)  };
-
-$$auth as authHeaders in
-
-
-      """.left
+    """
+$authHeaders as httpPost("https://api.taiga.io/api/v1/auth"; {}; {password, username, type:"normal"}; {Content-Type: "application/json"}) | {Authorization: "Bearer " + .auth_token} in
+$project as httpGet("https://api.taiga.io/api/v1/projects"; {order_by: "total_activity_last_week"}; {}; $authHeaders) | .[] | select(.i_am_member) in
+$storiesList as httpGet("https://api.taiga.io/api/v1/userstories"; {project: $project | .id, status__is_closed: false}; {}; $authHeaders) in
+  [{
+    title: $project | .name,
+    content: [
+      storiesList | .[] | httpGet("https://api.taiga.io/api/v1/userstories/" + (.id | toString); {}; {}; $authHeaders) | {
+        title: .subject,
+        content: .description
+      }
+    ]
+  }]
+      """.right
 
 }
