@@ -21,15 +21,16 @@ object DelimitTransformSym {
   implicit def transformDelim[O](implicit transform: DelimitTransformSym[O]): DelimitTransformSym[js.Array[O]] =
     new DelimitTransformSym[js.Array[O]] {
 
-      import qq.Platform.Js.Unsafe._
-
       override def toInterpret(sym: DelimitTransform[js.Array[O]], string: String): Option[js.Array[O]] = sym match {
         case DelimitArr(nextSym, delim) =>
+          import qq.Platform.Js.Unsafe._
+
           Unsafe.builderTraverse[js.WrappedArray]
             .traverse[Option, String, O](
             new js.WrappedArray(string.split(delim).asInstanceOf[js.Array[String]])
           )(transform.toInterpret(nextSym, _)).map(_.array)
       }
+
       override def fromInterpret(sym: DelimitTransform[js.Array[O]], o: js.Array[O]): String = sym match {
         case DelimitArr(nextSym, delim) => o.map(transform.fromInterpret(nextSym, _)).mkString(delim)
       }
@@ -50,6 +51,7 @@ object DelimitTransformSym {
             )
           }
       }
+
       override def fromInterpret(sym: DelimitTransform[(O1, O2)], o: (O1, O2)): String = sym match {
         case DelimitFromBegin(nextSym, delim, nextSym2) =>
           transform1.fromInterpret(nextSym, o._1) + delim + transform2.fromInterpret(nextSym2, o._2)
@@ -69,7 +71,6 @@ object DelimitTransform {
     def thenDelimitBy(delim: String): DelimitTransform[js.Array[O]] = DelimitArr(transform, delim)
     def joinWithDelimiter[O2](delim: String, other: DelimitTransform[O2]): DelimitTransform[(O, O2)] = DelimitFromBegin(transform, delim, other)
   }
-
 
   final def interpret[O](delimitTransform: DelimitTransform[O])(implicit delimitTransformSym: DelimitTransformSym[O]): (String => Option[O], O => String) = {
     (delimitTransformSym.toInterpret(delimitTransform, _: String), delimitTransformSym.fromInterpret(delimitTransform, _: O))

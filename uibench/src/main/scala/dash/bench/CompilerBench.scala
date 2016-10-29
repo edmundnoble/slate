@@ -5,11 +5,12 @@ import japgolly.scalajs.benchmark._
 import japgolly.scalajs.benchmark.gui.{GuiParam, GuiParams, GuiSuite}
 import qq.cc.{CompiledFilter, OrCompilationError, QQCompiler}
 import qq.data.{ConcreteFilter, FilterComponent, QQDSL}
+import qq.Platform.Rec._
 
 object CompilerBench {
 
   @inline final def runCompilerBench(filt: ConcreteFilter): OrCompilationError[CompiledFilter] =
-    QQCompiler.compileFilter(IndexedSeq.empty, filt)
+    QQCompiler.compileFilter(Vector.empty, filt)
 
   val qqCompilerSuite: GuiSuite[Int] = GuiSuite(
     Suite("QQ Compiler Benchmarks")(

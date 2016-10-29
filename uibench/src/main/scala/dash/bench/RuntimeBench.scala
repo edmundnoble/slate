@@ -7,8 +7,9 @@ import japgolly.scalajs.benchmark._
 import japgolly.scalajs.benchmark.gui.{GuiParam, GuiParams, GuiSuite}
 import monix.eval.Task
 import monocle.Iso
-import qq.cc.QQCompiler
+import qq.cc.{CompiledFilter, QQCompiler}
 import qq.data.{ConcreteFilter, JSON, QQDSL}
+import qq.Platform.Rec._
 
 object RuntimeBench {
 
@@ -16,14 +17,14 @@ object RuntimeBench {
     Benchmark.setup[(QQRuntimeParams, Int), BenchParams] {
       case (params, size) =>
         val (filter, input) = filt(size)
-        val ready = BenchParams(QQCompiler.compileFilter(IndexedSeq.empty, filter).valueOr(s => sys.error(s.toString)), params.iso(input))
+        val ready = BenchParams(QQCompiler.compileFilter(Vector.empty, filter).valueOr(s => sys.error(s.toString)), params.iso(input))
         ready
     }
 
   import japgolly.scalajs.react.vdom.prefix_<^._
 
   @inline final def runRuntimeBench(params: BenchParams): Task[List[JSON]] =
-    params.filt(Map.empty)(params.in).map(_.getOrElse(???))
+    CompiledFilter.run(params.in, Map.empty, params.filt).map(_.getOrElse(???))
 
   val qqRuntimeSuite: GuiSuite[(QQRuntimeParams, Int)] =
     GuiSuite.apply[(QQRuntimeParams, Int)](

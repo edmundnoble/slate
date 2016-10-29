@@ -14,7 +14,7 @@ object UIBench {
   val startupSuite = GuiSuite(
     Suite("UI Startup Benchmarks")(
       Benchmark("UI empty load time") {
-        DashboarderApp.render(dom.document.createElement("div"), Observable.never, SearchPageProps(Nil))
+        DashboarderApp.render(dom.document.createElement("div"), SearchPageProps(Nil))
       }
     )
   )
