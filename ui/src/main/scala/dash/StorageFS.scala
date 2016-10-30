@@ -78,9 +78,10 @@ object StorageFS {
   }
 
   def getDir(key: StorageKey[Dir]): StorageProgram[Option[Dir]] = {
-    getRaw(key).map(_.flatMap { raw =>
-      val dirValues: Option[((String, String), (Array[(String, String)], Array[(String, String)]))] =
-        DelimitTransform.interpret(Delimiters.Dir.structure)._1(raw)
+    for {
+      raw <- getRaw(key)
+      dirValues = raw.flatMap(DelimitTransform.interpret(Delimiters.Dir.structure)._1)
+      dir =
       dirValues.flatMap {
         case ((lastUpdated, lastAccessed), (fileNodes, dirNodes)) =>
           for {
@@ -89,7 +90,7 @@ object StorageFS {
             Dir(metadata, key,
               fileNodes.map(t => StorageKey[File](t._1, t._2).left[StorageKey[Dir]]) ++ dirNodes.map(t => StorageKey[Dir](t._1, t._2).right[StorageKey[File]]))
       }
-    })
+    } yield dir
   }
 
   def enumerateDir(dir: Dir): StorageProgram[Option[Array[FSKey]]] = {
@@ -163,7 +164,7 @@ sealed class StorageFS[F[_] : Monad : RecursiveTailRecM](underlying: Storage[F],
     hash <- dir.childFileKeys.find(_.name == key).pure[F]
     file <- hash.traverseM[F, File](k => StorageProgram.runProgram(underlying, getFile(k)))
     _ <- file.traverse[F, Unit](f => underlying.remove(f.dataKey.render))
-    _ <- underlying.update(dir.key, ???)
+    _ <- underlying.update(dir.key.render, ???)
   } yield ()
 
 }
