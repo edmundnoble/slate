@@ -23,16 +23,14 @@ abstract class Storage[F[_]] {
 object Storage {
 
   //   finally tagless encoding isomorphism
-  //  def storageStorageActionNatIso[F[_]]: Storage[F] <=> (StorageAction ~> F) = new (Storage[F] <=> (StorageAction ~> F)) {
-  //    override def to: (Storage[F]) => StorageAction ~> F = (stor: Storage[F]) => new (StorageAction ~> F) {
-  //      override def apply[A](fa: StorageAction[A]): F[A] = fa.run(stor)
-  //    }
-  //    override def from: StorageAction ~> F => Storage[F] = (nat: StorageAction ~> F) => new Storage[F] {
-  //      override def apply(key: String): F[Option[String]] = nat(StorageAction.Get(key))
-  //      override def update(key: String, data: String): F[Unit] = nat(StorageAction.Update(key, data))
-  //      override def remove(key: String): F[Unit] = nat(StorageAction.Remove(key))
-  //    }
-  //  }
+  def storageToStorageActionTrans[F[_]](stor: Storage[F]): StorageAction ~> F = new (StorageAction ~> F) {
+    override def apply[A](fa: StorageAction[A]): F[A] = fa.run(stor)
+  }
+  def storageFromStorageActionTrans[F[_]](nat: StorageAction ~> F): Storage[F] = new Storage[F] {
+    override def apply(key: String): F[Option[String]] = nat(StorageAction.Get(key))
+    override def update(key: String, data: String): F[Unit] = nat(StorageAction.Update(key, data))
+    override def remove(key: String): F[Unit] = nat(StorageAction.Remove(key))
+  }
 }
 
 // Finally tagless storage action functor (http://okmij.org/ftp/tagless-final/)
@@ -65,28 +63,28 @@ object StorageProgram {
   import StorageAction._
   import Util._
 
-  @inline final def get(key: String): StorageProgram[Option[String]] =
+  final def get(key: String): StorageProgram[Option[String]] =
     liftFC[StorageAction, Option[String]](Get(key))
 
-  @inline final def update(key: String, value: String): StorageProgram[Unit] =
+  final def update(key: String, value: String): StorageProgram[Unit] =
     liftFC(Update(key, value))
 
-  @inline final def remove(key: String): StorageProgram[Unit] =
+  final def remove(key: String): StorageProgram[Unit] =
     liftFC(Remove(key))
 
-  @inline final def getOrSet(key: String, value: => String): StorageProgram[String] = {
+  final def getOrSet(key: String, value: => String): StorageProgram[String] = {
     for {
       cur <- get(key)
-      o <- cur.fold(update(key, value).as(value))(_.pure[StorageProgram])
-    } yield o
+      result <- cur.fold(update(key, value).as(value))(_.pure[StorageProgram])
+    } yield result
   }
 
-  @inline def runProgram[F[_] : Monad : RecursiveTailRecM, A](storage: Storage[F], program: StorageProgram[A]): F[A] =
+  def runProgram[F[_] : Monad : RecursiveTailRecM, A](storage: Storage[F], program: StorageProgram[A]): F[A] =
     foldMapFCRec(program, new (StorageAction ~> F) {
       override def apply[Y](fa: StorageAction[Y]): F[Y] = fa.run(storage)
     })
 
-  @inline def logNt: StorageAction ~> WriterT[StorageActionF, Vector[String], ?] =
+  def logNt: StorageAction ~> WriterT[StorageActionF, Vector[String], ?] =
     new (StorageAction ~> WriterT[StorageActionF, Vector[String], ?]) {
       override def apply[Y](fa: StorageAction[Y]): WriterT[StorageActionF, Vector[String], Y] = {
         val keys = fa match {
@@ -98,7 +96,7 @@ object StorageProgram {
       }
     }
 
-  @inline def retargetNt(delim: String): StorageActionF ~> Retargetable[StorageActionF, ?] =
+  def retargetNt(delim: String): StorageActionF ~> Retargetable[StorageActionF, ?] =
     new (StorageActionF ~> Retargetable[StorageActionF, ?]) {
       override def apply[Y](fa: StorageActionF[Y]): Retargetable[StorageActionF, Y] = {
         ReaderT.apply[StorageActionF, String, Y]((prefix: String) => fa.transform(new (StorageAction ~> StorageAction) {
@@ -117,7 +115,7 @@ object StorageProgram {
       override def apply[Y](fa: Coyoneda[StorageAction, Y]): Retargetable[Coyoneda[StorageAction, ?], Y] = StorageProgram.retargetNt(delim).apply(fa)
     })
 
-  @inline def runRetargetableProgram[F[_] : Monad : RecursiveTailRecM, A](storage: Storage[F], index: String, program: Free[Retargetable[Coyoneda[StorageAction, ?], ?], A]): F[A] = {
+  def runRetargetableProgram[F[_] : Monad : RecursiveTailRecM, A](storage: Storage[F], index: String, program: Free[Retargetable[Coyoneda[StorageAction, ?], ?], A]): F[A] = {
     val ran = program.compile(new (Retargetable[Coyoneda[StorageAction, ?], ?] ~> Coyoneda[StorageAction, ?]) {
       override def apply[Y](fa: Retargetable[Coyoneda[dash.StorageAction, ?], Y]): Coyoneda[StorageAction, Y] =
         fa.run(index)
