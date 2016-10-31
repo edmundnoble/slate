@@ -2,10 +2,11 @@ package dash
 
 import monix.eval.Task
 import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
-import cats.{Applicative, Functor, Monad, RecursiveTailRecM, ~>}
+import cats.{Monad, RecursiveTailRecM, ~>}
 import cats.data.{ReaderT, State, WriterT}
 import cats.free.{Coyoneda, Free}
 import cats.implicits._
+import org.atnos.eff._, Eff._, syntax.all._
 
 // Operations on a Storage with F[_] effects
 // To abstract over storage that has different effects performed by its operations
@@ -22,7 +23,7 @@ abstract class Storage[F[_]] {
 
 object Storage {
 
-  //   finally tagless encoding isomorphism
+  // finally tagless encoding isomorphism
   def storageToStorageActionTrans[F[_]](stor: Storage[F]): StorageAction ~> F = new (StorageAction ~> F) {
     override def apply[A](fa: StorageAction[A]): F[A] = fa.run(stor)
   }
@@ -34,14 +35,13 @@ object Storage {
 }
 
 // Finally tagless storage action functor (http://okmij.org/ftp/tagless-final/)
-// Only using this because higher-kinded GADT refinement is broken
+// Only using this because higher-kinded GADT refinement is broken,
+// but dynamic dispatch is better than pattern matching on JS anyway.
 sealed abstract class StorageAction[T] {
   def run[F[_]](storage: Storage[F]): F[T]
 }
 
 object StorageAction {
-
-  type StorageActionF[A] = Coyoneda[StorageAction, A]
 
   final case class Get(key: String) extends StorageAction[Option[String]] {
     override def run[F[_]](storage: Storage[F]): F[Option[String]] = storage(key)
@@ -55,6 +55,9 @@ object StorageAction {
     override def run[F[_]](storage: Storage[F]): F[Unit] = storage.remove(key)
   }
 
+  type _storageAction[R] = StorageAction <= R
+  type _StorageAction[R] = StorageAction |= R
+
 }
 
 // DSL methods
@@ -63,19 +66,19 @@ object StorageProgram {
   import StorageAction._
   import Util._
 
-  final def get(key: String): StorageProgram[Option[String]] =
-    liftFC[StorageAction, Option[String]](Get(key))
+  final def get[F[_] : _StorageAction](key: String): Eff[F, Option[String]] =
+    Get(key).send[F]
 
-  final def update(key: String, value: String): StorageProgram[Unit] =
-    liftFC(Update(key, value))
+  final def update[F[_]: _StorageAction](key: String, value: String): Eff[F, Unit] =
+    Update(key, value).send[F]
 
-  final def remove(key: String): StorageProgram[Unit] =
-    liftFC(Remove(key))
+  final def remove[F[_]: _StorageAction](key: String): Eff[F, Unit] =
+    Remove(key).send[F]
 
-  final def getOrSet(key: String, value: => String): StorageProgram[String] = {
+  final def getOrSet[F[_]: _StorageAction](key: String, value: => String): Eff[F, String] = {
     for {
       cur <- get(key)
-      result <- cur.fold(update(key, value).as(value))(_.pure[StorageProgram])
+      result <- cur.fold(update[F](key, value).as(value))(_.pure[F])
     } yield result
   }
 
