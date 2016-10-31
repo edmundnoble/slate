@@ -2,11 +2,13 @@ package dash
 
 import monix.eval.Task
 import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
-import cats.{Monad, RecursiveTailRecM, ~>}
-import cats.data.{ReaderT, State, WriterT}
+import cats.{Monad, RecursiveTailRecM, Traverse, ~>}
+import cats.data.{ReaderT, State, WriterT, Xor}
 import cats.free.{Coyoneda, Free}
 import cats.implicits._
-import org.atnos.eff._, Eff._, syntax.all._
+import org.atnos.eff._
+import Eff._
+import syntax.all._
 
 // Operations on a Storage with F[_] effects
 // To abstract over storage that has different effects performed by its operations
@@ -82,10 +84,10 @@ object StorageProgram {
     } yield result
   }
 
-  def runProgram[F[_] : Monad : RecursiveTailRecM, A](storage: Storage[F], program: StorageProgram[A]): F[A] =
-    foldMapFCRec(program, new (StorageAction ~> F) {
-      override def apply[Y](fa: StorageAction[Y]): F[Y] = fa.run(storage)
-    })
+  def runProgram[S[_]: Monad, O[_], I[_], U[_], A](storage: Storage[S], program: Eff[I, A])
+                                                  (implicit ev: Member.Aux[StorageAction, I, U], ev2: Member.Aux[S, O, U]): Eff[O, A] = {
+    interpret.transform[I, O, U, StorageAction, S, A](program, Storage.storageToStorageActionTrans(storage))
+  }
 
   def logNt: StorageAction ~> WriterT[StorageActionF, Vector[String], ?] =
     new (StorageAction ~> WriterT[StorageActionF, Vector[String], ?]) {
