@@ -79,7 +79,7 @@ class CompilerTest extends QQAsyncTestSuite {
     @annotation.tailrec
     def fun(f: ConcreteFilter, i: Int): ConcreteFilter = if (i == 0) f else fun(id | f | id, i - 1)
     List(
-      CompilerTestCase(JSON.False, fun(id, 1000), JSON.False)(qq.Platform.Rec.defaultRecScheme)
+      CompilerTestCase(JSON.False, fun(id, 10000), JSON.False)(qq.Platform.Rec.defaultRecScheme)
     )
   }
 
