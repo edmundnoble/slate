@@ -30,13 +30,11 @@ object RanTraverseM {
 
   }
 
-  def run[R, T[_]: Traverse : Monad, I, O](rt: RanTraverseM[R, T, I, O])(i: I)(implicit ev: Member[Eval, R]): Eff[R, T[O]] = rt match {
+  def run[R, T[_] : Traverse : Monad, I, O](rt: RanTraverseM[R, T, I, O])(i: I)(implicit ev: Member[Eval, R]): Eff[R, T[O]] = rt match {
     case Encompose(rts) =>
-      eval.delay[R, Eff[R, T[O]]] {
-        val r: Eff[R, T[Any]] =
-          rts.reduceLeftTo(run[R, T, Any, Any])((f, g) => (i: Any) => f(i).flatMap(ta => ta.traverseA[R, T[Any]]((a: Any) => run[R, T, Any, Any](g)(a))).map(_.flatten))(i)
-        r.asInstanceOf[Eff[R, T[O]]]
-      }.flatten
+      val r: Eff[R, T[Any]] =
+        rts.reduceLeftTo(run[R, T, Any, Any])((f, g) => (i: Any) => f(i).flatMap(ta => ta.traverseA[R, T[Any]]((a: Any) => run[R, T, Any, Any](g)(a))).map(_.flatten))(i)
+      r.asInstanceOf[Eff[R, T[O]]]
     case Leaf(arr) =>
       arr(i)
   }
