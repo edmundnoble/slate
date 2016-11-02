@@ -15,12 +15,12 @@ package object cc {
   type OrRuntimeErr[+A] = ValidatedNel[QQRuntimeError, A]
 
   type CompiledMathOperator = (JSON, JSON) => ValidatedNel[QQRuntimeError, JSON]
-  type CompiledProgramStack = Fx.fx2[Task, OrRuntimeErr]
+  type CompiledProgramStack = Fx.fx3[Task, OrRuntimeErr, Eval]
   type CompiledProgramResult[A] = Eff[CompiledProgramStack, A]
   type CompiledProgram = Arrs[CompiledProgramStack, JSON, List[JSON]]
   type CompiledFilterStack = Fx.append[Fx.fx1[VarEnv], CompiledProgramStack]
   type CompiledFilterResult[A] = Eff[CompiledFilterStack, A]
-  type CompiledFilter = Arrs[CompiledFilterStack, JSON, List[JSON]]
+  type CompiledFilter = RanTraverseM[CompiledFilterStack, List, JSON, JSON]
 
   type OrCompilationError[T] = QQCompilationException Xor T
 

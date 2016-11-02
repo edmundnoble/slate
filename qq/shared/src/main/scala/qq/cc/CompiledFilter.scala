@@ -6,7 +6,7 @@ import monix.eval.Task
 import monix.cats._
 import qq.data.{JSON, VarBinding}
 import qq.util._
-import cats.{Monoid, Traverse}
+import cats.{Eval, Monoid, Traverse}
 import cats.implicits._
 import org.atnos.eff
 import org.atnos.eff.{Arrs, Eff, Fx}
@@ -15,10 +15,10 @@ import org.atnos.eff.syntax.eff._
 object CompiledFilter {
 
   @inline final def singleton(filt: JSON => Eff[CompiledFilterStack, List[JSON]]): CompiledFilter =
-    Arrs.singleton(filt)
+    RanTraverseM.singleton[CompiledFilterStack, List, JSON, JSON](filt)
 
   @inline final def constE(result: Eff[CompiledFilterStack, List[JSON]]): CompiledFilter =
-    Arrs.singleton(_ => result)
+    RanTraverseM.singleton[CompiledFilterStack, List, JSON, JSON](_ => result)
 
   @inline final def id: CompiledFilter =
     singleton(j => (j :: Nil).pureEff)
@@ -30,8 +30,7 @@ object CompiledFilter {
     constL(value :: Nil)
 
   @inline final def composeFilters(f: CompiledFilter, s: CompiledFilter): CompiledFilter =
-
-    f.mapLast(_.flatMap(_.traverseA[CompiledFilterStack, List[JSON]](s(_))).map(_.flatten))
+    RanTraverseM.compose(f, s)
 
   @inline final def ensequenceCompiledFilters
   (first: CompiledFilter, second: CompiledFilter): CompiledFilter =
@@ -50,14 +49,16 @@ object CompiledFilter {
   def runStack[A](bindings: VarBindings, result: CompiledFilterResult[List[A]]): Task[ValidatedNel[QQRuntimeError, List[A]]] = {
     // TODO: investigate the compiler crash that happens without providing these type arguments explicitly
     type mem = eff.Member.Aux[VarEnv, CompiledFilterStack, CompiledProgramStack]
-    type mem2 = eff.Member.Aux[List, CompiledProgramStack, Fx.fx2[Task, OrRuntimeErr]]
-    type mem3 = eff.Member.Aux[OrRuntimeErr, Fx.fx2[Task, OrRuntimeErr], Fx.fx1[Task]]
+    type mem1 = eff.Member.Aux[Eval, CompiledProgramStack, Fx.fx2[Task, OrRuntimeErr]]
+    type mem2 = eff.Member.Aux[OrRuntimeErr, Fx.fx2[Task, OrRuntimeErr], Fx.fx1[Task]]
     val read: Eff[CompiledProgramStack, List[A]] =
       eff.reader.runReader[CompiledFilterStack, CompiledProgramStack, VarBindings, List[A]](bindings)(result)(implicitly[mem])
+    val evaled: Eff[Fx.fx2[Task, OrRuntimeErr], List[A]] =
+      eff.eval.runEval(read)(implicitly[mem1])
     val erred: Eff[Fx.fx1[Task], OrRuntimeErr[List[A]]] =
       validated
         .by[NonEmptyList[QQRuntimeError]]
-        .runErrorParallel[Fx.fx2[Task, OrRuntimeErr], Fx.fx1[Task], List[A]](read)(implicitly[mem3])
+        .runErrorParallel[Fx.fx2[Task, OrRuntimeErr], Fx.fx1[Task], List[A]](evaled)(implicitly[mem2])
 
     Eff.detachA[Task, ValidatedNel[QQRuntimeError, List[A]]](erred)
   }
