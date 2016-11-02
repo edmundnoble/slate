@@ -9,6 +9,7 @@ import dash.util.DelimitTransform
 
 import scala.scalajs.js.Array
 import scala.util.Try
+import org.atnos.eff._, Eff._, syntax.all._
 
 object StorageFS {
   final def fsroot: StorageKey[Dir] = StorageKey[Dir]("fsroot", "fsroot")
@@ -111,7 +112,7 @@ object StorageFS {
 
   private def findDirPath[F](path: Vector[String], rootDir: Option[Dir]): StorageProgram[Option[Dir]] = {
     path.foldM[StorageProgram, Option[Dir]](rootDir) { (b, s) =>
-      b.flatMap(_.childDirKeys.find(_.name == s)).sequence[StorageProgram, Dir]
+      b.flatMap(_.childDirKeys.find(_.name == s)).traverseM(getDir) // .sequence[StorageProgram, Dir]
     }
   }
 
@@ -150,19 +151,19 @@ sealed class StorageFS[F[_] : Monad : RecursiveTailRecM](underlying: Storage[F],
 
   override def apply(key: String): F[Option[String]] = for {
     hash <- dir.childFileKeys.find(_.name == key).pure[F]
-    file <- hash.traverse[F, Option[File]](k => StorageProgram.runProgram(underlying, getFile(k)))
+    file <- hash.traverse[F, Option[File]](k => StorageProgram.runProgram(underlying, getFile(k)).detach)
     firstResult <- file.flatten.traverse[F, Option[String]](f => underlying(f.dataKey.render))
   } yield firstResult.flatten
 
   override def update(key: String, data: String): F[Unit] = for {
     hash <- dir.childFileKeys.find(_.name == key).pure[F]
-    file <- hash.traverse[F, Option[File]](k => StorageProgram.runProgram(underlying, getFile(k)))
+    file <- hash.traverse[F, Option[File]](k => StorageProgram.runProgram(underlying, getFile(k)).detach)
     _ <- file.flatten.traverse[F, Unit](f => underlying.update(f.dataKey.render, data))
   } yield ()
 
   override def remove(key: String): F[Unit] = for {
     hash <- dir.childFileKeys.find(_.name == key).pure[F]
-    file <- hash.traverseM[F, File](k => StorageProgram.runProgram(underlying, getFile(k)))
+    file <- hash.traverseM[F, File](k => StorageProgram.runProgram(underlying, getFile(k)).detach)
     _ <- file.traverse[F, Unit](f => underlying.remove(f.dataKey.render))
     _ <- underlying.update(dir.key.render, ???)
   } yield ()

@@ -28,6 +28,7 @@ import scalacss.internal.StringRenderer
 import cats.implicits._
 import cats.Functor
 import cats.data.Xor
+import org.atnos.eff.{syntax, reader, Fx, NoFx}, syntax.all._
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
@@ -77,8 +78,11 @@ object DashboarderApp extends scalajs.js.JSApp {
     programs.map(program =>
       program.map { programPrecompiledOrString =>
         programPrecompiledOrString.fold(e => Task.now(e.right[ErrorGettingCachedProgram]), s =>
-          StorageProgram.runRetargetableProgram(DomStorage.Local, "program",
-            StorageProgram.retarget(ProgramCache.getCachedProgram(s), " "))
+          StorageProgram.runProgram[Task, Fx.fx1[Task], Fx.fx1[StorageAction], NoFx, ErrorGettingCachedProgram Xor Program[ConcreteFilter]](DomStorage.Local,
+            reader.runReader[Fx.fx2[Retargetable, StorageAction], Fx.fx1[StorageAction], String, ErrorGettingCachedProgram Xor Program[ConcreteFilter]]("program")(
+              StorageProgram.retarget[Fx.fx1[StorageAction], Fx.fx2[Retargetable, StorageAction], NoFx, ErrorGettingCachedProgram Xor Program[ConcreteFilter]](ProgramCache.getCachedProgram(s))(" ")
+            )
+          ).detach
         ).map(_.leftMap(Inr.apply).flatMap(
           QQCompiler.compileProgram(DashPrelude, _).leftMap(Inl.apply)
         ))

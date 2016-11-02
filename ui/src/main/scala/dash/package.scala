@@ -1,10 +1,9 @@
-import cats.data.{ReaderT, WriterT}
-import cats.free.Free
-import dash.StorageAction.StorageActionF
+import cats.data.{Reader, Writer}
+import org.atnos.eff.{Eff, Fx}
 
 package object dash {
   // StorageProgram is an AST with StorageAction leaves
-  type StorageProgram[A] = Free[StorageActionF, A]
-  type LoggedStorage[F[_], A] = WriterT[F, Vector[String], A]
-  type Retargetable[F[_], A] = ReaderT[F, String, A]
+  type StorageProgram[A] = Eff[Fx.fx1[StorageAction], A]
+  type LoggedStorage[A] = Writer[Vector[String], A]
+  type Retargetable[A] = Reader[String, A]
 }

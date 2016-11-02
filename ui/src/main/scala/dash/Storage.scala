@@ -2,9 +2,8 @@ package dash
 
 import monix.eval.Task
 import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
-import cats.{Monad, RecursiveTailRecM, Traverse, ~>}
-import cats.data.{ReaderT, State, WriterT, Xor}
-import cats.free.{Coyoneda, Free}
+import cats.{Monad, ~>}
+import cats.data._
 import cats.implicits._
 import org.atnos.eff._
 import Eff._
@@ -68,65 +67,83 @@ object StorageProgram {
   import StorageAction._
   import Util._
 
-  final def get[F[_] : _StorageAction](key: String): Eff[F, Option[String]] =
+  final def get[F: _StorageAction](key: String): Eff[F, Option[String]] =
     Get(key).send[F]
 
-  final def update[F[_]: _StorageAction](key: String, value: String): Eff[F, Unit] =
+  final def update[F: _StorageAction](key: String, value: String): Eff[F, Unit] =
     Update(key, value).send[F]
 
-  final def remove[F[_]: _StorageAction](key: String): Eff[F, Unit] =
+  final def remove[F: _StorageAction](key: String): Eff[F, Unit] =
     Remove(key).send[F]
 
-  final def getOrSet[F[_]: _StorageAction](key: String, value: => String): Eff[F, String] = {
+  final def getOrSet[F: _StorageAction](key: String, value: => String): Eff[F, String] = {
     for {
       cur <- get(key)
-      result <- cur.fold(update[F](key, value).as(value))(_.pure[F])
+      result <- cur.fold(update[F](key, value).as(value))(_.pureEff[F])
     } yield result
   }
 
-  def runProgram[S[_]: Monad, O[_], I[_], U[_], A](storage: Storage[S], program: Eff[I, A])
-                                                  (implicit ev: Member.Aux[StorageAction, I, U], ev2: Member.Aux[S, O, U]): Eff[O, A] = {
+  def runProgram[S[_] : Monad, O, I, U, A](storage: Storage[S], program: Eff[I, A])
+                                          (implicit ev: Member.Aux[StorageAction, I, U], ev2: Member.Aux[S, O, U]): Eff[O, A] = {
     interpret.transform[I, O, U, StorageAction, S, A](program, Storage.storageToStorageActionTrans(storage))
   }
 
-  def logNt: StorageAction ~> WriterT[StorageActionF, Vector[String], ?] =
-    new (StorageAction ~> WriterT[StorageActionF, Vector[String], ?]) {
-      override def apply[Y](fa: StorageAction[Y]): WriterT[StorageActionF, Vector[String], Y] = {
-        val keys = fa match {
+  /**
+    * Translate one effect of the stack into other effects in a larger stack
+    */
+  def translateInto[R, T[_], U, A](eff: Eff[R, A])(translate: interpret.Translate[T, U])(implicit m: MemberInOut[T, R], into: IntoPoly[R, U]): Eff[U, A] = {
+    eff match {
+      case Pure(a) => into(eff)
+      case Impure(u, c) =>
+        m.extract(u) match {
+          case Some(tx) => translate(tx).flatMap(x => translateInto(c(x))(translate))
+          case None => into(eff)
+        }
+
+      case ImpureAp(unions, c) =>
+        val translated: Eff[U, List[Any]] = Eff.traverseA(unions.extract.effects)(tx => translate(tx))
+        translated.flatMap(ts => translateInto(c(ts))(translate))
+    }
+  }
+
+  def log[I, O, U, A](eff: Eff[I, A])
+                     (implicit ev: Member.Aux[StorageAction, I, U],
+                      ev2: Member[StorageAction, O],
+                      //                      ev3: MemberIn[StorageAction, O],
+                      ev4: MemberIn[Writer[Vector[String], ?], O],
+                      ev5: IntoPoly[I, O]): Eff[O, A] = {
+    translateInto[I, StorageAction, O, A](eff)(new interpret.Translate[StorageAction, O] {
+      override def apply[X](kv: StorageAction[X]): Eff[O, X] = {
+        val keys = kv match {
           case StorageAction.Get(k) => Vector.empty[String] :+ k
           case StorageAction.Update(k, _) => Vector.empty[String] :+ k
           case StorageAction.Remove(_) => Vector.empty[String]
         }
-        WriterT.putT[StorageActionF, Vector[String], Y](Coyoneda.lift(fa))(keys)
+        for {
+          _ <- writer.tell[O, Vector[String]](keys)
+          r <- kv.send[O]
+        } yield r
       }
-    }
-
-  def retargetNt(delim: String): StorageActionF ~> Retargetable[StorageActionF, ?] =
-    new (StorageActionF ~> Retargetable[StorageActionF, ?]) {
-      override def apply[Y](fa: StorageActionF[Y]): Retargetable[StorageActionF, Y] = {
-        ReaderT.apply[StorageActionF, String, Y]((prefix: String) => fa.transform(new (StorageAction ~> StorageAction) {
-          // TODO: clean up with access to SI-9760 fix
-          override def apply[A](fa: StorageAction[A]): StorageAction[A] = fa match {
-            case StorageAction.Get(k) => StorageAction.Get(prefix + delim + k).asInstanceOf[StorageAction[A]]
-            case StorageAction.Update(k, v) => StorageAction.Update(prefix + delim + k, v).asInstanceOf[StorageAction[A]]
-            case StorageAction.Remove(k) => StorageAction.Remove(prefix + delim + k).asInstanceOf[StorageAction[A]]
-          }
-        }))
-      }
-    }
-
-  final def retarget[A](program: StorageProgram[A], delim: String): Free[dash.Retargetable[Coyoneda[StorageAction, ?], ?], A] =
-    program.compile(new (Coyoneda[StorageAction, ?] ~> Retargetable[Coyoneda[StorageAction, ?], ?]) {
-      override def apply[Y](fa: Coyoneda[StorageAction, Y]): Retargetable[Coyoneda[StorageAction, ?], Y] = StorageProgram.retargetNt(delim).apply(fa)
     })
-
-  def runRetargetableProgram[F[_] : Monad : RecursiveTailRecM, A](storage: Storage[F], index: String, program: Free[Retargetable[Coyoneda[StorageAction, ?], ?], A]): F[A] = {
-    val ran = program.compile(new (Retargetable[Coyoneda[StorageAction, ?], ?] ~> Coyoneda[StorageAction, ?]) {
-      override def apply[Y](fa: Retargetable[Coyoneda[dash.StorageAction, ?], Y]): Coyoneda[StorageAction, Y] =
-        fa.run(index)
-    })
-    runProgram(storage, ran)
   }
+
+  def retarget[I, O, U, A](eff: Eff[I, A])(delim: String)
+                          (implicit ev: MemberInOut[StorageAction, I], ev2: MemberInOut[StorageAction, O],
+                           ev3: Member.Aux[Retargetable, O, I],
+                           ev4: IntoPoly[I, O]): Eff[O, A] =
+    translateInto[I, StorageAction, O, A](eff)(new interpret.Translate[StorageAction, O] {
+      override def apply[X](kv: StorageAction[X]): Eff[O, X] = for {
+        prefix <- reader.ask[O, String]
+        upd: StorageAction[X] = kv match {
+          // TODO: clean up with access to SI-9760 fix
+          case StorageAction.Get(k) => StorageAction.Get(prefix + delim + k).asInstanceOf[StorageAction[X]]
+          case StorageAction.Update(k, v) => StorageAction.Update(prefix + delim + k, v).asInstanceOf[StorageAction[X]]
+          case StorageAction.Remove(k) => StorageAction.Remove(prefix + delim + k).asInstanceOf[StorageAction[X]]
+        }
+        kvm <- upd.send[O]
+      } yield kvm
+    })
+
 }
 
 // Implementation for dom.ext.Storage values
