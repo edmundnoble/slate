@@ -88,6 +88,7 @@ object StorageProgram {
     interpret.transform[I, O, U, StorageAction, S, A](program, Storage.storageToStorageActionTrans(storage))
   }
 
+  // TODO: remove once added to eff-cats
   /**
     * Translate one effect of the stack into other effects in a larger stack
     */
@@ -127,21 +128,17 @@ object StorageProgram {
     })
   }
 
-  def retarget[I, O, U, A](eff: Eff[I, A])(delim: String)
-                          (implicit ev: MemberInOut[StorageAction, I], ev2: MemberInOut[StorageAction, O],
-                           ev3: Member.Aux[Retargetable, O, I],
-                           ev4: IntoPoly[I, O]): Eff[O, A] =
-    translateInto[I, StorageAction, O, A](eff)(new interpret.Translate[StorageAction, O] {
-      override def apply[X](kv: StorageAction[X]): Eff[O, X] = for {
-        prefix <- reader.ask[O, String]
-        upd: StorageAction[X] = kv match {
+  def retarget[R, U, A](eff: Eff[R, A])(prefix: String, delim: String)
+                       (implicit ev: MemberInOut[StorageAction, R]
+                       ): Eff[R, A] =
+    interpret.interceptNat[R, U, StorageAction, A](eff)(new (StorageAction ~> StorageAction) {
+      override def apply[X](kv: StorageAction[X]): StorageAction[X] =
+        kv match {
           // TODO: clean up with access to SI-9760 fix
           case StorageAction.Get(k) => StorageAction.Get(prefix + delim + k).asInstanceOf[StorageAction[X]]
           case StorageAction.Update(k, v) => StorageAction.Update(prefix + delim + k, v).asInstanceOf[StorageAction[X]]
           case StorageAction.Remove(k) => StorageAction.Remove(prefix + delim + k).asInstanceOf[StorageAction[X]]
         }
-        kvm <- upd.send[O]
-      } yield kvm
     })
 
 }
