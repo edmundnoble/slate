@@ -60,6 +60,11 @@ object ErrorView {
   }
 
   def renderQQRuntimeException(err: QQRuntimeException): TagMod = {
-    "Error running QQ program: " + err
+    div(
+      "Errors running QQ program",
+      div(
+        err.errors.map(e => div(e.message)).toList: _*
+      )
+    )
   }
 }
