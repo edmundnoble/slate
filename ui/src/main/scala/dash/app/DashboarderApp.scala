@@ -79,9 +79,7 @@ object DashboarderApp extends scalajs.js.JSApp {
       program.map { programPrecompiledOrString =>
         programPrecompiledOrString.fold(e => Task.now(e.right[ErrorGettingCachedProgram]), s =>
           StorageProgram.runProgram[Task, Fx.fx1[Task], Fx.fx1[StorageAction], NoFx, ErrorGettingCachedProgram Xor Program[ConcreteFilter]](DomStorage.Local,
-            reader.runReader[Fx.fx2[Retargetable, StorageAction], Fx.fx1[StorageAction], String, ErrorGettingCachedProgram Xor Program[ConcreteFilter]]("program")(
-              StorageProgram.retarget[Fx.fx1[StorageAction], Fx.fx2[Retargetable, StorageAction], NoFx, ErrorGettingCachedProgram Xor Program[ConcreteFilter]](ProgramCache.getCachedProgram(s))(" ")
-            )
+            StorageProgram.retarget[Fx.fx1[StorageAction], NoFx, ErrorGettingCachedProgram Xor Program[ConcreteFilter]](ProgramCache.getCachedProgram(s))("program", " ")
           ).detach
         ).map(_.leftMap(Inr.apply).flatMap(
           QQCompiler.compileProgram(DashPrelude, _).leftMap(Inl.apply)
