@@ -15,38 +15,62 @@ object StorageFS {
   final def fsroot: StorageKey[Dir] = StorageKey[Dir]("fsroot", "fsroot")
 
   // TODO: static safety for escaping these
+  import dash.util._, DelimitTransform._
+
   object Delimiters {
-
-    import dash.util._, DelimitTransform._
-
-    object Dir {
-      def nodesStructure: DelimitTransform[Array[(String, String)]] =
-        id.joinWithDelimiter(keyDelimiter, id)
-          .thenDelimitBy(interNodeDelimiter)
-      def structure: DelimitTransform[((String, String), (Array[(String, String)], Array[(String, String)]))] =
-        Metadata.structure.joinWithDelimiter(
-          metadataDelimiter,
-          nodesStructure.joinWithDelimiter(nodeKindDelimiter, nodesStructure))
-      def nodeKindDelimiter = ":"
-      def interNodeDelimiter = ","
-    }
-    object File {
-      def structure: DelimitTransform[((String, String), (String, (String, String)))] =
-        Metadata.structure.joinWithDelimiter(metadataDelimiter,
-          id.joinWithDelimiter(hashKeyDelimiter,
-            id.joinWithDelimiter(keyDelimiter, id)
-          )
-        )
-      def hashKeyDelimiter = ";"
-    }
-    object Metadata {
-      def structure: DelimitTransform[(String, String)] =
-        id.joinWithDelimiter(interMetadataDelimiter, id)
-    }
     def interMetadataDelimiter = ":"
     def keyDelimiter = "\\"
     def metadataDelimiter = "/"
+    def nodeKindDelimiter = ":"
+    def interNodeDelimiter = ","
+    def hashKeyDelimiter = ";"
   }
+
+  object Dir {
+
+    import Delimiters._
+
+    def nodesStructure: DelimitTransform[Array[(String, String)]] =
+      id.joinWithDelimiter(keyDelimiter, id)
+        .thenDelimitBy(interNodeDelimiter)
+    def structure: DelimitTransform[Dir] =
+      Metadata.structure.joinWithDelimiter(
+        metadataDelimiter,
+        nodesStructure.joinWithDelimiter(nodeKindDelimiter, nodesStructure)
+      ).imap[Dir]({ case (nm, (fileKeys, dirKeys)) =>
+        val childKeys =
+          fileKeys.map(t => StorageKey[File](t._1, t._2).left[StorageKey[Dir]]) ++ dirKeys.map(t => StorageKey[Dir](t._1, t._2).right[StorageKey[File]])
+        Dir(nm, childKeys)
+      }, { dir =>
+        (dir.metadata, (dir.childFileKeys.map { k => (k.name, k.nonce) }, dir.childDirKeys.map { k => (k.name, k.nonce) }))
+      })
+  }
+  object File {
+
+    import Delimiters._
+
+    def structure: DelimitTransform[File] =
+      Metadata.structure.joinWithDelimiter(metadataDelimiter,
+        id.joinWithDelimiter(hashKeyDelimiter,
+          id.joinWithDelimiter(keyDelimiter, id)
+        )
+      ).imap(
+        { case (nm, (str1, (str2, str3))) => File(nm, str1, StorageKey(str2, str3)) }, { file => (file.metadata, (file.dataHash, (file.dataKey.name, file.dataKey.nonce))) })
+  }
+  object Metadata {
+
+    import Delimiters._
+
+    def structure: DelimitTransform[NodeMetadata] =
+      id.joinWithDelimiter(interMetadataDelimiter, id).imapX({
+        case (lastUpdatedStr, lastAccessedStr) => (parseDate(lastUpdatedStr) |@| parseDate(lastAccessedStr)).map(NodeMetadata)
+      }, {
+        case NodeMetadata(lastUpdated, lastAccessed) => (lastUpdated.toISOString(), lastAccessed.toISOString())
+      })
+  }
+
+  def parseDate(str: String): Option[js.Date] =
+    Try(new js.Date(js.Date.parse(str))).toOption
 
   final case class StorageKey[F](name: String, nonce: String) {
     def render: String = name + Delimiters.keyDelimiter + nonce
@@ -55,8 +79,8 @@ object StorageFS {
   final case class FileData(data: String)
 
   final case class NodeMetadata(lastUpdated: js.Date, lastAccessed: js.Date)
-  final case class File(metadata: NodeMetadata, key: StorageKey[File], dataHash: String, dataKey: StorageKey[FileData])
-  final case class Dir(metadata: NodeMetadata, key: StorageKey[Dir], childKeys: Array[FSKey]) {
+  final case class File(metadata: NodeMetadata, dataHash: String, dataKey: StorageKey[FileData])
+  final case class Dir(metadata: NodeMetadata, childKeys: Array[FSKey]) {
     def childFileKeys: Array[StorageKey[File]] = childKeys.collect { case Xor.Left(fileKey) => fileKey }
     def childDirKeys: Array[StorageKey[Dir]] = childKeys.collect { case Xor.Right(dirKey) => dirKey }
   }
@@ -81,38 +105,18 @@ object StorageFS {
   def getDir(key: StorageKey[Dir]): StorageProgram[Option[Dir]] = {
     for {
       raw <- getRaw(key)
-      dirValues = raw.flatMap(DelimitTransform.interpret(Delimiters.Dir.structure)._1)
-      dir =
-      dirValues.flatMap {
-        case ((lastUpdated, lastAccessed), (fileNodes, dirNodes)) =>
-          for {
-            metadata <- readMetadata(lastUpdated, lastAccessed)
-          } yield
-            Dir(metadata, key,
-              fileNodes.map(t => StorageKey[File](t._1, t._2).left[StorageKey[Dir]]) ++ dirNodes.map(t => StorageKey[Dir](t._1, t._2).right[StorageKey[File]]))
-      }
+      dir = raw.flatMap(DelimitTransform.interpret(Dir.structure)._1)
     } yield dir
-  }
-
-  def enumerateDir(dir: Dir): StorageProgram[Option[Array[FSKey]]] = {
-    for {
-      dir <- getDir(dir.key)
-    } yield dir.map(_.childKeys)
   }
 
   def getDirKey(path: Vector[String]): StorageProgram[Option[StorageKey[Dir]]] =
     for {
-      rootDir <- getDir(fsroot)
-      dirKey <-
-      if (path.isEmpty) rootDir.map(_.key).pure[StorageProgram]
-      else for {
-        lastDir <- findDirPath(path, rootDir)
-      } yield lastDir.map(_.key)
+      dirKey <- getDirKeyFromRoot(path, fsroot)
     } yield dirKey
 
-  private def findDirPath[F](path: Vector[String], rootDir: Option[Dir]): StorageProgram[Option[Dir]] = {
-    path.foldM[StorageProgram, Option[Dir]](rootDir) { (b, s) =>
-      b.flatMap(_.childDirKeys.find(_.name == s)).traverseM(getDir) // .sequence[StorageProgram, Dir]
+  def getDirKeyFromRoot[F](path: Vector[String], rootKey: StorageKey[Dir]): StorageProgram[Option[StorageKey[Dir]]] = {
+    path.foldM[StorageProgram, Option[StorageKey[Dir]]](Some(rootKey)) { (b, s) =>
+      b.traverse(getDir).map(_.flatten).map(_.flatMap(_.childDirKeys.find(_.name == s)))
     }
   }
 
@@ -121,10 +125,8 @@ object StorageFS {
       rawMaybe <- getRaw(key)
     } yield for {
       raw <- rawMaybe
-      fileValues <- DelimitTransform.interpret(Delimiters.File.structure)._1(raw)
-      ((lastUpdated, lastAccessed), (hash, (keyName, keyNonce))) = fileValues
-      metadata <- readMetadata(lastUpdated, lastAccessed)
-    } yield File(metadata, key, hash, StorageKey[FileData](keyName, keyNonce))
+      file <- DelimitTransform.interpret(File.structure)._1(raw)
+    } yield file
   }
 
   def getDirPath(path: Vector[String]): StorageProgram[Option[Dir]] = {
@@ -145,7 +147,9 @@ object StorageFS {
 
 }
 
-sealed class StorageFS[F[_] : Monad : RecursiveTailRecM](underlying: Storage[F], dir: StorageFS.Dir) extends Storage[F] {
+import StorageFS._
+
+sealed class StorageFS[F[_] : Monad : RecursiveTailRecM](underlying: Storage[F], dirKey: StorageKey[Dir], dir: StorageFS.Dir) extends Storage[F] {
 
   import StorageFS._
 
@@ -165,7 +169,7 @@ sealed class StorageFS[F[_] : Monad : RecursiveTailRecM](underlying: Storage[F],
     hash <- dir.childFileKeys.find(_.name == key).pure[F]
     file <- hash.traverseM[F, File](k => StorageProgram.runProgram(underlying, getFile(k)).detach)
     _ <- file.traverse[F, Unit](f => underlying.remove(f.dataKey.render))
-    _ <- underlying.update(dir.key.render, ???)
+    _ <- underlying.update(dirKey.render, ???)
   } yield ()
 
 }
