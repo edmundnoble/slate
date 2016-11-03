@@ -66,7 +66,4 @@ object DelimitTransform {
       DelimitTransformIxmap[O, O2](transform, to, from)
   }
 
-  final def interpret[O](delimitTransform: DelimitTransform[O]): (String => Option[O], O => String) = {
-    (delimitTransform.toInterpret(_: String), delimitTransform.fromInterpret(_: O))
-  }
 }

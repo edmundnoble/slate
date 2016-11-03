@@ -105,8 +105,7 @@ object StorageFS {
   def getDir(key: StorageKey[Dir]): StorageProgram[Option[Dir]] = {
     for {
       raw <- getRaw(key)
-      dir = raw.flatMap(DelimitTransform.interpret(Dir.structure)._1)
-    } yield dir
+    } yield raw.flatMap(Dir.structure.toInterpret)
   }
 
   def getDirKey(path: Vector[String]): StorageProgram[Option[StorageKey[Dir]]] =
@@ -122,11 +121,8 @@ object StorageFS {
 
   def getFile(key: StorageKey[File]): StorageProgram[Option[File]] = {
     for {
-      rawMaybe <- getRaw(key)
-    } yield for {
-      raw <- rawMaybe
-      file <- DelimitTransform.interpret(File.structure)._1(raw)
-    } yield file
+      raw <- getRaw(key)
+    } yield raw.flatMap(File.structure.toInterpret)
   }
 
   def getDirPath(path: Vector[String]): StorageProgram[Option[Dir]] = {
@@ -145,31 +141,44 @@ object StorageFS {
     } yield file
   }
 
+  def makeNonce(): String = ???
+
 }
 
 import StorageFS._
 
-sealed class StorageFS[F[_] : Monad : RecursiveTailRecM](underlying: Storage[F], dirKey: StorageKey[Dir], dir: StorageFS.Dir) extends Storage[F] {
+sealed class StorageFS[F[_] : Monad : RecursiveTailRecM](underlying: Storage[F], dirKey: StorageKey[Dir]) extends Storage[F] {
 
   import StorageFS._
 
   override def apply(key: String): F[Option[String]] = for {
-    hash <- dir.childFileKeys.find(_.name == key).pure[F]
+    dir <- StorageProgram.runProgram(underlying, getDir(dirKey)).detach
+    hash = dir.flatMap(_.childFileKeys.find(_.name == key))
     file <- hash.traverse[F, Option[File]](k => StorageProgram.runProgram(underlying, getFile(k)).detach)
     firstResult <- file.flatten.traverse[F, Option[String]](f => underlying(f.dataKey.render))
   } yield firstResult.flatten
 
   override def update(key: String, data: String): F[Unit] = for {
-    hash <- dir.childFileKeys.find(_.name == key).pure[F]
-    file <- hash.traverse[F, Option[File]](k => StorageProgram.runProgram(underlying, getFile(k)).detach)
+    dir <- StorageProgram.runProgram(underlying, getDir(dirKey)).detach
+    hash = dir.map(_.childFileKeys.find(_.name == key))
+    file <- hash.map { maybeHash =>
+      maybeHash.map(_.pure[F]).getOrElse[F[StorageKey[File]]] {
+        val storageKey = StorageKey[File](key, makeNonce())
+        underlying.update(dirKey.render, Dir.structure.fromInterpret(
+          dir.get.copy(childKeys = dir.get.childKeys :+ storageKey.left)
+        )).as(storageKey)
+      }
+    }.traverse[F, Option[File]](_.flatMap(k => StorageProgram.runProgram(underlying, getFile(k)).detach))
     _ <- file.flatten.traverse[F, Unit](f => underlying.update(f.dataKey.render, data))
   } yield ()
 
   override def remove(key: String): F[Unit] = for {
-    hash <- dir.childFileKeys.find(_.name == key).pure[F]
+    dir <- StorageProgram.runProgram(underlying, getDir(dirKey)).detach
+    hash = dir.flatMap(_.childFileKeys.find(_.name == key))
     file <- hash.traverseM[F, File](k => StorageProgram.runProgram(underlying, getFile(k)).detach)
     _ <- file.traverse[F, Unit](f => underlying.remove(f.dataKey.render))
-    _ <- underlying.update(dirKey.render, ???)
+    _ <- if (file.isEmpty) ().pure[F]
+    else underlying.update(dirKey.render, Dir.structure.fromInterpret(dir.get.copy(childKeys = dir.get.childKeys.filter(_.merge[StorageKey[_]].name != key))))
   } yield ()
 
 }
