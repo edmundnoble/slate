@@ -3,14 +3,17 @@ package qq.cc
 import cats.data.NonEmptyVector
 import cats.implicits._
 import cats.{Eval, Foldable, Monad, Traverse}
+import monix.eval.Task
 import org.atnos.eff.{Eff, Member, eval}
+import org.atnos.eff.monix.TaskEffect._
 import org.atnos.eff.syntax.all._
 
 sealed trait RanTraverseM[R, T[_], I, O] {
-  def apply(i: I)(implicit ev1: Traverse[T], ev2: Monad[T], ev3: Member[Eval, R]): Eff[R, T[O]] =
-    RanTraverseM.run[R, T, I, O](this)(i)
+  def apply(i: I)(implicit ev1: Traverse[T], ev2: Monad[T], ev3: Member[Task, R]): Eff[R, T[O]] =
+    suspend(RanTraverseM.run[R, T, I, O](this)(i))
 }
 case class Encompose[R, T[_], I, O](arrs: NonEmptyVector[RanTraverseM[R, T, Any, Any]]) extends RanTraverseM[R, T, I, O]
+
 case class Leaf[R, T[_], I, O](arr: I => Eff[R, T[O]]) extends RanTraverseM[R, T, I, O]
 
 object RanTraverseM {
@@ -30,13 +33,13 @@ object RanTraverseM {
 
   }
 
-  def run[R, T[_] : Traverse : Monad, I, O](rt: RanTraverseM[R, T, I, O])(i: I)(implicit ev: Member[Eval, R]): Eff[R, T[O]] = rt match {
+  def run[R: _task, T[_] : Traverse : Monad, I, O](rt: RanTraverseM[R, T, I, O])(i: I)(implicit ev: Member[Task, R]): Task[Eff[R, T[O]]] = rt match {
     case Encompose(rts) =>
-      val r: Eff[R, T[Any]] =
-        rts.reduceLeftTo(run[R, T, Any, Any])((f, g) => (i: Any) => f(i).flatMap(ta => ta.traverseA[R, T[Any]]((a: Any) => run[R, T, Any, Any](g)(a))).map(_.flatten))(i)
-      r.asInstanceOf[Eff[R, T[O]]]
+      rts.reduceLeftTo(rt => (i: Any) => run[R, T, Any, Any](rt)(i))((f, g) =>
+        (i: Any) => Task.now(suspend(f(i)).flatMap(ta => ta.traverseA[R, T[Any]]((a: Any) => suspend(run[R, T, Any, Any](g)(a)))).map(_.flatten))
+      )(i).asInstanceOf[Task[Eff[R, T[O]]]]
     case Leaf(arr) =>
-      arr(i)
+      Task.now(arr(i))
   }
 
 }

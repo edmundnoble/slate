@@ -49,16 +49,13 @@ object CompiledFilter {
   def runStack[A](bindings: VarBindings, result: CompiledFilterResult[List[A]]): Task[ValidatedNel[QQRuntimeError, List[A]]] = {
     // TODO: investigate the compiler crash that happens without providing these type arguments explicitly
     type mem = eff.Member.Aux[VarEnv, CompiledFilterStack, CompiledProgramStack]
-    type mem1 = eff.Member.Aux[Eval, CompiledProgramStack, Fx.fx2[Task, OrRuntimeErr]]
-    type mem2 = eff.Member.Aux[OrRuntimeErr, Fx.fx2[Task, OrRuntimeErr], Fx.fx1[Task]]
+    type mem1 = eff.Member.Aux[OrRuntimeErr, CompiledProgramStack, Fx.fx1[Task]]
     val read: Eff[CompiledProgramStack, List[A]] =
       eff.reader.runReader[CompiledFilterStack, CompiledProgramStack, VarBindings, List[A]](bindings)(result)(implicitly[mem])
-    val evaled: Eff[Fx.fx2[Task, OrRuntimeErr], List[A]] =
-      eff.eval.runEval(read)(implicitly[mem1])
     val erred: Eff[Fx.fx1[Task], OrRuntimeErr[List[A]]] =
       validated
         .by[NonEmptyList[QQRuntimeError]]
-        .runErrorParallel[Fx.fx2[Task, OrRuntimeErr], Fx.fx1[Task], List[A]](evaled)(implicitly[mem2])
+        .runErrorParallel[Fx.fx2[Task, OrRuntimeErr], Fx.fx1[Task], List[A]](read)(implicitly[mem1])
 
     Eff.detachA[Task, ValidatedNel[QQRuntimeError, List[A]]](erred)
   }
