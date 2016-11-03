@@ -2,12 +2,18 @@ package qq.cc
 
 import cats.data.NonEmptyVector
 import cats.implicits._
-import cats.{Eval, Foldable, Monad, Traverse}
+import cats.{Monad, Traverse}
 import monix.eval.Task
-import org.atnos.eff.{Eff, Member, eval}
+import org.atnos.eff.{Eff, Member}
 import org.atnos.eff.monix.TaskEffect._
 import org.atnos.eff.syntax.all._
 
+/*
+This is an experimental construct I created to address stack-safety problems with composing filters in QQ.
+It essentially represents a tree of TraverseM arrows (I => Eff[R, T[O]]) which need to be composed.
+It is VERY similar to the Arrs construct in Eff.
+A RanTraverseM[R, T, I, O] is a function I => Eff[R, T[O]] with re-associated, trampolined composition.
+ */
 sealed trait RanTraverseM[R, T[_], I, O] {
   def apply(i: I)(implicit ev1: Traverse[T], ev2: Monad[T], ev3: Member[Task, R]): Eff[R, T[O]] =
     suspend(RanTraverseM.run[R, T, I, O](this)(i))

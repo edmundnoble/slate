@@ -28,6 +28,7 @@ package object cc {
     @inline def nelFoldLeft1(ifEmpty: A)(foldFun: (A, A) => A): A = if (l.isEmpty) ifEmpty else l.reduceLeft(foldFun)
   }
 
+  // TODO: remove when added to eff-cats
   def suspend[R: _task, A](task: => Task[Eff[R, A]]): Eff[R, A] =
     send[Task, R, Eff[R, A]](Task.suspend(task)).flatten
 
