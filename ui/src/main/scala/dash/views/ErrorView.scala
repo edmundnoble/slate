@@ -44,7 +44,7 @@ object ErrorView {
   }
 
   def renderBytecodeException(err: InvalidBytecode): TagMod = {
-    "Error getting QQ program from cache (bytecode): TagMod: " + err
+    "Error getting QQ program from cache (bytecode): " + err
   }
 
   def renderBase64Exception(err: InvalidBase64): TagMod = {
