@@ -7,6 +7,7 @@ import org.atnos.eff._
 import Eff._
 import cats.{Semigroup, Traverse}
 
+// TODO: eliminated when runEitherCombine is in eff-cats
 trait ValidatedInterpretation {
 
   import interpret.{Recurse, interpret1}
