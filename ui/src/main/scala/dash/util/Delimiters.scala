@@ -1,4 +1,5 @@
-package dash.util
+package dash
+package util
 
 import cats.Applicative
 import cats.implicits._

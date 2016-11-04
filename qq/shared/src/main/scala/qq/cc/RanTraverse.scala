@@ -1,4 +1,5 @@
-package qq.cc
+package qq
+package cc
 
 import cats.data.NonEmptyVector
 import cats.implicits._

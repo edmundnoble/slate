@@ -9,7 +9,7 @@ import sbt.complete.Parser
 import scoverage.ScoverageKeys.coverageExcludedPackages
 import upickle.Js
 
-object DashboarderBuild {
+object SlateBuild {
 
   lazy val commonDeps: Seq[Setting[_]] = Seq(
     libraryDependencies ++= Seq(
