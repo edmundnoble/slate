@@ -136,7 +136,7 @@ object DashboarderApp extends scalajs.js.JSApp {
     })(
       runCompiledPrograms.map(t => AppProps(t.id, t.title, t.titleLink, AppModel(Nil.right)))
     )((l, ap) => ap :: l.filterNot(_.title == ap.title))
-      .map(appProps => SearchPageProps(appProps.sortBy(_.title)))
+      .map(appProps => SearchPageProps(appProps.sortBy(_.id)))
 
   def render(container: Element, content: SearchPageProps)(
     implicit scheduler: Scheduler): Task[ReactComponentM[SearchPageProps, Unit, Unit, TopNode]] = {

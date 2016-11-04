@@ -21,16 +21,16 @@ import scala.scalajs.js.typedarray._
 
 object AjaxException {
   def errorCodeToMessage: Int => Option[String] = Map[Int, String](
-    400 -> "Bad request: the server rejected the request as malformed."
-    , 401 -> "Forbidden: you do not have permission from the server to access the document."
-    , 404 -> "Not found: the server could not find the document requested."
-    , 405 -> "Method not allowed: the server does not allow that method on that resource."
-    , 406 -> "Not acceptable: the server is not capable of generating content according to the accept headers in the request."
-    , 500 -> "Internal server error: for some reason, the server is not capable of fulfilling the request."
-    , 501 -> "Not implemented: at least one of the request method/URL are unrecognized, but they may be available in future."
-    , 502 -> "Bad gateway: The server was acting as a gateway or proxy and received an invalid response from the upstream server."
-    , 503 -> "Service unavailable: the server is currently unavailable; generally temporary."
-  ).get _
+    400 -> "(bad request) the server rejected the request as malformed"
+    , 401 -> "(forbidden) you do not have permission from the server to access the document"
+    , 404 -> "(not found) the server could not find the document requested"
+    , 405 -> "(method not allowed) the server does not allow that method on that resource"
+    , 406 -> "(not acceptable) the server is not capable of generating content according to the accept headers in the request"
+    , 500 -> "(internal server error) for some reason, the server is not capable of fulfilling the request"
+    , 501 -> "(not implemented) at least one of the request method/URL are unrecognized, but they may be available in future"
+    , 502 -> "(bad gateway) the server was acting as a gateway or proxy and received an invalid response from the upstream server"
+    , 503 -> "(service unavailable) the server is currently unavailable; generally temporary"
+  ).lift
 }
 
 /**
@@ -38,8 +38,8 @@ object AjaxException {
   * Contains the XMLHttpRequest that resulted in that response
   */
 case class AjaxException(xhr: dom.XMLHttpRequest, url: String)
-  extends QQRuntimeError("Ajax " + (if (xhr.status == 0 && xhr.readyState == 4) " timeout " else
-    s" HTTP error: \n${AjaxException.errorCodeToMessage(xhr.status).getOrElse(xhr.status.toString)}\n") + s" $url") {
+  extends QQRuntimeError(if (xhr.status == 0 && xhr.readyState == 4) "HTTP timeout " else
+    s" HTTP error ${xhr.status} from $url: ${AjaxException.errorCodeToMessage(xhr.status).getOrElse("unknown error code")}.") {
   def isTimeout: Boolean = xhr.status == 0 && xhr.readyState == 4
 }
 
