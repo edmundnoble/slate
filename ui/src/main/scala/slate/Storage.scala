@@ -2,7 +2,7 @@ package slate
 
 import monix.eval.Task
 import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
-import cats.{Monad, ~>}
+import cats.{Monad, Monoid, Traverse, ~>}
 import cats.data._
 import cats.implicits._
 import org.atnos.eff._
@@ -88,6 +88,12 @@ object StorageProgram {
     interpret.transform[I, O, U, StorageAction, S, A](program, Storage.storageToStorageActionTrans(storage))
   }
 
+  def printAction[A](act: StorageAction[A]): String = act match {
+    case StorageAction.Update(k, v) => s"Update($k, $v)"
+    case StorageAction.Get(k) => s"Get($k)"
+    case StorageAction.Remove(k) => s"Remove($k"
+  }
+
   // TODO: remove once added to eff-cats
   /**
     * Translate one effect of the stack into other effects in a larger stack
@@ -107,24 +113,46 @@ object StorageProgram {
     }
   }
 
-  def log[I, O, U, A](eff: Eff[I, A])
-                     (implicit ev: Member.Aux[StorageAction, I, U],
-                      ev2: Member[StorageAction, O],
-                      //                      ev3: MemberIn[StorageAction, O],
-                      ev4: MemberIn[Writer[Vector[String], ?], O],
-                      ev5: IntoPoly[I, O]): Eff[O, A] = {
+  def logProgram[I, O, L: Monoid, U, A](eff: Eff[I, A])(log: StorageAction ~> Const[L, ?])
+                                       (implicit ev: Member.Aux[StorageAction, I, U],
+                                        ev2: Member[StorageAction, O],
+                                        ev3: MemberIn[Writer[L, ?], O],
+                                        ev4: IntoPoly[I, O]): Eff[O, A] = {
     translateInto[I, StorageAction, O, A](eff)(new interpret.Translate[StorageAction, O] {
       override def apply[X](kv: StorageAction[X]): Eff[O, X] = {
-        val keys = kv match {
-          case StorageAction.Get(k) => Vector.empty[String] :+ k
-          case StorageAction.Update(k, _) => Vector.empty[String] :+ k
-          case StorageAction.Remove(_) => Vector.empty[String]
-        }
+        val logValue = log(kv).getConst
         for {
-          _ <- writer.tell[O, Vector[String]](keys)
+          _ <- writer.tell[O, L](logValue)
           r <- kv.send[O]
         } yield r
       }
+    })
+  }
+
+  def logKeys[I, O, U, A](eff: Eff[I, A])
+                         (implicit ev: Member.Aux[StorageAction, I, U],
+                          ev2: Member[StorageAction, O],
+                          ev3: MemberIn[Writer[Vector[String], ?], O],
+                          ev4: IntoPoly[I, O]): Eff[O, A] =
+    logProgram(eff)(new (StorageAction ~> Const[Vector[String], ?]) {
+      override def apply[X](fa: StorageAction[X]): Const[Vector[String], X] = Const(fa match {
+        case StorageAction.Get(k) => Vector.empty[String] :+ k
+        case StorageAction.Update(k, _) => Vector.empty[String] :+ k
+        case StorageAction.Remove(_) => Vector.empty[String]
+      })
+    })
+
+  def logActions[I, O, U, A](eff: Eff[I, A])
+                            (implicit ev: Member.Aux[StorageAction, I, U],
+                             ev2: Member[StorageAction, O],
+                             ev3: MemberIn[Writer[Vector[String], ?], O],
+                             ev4: IntoPoly[I, O]): Eff[O, A] = {
+    logProgram(eff)(new (StorageAction ~> Const[Vector[String], ?]) {
+      override def apply[X](kv: StorageAction[X]): Const[Vector[String], X] = Const(kv match {
+        case StorageAction.Get(k) => Vector.empty[String] :+ s"Get($k)"
+        case StorageAction.Update(k, v) => Vector.empty[String] :+ s"Update($k, $v)"
+        case StorageAction.Remove(k) => Vector.empty[String] :+ s"Remove($k)"
+      })
     })
   }
 
