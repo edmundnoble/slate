@@ -37,8 +37,9 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   final class EmptyResponseException extends java.lang.Exception("Empty response")
 
-  case class DashProgram[P](id: Int, title: String, titleLink: String, program: P, input: JSON) {
+  final case class DashProgram[P](id: Int, title: String, titleLink: String, program: P, input: JSON) {
     def map[B](f: P => B): DashProgram[B] = copy(program = f(program))
+    def nameInputHash: Int = (title, input).hashCode
   }
 
   object DashProgram {
@@ -89,43 +90,41 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   type ErrorRunningPrograms = QQRuntimeException :+: ErrorCompilingPrograms
 
-  private def runCompiledPrograms: List[(Int, String, String, Task[ErrorRunningPrograms Xor List[JSON]])] =
-    compiledPrograms.map {
-      case DashProgram(id, title, titleLink, program, input) =>
-        (id, title, titleLink,
-          program
-            .map(_.leftMap(Inr[QQRuntimeException, ErrorCompilingPrograms]))
-            .flatMap(_.traverse[Task, ErrorRunningPrograms, ErrorRunningPrograms Xor List[JSON]] { compiled =>
-              CompiledFilter.run(input, Map.empty, compiled).map {
-                _.leftMap(exs => Inl(QQRuntimeException(exs))).toXor
-              }
-            }).map(_.flatMap(identity))
-        )
+  private def runCompiledPrograms: List[DashProgram[Task[ErrorRunningPrograms Xor List[JSON]]]] =
+    compiledPrograms.map { program =>
+      program.map(
+        _.map(_.leftMap(Inr[QQRuntimeException, ErrorCompilingPrograms]))
+          .flatMap(_.traverse[Task, ErrorRunningPrograms, ErrorRunningPrograms Xor List[JSON]] { compiled =>
+            CompiledFilter.run(program.input, Map.empty, compiled).map {
+              _.leftMap(exs => Inl(QQRuntimeException(exs))).toXor
+            }
+          }).map(_.flatMap(identity))
+      )
     }
 
   type ErrorDeserializingProgramOutput = upickle.Invalid.Data :+: ErrorRunningPrograms
 
-  private def deserializeProgramOutput: List[(Int, String, String, Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]])] = runCompiledPrograms.map {
-    case (id, title, titleLink, program) =>
-      (id, title, titleLink, {
-        program.map {
-          _.leftMap(Inr[upickle.Invalid.Data, ErrorRunningPrograms]).flatMap {
+  private def deserializeProgramOutput: List[DashProgram[Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]]]] =
+    runCompiledPrograms.map { program =>
+      program.map(
+        _.map(
+          _.leftMap(Inr[upickle.Invalid.Data, ErrorRunningPrograms]).flatMap(
             _.traverse[ErrorDeserializingProgramOutput Xor ?, ExpandableContentModel] {
               json =>
                 val upickleJson = JSON.JSONToUpickleRec.apply(json)
-                Coeval.apply(ExpandableContentModel.pkl.read(upickleJson).right).onErrorRecover {
+                try ExpandableContentModel.pkl.read(upickleJson).right catch {
                   case ex: upickle.Invalid.Data => Inl(ex).left
-                }.value
+                }
             }
-          }
-        }
-      })
-  }
+          )
+        )
+      )
+    }
 
   def getContent: Observable[SearchPageProps] =
     raceFold(deserializeProgramOutput.map {
-      case (id, title, titleLink, program) =>
-        val errorsCaughtProgram = program.map {
+      case DashProgram(id, title, titleLink, out, _) =>
+        val errorsCaughtProgram = out.map {
           t =>
             t.swap.foreach { err =>
               logger.warn("error while running programs",
@@ -135,7 +134,7 @@ object DashboarderApp extends scalajs.js.JSApp {
         }
         errorsCaughtProgram
     })(
-      runCompiledPrograms.map(t => AppProps(t._1, t._2, t._3, AppModel(Nil.right)))
+      runCompiledPrograms.map(t => AppProps(t.id, t.title, t.titleLink, AppModel(Nil.right)))
     )((l, ap) => ap :: l.filterNot(_.title == ap.title))
       .map(appProps => SearchPageProps(appProps.sortBy(_.title)))
 
