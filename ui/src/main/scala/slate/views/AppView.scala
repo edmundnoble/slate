@@ -38,7 +38,7 @@ object AppView {
       color(c"#303030"),
       addClassName("material-icons"),
       fontSize(24 px),
-      marginLeft(10 px),
+      marginLeft(6 px),
       marginTop(-7 px),
       verticalAlign.middle,
       (textDecoration := "none").important
@@ -90,7 +90,7 @@ object AppView {
           div(Styles.header,
             div(ExpandableContentView.Styles.headerLeft,
               span(Styles.title, props.title.toUpperCase()),
-              a(Styles.linkIcon, "link", href := props.titleLink)
+              a(Styles.linkIcon, target := "_blank", "link", href := props.titleLink)
             )
           ),
           div(Styles.content,

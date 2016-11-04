@@ -3,7 +3,6 @@ package views
 
 import slate.app.DashboarderApp.ErrorDeserializingProgramOutput
 import slate.app.ProgramCache.{InvalidBase64, InvalidBytecode}
-import slate.views
 import fastparse.all.ParseError
 import japgolly.scalajs.react._
 import org.scalajs.dom.html.Div
@@ -21,6 +20,11 @@ object ErrorView {
     val danger: StyleA = style(
       margin(20 px),
       fontFamily(views.Styles.sanFrancisco)
+    )
+
+    val runtimeError: StyleA = style(
+      marginTop(10 px),
+      fontSize(12 px)
     )
   }
 
@@ -61,9 +65,9 @@ object ErrorView {
 
   def renderQQRuntimeException(err: QQRuntimeException): TagMod = {
     div(
-      "Errors running QQ program",
+      "Errors running QQ program:",
       div(
-        err.errors.map(e => div(e.message)).toList: _*
+        err.errors.map(e => div(Styles.runtimeError, e.message)).toList: _*
       )
     )
   }
