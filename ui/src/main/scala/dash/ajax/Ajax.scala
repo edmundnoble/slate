@@ -38,8 +38,8 @@ object AjaxException {
   * Contains the XMLHttpRequest that resulted in that response
   */
 case class AjaxException(xhr: dom.XMLHttpRequest, url: String)
-  extends QQRuntimeError(if (xhr.status == 0 && xhr.readyState == 4) "HTTP timeout " else
-    s" HTTP error ${xhr.status} from $url: ${AjaxException.errorCodeToMessage(xhr.status).getOrElse("unknown error code")}.") {
+  extends QQRuntimeError(if (xhr.status == 0 && xhr.readyState == 4) s"HTTP timeout from $url" else
+    s"HTTP error ${xhr.status} from $url: ${AjaxException.errorCodeToMessage(xhr.status).getOrElse("unknown error code")}.") {
   def isTimeout: Boolean = xhr.status == 0 && xhr.readyState == 4
 }
 

@@ -34,6 +34,16 @@ object AppView {
       display.inlineBlock
     )
 
+    val titleLinkIcon = style(
+      color(c"#303030"),
+      addClassName("material-icons"),
+      fontSize(24 px),
+      marginLeft(10 px),
+      marginTop(-7 px),
+      verticalAlign.middle,
+      (textDecoration := "none").important
+    )
+
     val title = style(
       addClassNames("mdl-card__title-text"),
       color(c"#303030"),
@@ -79,7 +89,8 @@ object AppView {
         div(Styles.panel, key := props.id,
           div(Styles.header,
             div(ExpandableContentView.Styles.headerLeft,
-              a(Styles.title, props.title.toUpperCase(), href := props.titleLink)
+              span(Styles.title, props.title.toUpperCase()),
+              a(Styles.titleLinkIcon, "link", href := props.titleLink)
             )
           ),
           div(Styles.content,
