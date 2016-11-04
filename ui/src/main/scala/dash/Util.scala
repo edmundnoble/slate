@@ -1,6 +1,6 @@
 package dash
 
-import fastparse.core.Parsed
+import fastparse.all.Parsed
 import japgolly.scalajs.react.{CallbackTo, vdom}
 import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.vdom.TagMod

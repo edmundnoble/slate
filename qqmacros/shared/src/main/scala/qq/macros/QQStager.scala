@@ -110,7 +110,7 @@ object QQStager {
     }
     val parsedProgram: Program[ConcreteFilter] = Parser.program.parse(program) match {
       case f@Parsed.Failure(_, _, _) =>
-        c.abort(c.enclosingPosition, "QQ parsing error: " + f)
+        c.abort(c.enclosingPosition, "QQ parsing error: " + f.extra.traced.trace)
       case Parsed.Success(prog, _) => prog
     }
     val optimizedProgram = LocalOptimizer.optimizeProgram(parsedProgram)

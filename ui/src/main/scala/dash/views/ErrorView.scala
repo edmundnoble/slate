@@ -4,7 +4,7 @@ package views
 import dash.app.DashboarderApp.ErrorDeserializingProgramOutput
 import dash.app.ProgramCache.{InvalidBase64, InvalidBytecode}
 import dash.views
-import fastparse.core.ParseError
+import fastparse.all.ParseError
 import japgolly.scalajs.react._
 import org.scalajs.dom.html.Div
 import qq.cc.{QQCompilationException, QQRuntimeException}

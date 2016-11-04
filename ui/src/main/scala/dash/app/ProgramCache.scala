@@ -5,7 +5,7 @@ import qq.cc._
 import qq.data.{ConcreteFilter, Program}
 import scodec.bits.BitVector
 import Util._
-import fastparse.core.{ParseError, Parsed}
+import fastparse.all.{ParseError, Parsed}
 import qq.util.Recursion.RecursionEngine
 import shapeless.{:+:, CNil}
 

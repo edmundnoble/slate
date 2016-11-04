@@ -2,7 +2,7 @@ package qq
 package cc
 
 import cats.data.{NonEmptyList, ValidatedNel, Xor}
-import fastparse.core.{ParseError, Parsed}
+import fastparse.all.{ParseError, Parsed}
 import monix.eval.Task
 import monix.cats._
 import qq.data.JSON
