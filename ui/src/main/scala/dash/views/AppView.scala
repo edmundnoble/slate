@@ -34,7 +34,7 @@ object AppView {
       display.inlineBlock
     )
 
-    val titleLinkIcon = style(
+    val linkIcon = style(
       color(c"#303030"),
       addClassName("material-icons"),
       fontSize(24 px),
@@ -90,7 +90,7 @@ object AppView {
           div(Styles.header,
             div(ExpandableContentView.Styles.headerLeft,
               span(Styles.title, props.title.toUpperCase()),
-              a(Styles.titleLinkIcon, "link", href := props.titleLink)
+              a(Styles.linkIcon, "link", href := props.titleLink)
             )
           ),
           div(Styles.content,
