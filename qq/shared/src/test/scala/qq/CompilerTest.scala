@@ -74,12 +74,21 @@ class CompilerTest extends QQAsyncTestSuite {
     )
   }
 
-  val fatStackTests: List[CompilerTestCase] = {
+  val lotsOfCompositionTests: List[CompilerTestCase] = {
     // tail recursive builder, giving you (i * 2) compositions of id with f.
     @annotation.tailrec
     def fun(f: ConcreteFilter, i: Int): ConcreteFilter = if (i == 0) f else fun(id | f | id, i - 1)
     List(
       CompilerTestCase(JSON.False, fun(id, 10000), JSON.False)(qq.Platform.Rec.defaultRecScheme)
+    )
+  }
+
+  val lotsOfEnsequenceTests: List[CompilerTestCase] = {
+    // tail recursive builder, giving you (i * 2) ensequencings of id with f.
+    @annotation.tailrec
+    def fun(f: ConcreteFilter, i: Int): ConcreteFilter = if (i == 0) f else fun(id |+| f |+| id, i - 1)
+    List(
+      CompilerTestCase(JSON.False, fun(id, 10000), List.fill(20001)(JSON.`false`): _*)(qq.Platform.Rec.defaultRecScheme)
     )
   }
 
@@ -159,7 +168,8 @@ class CompilerTest extends QQAsyncTestSuite {
   "id" in Future.traverse(idTests)(runTest)
   "select range" in Future.traverse(selectRangeTests)(runTest)
   "collect results" in Future.traverse(collectResultsTests)(runTest)
-  "fat stack" taggedAs StackTest in Future.traverse(fatStackTests)(runTest)
+  "lots of compositions" taggedAs StackTest in Future.traverse(lotsOfCompositionTests)(runTest)
+  "lots of ensequence" taggedAs StackTest in Future.traverse(lotsOfEnsequenceTests)(runTest)
   "variables" in Future.traverse(variableTests)(runTest)
   "path setters" in Future.traverse(pathSetterTests)(runTest)
   "path modifiers" in Future.traverse(pathModifierTests)(runTest)

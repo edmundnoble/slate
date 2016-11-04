@@ -24,6 +24,7 @@ object QQDSL {
 
     implicit final class extraOps(val f: ConcreteFilter) {
       def |(next: ConcreteFilter): ConcreteFilter = compose(f, next)
+      def |+|(next: ConcreteFilter): ConcreteFilter = ensequence(f, next)
       def +(next: ConcreteFilter): ConcreteFilter = add(f, next)
       def ===(next: ConcreteFilter): ConcreteFilter = equal(f, next)
       def <==(next: ConcreteFilter): ConcreteFilter = lte(f, next)
