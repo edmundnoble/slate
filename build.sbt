@@ -1,18 +1,18 @@
-val ui = DashboarderBuild.ui
+val ui = SlateBuild.ui
 
-val uitests = DashboarderBuild.uitests
+val uitests = SlateBuild.uitests
 
-val uibench = DashboarderBuild.uibench
+val uibench = SlateBuild.uibench
 
-val dashboarder = DashboarderBuild.root
+val dashboarder = SlateBuild.root
 
-val qqjvm = DashboarderBuild.qqjvm
+val qqjvm = SlateBuild.qqjvm
 
-val qqjs = DashboarderBuild.qqjs
+val qqjs = SlateBuild.qqjs
 
-val qqmacrosjvm = DashboarderBuild.qqmacrosjvm
+val qqmacrosjvm = SlateBuild.qqmacrosjvm
 
-val qqmacrosjs = DashboarderBuild.qqmacrosjs
+val qqmacrosjs = SlateBuild.qqmacrosjs
 
-val root = DashboarderBuild.root
+val root = SlateBuild.root
 
