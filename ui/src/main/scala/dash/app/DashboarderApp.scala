@@ -135,7 +135,7 @@ object DashboarderApp extends scalajs.js.JSApp {
         errorsCaughtProgram
     })(
       runCompiledPrograms.map(t => AppProps(t.id, t.title, t.titleLink, AppModel(Nil.right)))
-    )((l, ap) => ap :: l.filterNot(_.title == ap.title))
+    )((l, ap) => ap :: l.filterNot(_.id == ap.id))
       .map(appProps => SearchPageProps(appProps.sortBy(_.id)))
 
   def render(container: Element, content: SearchPageProps)(
