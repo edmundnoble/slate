@@ -24,17 +24,19 @@ object SlateBuild {
       "com.lihaoyi" %%% "fastparse" % "0.4.1",
       "io.monix" %%% "monix" % "2.0.6",
       "io.monix" %%% "monix-cats" % "2.0.6",
-      "org.scodec" %%% "scodec-bits" % "1.1.0",
-      "org.scodec" %%% "scodec-core" % "1.10.2"
+      "org.scodec" %%% "scodec-bits" % "1.1.2",
+      "org.scodec" %%% "scodec-core" % "1.10.3",
+      "com.chuusai" %%% "shapeless" % "2.3.2"
     ),
     resolvers += Resolver.sonatypeRepo("releases"),
-    resolvers += "Sonatype Public" at "https://oss.sonatype.org/content/groups/public/")
+    resolvers += "Sonatype Public" at "https://oss.sonatype.org/content/groups/public/"
+  )
 
   lazy val uiDeps: Setting[Seq[ModuleID]] = libraryDependencies ++= Seq(
     "net.lullabyte" %%% "scala-js-chrome" % "0.2.1",
     "org.scala-js" %%% "scalajs-dom" % "0.9.0",
-    "com.github.japgolly.scalajs-react" %%% "core" % "0.11.1",
-    "com.github.japgolly.scalajs-react" %%% "extra" % "0.11.1",
+    "com.github.japgolly.scalajs-react" %%% "core" % "0.11.3",
+    "com.github.japgolly.scalajs-react" %%% "extra" % "0.11.3",
     "com.github.japgolly.scalacss" %%% "core" % "0.5.0",
     "com.github.japgolly.scalacss" %%% "ext-react" % "0.5.0"
   )
