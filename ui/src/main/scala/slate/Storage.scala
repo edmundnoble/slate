@@ -10,7 +10,7 @@ import Eff._
 import syntax.all._
 
 // Operations on a Storage with F[_] effects
-// To abstract over storage that has different effects performed by its operations
+// To abstract over text key-value storage that has different effects performed by its operations
 // Examples of uses:
 // localStorage, sessionStorage: use F = Task
 // pure: Use F = State[Map[String, String], ?]]
@@ -67,16 +67,16 @@ object StorageProgram {
   import StorageAction._
   import Util._
 
-  final def get[F: _StorageAction](key: String): Eff[F, Option[String]] =
+  def get[F: _StorageAction](key: String): Eff[F, Option[String]] =
     Get(key).send[F]
 
-  final def update[F: _StorageAction](key: String, value: String): Eff[F, Unit] =
+  def update[F: _StorageAction](key: String, value: String): Eff[F, Unit] =
     Update(key, value).send[F]
 
-  final def remove[F: _StorageAction](key: String): Eff[F, Unit] =
+  def remove[F: _StorageAction](key: String): Eff[F, Unit] =
     Remove(key).send[F]
 
-  final def getOrSet[F: _StorageAction](key: String, value: => String): Eff[F, String] = {
+  def getOrSet[F: _StorageAction](key: String, value: => String): Eff[F, String] = {
     for {
       cur <- get(key)
       result <- cur.fold(update[F](key, value).as(value))(_.pureEff[F])
@@ -98,7 +98,8 @@ object StorageProgram {
   /**
     * Translate one effect of the stack into other effects in a larger stack
     */
-  def translateInto[R, T[_], U, A](eff: Eff[R, A])(translate: interpret.Translate[T, U])(implicit m: MemberInOut[T, R], into: IntoPoly[R, U]): Eff[U, A] = {
+  def translateInto[R, T[_], U, A](eff: Eff[R, A])(translate: interpret.Translate[T, U])
+                                  (implicit m: MemberInOut[T, R], into: IntoPoly[R, U]): Eff[U, A] = {
     eff match {
       case Pure(a) => into(eff)
       case Impure(u, c) =>
@@ -157,9 +158,8 @@ object StorageProgram {
   }
 
   def retarget[R, U, A](eff: Eff[R, A])(prefix: String, delim: String)
-                       (implicit ev: MemberInOut[StorageAction, R]
-                       ): Eff[R, A] =
-    interpret.interceptNat[R, U, StorageAction, A](eff)(new (StorageAction ~> StorageAction) {
+                       (implicit ev: MemberInOut[StorageAction, R]): Eff[R, A] =
+    interpret.interceptNat(eff)(new (StorageAction ~> StorageAction) {
       override def apply[X](kv: StorageAction[X]): StorageAction[X] =
         kv match {
           // TODO: clean up with access to SI-9760 fix
@@ -188,10 +188,13 @@ object DomStorage {
 
 // Implementation for pure maps
 object PureStorage extends Storage[State[Map[String, String], ?]] {
-  override def apply(key: String): State[Map[String, String], Option[String]] = State.get.map(_.get(key))
+  override def apply(key: String): State[Map[String, String], Option[String]] =
+    State.get.map(_.get(key))
 
-  override def update(key: String, data: String): State[Map[String, String], Unit] = State.modify(_ + (key -> data))
+  override def update(key: String, data: String): State[Map[String, String], Unit] =
+    State.modify(_ + (key -> data))
 
-  override def remove(key: String): State[Map[String, String], Unit] = State.modify(_ - key)
+  override def remove(key: String): State[Map[String, String], Unit] =
+    State.modify(_ - key)
 }
 
