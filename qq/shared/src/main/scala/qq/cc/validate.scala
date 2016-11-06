@@ -1,7 +1,7 @@
 package qq
 package cc
 
-import cats.data.{Validated, ValidatedNel, Xor}
+import cats.data.{Validated, ValidatedNel}
 import cats.implicits._
 import org.atnos.eff._
 import Eff._
@@ -23,7 +23,7 @@ trait ValidatedInterpretation {
       */
     final def runErrorParallel[R, U, A](r: Eff[R, A])(implicit m: Member.Aux[E Validated ?, R, U]): Eff[U, E Validated A] = {
       val recurse = new Recurse[E Validated ?, U, E Validated A] {
-        def apply[X](m: E Validated X): X Xor Eff[U, E Validated A] =
+        def apply[X](m: E Validated X): X Either Eff[U, E Validated A] =
           m match {
             case i@Validated.Invalid(e) =>
               EffMonad[U].pure(i: Validated[E, A]).right[X]
@@ -32,7 +32,7 @@ trait ValidatedInterpretation {
               a.left
           }
 
-        def applicative[X, T[_] : Traverse](ms: T[E Validated X]): T[X] Xor (E Validated T[X]) =
+        def applicative[X, T[_] : Traverse](ms: T[E Validated X]): T[X] Either (E Validated T[X]) =
           ms.sequence[E Validated ?, X].right
       }
 

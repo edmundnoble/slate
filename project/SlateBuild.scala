@@ -13,12 +13,12 @@ object SlateBuild {
 
   lazy val commonDeps: Seq[Setting[_]] = Seq(
     libraryDependencies ++= Seq(
-      "org.typelevel" %%% "cats-core" % "0.7.2",
-      "org.typelevel" %%% "cats-kernel" % "0.7.2",
-      "org.typelevel" %%% "cats-macros" % "0.7.2",
-      "org.typelevel" %%% "cats-free" % "0.7.2",
-      "org.atnos" %%% "eff-cats" % "2.0.0-RC17",
-      "org.atnos" %%% "eff-cats-monix" % "2.0.0-RC17",
+      "org.typelevel" %%% "cats-core" % "0.8.0",
+      "org.typelevel" %%% "cats-kernel" % "0.8.0",
+      "org.typelevel" %%% "cats-macros" % "0.8.0",
+      "org.typelevel" %%% "cats-free" % "0.8.0",
+      "org.atnos" %%% "eff-cats" % "2.0.0-RC20",
+      "org.atnos" %%% "eff-cats-monix" % "2.0.0-RC20",
       "org.scalatest" %%% "scalatest" % "3.0.0" % "test",
       "com.lihaoyi" %%% "upickle" % "0.4.3",
       "com.lihaoyi" %%% "fastparse" % "0.4.1",

@@ -9,7 +9,7 @@ import slate.Util.observableReusability
 import slate.views.ExpandableContentView.ExpandableContentProps
 
 import scalacss.Defaults._
-import cats.data.Xor
+
 import cats.implicits._
 
 object AppView {

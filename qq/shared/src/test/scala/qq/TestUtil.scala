@@ -1,6 +1,6 @@
 package qq
 
-import cats.data.{Validated, Xor}
+import cats.data.Validated
 import org.scalactic.Uniformity
 import org.scalatest.OptionValues._
 import qq.data.JSON
@@ -30,7 +30,7 @@ trait TestUtil {
     case _ => j
   }
 
-  implicit def convertDisjunctionToValuable[E, A](dis: E Xor A)(implicit pos: org.scalactic.source.Position): Valuable[A] =
+  implicit def convertDisjunctionToValuable[E, A](dis: E Either A)(implicit pos: org.scalactic.source.Position): Valuable[A] =
     new Valuable(dis.toOption, pos)
 
   implicit def convertValidatedToValuable[E, A](dis: Validated[E, A])(implicit pos: org.scalactic.source.Position): Valuable[A] =

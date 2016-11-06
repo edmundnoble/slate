@@ -3,7 +3,7 @@ package cc
 
 import java.util.regex.Pattern
 
-import cats.data.{Xor, NonEmptyList, Validated, ValidatedNel}
+import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import monix.eval.Task
 import monix.cats._
 import qq.data.{CompiledDefinition, JSON}

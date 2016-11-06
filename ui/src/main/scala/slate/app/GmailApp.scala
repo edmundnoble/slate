@@ -1,14 +1,13 @@
 package slate
 package app
 
-import cats.data.Xor
+
 import qq.data.{ConcreteFilter, Program}
 import qq.macros.QQStager._
-import cats.syntax.xor._
 
 object GmailApp {
 
-  val program: Program[ConcreteFilter] Xor String =
+  val program: Program[ConcreteFilter] Either String =
     qq"""
 def authHeaders: { Authorization: "Bearer " + googleAuth };
 

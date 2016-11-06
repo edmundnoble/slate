@@ -9,13 +9,13 @@ import fastparse.all.{ParseError, Parsed}
 import qq.util.Recursion.RecursionEngine
 import shapeless.{:+:, CNil}
 
-import cats.data.Xor
+
 import cats.implicits._
 
 object ProgramCache {
 
-  def prepareProgram(program: String)(implicit rec: RecursionEngine): Parsed.Failure Xor Program[ConcreteFilter] = {
-    val parsedQQProgram = Parser.program.parse(program).toXor.map(_.value)
+  def prepareProgram(program: String)(implicit rec: RecursionEngine): Parsed.Failure Either Program[ConcreteFilter] = {
+    val parsedQQProgram = Parser.program.parse(program).toEither.map(_.value)
     val optimizedProgram = parsedQQProgram.map(LocalOptimizer.optimizeProgram)
     optimizedProgram
   }
@@ -27,7 +27,7 @@ object ProgramCache {
 
   // cache optimized, parsed programs using their hashcode as a key
   // store them as base64-encoded bytecode
-  def getCachedProgram(qqProgram: String)(implicit rec: RecursionEngine): StorageProgram[ErrorGettingCachedProgram Xor Program[ConcreteFilter]] = {
+  def getCachedProgram(qqProgram: String)(implicit rec: RecursionEngine): StorageProgram[ErrorGettingCachedProgram Either Program[ConcreteFilter]] = {
 
     import StorageProgram._
     import qq.protocol.FilterProtocol._
@@ -44,7 +44,7 @@ object ProgramCache {
           val encodedProgram =
             preparedProgram.flatMap(
               programCodec
-                .encode(_).toXor
+                .encode(_).toEither
                 .bimap(e => injectError(InvalidBytecode(e)), _.value)
             )
           val asBase64 = encodedProgram.map(_.toBase64)
@@ -55,11 +55,11 @@ object ProgramCache {
         case Some(encodedProgram) =>
           val encodedProgramBits =
             BitVector.fromBase64(encodedProgram)
-              .toRightXor(injectError(InvalidBase64(encodedProgram)))
+              .toRightEither(injectError(InvalidBase64(encodedProgram)))
           val decodedProgram =
             encodedProgramBits.flatMap(
               programCodec
-                .decode(_).toXor
+                .decode(_).toEither
                 .bimap(e => injectError(InvalidBytecode(e)), _.value.value)
             )
           decodedProgram.pure[StorageProgram]

@@ -5,7 +5,7 @@ import qq.data.CompiledDefinition
 import qq.util.Recursion.RecursionEngine
 import cats.implicits._
 import cats.Monoid
-import cats.data.Xor
+
 
 object Prelude {
   val empty = new Prelude {

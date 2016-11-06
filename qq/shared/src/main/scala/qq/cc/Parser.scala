@@ -10,7 +10,6 @@ import qq.data._
 
 import scala.collection.mutable
 import cats.implicits._
-import cats.data.Xor
 
 object Parser {
 
@@ -162,7 +161,7 @@ object Parser {
   )
 
   // The reason I avoid using basicFilter is to avoid a parsing ambiguity with ensequencedFilters
-  val enjectPair: P[(String Xor ConcreteFilter, ConcreteFilter)] = P(
+  val enjectPair: P[(String Either ConcreteFilter, ConcreteFilter)] = P(
     ((("(" ~/ whitespace ~ filter ~ whitespace ~ ")").map(_.right[String]) |
       (stringLiteral | escapedStringLiteral).map(_.left[ConcreteFilter])) ~ ":" ~ whitespace ~ piped) |
       filterIdentifier.map(id => id.left -> dsl.getPath(List(dsl.selectKey(id))))

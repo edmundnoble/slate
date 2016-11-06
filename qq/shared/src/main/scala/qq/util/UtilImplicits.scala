@@ -2,7 +2,7 @@ package qq
 package util
 
 import cats.Monad
-import cats.data.{Validated, Xor}
+import cats.data.Validated
 import monix.eval.Task
 import scodec._
 import scodec.bits.BitVector
@@ -36,9 +36,9 @@ trait UtilImplicits {
   }
 
   // sum type encoded with a single bit
-  implicit def eitherCodec[E, A](implicit E: Lazy[Codec[E]], A: Lazy[Codec[A]]): Codec[E Xor A] = {
+  implicit def eitherCodec[E, A](implicit E: Lazy[Codec[E]], A: Lazy[Codec[A]]): Codec[E Either A] = {
     val enc = Encoder.apply {
-      (v: E Xor A) =>
+      (v: E Either A) =>
         v.fold(e => E.value.encode(e).map(BitVector.one ++ _), a => A.value.encode(a).map(BitVector.zero ++ _))
     }
     val dec = Decoder.apply {

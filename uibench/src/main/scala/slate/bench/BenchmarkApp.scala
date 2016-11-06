@@ -8,7 +8,7 @@ import qq.Platform.Rec._
 import qq.data.JSON
 
 import scala.scalajs.js.annotation.JSExport
-import cats.data.Xor
+
 
 @JSExport
 object BenchmarkApp extends scalajs.js.JSApp {

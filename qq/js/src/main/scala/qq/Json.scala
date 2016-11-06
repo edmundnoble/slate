@@ -10,11 +10,11 @@ import upickle.{Invalid, Js}
 import scala.scalajs.js
 import cats.Eval
 import cats.implicits._
-import cats.data.Xor
+
 
 object Json {
 
-  def stringToJs(s: String): Invalid.Json Xor js.Any =
+  def stringToJs(s: String): Invalid.Json Either js.Any =
     try {
       js.JSON.parse(s).right
     } catch {
@@ -64,7 +64,7 @@ object Json {
           .map(m => JSON.ObjMap(m))
     }
 
-  @inline final def stringToJSON(s: String)(implicit r: RecursionEngine): Invalid.Json Xor JSON =
+  @inline final def stringToJSON(s: String)(implicit r: RecursionEngine): Invalid.Json Either JSON =
     stringToJs(s).map(jsToJSONRec(_))
 
   @inline final val JSONToJsRec: RecursiveFunction[JSON, js.Any] =

@@ -4,9 +4,9 @@ package models
 import slate.app.DashboarderApp.ErrorDeserializingProgramOutput
 import japgolly.scalajs.react.extra.Reusability
 
-import cats.data.Xor
 
-case class AppModel(content: ErrorDeserializingProgramOutput Xor List[ExpandableContentModel])
+
+case class AppModel(content: ErrorDeserializingProgramOutput Either List[ExpandableContentModel])
 
 object AppModel {
 

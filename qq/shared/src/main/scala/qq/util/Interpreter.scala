@@ -6,15 +6,15 @@ import qq.cc._
 import qq.data.JSON
 import upickle.json
 import qq.Platform.Rec._
-import cats.data.{NonEmptyList, Validated, ValidatedNel, Xor}
+import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import cats.implicits._
 import org.atnos.eff._
 import Eff._
 import syntax.all._
 
 // I think this is just a free monad transformer
-final case class Interpreter(name: String, resumePartial: PartialFunction[String, InterpreterExitException.type Xor Task[(String, Interpreter)]]) {
-  @inline def resume: String => Option[InterpreterExitException.type Xor Task[(String, Interpreter)]] = resumePartial.lift
+final case class Interpreter(name: String, resumePartial: PartialFunction[String, InterpreterExitException.type Either Task[(String, Interpreter)]]) {
+  @inline def resume: String => Option[InterpreterExitException.type Either Task[(String, Interpreter)]] = resumePartial.lift
   @inline def orElse(other: Interpreter): Interpreter = Interpreter(other.name, resumePartial.orElse(other.resumePartial))
 }
 

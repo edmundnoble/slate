@@ -27,7 +27,7 @@ import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
 import cats.implicits._
 import cats.Functor
-import cats.data.Xor
+
 import org.atnos.eff.{syntax, reader, Fx, NoFx}, syntax.all._
 
 @JSExport
@@ -48,12 +48,12 @@ object DashboarderApp extends scalajs.js.JSApp {
     }
   }
 
-  def programs: List[DashProgram[Program[ConcreteFilter] Xor String]] = {
+  def programs: List[DashProgram[Program[ConcreteFilter] Either String]] = {
     val todoistState: String = List.fill(6) {
       java.lang.Integer.toHexString(scala.util.Random.nextInt(256))
     }.mkString
 
-    List[DashProgram[Program[ConcreteFilter] Xor String]](
+    List[DashProgram[Program[ConcreteFilter] Either String]](
       DashProgram(1, "Gmail", "https://gmail.com", GmailApp.program, JSON.Obj()),
       DashProgram(2, "Todoist", "https://todoist.com", TodoistApp.program,
         JSON.Obj(
@@ -75,7 +75,7 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   type ErrorCompilingPrograms = QQCompilationException :+: ErrorGettingCachedProgram
 
-  def compiledPrograms: List[DashProgram[Task[ErrorCompilingPrograms Xor CompiledFilter]]] =
+  def compiledPrograms: List[DashProgram[Task[ErrorCompilingPrograms Either CompiledFilter]]] =
     programs.map(program =>
       program.map { programPrecompiledOrString =>
         programPrecompiledOrString.fold(e => Task.now(e.right[ErrorGettingCachedProgram]), s =>
@@ -90,13 +90,13 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   type ErrorRunningPrograms = QQRuntimeException :+: ErrorCompilingPrograms
 
-  private def runCompiledPrograms: List[DashProgram[Task[ErrorRunningPrograms Xor List[JSON]]]] =
+  private def runCompiledPrograms: List[DashProgram[Task[ErrorRunningPrograms Either List[JSON]]]] =
     compiledPrograms.map { program =>
       program.map(
         _.map(_.leftMap(Inr[QQRuntimeException, ErrorCompilingPrograms]))
-          .flatMap(_.traverse[Task, ErrorRunningPrograms, ErrorRunningPrograms Xor List[JSON]] { compiled =>
+          .flatMap(_.traverse[Task, ErrorRunningPrograms, ErrorRunningPrograms Either List[JSON]] { compiled =>
             CompiledFilter.run(program.input, Map.empty, compiled).map {
-              _.leftMap(exs => Inl(QQRuntimeException(exs))).toXor
+              _.leftMap(exs => Inl(QQRuntimeException(exs))).toEither
             }
           }).map(_.flatMap(identity))
       )
@@ -104,12 +104,12 @@ object DashboarderApp extends scalajs.js.JSApp {
 
   type ErrorDeserializingProgramOutput = upickle.Invalid.Data :+: ErrorRunningPrograms
 
-  private def deserializeProgramOutput: List[DashProgram[Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]]]] =
+  private def deserializeProgramOutput: List[DashProgram[Task[ErrorDeserializingProgramOutput Either List[ExpandableContentModel]]]] =
     runCompiledPrograms.map { program =>
       program.map(
         _.map(
           _.leftMap(Inr[upickle.Invalid.Data, ErrorRunningPrograms]).flatMap(
-            _.traverse[ErrorDeserializingProgramOutput Xor ?, ExpandableContentModel] {
+            _.traverse[ErrorDeserializingProgramOutput Either ?, ExpandableContentModel] {
               json =>
                 val upickleJson = JSON.JSONToUpickleRec.apply(json)
                 try ExpandableContentModel.pkl.read(upickleJson).right catch {

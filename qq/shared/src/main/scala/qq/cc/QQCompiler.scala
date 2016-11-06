@@ -1,7 +1,7 @@
 package qq
 package cc
 
-import cats.data.{NonEmptyList, Validated, ValidatedNel, Xor}
+import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import monix.eval.Task
 import monix.cats._
 import qq.data._
@@ -51,7 +51,7 @@ object QQCompiler {
   }
 
   final def compileStep(definitions: Map[String, CompiledDefinition],
-                        filter: FilterComponent[CompiledFilter]): QQCompilationException Xor CompiledFilter = filter match {
+                        filter: FilterComponent[CompiledFilter]): QQCompilationException Either CompiledFilter = filter match {
     case Dereference(name) =>
       CompiledFilter.singleton {
         (_: JSON) =>

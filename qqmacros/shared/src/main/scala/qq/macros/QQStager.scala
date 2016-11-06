@@ -9,7 +9,7 @@ import qq.util.Recursion.RecursiveFunction
 import scala.language.experimental.macros
 import scala.reflect.macros.whitebox
 import cats.Eval
-import cats.data.Xor
+
 import cats.implicits._
 import qq.Platform.Rec._
 
@@ -22,10 +22,10 @@ object QQStager {
     import c.universe._
     def lift[T: Liftable](value: T): Tree = implicitly[Liftable[T]].apply(value)
 
-    implicit def disjunctionLiftable[E: Liftable, A: Liftable]: Liftable[E Xor A] =
-      Liftable[E Xor A](_.fold(
-        e => q"cats.data.Xor.Left(${lift[E](e)})",
-        a => q"cats.data.Xor.right(${lift[A](a)})"
+    implicit def disjunctionLiftable[E: Liftable, A: Liftable]: Liftable[E Either A] =
+      Liftable[E Either A](_.fold(
+        e => q"cats.data.Either.Left(${lift[E](e)})",
+        a => q"cats.data.Either.right(${lift[A](a)})"
       ))
 
     implicit def definitionLiftable[F: Liftable]: Liftable[Definition[F]] =

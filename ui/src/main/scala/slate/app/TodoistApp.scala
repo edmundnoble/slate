@@ -1,13 +1,12 @@
 package slate
 package app
 
-import cats.data.Xor
-import cats.syntax.xor._
+
 import qq.data.{ConcreteFilter, Program}
 import qq.macros.QQStager._
 
 object TodoistApp {
-  val program: Program[ConcreteFilter] Xor String =
+  val program: Program[ConcreteFilter] Either String =
 qq"""
 def oAuthParams: { scope: "data:read", client_id, state: .tok };
 def doOAuth: launchAuth("https://todoist.com/oauth/authorize"; oAuthParams);

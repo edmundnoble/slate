@@ -1,6 +1,6 @@
 package slate
 
-import cats.data.Xor
+
 import cats.{Monad, RecursiveTailRecM}
 
 import scalajs.js
@@ -81,11 +81,11 @@ object StorageFS {
   final case class NodeMetadata(lastUpdated: js.Date, lastAccessed: js.Date)
   final case class File(metadata: NodeMetadata, dataHash: String, dataKey: StorageKey[FileData])
   final case class Dir(metadata: NodeMetadata, childKeys: Array[FSKey]) {
-    def childFileKeys: Array[StorageKey[File]] = childKeys.collect { case Xor.Left(fileKey) => fileKey }
-    def childDirKeys: Array[StorageKey[Dir]] = childKeys.collect { case Xor.Right(dirKey) => dirKey }
+    def childFileKeys: Array[StorageKey[File]] = childKeys.collect { case Either.Left(fileKey) => fileKey }
+    def childDirKeys: Array[StorageKey[Dir]] = childKeys.collect { case Either.Right(dirKey) => dirKey }
   }
-  type FSKey = StorageKey[File] Xor StorageKey[Dir]
-  type FSEntry = File Xor Dir
+  type FSKey = StorageKey[File] Either StorageKey[Dir]
+  type FSEntry = File Either Dir
 
   def getRaw(key: StorageKey[_]): StorageProgram[Option[String]] = {
     import StorageProgram._
