@@ -312,7 +312,7 @@ object SlateBuild {
     }
   })
 
-  lazy val root: Project = project.in(file("."))
+  lazy val slate: Project = project.in(file("."))
     .aggregate(ui, uitests, uibench, qqjvm, qqjs, qqmacrosjvm, qqmacrosjs)
     .settings(Defaults.projectCore)
     .settings(baseSettings)
