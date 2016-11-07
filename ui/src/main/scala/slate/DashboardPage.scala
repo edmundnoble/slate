@@ -33,7 +33,7 @@ object DashboardPage {
       .render_P(renderDashboard)
       .configure(Reusability.shouldComponentUpdate)
 
-  private def renderDashboard(props: SearchPageProps): ReactElement = {
+  private def renderDashboard(props: SearchPageProps)(implicit sch: Scheduler): ReactElement = {
     div(Styles.layoutContainer,
       div(`class` := "mdl-layout mdl-js-layout", "data-upgraded".reactAttr := ",MaterialLayout",
         id := "react-root",
