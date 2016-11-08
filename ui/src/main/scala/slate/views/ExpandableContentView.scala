@@ -9,7 +9,7 @@ import monix.execution.Scheduler
 import scala.language.higherKinds
 import scalacss.Defaults._
 import cats.implicits._
-import Util._
+import slate.util.Util._
 
 object ExpandableContentView {
   object Styles extends StyleSheet.Inline {

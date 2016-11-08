@@ -5,7 +5,7 @@ import slate.models.TitledContentModel
 import japgolly.scalajs.react.{ReactComponentB, _}
 import japgolly.scalajs.react.extra.Reusability
 import cats.implicits._
-import Util._
+import slate.util.Util._
 
 import scalacss.Defaults._
 

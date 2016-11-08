@@ -1,5 +1,6 @@
 import cats.data.{Reader, Writer}
 import org.atnos.eff.{Eff, Fx}
+import slate.storage.StorageAction
 
 package object slate {
   // StorageProgram is an AST with StorageAction leaves

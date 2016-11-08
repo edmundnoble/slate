@@ -4,7 +4,7 @@ package app
 import qq.cc._
 import qq.data.{ConcreteFilter, Program}
 import scodec.bits.BitVector
-import Util._
+import slate.util.Util._
 import fastparse.all.{ParseError, Parsed}
 import qq.util.Recursion.RecursionEngine
 import shapeless.{:+:, CNil}
@@ -29,7 +29,7 @@ object ProgramCache {
   // store them as base64-encoded bytecode
   def getCachedProgram(qqProgram: String)(implicit rec: RecursionEngine): StorageProgram[ErrorGettingCachedProgram Xor Program[ConcreteFilter]] = {
 
-    import StorageProgram._
+    import storage.StorageProgram._
     import qq.protocol.FilterProtocol._
 
     val injectError = inj[ErrorGettingCachedProgram]

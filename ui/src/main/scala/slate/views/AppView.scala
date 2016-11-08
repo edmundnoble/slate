@@ -5,7 +5,7 @@ import slate.models.AppModel
 import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.{ReactComponentB, ReactNode, TopNode}
 import monix.execution.Scheduler
-import slate.Util.observableReusability
+import slate.util.Util.observableReusability
 import slate.views.ExpandableContentView.ExpandableContentProps
 
 import scalacss.Defaults._

@@ -1,6 +1,8 @@
 package slate
 package bindings
 
+import slate.util.Logger
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSName
 

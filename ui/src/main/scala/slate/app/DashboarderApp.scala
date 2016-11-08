@@ -1,8 +1,9 @@
 package slate
 package app
 
-import slate.DashboardPage.SearchPageProps
-import slate.Util._
+import slate.views.DashboardPage
+import slate.views.DashboardPage.SearchPageProps
+import slate.util.Util._
 import slate.app.ProgramCache.ErrorGettingCachedProgram
 import slate.models.{AppModel, ExpandableContentModel}
 import slate.views.AppView.AppProps
@@ -28,7 +29,10 @@ import scalacss.internal.StringRenderer
 import cats.implicits._
 import cats.Functor
 import cats.data.Xor
-import org.atnos.eff.{syntax, reader, Fx, NoFx}, syntax.all._
+import org.atnos.eff.{Fx, NoFx, reader}
+import org.atnos.eff.syntax.all._
+import slate.util.LoggerFactory
+import slate.storage.{StorageProgram, DomStorage}
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {

@@ -1,4 +1,5 @@
 package slate
+package util
 
 import slate.bindings.{BrowserConsoleAppender, L4JSLogger, Log4JavaScript, PopUpAppender}
 

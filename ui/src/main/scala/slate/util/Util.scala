@@ -1,9 +1,14 @@
 package slate
+package util
 
+import cats.data.Xor
+import cats.free.{Coyoneda, Free}
+import cats.implicits._
+import cats.{Monad, Monoid, RecursiveTailRecM, ~>}
 import fastparse.all.Parsed
-import japgolly.scalajs.react.{CallbackTo, vdom}
 import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.vdom.TagMod
+import japgolly.scalajs.react.{CallbackTo, vdom}
 import monix.eval.{Callback, Task}
 import monix.execution.cancelables.{CompositeCancelable, StackedCancelable}
 import monix.execution.{CancelableFuture, Scheduler}
@@ -12,10 +17,6 @@ import scodec.Attempt
 
 import scala.collection.mutable.ListBuffer
 import scala.language.implicitConversions
-import cats.{Applicative, Monad, Monoid, RecursiveTailRecM, ~>}
-import cats.data.Xor
-import cats.free.{Coyoneda, Free}
-import cats.implicits._
 
 object Util {
 

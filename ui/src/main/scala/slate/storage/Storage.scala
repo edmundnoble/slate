@@ -1,13 +1,14 @@
 package slate
+package storage
 
-import monix.eval.Task
-import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
-import cats.{Monad, Monoid, Traverse, ~>}
 import cats.data._
 import cats.implicits._
+import cats.{Monad, Monoid, ~>}
+import monix.eval.Task
+import org.atnos.eff.Eff._
 import org.atnos.eff._
-import Eff._
-import syntax.all._
+import org.atnos.eff.syntax.all._
+import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
 
 // Operations on a Storage with F[_] effects
 // To abstract over text key-value storage that has different effects performed by its operations
@@ -65,7 +66,6 @@ object StorageAction {
 object StorageProgram {
 
   import StorageAction._
-  import Util._
 
   def get[F: _StorageAction](key: String): Eff[F, Option[String]] =
     Get(key).send[F]

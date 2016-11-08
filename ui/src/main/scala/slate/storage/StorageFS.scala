@@ -1,4 +1,5 @@
 package slate
+package storage
 
 import cats.data.Xor
 import cats.{Monad, RecursiveTailRecM}
