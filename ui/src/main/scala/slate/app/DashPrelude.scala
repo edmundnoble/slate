@@ -67,14 +67,14 @@ object DashPrelude extends Prelude {
         val dataValidated: OrRuntimeErr[String] = dataRaw match {
           case JSON.Str(s) => s.validNel
           case o: JSON.Obj => JSON.render(o).validNel
-          case k => ((TypeError("ajax", "string | object" -> k): QQRuntimeError): QQRuntimeError).invalidNel
+          case k => (TypeError("ajax", "string | object" -> k): QQRuntimeError).invalidNel
         }
         val headersValidated: OrRuntimeErr[Map[String, String]] = headersRaw match {
           case o: JSON.ObjList if o.value.forall(_._2.isInstanceOf[JSON.Str]) => o.toMap.value.mapValues(_.asInstanceOf[JSON.Str].value).validNel
           case o: JSON.ObjMap if o.value.forall(_._2.isInstanceOf[JSON.Str]) => o.toMap.value.mapValues(_.asInstanceOf[JSON.Str].value).validNel
-          case k => ((TypeError("ajax", "object" -> k): QQRuntimeError): QQRuntimeError).invalidNel
+          case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
         }
-        (for {
+        Eff.collapse[Stack, TaskParallel, List[JSON]](for {
           resp <-
           Eff.collapse[Stack, OrRuntimeErr, XMLHttpRequest](
             Applicative[OrRuntimeErr].map4(urlValidated, dataValidated, queryParamsValidated, headersValidated)(
@@ -86,7 +86,7 @@ object DashPrelude extends Prelude {
               }.parallel
             ).sequence[TaskParallel, OrRuntimeErr[XMLHttpRequest]].map(_.flatten).parallel.send[Stack])
           asJson = Json.stringToJSON(resp.responseText).fold(Task.raiseError(_).parallel, t => Task.now(t :: Nil).parallel)
-        } yield asJson).collapse.into[CompiledFilterStack]
+        } yield asJson).into[CompiledFilterStack]
     })
 
   def httpDelete: CompiledDefinition = makeAjaxDefinition("httpDelete", AjaxMethod.DELETE)
