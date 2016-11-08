@@ -55,11 +55,13 @@ object Styles extends StyleSheet.Inline {
 
   val layoutContent = style(
     addClassName("mdl-layout__content"),
+    // keep the scroll bar always, so expanding cards doesn't add it in and change the width of the content
     overflowY.scroll.important
   )
 
   val container: StyleA = style(
     addClassNames("mdl-grid", "page-content"),
+    // prevent grid items from expanding their entire grid row at once
     alignItems.flexStart.important,
     width(95 %%),
     marginTop(25 px)
