@@ -85,7 +85,7 @@ object DashPrelude extends Prelude {
                 case e: QQRuntimeException => e.errors.invalid[XMLHttpRequest]
               }.parallel
             ).sequence[TaskParallel, OrRuntimeErr[XMLHttpRequest]].map(_.flatten).parallel.send[Stack])
-          asJson = Json.stringToJSON(resp.responseText).fold(Task.raiseError(_).parallel, t => Task.now(t :: Nil).parallel)
+          asJson = Json.stringToJSON(resp.responseText).fold(Task.raiseError(_), t => Task.now(t :: Nil)).parallel
         } yield asJson).into[CompiledFilterStack]
     })
 
