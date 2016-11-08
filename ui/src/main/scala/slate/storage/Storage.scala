@@ -88,10 +88,10 @@ object StorageProgram {
     interpret.transform[I, O, U, StorageAction, S, A](program, Storage.storageToStorageActionTrans(storage))
   }
 
-  def printAction: Storage[Const[String, ?]] = new Storage[Const[String, ?]] {
-    override def apply(key: String): Const[String, Option[String]] = Const(s"get($key)")
-    override def update(key: String, data: String): Const[String, Unit] = Const(s"update($key, $data)")
-    override def remove(key: String): Const[String, Unit] = Const(s"remove($key)")
+  def printAction: Storage[λ[A => String]] = new Storage[λ[A => String]] {
+    override def apply(key: String): String = s"get($key)"
+    override def update(key: String, data: String): String = s"update($key, $data)"
+    override def remove(key: String): String = s"remove($key)"
   }
 
   // TODO: remove once added to eff-cats
