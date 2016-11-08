@@ -60,6 +60,7 @@ object Styles extends StyleSheet.Inline {
 
   val container: StyleA = style(
     addClassNames("mdl-grid", "page-content"),
+    alignItems.flexStart.important,
     width(95 %%),
     marginTop(25 px)
   )
