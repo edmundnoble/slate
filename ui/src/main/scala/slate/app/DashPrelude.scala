@@ -14,8 +14,7 @@ import qq.util._
 
 import scala.concurrent.duration._
 import scala.scalajs.js
-import scala.scalajs.js.Any
-import cats.data.{ValidatedNel}
+import cats.data.ValidatedNel
 import cats.Applicative
 import cats.implicits._
 import org.atnos.eff._
