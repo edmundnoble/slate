@@ -59,7 +59,7 @@ object QQRuntime {
     }
   )
 
-  type SetPathStack = Fx.fx2[OrRuntimeErr, Task]
+  type SetPathStack = Fx.fx2[OrRuntimeErr, TaskParallel]
   type SetPathResult[A] = Eff[SetPathStack, A]
 
   def setPath(components: List[PathComponent], biggerStructure: JSON, smallerStructure: JSON): Eff[SetPathStack, List[JSON]] =

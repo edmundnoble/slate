@@ -5,7 +5,8 @@ import monix.eval.Task
 import qq.data.{JSON, VarBinding}
 import org.atnos.eff._
 import org.atnos.eff.Eff._
-import org.atnos.eff.monix.TaskEffect._task
+import qq.cc.RanTraverseM._taskPar
+import qq.util._
 
 package object cc {
 
@@ -14,7 +15,7 @@ package object cc {
   type OrRuntimeErr[+A] = ValidatedNel[QQRuntimeError, A]
 
   type CompiledMathOperator = (JSON, JSON) => ValidatedNel[QQRuntimeError, JSON]
-  type CompiledProgramStack = Fx.fx2[Task, OrRuntimeErr]
+  type CompiledProgramStack = Fx.fx2[TaskParallel, OrRuntimeErr]
   type CompiledProgramResult[A] = Eff[CompiledProgramStack, A]
   type CompiledProgram = Arrs[CompiledProgramStack, JSON, List[JSON]]
   type CompiledFilterStack = Fx.append[Fx.fx1[VarEnv], CompiledProgramStack]
@@ -29,7 +30,7 @@ package object cc {
   }
 
   // TODO: remove when added to eff-cats
-  def suspend[R: _task, A](task: => Task[Eff[R, A]]): Eff[R, A] =
-    send[Task, R, Eff[R, A]](Task.suspend(task)).flatten
+  def suspend[R: _taskPar, A](task: => TaskParallel[Eff[R, A]]): Eff[R, A] =
+    send[TaskParallel, R, Eff[R, A]](Task.suspend(task).parallel).flatten
 
 }

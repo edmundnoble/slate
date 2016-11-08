@@ -28,12 +28,12 @@ object DashPrelude extends Prelude {
 
   def googleAuth: CompiledDefinition =
     noParamDefinition("googleAuth",
-      CompiledFilter.constE(identify.getAuthToken(interactive = true).map[List[JSON]](JSON.Str(_) :: Nil).send[CompiledFilterStack]))
+      CompiledFilter.constE(identify.getAuthToken(interactive = true).map[List[JSON]](JSON.Str(_) :: Nil).parallel.send[CompiledFilterStack]))
 
   def launchAuth: CompiledDefinition =
     CompiledDefinition("launchAuth", 2, CompiledDefinition.standardEffectDistribution {
       case List(urlRaw, queryParamsRaw) => _ =>
-        val urlVerified: OrRuntimeErr[ String] = urlRaw match {
+        val urlVerified: OrRuntimeErr[String] = urlRaw match {
           case JSON.Str(s) => s.validNel
           case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
         }
@@ -45,7 +45,7 @@ object DashPrelude extends Prelude {
         val urlWithQueryParams = Applicative[OrRuntimeErr].map2(urlVerified, queryParamsVerified)(Ajax.addQueryParams)
         for {
           webAuthResult <-
-          urlWithQueryParams.send[CompiledFilterStack].flatMap(identify.launchWebAuthFlow(interactive = true, _).send[CompiledFilterStack])
+          urlWithQueryParams.send[CompiledFilterStack].flatMap(identify.launchWebAuthFlow(interactive = true, _).parallel.send[CompiledFilterStack])
           accessToken = webAuthResult.substring(webAuthResult.indexOf("&code=") + "&code=".length)
         } yield JSON.obj("code" -> JSON.Str(accessToken)) :: Nil
     })
@@ -53,7 +53,7 @@ object DashPrelude extends Prelude {
   private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition(name, 4,
     CompiledDefinition.standardEffectDistribution {
       case List(urlRaw, queryParamsRaw, dataRaw, headersRaw) => _ =>
-        type Stack = Fx.fx2[Task, OrRuntimeErr]
+        type Stack = Fx.fx2[TaskParallel, OrRuntimeErr]
         implicit val ajaxTimeout = Ajax.Timeout(2000.millis)
         val urlValidated: ValidatedNel[QQRuntimeError, String] = urlRaw match {
           case JSON.Str(s) => s.validNel
@@ -83,10 +83,10 @@ object DashPrelude extends Prelude {
                 .map(_.validNel[QQRuntimeError])
                 .onErrorHandle[ValidatedNel[QQRuntimeError, XMLHttpRequest]] {
                 case e: QQRuntimeException => e.errors.invalid[XMLHttpRequest]
-              }
-            ).sequence[Task, OrRuntimeErr[XMLHttpRequest]].map(_.flatten).send[Stack])
-          asJson = Json.stringToJSON(resp.responseText).fold(Task.raiseError(_), t => Task.now(t :: Nil))
-        } yield asJson).into[CompiledFilterStack].collapse
+              }.parallel
+            ).sequence[TaskParallel, OrRuntimeErr[XMLHttpRequest]].map(_.flatten).parallel.send[Stack])
+          asJson = Json.stringToJSON(resp.responseText).fold(Task.raiseError(_).parallel, t => Task.now(t :: Nil).parallel)
+        } yield asJson).collapse.into[CompiledFilterStack]
     })
 
   def httpDelete: CompiledDefinition = makeAjaxDefinition("httpDelete", AjaxMethod.DELETE)
@@ -113,7 +113,7 @@ object DashPrelude extends Prelude {
 
   def nowRFC3339: CompiledDefinition =
     noParamDefinition("nowRFC3339",
-      CompiledFilter.constE(Task.eval(JSON.str(toRFC3339(new js.Date())) :: Nil).send[CompiledFilterStack]))
+      CompiledFilter.constE(Task.eval(JSON.str(toRFC3339(new js.Date())) :: Nil).parallel.send[CompiledFilterStack]))
 
   def formatDatetimeFriendly: CompiledDefinition = noParamDefinition("formatDatetimeFriendly", CompiledFilter.singleton {
     case JSON.Str(s) =>

@@ -80,7 +80,7 @@ trait UtilImplicits {
 }
 
 final class taskToParallelOps[A](val task: Task[A]) extends AnyVal {
-  @inline def parallel: Task[A] @@ Parallel = shapeless.tag[Parallel](task)
+  @inline def parallel: TaskParallel[A] = shapeless.tag[Parallel][Task[A]](task)
 }
 
 final class taskParallelOps[A](val task: TaskParallel[A]) extends AnyVal {
