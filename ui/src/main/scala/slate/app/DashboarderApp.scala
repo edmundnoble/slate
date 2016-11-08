@@ -188,7 +188,13 @@ object DashboarderApp extends scalajs.js.JSApp {
     import slate.views._
     val renderer = new StringRenderer.Raw(StringRenderer.formatTiny)
     val addStyles =
-      Seq(Styles, ExpandableContentView.Styles, ErrorView.Styles, TitledContentView.Styles, AppView.Styles).map(_.renderA(renderer)).mkString("\n")
+      Seq(
+        Styles,
+        ExpandableContentView.Styles,
+        ErrorView.Styles,
+        TitledContentView.Styles,
+        AppView.Styles
+      ).map(_.renderA(renderer)).mkString("\n")
     val aggregateStyles = PlatformExports.createStyleElement(addStyles)
     dom.document.head appendChild aggregateStyles
   }
