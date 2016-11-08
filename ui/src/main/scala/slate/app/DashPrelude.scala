@@ -77,14 +77,15 @@ object DashPrelude extends Prelude {
         Eff.collapse[Stack, TaskParallel, List[JSON]](for {
           resp <-
           Eff.collapse[Stack, OrRuntimeErr, XMLHttpRequest](
-            Applicative[OrRuntimeErr].map4(urlValidated, dataValidated, queryParamsValidated, headersValidated)(
+            (urlValidated |@| dataValidated |@| queryParamsValidated |@| headersValidated).map(
               Ajax(ajaxMethod, _, _, _, _, withCredentials = false, "")
                 .onErrorRestart(1)
                 .map(_.validNel[QQRuntimeError])
                 .onErrorHandle[ValidatedNel[QQRuntimeError, XMLHttpRequest]] {
                 case e: QQRuntimeException => e.errors.invalid[XMLHttpRequest]
               }.parallel
-            ).sequence[TaskParallel, OrRuntimeErr[XMLHttpRequest]].map(_.flatten).parallel.send[Stack])
+            ).sequence[TaskParallel, OrRuntimeErr[XMLHttpRequest]].map(_.flatten).parallel.send[Stack]
+          )
           asJson = Json.stringToJSON(resp.responseText).fold(Task.raiseError(_), t => Task.now(t :: Nil)).parallel
         } yield asJson).into[CompiledFilterStack]
     })
