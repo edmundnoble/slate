@@ -17,18 +17,24 @@ class StorageFSTests extends SlateSuite {
     )(println)(implicitly[mem])
   }
 
+  val initialize = for {
+    _ <- StorageFS.initFS[Fx.fx1[StorageAction]]
+  } yield ()
+
+  def initializedDir: Map[String, String] =
+    StorageProgram.runProgram(PureStorage, initialize).detach.run(Map.empty).value._1
+
   "init" in {
-    import StorageFS.Now
-    val prog = for {
-      _ <- reader.runReader(shapeless.tag[Now](new js.Date(0)))(
-        StorageFS.initFS[Fx.fx2[StorageFS.NeedsNow, StorageAction]]
-      )
-      dir <- StorageFS.getDir(StorageFS.fsroot)
-    } yield dir
-    val outDir = StorageProgram.runProgram(PureStorage, prog)
-      .detach.run(Map.empty).value._2.value
-    outDir.childKeys.isEmpty shouldBe true
-    outDir.metadata.lastAccessed.getTime() shouldBe 0
-    outDir.metadata.lastUpdated.getTime() shouldBe 0
+    val outDir =
+      StorageProgram.runProgram(PureStorage, StorageFS.getDir(StorageFS.fsroot))
+        .detach.run(initializedDir).value._2.value
+    outDir.childFileKeys.isEmpty shouldBe true
+    outDir.childDirKeys.isEmpty shouldBe true
+  }
+  "new dir" in {
+    val addDir =
+      StorageProgram.runProgram(PureStorage, StorageFS.mkDir("dir", StorageFS.fsroot))
+        .detach.run(initializedDir).value._1
+    println(addDir)
   }
 }

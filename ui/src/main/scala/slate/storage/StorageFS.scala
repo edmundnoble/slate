@@ -18,19 +18,12 @@ object StorageFS {
 
   import StorageAction._storageAction
 
-  sealed trait Now
-  type NowDate = js.Date @@ Now
-  type _needsNow[R] = Member.<=[NeedsNow, R]
-  type NeedsNow[A] = Reader[NowDate, A]
-  type StorageNowStack = Fx.fx2[StorageAction, Reader[NowDate, ?]]
-
   /** idempotent */
-  def initFS[R: _storageAction : _needsNow]: Eff[R, Unit] = {
+  def initFS[R: _storageAction]: Eff[R, Unit] = {
     for {
-      now <- reader.ask[R, NowDate]
       root <- getDir(fsroot)
       _ <- root.fold {
-        StorageProgram.update(fsroot.render, Dir.structure.fromInterpret(Dir(NodeMetadata(now, now), Array())))
+        StorageProgram.update(fsroot.render, Dir.structure.fromInterpret(Dir(Array(), Array())))
       } { _ => ().pureEff[R] }
     } yield ()
   }
@@ -39,24 +32,10 @@ object StorageFS {
   import slate.util._, DelimitTransform._
 
   object Delimiters {
-    def interMetadataDelimiter = "&"
     def keyDelimiter = "\\"
-    def metadataDelimiter = "/"
     def nodeKindDelimiter = "^"
     def interNodeDelimiter = ","
     def hashKeyDelimiter = ";"
-  }
-
-  object Metadata {
-
-    import Delimiters._
-
-    def structure: DelimitTransform[NodeMetadata] =
-      id.joinWithDelimiter(interMetadataDelimiter, id).imapX({
-        case (lastUpdatedStr, lastAccessedStr) => (parseDate(lastUpdatedStr) |@| parseDate(lastAccessedStr)).map(NodeMetadata)
-      }, {
-        case NodeMetadata(lastUpdated, lastAccessed) => (lastUpdated.toISOString(), lastAccessed.toISOString())
-      })
   }
 
   object Dir {
@@ -67,15 +46,11 @@ object StorageFS {
       id.joinWithDelimiter(keyDelimiter, id)
         .thenDelimitBy(interNodeDelimiter)
     def structure: DelimitTransform[Dir] =
-      Metadata.structure.joinWithDelimiter(
-        metadataDelimiter,
-        nodesStructure.joinWithDelimiter(nodeKindDelimiter, nodesStructure)
-      ).imap[Dir]({ case (nm, (fileKeys, dirKeys)) =>
-        val childKeys =
-          fileKeys.map(t => StorageKey[File](t._1, t._2).left[StorageKey[Dir]]) ++ dirKeys.map(t => StorageKey[Dir](t._1, t._2).right[StorageKey[File]])
-        Dir(nm, childKeys)
+      nodesStructure.joinWithDelimiter(nodeKindDelimiter, nodesStructure)
+        .imap[Dir]({ case (fileKeys, dirKeys) =>
+        Dir(fileKeys.map((StorageKey.apply[File](_, _)).tupled), dirKeys.map((StorageKey.apply[Dir](_, _)).tupled))
       }, { dir =>
-        (dir.metadata, (dir.childFileKeys.map { k => (k.name, k.nonce) }, dir.childDirKeys.map { k => (k.name, k.nonce) }))
+        (dir.childFileKeys.map { k => (k.name, k.nonce) }, dir.childDirKeys.map { k => (k.name, k.nonce) })
       })
   }
 
@@ -84,12 +59,12 @@ object StorageFS {
     import Delimiters._
 
     def structure: DelimitTransform[File] =
-      Metadata.structure.joinWithDelimiter(metadataDelimiter,
-        id.joinWithDelimiter(hashKeyDelimiter,
-          id.joinWithDelimiter(keyDelimiter, id)
-        )
+      id.joinWithDelimiter(hashKeyDelimiter,
+        id.joinWithDelimiter(keyDelimiter, id)
       ).imap(
-        { case (nm, (str1, (str2, str3))) => File(nm, str1, StorageKey(str2, str3)) }, { file => (file.metadata, (file.dataHash, (file.dataKey.name, file.dataKey.nonce))) })
+        { case (str1, (str2, str3)) => File(str1, StorageKey(str2, str3)) },
+        file => (file.dataHash, (file.dataKey.name, file.dataKey.nonce))
+      )
   }
 
   def parseDate(str: String): Option[js.Date] =
@@ -101,12 +76,8 @@ object StorageFS {
 
   final case class FileData(data: String)
 
-  final case class NodeMetadata(lastUpdated: js.Date, lastAccessed: js.Date)
-  final case class File(metadata: NodeMetadata, dataHash: String, dataKey: StorageKey[FileData])
-  final case class Dir(metadata: NodeMetadata, childKeys: Array[FSKey]) {
-    def childFileKeys: Array[StorageKey[File]] = childKeys.collect { case Xor.Left(fileKey) => fileKey }
-    def childDirKeys: Array[StorageKey[Dir]] = childKeys.collect { case Xor.Right(dirKey) => dirKey }
-  }
+  final case class File(dataHash: String, dataKey: StorageKey[FileData])
+  final case class Dir(childFileKeys: Array[StorageKey[File]], childDirKeys: Array[StorageKey[Dir]])
   type FSKey = StorageKey[File] Xor StorageKey[Dir]
   type FSEntry = File Xor Dir
 
@@ -115,14 +86,6 @@ object StorageFS {
     for {
       raw <- get(key.name + Delimiters.keyDelimiter + key.nonce)
     } yield raw
-  }
-
-  // TODO: error for Date.parse problem
-  def readMetadata(lastUpdated: String, lastAccessed: String): Option[NodeMetadata] = {
-    for {
-      lastUpdatedParsed <- Try(new js.Date(js.Date.parse(lastUpdated))).toOption
-      lastAccessedParsed <- Try(new js.Date(js.Date.parse(lastAccessed))).toOption
-    } yield NodeMetadata(lastUpdatedParsed, lastAccessedParsed)
   }
 
   def getDir[R: _storageAction](key: StorageKey[Dir]): Eff[R, Option[Dir]] = {
@@ -164,7 +127,7 @@ object StorageFS {
     } yield file
   }
 
-  def makeNonce(): String = ???
+  def makeNonce(): String = "1"
 
   def getFileData[R: _storageAction](fileName: String, dirKey: StorageKey[Dir]): Eff[R, Option[String]] = for {
     dir <- getDir[R](dirKey)
@@ -176,32 +139,52 @@ object StorageFS {
   def updateFileData[R: _storageAction](fileName: String, data: String, dirKey: StorageKey[Dir]): Eff[R, Unit] = for {
     dir <- getDir[R](dirKey)
     hash = dir.map(_.childFileKeys.find(_.name == fileName))
-    file <- hash.map { maybeHash =>
-      maybeHash.map(_.pureEff[R]).getOrElse[Eff[R, StorageKey[File]]] {
-        val storageKey = StorageKey[File](fileName, makeNonce())
-        StorageProgram.update(dirKey.render, Dir.structure.fromInterpret(
-          dir.get.copy(childKeys = dir.get.childKeys :+ storageKey.left)
-        )).as(storageKey)
+    _ <- hash.traverseA { maybeHash =>
+      maybeHash.map(_ => ().pureEff[R]).getOrElse[Eff[R, Unit]] {
+        val dataKey = StorageKey[FileData](fileName, makeNonce())
+        val fileKey = StorageKey[File](fileName, makeNonce())
+        val newFile = File(data.hashCode.toString, dataKey)
+        StorageProgram.update(dataKey.render, data) >>
+          StorageProgram.update(fileKey.render, File.structure.fromInterpret(newFile)) >>
+          StorageProgram.update(dirKey.render, Dir.structure.fromInterpret(
+            dir.get.copy(childFileKeys = dir.get.childFileKeys :+ fileKey)
+          ))
       }
-    }.traverseA[R, Option[File]](_.flatMap(getFile[R]))
-    _ <- file.flatten.traverseA[R, Unit](f => StorageProgram.update(f.dataKey.render, data))
+    }
   } yield ()
+
+  def mkDir[R: _storageAction](fileName: String, dirKey: StorageKey[Dir]): Eff[R, Unit] = for {
+    dir <- getDir[R](dirKey)
+    hash = dir.map(_.childFileKeys.find(_.name == fileName))
+    _ <- hash.traverseA { maybeHash =>
+      maybeHash.map(_ => ().pureEff[R]).getOrElse[Eff[R, Unit]] {
+        val subDirKey = StorageKey[Dir](fileName, makeNonce())
+        val newDir = Dir(js.Array(), js.Array())
+        StorageProgram.update(subDirKey.render, Dir.structure.fromInterpret(newDir)) >>
+          StorageProgram.update(dirKey.render, Dir.structure.fromInterpret(
+            dir.get.copy(childDirKeys = dir.get.childDirKeys :+ subDirKey)
+          ))
+      }
+    }
+  } yield ()
+
 
   def removeFile[R: _storageAction](fileName: String, dirKey: StorageKey[Dir]): Eff[R, Unit] = for {
     dir <- getDir[R](dirKey)
     hash = dir.flatMap(_.childFileKeys.find(_.name == fileName))
-    file <- hash.traverseM[Eff[R, ?], File](getFile)
+    file <- hash.traverseM[Eff[R, ?], File](k => for { f <- getFile(k); _ <- StorageProgram.remove[R](k.render) } yield f)
     _ <- file.traverseA[R, Unit](f => StorageProgram.remove[R](f.dataKey.render))
     _ <- if (file.isEmpty) ().pureEff[R]
-    else StorageProgram.update[R](dirKey.render, Dir.structure.fromInterpret(dir.get.copy(childKeys = dir.get.childKeys.filter(_.merge[StorageKey[_]].name != fileName))))
+    else StorageProgram.update[R](dirKey.render,
+      Dir.structure.fromInterpret(dir.get.copy(childFileKeys = dir.get.childFileKeys.filter(_.name != fileName)))
+    )
   } yield ()
-
 
 }
 
 import StorageFS._
 
-final class StorageFS[F[_] : Monad : RecursiveTailRecM](underlying: Storage[F], dirKey: StorageKey[Dir]) extends Storage[F] {
+final class StorageFS[F[_] : Monad : RecursiveTailRecM](underlying: Storage[F], nonceSource: () => String, dirKey: StorageKey[Dir]) extends Storage[F] {
 
   import StorageFS._
 
