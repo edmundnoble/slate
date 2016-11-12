@@ -2,10 +2,7 @@ package slate
 package storage
 
 import org.atnos.eff._
-import Eff._
 import syntax.all._
-
-import scalajs.js
 import StorageFS.{Dir, StorageKey}
 import cats.data.Writer
 
@@ -17,12 +14,12 @@ class StorageFSTests extends SlateSuite {
     )(println)(implicitly[mem])
   }
 
-  implicit class MkDirResultOps(result: StorageFS.MkDirResult) {
-    def assertDirMade: StorageKey[Dir] = result match {
+  implicit final class MkDirResultOps(result: StorageFS.MkDirResult) {
+    @inline def assertDirMade: StorageKey[Dir] = result match {
       case StorageFS.DirMade(k) => k
       case StorageFS.AlreadyPresent(_) => assert(false, "dir was already present before being made").asInstanceOf[StorageKey[Dir]]
     }
-    def assertAlreadyPresent: StorageKey[Dir] = result match {
+    @inline def assertAlreadyPresent: StorageKey[Dir] = result match {
       case StorageFS.DirMade(_) => assert(false, "dir was not already present before being made").asInstanceOf[StorageKey[Dir]]
       case StorageFS.AlreadyPresent(k) => k
     }
@@ -48,7 +45,9 @@ class StorageFSTests extends SlateSuite {
         .detach.run(initializedDir).value._2.value
     outDir.isEmpty shouldBe true
   }
+
   "mkDir" - {
+
     "should not overwrite" in {
       val detNonceSource = makeDetNonceSource
       val addDir = for {
