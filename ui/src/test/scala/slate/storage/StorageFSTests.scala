@@ -25,10 +25,8 @@ class StorageFSTests extends SlateSuite {
     }
   }
 
-  val initialize: StorageProgram[Unit] = StorageFS.initFS
-
   def initializedDir: Map[String, String] =
-    StorageProgram.runProgram(PureStorage, initialize).detach.run(Map.empty).value._1
+    StorageProgram.runProgram(PureStorage, StorageFS.initFS).detach.run(Map.empty).value._1
 
   def makeDetNonceSource: () => String = new (() => String) {
     var i = 0
