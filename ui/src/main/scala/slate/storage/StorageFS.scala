@@ -48,7 +48,7 @@ object StorageFS {
     def structure: DelimitTransform[Dir] =
       nodesStructure.joinWithDelimiter(nodeKindDelimiter, nodesStructure)
         .imap[Dir]({ case (fileKeys, dirKeys) =>
-        Dir(fileKeys.map((StorageKey.apply[File](_, _)).tupled), dirKeys.map((StorageKey.apply[Dir](_, _)).tupled))
+        Dir(fileKeys.map((StorageKey.apply[File] _).tupled), dirKeys.map((StorageKey.apply[Dir] _).tupled))
       }, { dir =>
         (dir.childFileKeys.map { k => (k.name, k.nonce) }, dir.childDirKeys.map { k => (k.name, k.nonce) })
       })
@@ -101,7 +101,7 @@ object StorageFS {
 
   def getDirKeyFromRoot[R: _storageAction](path: Vector[String], rootKey: StorageKey[Dir]): Eff[R, Option[StorageKey[Dir]]] = {
     path.foldM[Eff[R, ?], Option[StorageKey[Dir]]](Some(rootKey)) { (b, s) =>
-      b.traverse(getDir[R]).map(_.flatten).map(_.flatMap(_.childDirKeys.find(_.name == s)))
+      b.traverseA(getDir[R]).map(_.flatten).map(_.flatMap(_.childDirKeys.find(_.name == s)))
     }
   }
 
@@ -114,17 +114,17 @@ object StorageFS {
   def getDirPath[R: _storageAction](path: Vector[String]): Eff[R, Option[Dir]] = {
     for {
       dirKey <- getDirKey[R](path)
-      dir <- dirKey.traverseM(getDir[R])
-    } yield dir
+      dir <- dirKey.traverseA(getDir[R])
+    } yield dir.flatten
   }
 
   def getFilePath[R: _storageAction](path: Vector[String]): Eff[R, Option[File]] = {
     for {
       dirKey <- getDirKey[R](path.init)
-      dir <- dirKey.traverseM(getDir[R])
-      fileKey = dir.flatMap(_.childFileKeys.find(_.name == path.last))
-      file <- fileKey.traverseM(getFile[R])
-    } yield file
+      dir <- dirKey.traverseA(getDir[R])
+      fileKey = dir.flatten.flatMap(_.childFileKeys.find(_.name == path.last))
+      file <- fileKey.traverseA(getFile[R])
+    } yield file.flatten
   }
 
   def makeNonce(): String = "1"
@@ -132,8 +132,8 @@ object StorageFS {
   def getFileData[R: _storageAction](fileName: String, dirKey: StorageKey[Dir]): Eff[R, Option[String]] = for {
     dir <- getDir[R](dirKey)
     hash = dir.flatMap(_.childFileKeys.find(_.name == fileName))
-    file <- hash.traverseA[R, Option[File]](getFile[R](_))
-    firstResult <- file.flatten.traverseA[R, Option[String]](f => StorageProgram.get[R](f.dataKey.render))
+    file <- hash.traverseA(getFile[R])
+    firstResult <- file.flatten.traverseA(f => StorageProgram.get[R](f.dataKey.render))
   } yield firstResult.flatten
 
   def updateFileData[R: _storageAction](fileName: String, data: String, dirKey: StorageKey[Dir]): Eff[R, Unit] = for {
@@ -172,11 +172,12 @@ object StorageFS {
   def removeFile[R: _storageAction](fileName: String, dirKey: StorageKey[Dir]): Eff[R, Unit] = for {
     dir <- getDir[R](dirKey)
     hash = dir.flatMap(_.childFileKeys.find(_.name == fileName))
-    file <- hash.traverseM[Eff[R, ?], File](k => for { f <- getFile(k); _ <- StorageProgram.remove[R](k.render) } yield f)
-    _ <- file.traverseA[R, Unit](f => StorageProgram.remove[R](f.dataKey.render))
-    _ <- if (file.isEmpty) ().pureEff[R]
-    else StorageProgram.update[R](dirKey.render,
-      Dir.structure.fromInterpret(dir.get.copy(childFileKeys = dir.get.childFileKeys.filter(_.name != fileName)))
+    file <- hash.traverseA(k => for {f <- getFile(k); _ <- StorageProgram.remove[R](k.render)} yield f)
+    u <- file.flatten.traverseA[R, Unit](f => StorageProgram.remove[R](f.dataKey.render))
+    _ <- u.traverseA(_ =>
+      StorageProgram.update[R](dirKey.render,
+        Dir.structure.fromInterpret(dir.get.copy(childFileKeys = dir.get.childFileKeys.filter(_.name != fileName)))
+      )
     )
   } yield ()
 
