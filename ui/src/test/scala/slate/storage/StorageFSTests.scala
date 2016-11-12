@@ -83,16 +83,15 @@ class StorageFSTests extends SlateSuite {
     class Fixture {
       val nonceSource: () => String = makeDetNonceSource
     }
-    "update and get" in new Fixture {
+    "update/get" in new Fixture {
       val prog = for {
-        k <- StorageFS.updateFileData("f", nonceSource, "datas", StorageFS.fsroot)
-        f <- traverseA(k)(StorageFS.getFile[Fx.fx1[StorageAction]])
-        d <- traverseA(f.flatten)(i => StorageFS.getFileData("f", StorageFS.fsroot))
-        _ = d.flatten.value shouldBe "datas"
+        _ <- StorageFS.updateFileData("f", nonceSource, "datas", StorageFS.fsroot)
+        d <- StorageFS.getFileData("f", StorageFS.fsroot)
+        _ = d.value shouldBe "datas"
       } yield ()
       StorageProgram.runProgram(PureStorage, prog).detach.run(initializedFS).value
     }
-    "remove" in new Fixture {
+    "update/get/remove" in new Fixture {
       val prog = for {
         k <- StorageFS.updateFileData("f", nonceSource, "datas", StorageFS.fsroot)
         f <- traverseA(k)(StorageFS.getFile[Fx.fx1[StorageAction]])
