@@ -18,10 +18,14 @@ final case class DelimitArr[O](transform: DelimitTransform[O], delim: String) ex
   override def toInterpret(string: String): Option[js.Array[O]] = {
     import qq.Platform.Js.Unsafe._
 
-    Unsafe.builderTraverse[js.WrappedArray]
-      .traverse[Option, String, O](
-      new js.WrappedArray(string.split(delim).toJSArray)
-    )(transform.toInterpret).map(_.array)
+    if (string.isEmpty) {
+      Some(js.Array())
+    } else {
+      Unsafe.builderTraverse[js.WrappedArray]
+        .traverse[Option, String, O](
+        new js.WrappedArray(string.split(delim).toJSArray)
+      )(transform.toInterpret).map(_.array)
+    }
   }
 
   override def fromInterpret(o: js.Array[O]): String =
@@ -35,11 +39,14 @@ final case class DelimitFromBegin[O1, O2](transform1: DelimitTransform[O1], deli
     val ind = string.indexOf(delim)
     if (ind == -1)
       None
-    else
+    else {
+      val str1 = string.substring(0, ind)
+      val str2 = string.substring(ind + delim.length, string.length)
       Applicative[Option].tuple2(
-        transform1.toInterpret(string.substring(0, ind)),
-        transform2.toInterpret(string.substring(ind + delim.length, string.length))
+        transform1.toInterpret(str1),
+        transform2.toInterpret(str2)
       )
+    }
   }
 
   override def fromInterpret(o: (O1, O2)): String =

@@ -25,7 +25,7 @@ object StorageFS {
   type StorageNowStack = Fx.fx2[StorageAction, Reader[NowDate, ?]]
 
   /** idempotent */
-  def initFS[R: _storageAction: _needsNow]: Eff[R, Unit] = {
+  def initFS[R: _storageAction : _needsNow]: Eff[R, Unit] = {
     for {
       now <- reader.ask[R, NowDate]
       root <- getDir(fsroot)
@@ -39,12 +39,24 @@ object StorageFS {
   import slate.util._, DelimitTransform._
 
   object Delimiters {
-    def interMetadataDelimiter = ":"
+    def interMetadataDelimiter = "&"
     def keyDelimiter = "\\"
     def metadataDelimiter = "/"
-    def nodeKindDelimiter = ":"
+    def nodeKindDelimiter = "^"
     def interNodeDelimiter = ","
     def hashKeyDelimiter = ";"
+  }
+
+  object Metadata {
+
+    import Delimiters._
+
+    def structure: DelimitTransform[NodeMetadata] =
+      id.joinWithDelimiter(interMetadataDelimiter, id).imapX({
+        case (lastUpdatedStr, lastAccessedStr) => (parseDate(lastUpdatedStr) |@| parseDate(lastAccessedStr)).map(NodeMetadata)
+      }, {
+        case NodeMetadata(lastUpdated, lastAccessed) => (lastUpdated.toISOString(), lastAccessed.toISOString())
+      })
   }
 
   object Dir {
@@ -66,6 +78,7 @@ object StorageFS {
         (dir.metadata, (dir.childFileKeys.map { k => (k.name, k.nonce) }, dir.childDirKeys.map { k => (k.name, k.nonce) }))
       })
   }
+
   object File {
 
     import Delimiters._
@@ -77,17 +90,6 @@ object StorageFS {
         )
       ).imap(
         { case (nm, (str1, (str2, str3))) => File(nm, str1, StorageKey(str2, str3)) }, { file => (file.metadata, (file.dataHash, (file.dataKey.name, file.dataKey.nonce))) })
-  }
-  object Metadata {
-
-    import Delimiters._
-
-    def structure: DelimitTransform[NodeMetadata] =
-      id.joinWithDelimiter(interMetadataDelimiter, id).imapX({
-        case (lastUpdatedStr, lastAccessedStr) => (parseDate(lastUpdatedStr) |@| parseDate(lastAccessedStr)).map(NodeMetadata)
-      }, {
-        case NodeMetadata(lastUpdated, lastAccessed) => (lastUpdated.toISOString(), lastAccessed.toISOString())
-      })
   }
 
   def parseDate(str: String): Option[js.Date] =
@@ -108,7 +110,7 @@ object StorageFS {
   type FSKey = StorageKey[File] Xor StorageKey[Dir]
   type FSEntry = File Xor Dir
 
-  def getRaw[R :_storageAction](key: StorageKey[_]): Eff[R, Option[String]] = {
+  def getRaw[R: _storageAction](key: StorageKey[_]): Eff[R, Option[String]] = {
     import StorageProgram._
     for {
       raw <- get(key.name + Delimiters.keyDelimiter + key.nonce)
