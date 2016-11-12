@@ -89,9 +89,7 @@ object StorageFS {
   }
 
   def getDirKey[R: _storageAction](path: Vector[String]): Eff[R, Option[StorageKey[Dir]]] =
-    for {
-      dirKey <- getDirKeyFromRoot(path, fsroot)
-    } yield dirKey
+    getDirKeyFromRoot(path, fsroot)
 
   def getDirKeyFromRoot[R: _storageAction](path: Vector[String], rootKey: StorageKey[Dir]): Eff[R, Option[StorageKey[Dir]]] = {
     path.foldM[Eff[R, ?], Option[StorageKey[Dir]]](Some(rootKey)) { (b, s) =>
