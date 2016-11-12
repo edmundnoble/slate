@@ -19,13 +19,13 @@ object StorageFS {
   import StorageAction._storageAction
 
   /** idempotent */
-  def initFS[R: _storageAction]: Eff[R, Unit] = {
+  def initFS[R: _storageAction]: Eff[R, Dir] = {
     for {
       root <- getDir(fsroot)
-      _ <- root.fold {
-        StorageProgram.update(fsroot.render, Dir.structure.fromInterpret(Dir(Array(), Array())))
-      } { _ => ().pureEff[R] }
-    } yield ()
+      newRoot <- root.map(_.pureEff[R]).getOrElse {
+        StorageProgram.update[R](fsroot.render, Dir.structure.fromInterpret(Dir.empty)).as(Dir.empty)
+      }
+    } yield newRoot
   }
 
   // TODO: static safety for escaping these
@@ -148,9 +148,15 @@ object StorageFS {
     }
   } yield key
 
-  sealed trait MkDirResult
-  case class AlreadyPresent(key: StorageKey[Dir]) extends MkDirResult
-  case class DirMade(key: StorageKey[Dir]) extends MkDirResult
+  sealed abstract class MkDirResult {
+    def fold[A](f: StorageKey[Dir] => A): A
+  }
+  final case class AlreadyPresent(key: StorageKey[Dir]) extends MkDirResult {
+    def fold[A](f: StorageKey[Dir] => A): A = f(key)
+  }
+  final case class DirMade(key: StorageKey[Dir]) extends MkDirResult {
+    def fold[A](f: StorageKey[Dir] => A): A = f(key)
+  }
 
   def mkDir[R: _storageAction](fileName: String, nonceSource: () => String, dirKey: StorageKey[Dir]): Eff[R, Option[MkDirResult]] = for {
     dir <- getDir[R](dirKey)

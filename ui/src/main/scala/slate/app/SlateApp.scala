@@ -7,7 +7,7 @@ import slate.util.Util._
 import slate.app.ProgramCache.ErrorGettingCachedProgram
 import slate.models.{AppModel, ExpandableContentModel}
 import slate.util.LoggerFactory
-import slate.storage.{StorageProgram, DomStorage}
+import slate.storage.{DomStorage, StorageFS, StorageProgram}
 import slate.views.AppView.AppProps
 import japgolly.scalajs.react.{Addons, ReactComponentM, ReactDOM, TopNode}
 import monix.eval.Task
@@ -32,6 +32,7 @@ import cats.Functor
 import cats.data.Xor
 import cats.implicits._
 import org.atnos.eff.syntax.all._
+import slate.storage.StorageFS.AlreadyPresent
 
 @JSExport
 object SlateApp extends scalajs.js.JSApp {
@@ -78,13 +79,28 @@ object SlateApp extends scalajs.js.JSApp {
 
   type ErrorCompilingPrograms = QQCompilationException :+: ErrorGettingCachedProgram
 
+  def nonceSource(): String = {
+    val int = scala.util.Random.nextInt(1000)
+    int.toString
+  }
+
+  def prepareProgramFolder: StorageProgram[StorageFS.StorageKey[StorageFS.Dir]] = for {
+    _ <- StorageFS.initFS
+    programDirKey <- StorageFS.mkDir("program", nonceSource, StorageFS.fsroot)
+  } yield programDirKey.get.fold(identity[StorageFS.StorageKey[StorageFS.Dir]])
+
   def compiledPrograms: List[DashProgram[Task[ErrorCompilingPrograms Xor CompiledFilter]]] =
     programs.map(program =>
       program.map { programPrecompiledOrString =>
-        programPrecompiledOrString.fold(e => Task.now(e.right[ErrorGettingCachedProgram]), s =>
-          StorageProgram.runProgram(DomStorage.Local,
-            StorageProgram.retarget(ProgramCache.getCachedProgram(s))("program", " ")
-          ).detach
+        programPrecompiledOrString.fold[Task[ErrorGettingCachedProgram Xor Program[ConcreteFilter]]](e => Task.now(e.right[ErrorGettingCachedProgram]),
+          str => {
+            StorageProgram.runProgram(DomStorage.Local, prepareProgramFolder).detach >>= { programDirKey =>
+              val storageFS = new StorageFS(DomStorage.Local, nonceSource, programDirKey)
+              StorageProgram.runProgram(
+                storageFS, ProgramCache.getCachedProgram(str)
+              ).detach
+            }
+          }
         ).map(_.leftMap(Inr.apply).flatMap(
           QQCompiler.compileProgram(DashPrelude, _).leftMap(Inl.apply)
         ))
