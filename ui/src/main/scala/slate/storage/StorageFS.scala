@@ -166,6 +166,37 @@ object StorageFS {
 
   def makeNonce(): String = ???
 
+  def getFileData[R: _storageAction](fileName: String, dirKey: StorageKey[Dir]): Eff[R, Option[String]] = for {
+    dir <- getDir[R](dirKey)
+    hash = dir.flatMap(_.childFileKeys.find(_.name == fileName))
+    file <- hash.traverseA[R, Option[File]](getFile[R](_))
+    firstResult <- file.flatten.traverseA[R, Option[String]](f => StorageProgram.get[R](f.dataKey.render))
+  } yield firstResult.flatten
+
+  def updateFileData[R: _storageAction](fileName: String, data: String, dirKey: StorageKey[Dir]): Eff[R, Unit] = for {
+    dir <- getDir[R](dirKey)
+    hash = dir.map(_.childFileKeys.find(_.name == fileName))
+    file <- hash.map { maybeHash =>
+      maybeHash.map(_.pureEff[R]).getOrElse[Eff[R, StorageKey[File]]] {
+        val storageKey = StorageKey[File](fileName, makeNonce())
+        StorageProgram.update(dirKey.render, Dir.structure.fromInterpret(
+          dir.get.copy(childKeys = dir.get.childKeys :+ storageKey.left)
+        )).as(storageKey)
+      }
+    }.traverseA[R, Option[File]](_.flatMap(getFile[R]))
+    _ <- file.flatten.traverseA[R, Unit](f => StorageProgram.update(f.dataKey.render, data))
+  } yield ()
+
+  def removeFile[R: _storageAction](fileName: String, dirKey: StorageKey[Dir]): Eff[R, Unit] = for {
+    dir <- getDir[R](dirKey)
+    hash = dir.flatMap(_.childFileKeys.find(_.name == fileName))
+    file <- hash.traverseM[Eff[R, ?], File](getFile)
+    _ <- file.traverseA[R, Unit](f => StorageProgram.remove[R](f.dataKey.render))
+    _ <- if (file.isEmpty) ().pureEff[R]
+    else StorageProgram.update[R](dirKey.render, Dir.structure.fromInterpret(dir.get.copy(childKeys = dir.get.childKeys.filter(_.merge[StorageKey[_]].name != fileName))))
+  } yield ()
+
+
 }
 
 import StorageFS._
@@ -174,35 +205,14 @@ final class StorageFS[F[_] : Monad : RecursiveTailRecM](underlying: Storage[F], 
 
   import StorageFS._
 
-  override def apply(key: String): F[Option[String]] = for {
-    dir <- StorageProgram.runProgram(underlying, getDir(dirKey)).detach
-    hash = dir.flatMap(_.childFileKeys.find(_.name == key))
-    file <- hash.traverse[F, Option[File]](k => StorageProgram.runProgram(underlying, getFile(k)).detach)
-    firstResult <- file.flatten.traverse[F, Option[String]](f => underlying(f.dataKey.render))
-  } yield firstResult.flatten
+  override def apply(key: String): F[Option[String]] =
+    StorageProgram.runProgram(underlying, getFileData(key, dirKey)).detach
 
-  override def update(key: String, data: String): F[Unit] = for {
-    dir <- StorageProgram.runProgram(underlying, getDir(dirKey)).detach
-    hash = dir.map(_.childFileKeys.find(_.name == key))
-    file <- hash.map { maybeHash =>
-      maybeHash.map(_.pure[F]).getOrElse[F[StorageKey[File]]] {
-        val storageKey = StorageKey[File](key, makeNonce())
-        underlying.update(dirKey.render, Dir.structure.fromInterpret(
-          dir.get.copy(childKeys = dir.get.childKeys :+ storageKey.left)
-        )).as(storageKey)
-      }
-    }.traverse[F, Option[File]](_.flatMap(k => StorageProgram.runProgram(underlying, getFile(k)).detach))
-    _ <- file.flatten.traverse[F, Unit](f => underlying.update(f.dataKey.render, data))
-  } yield ()
+  override def update(key: String, data: String): F[Unit] =
+    StorageProgram.runProgram(underlying, updateFileData(key, data, dirKey)).detach
 
-  override def remove(key: String): F[Unit] = for {
-    dir <- StorageProgram.runProgram(underlying, getDir(dirKey)).detach
-    hash = dir.flatMap(_.childFileKeys.find(_.name == key))
-    file <- hash.traverseM[F, File](k => StorageProgram.runProgram(underlying, getFile(k)).detach)
-    _ <- file.traverse[F, Unit](f => underlying.remove(f.dataKey.render))
-    _ <- if (file.isEmpty) ().pure[F]
-    else underlying.update(dirKey.render, Dir.structure.fromInterpret(dir.get.copy(childKeys = dir.get.childKeys.filter(_.merge[StorageKey[_]].name != key))))
-  } yield ()
+  override def remove(key: String): F[Unit] =
+    StorageProgram.runProgram(underlying, removeFile(key, dirKey)).detach
 
 }
 
