@@ -13,12 +13,14 @@ sealed abstract class DelimitTransform[O] {
 }
 final case class DelimitArr[O](transform: DelimitTransform[O], delim: String) extends DelimitTransform[js.Array[O]] {
 
+  import scala.scalajs.js.JSConverters._
+
   override def toInterpret(string: String): Option[js.Array[O]] = {
     import qq.Platform.Js.Unsafe._
 
     Unsafe.builderTraverse[js.WrappedArray]
       .traverse[Option, String, O](
-      new js.WrappedArray(string.split(delim).asInstanceOf[js.Array[String]])
+      new js.WrappedArray(string.split(delim).toJSArray)
     )(transform.toInterpret).map(_.array)
   }
 
@@ -30,13 +32,13 @@ final case class DelimitArr[O](transform: DelimitTransform[O], delim: String) ex
 final case class DelimitFromBegin[O1, O2](transform1: DelimitTransform[O1], delim: String, transform2: DelimitTransform[O2]) extends DelimitTransform[(O1, O2)] {
 
   override def toInterpret(string: String): Option[(O1, O2)] = {
-    val ind = string.indexOf(string)
+    val ind = string.indexOf(delim)
     if (ind == -1)
       None
     else
       Applicative[Option].tuple2(
         transform1.toInterpret(string.substring(0, ind)),
-        transform2.toInterpret(string.substring(0, ind))
+        transform2.toInterpret(string.substring(ind + delim.length, string.length))
       )
   }
 

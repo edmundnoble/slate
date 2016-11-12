@@ -1,11 +1,12 @@
-package slate.storage
+package slate
+package storage
 
 import org.atnos.eff._
 import Eff._
 import cats.data.State
 import syntax.all._
 
-class StorageTests extends StorageTestSuite {
+class StorageTests extends SlateSuite {
 
   import StorageProgram._
   import StorageAction._

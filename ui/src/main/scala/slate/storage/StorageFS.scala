@@ -20,7 +20,8 @@ object StorageFS {
 
   sealed trait Now
   type NowDate = js.Date @@ Now
-  type _needsNow[R] = Member.<=[Reader[NowDate, ?], R]
+  type _needsNow[R] = Member.<=[NeedsNow, R]
+  type NeedsNow[A] = Reader[NowDate, A]
   type StorageNowStack = Fx.fx2[StorageAction, Reader[NowDate, ?]]
 
   /** idempotent */
