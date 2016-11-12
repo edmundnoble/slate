@@ -20,7 +20,9 @@ class StorageFSTests extends SlateSuite {
   "init" in {
     import StorageFS.Now
     val prog = for {
-      _ <- reader.runReader(shapeless.tag[Now](new js.Date(0)))(StorageFS.initFS[Fx.fx2[StorageFS.NeedsNow, StorageAction]])
+      _ <- reader.runReader(shapeless.tag[Now](new js.Date(0)))(
+        StorageFS.initFS[Fx.fx2[StorageFS.NeedsNow, StorageAction]]
+      )
       dir <- StorageFS.getDir(StorageFS.fsroot)
     } yield dir
       val outDir = StorageProgram.runProgram(PureStorage, prog)
