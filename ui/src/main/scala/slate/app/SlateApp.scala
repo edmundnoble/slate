@@ -45,6 +45,7 @@ object SlateApp extends scalajs.js.JSApp {
 
   final case class DashProgram[P](id: Int, title: String, titleLink: String, program: P, input: JSON) {
     def map[B](f: P => B): DashProgram[B] = copy(program = f(program))
+    def traverse[G[_]: Functor, B](f: P => G[B]): G[DashProgram[B]] = f(program).map(DashProgram[B](id, title, titleLink, _, input))
     def nameInputHash: Int = (title, input).hashCode
   }
 
