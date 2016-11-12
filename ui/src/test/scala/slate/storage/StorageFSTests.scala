@@ -105,8 +105,7 @@ class StorageFSTests extends SlateSuite {
 
   "storage wrapper" - {
     class Fixture {
-      val nonceSource = makeDetNonceSource
-      val storage = new StorageFS[State[Map[String, String], ?]](PureStorage, nonceSource, StorageFS.fsroot)
+      val storage = new StorageFS[State[Map[String, String], ?]](PureStorage, makeDetNonceSource, StorageFS.fsroot)
     }
     "update/get" in new Fixture {
       val prog = for {
