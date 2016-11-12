@@ -83,6 +83,7 @@ class StorageFSTests extends SlateSuite {
     class Fixture {
       val nonceSource: () => String = makeDetNonceSource
     }
+
     "update/get" in new Fixture {
       val prog = for {
         _ <- StorageFS.updateFileData("f", nonceSource, "datas", StorageFS.fsroot)
@@ -91,6 +92,7 @@ class StorageFSTests extends SlateSuite {
       } yield ()
       StorageProgram.runProgram(PureStorage, prog).detach.run(initializedFS).value
     }
+
     "update/get/remove" in new Fixture {
       val prog = for {
         k <- StorageFS.updateFileData("f", nonceSource, "datas", StorageFS.fsroot)
@@ -108,16 +110,18 @@ class StorageFSTests extends SlateSuite {
       val storageFS: StorageFS[State[Map[String, String], ?]] =
         new StorageFS[State[Map[String, String], ?]](PureStorage, makeDetNonceSource, StorageFS.fsroot)
     }
+
     "update/get" in new Fixture {
-      val prog = for {
+      val prog: StorageProgram[Unit] = for {
         _ <- StorageProgram.update("key", "value")
         v <- StorageProgram.get("key")
         _ = v.value shouldBe "value"
       } yield ()
       StorageProgram.runProgram(storageFS, prog).detach.run(initializedFS).value
     }
+
     "update/get/remove" in new Fixture {
-      val prog = for {
+      val prog: StorageProgram[Unit] = for {
         _ <- StorageProgram.update("key", "value")
         v <- StorageProgram.get("key")
         _ = v.value shouldBe "value"
@@ -126,6 +130,5 @@ class StorageFSTests extends SlateSuite {
       StorageProgram.runProgram(storageFS, prog).detach.run(initializedFS).value._1 shouldBe initializedFS
     }
   }
-
 
 }
