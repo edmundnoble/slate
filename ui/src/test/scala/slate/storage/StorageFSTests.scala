@@ -28,9 +28,7 @@ class StorageFSTests extends SlateSuite {
     }
   }
 
-  val initialize = for {
-    _ <- StorageFS.initFS[Fx.fx1[StorageAction]]
-  } yield ()
+  val initialize: StorageProgram[Unit] = StorageFS.initFS
 
   def initializedDir: Map[String, String] =
     StorageProgram.runProgram(PureStorage, initialize).detach.run(Map.empty).value._1
