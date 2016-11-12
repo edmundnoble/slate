@@ -25,8 +25,8 @@ class StorageFSTests extends SlateSuite {
       )
       dir <- StorageFS.getDir(StorageFS.fsroot)
     } yield dir
-      val outDir = StorageProgram.runProgram(PureStorage, prog)
-        .detach.run(Map.empty).value._2.value
+    val outDir = StorageProgram.runProgram(PureStorage, prog)
+      .detach.run(Map.empty).value._2.value
     outDir.childKeys.isEmpty shouldBe true
     outDir.metadata.lastAccessed.getTime() shouldBe 0
     outDir.metadata.lastUpdated.getTime() shouldBe 0
