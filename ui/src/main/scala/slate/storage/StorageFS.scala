@@ -79,12 +79,8 @@ object StorageFS {
   final case class File(dataHash: String, dataKey: StorageKey[FileData])
   final case class Dir(childFileKeys: Array[StorageKey[File]], childDirKeys: Array[StorageKey[Dir]])
 
-  def getRaw[R: _storageAction](key: StorageKey[_]): Eff[R, Option[String]] = {
-    import StorageProgram._
-    for {
-      raw <- get(key.name + Delimiters.keyDelimiter + key.nonce)
-    } yield raw
-  }
+  def getRaw[R: _storageAction](key: StorageKey[_]): Eff[R, Option[String]] =
+    StorageProgram.get(key.name + Delimiters.keyDelimiter + key.nonce)
 
   def getDir[R: _storageAction](key: StorageKey[Dir]): Eff[R, Option[Dir]] = {
     for {
