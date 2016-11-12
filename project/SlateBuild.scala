@@ -263,7 +263,6 @@ object SlateBuild {
     .settings(jsSettings)
     .settings(commonDeps)
     .settings(uiDeps)
-    .settings(disableTests)
 
   lazy val uitests: Project = project.in(file("uitests"))
     .dependsOn(ui)
