@@ -1,11 +1,10 @@
 package slate
 package bench
 
-import slate.DashboardPage.SearchPageProps
+import slate.views.DashboardPage.SearchPageProps
 import slate.app.DashboarderApp
 import japgolly.scalajs.benchmark.gui.GuiSuite
 import japgolly.scalajs.benchmark.{Benchmark, Suite}
-import monix.reactive.Observable
 import org.scalajs.dom
 
 object UIBench {

@@ -34,13 +34,14 @@ object ErrorView {
 
   def builder(ex: ErrorDeserializingProgramOutput): ReactTagOf[Div] = {
     div(Styles.danger, key := ex.toString.hashCode,
-      ex.eliminate(renderDeserializationError,
-        _.eliminate(renderQQRuntimeException,
-          _.eliminate(renderQQCompilerException,
-            _.eliminate(renderParsingException,
-              _.eliminate(renderBase64Exception,
-                _.eliminate(renderBytecodeException,
-                  _.impossible)))))))
+      div(
+        ex.eliminate(renderDeserializationError,
+          _.eliminate(renderQQRuntimeException,
+            _.eliminate(renderQQCompilerException,
+              _.eliminate(renderParsingException,
+                _.eliminate(renderBase64Exception,
+                  _.eliminate(renderBytecodeException,
+                    _.impossible))))))))
   }
 
   def renderDeserializationError(err: Invalid.Data): TagMod = {
@@ -64,11 +65,9 @@ object ErrorView {
   }
 
   def renderQQRuntimeException(err: QQRuntimeException): TagMod = {
-    div(
-      "Errors running QQ program:",
+    ("Errors running QQ program:": TagMod) +
       div(
         err.errors.map(e => div(Styles.runtimeError, e.message)).toList: _*
       )
-    )
   }
 }

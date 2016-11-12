@@ -6,9 +6,11 @@ import slate.views.DashboardPage.SearchPageProps
 import slate.util.Util._
 import slate.app.ProgramCache.ErrorGettingCachedProgram
 import slate.models.{AppModel, ExpandableContentModel}
+import slate.util.LoggerFactory
+import slate.storage.{StorageProgram, DomStorage}
 import slate.views.AppView.AppProps
 import japgolly.scalajs.react.{Addons, ReactComponentM, ReactDOM, TopNode}
-import monix.eval.{Coeval, Task}
+import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.Observable
 import monix.cats._
@@ -26,13 +28,10 @@ import scala.scalajs.js.annotation.JSExport
 import scala.util.Success
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
-import cats.implicits._
 import cats.Functor
 import cats.data.Xor
-import org.atnos.eff.{Fx, NoFx, reader}
+import cats.implicits._
 import org.atnos.eff.syntax.all._
-import slate.util.LoggerFactory
-import slate.storage.{StorageProgram, DomStorage}
 
 @JSExport
 object DashboarderApp extends scalajs.js.JSApp {
