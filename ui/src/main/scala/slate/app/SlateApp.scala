@@ -28,11 +28,13 @@ import scala.scalajs.js.annotation.JSExport
 import scala.util.Success
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
-import cats.Functor
-import cats.data.Xor
+import cats._
+import cats.data._
 import cats.implicits._
+import org.atnos.eff.{Eff, Fx, writer, NoFx}
 import org.atnos.eff.syntax.all._
 import slate.storage.StorageFS.AlreadyPresent
+import slate.storage._
 
 @JSExport
 object SlateApp extends scalajs.js.JSApp {
@@ -92,15 +94,31 @@ object SlateApp extends scalajs.js.JSApp {
   def compiledPrograms: List[DashProgram[Task[ErrorCompilingPrograms Xor CompiledFilter]]] =
     programs.map(program =>
       program.map { programPrecompiledOrString =>
-        programPrecompiledOrString.fold[Task[ErrorGettingCachedProgram Xor Program[ConcreteFilter]]](e => Task.now(e.right[ErrorGettingCachedProgram]),
-          str => {
-            StorageProgram.runProgram(DomStorage.Local, prepareProgramFolder).detach >>= { programDirKey =>
-              val storageFS = new StorageFS(DomStorage.Local, nonceSource, programDirKey)
-              StorageProgram.runProgram(
-                storageFS, ProgramCache.getCachedProgram(str)
+        programPrecompiledOrString.fold[Task[ErrorGettingCachedProgram Xor Program[ConcreteFilter]]](e =>
+          Task.now(e.right[ErrorGettingCachedProgram]), { str =>
+          StorageProgram.runProgram(DomStorage.Local, prepareProgramFolder).detach flatMap { programDirKey =>
+            val storageFS = new StorageFS(DomStorage.Local, nonceSource, programDirKey)
+            val loggedProg: Task[(ErrorGettingCachedProgram Xor Program[ConcreteFilter], Vector[String])] =
+              StorageProgram.runProgram(storageFS,
+                writer.runWriterFold(
+                  StorageProgram.logKeys[Fx.fx1[StorageAction], Fx.fx2[StorageAction, Writer[Vector[String], ?]], NoFx, ErrorGettingCachedProgram Xor Program[ConcreteFilter]](
+                    ProgramCache.getCachedProgram(str)
+                  )
+                )(writer.MonoidFold[Vector[String]])
               ).detach
+            loggedProg.flatMap { wr =>
+              val keys = wr._2.toSet
+              StorageProgram.runProgram(DomStorage.Local, for {
+                programDir <- StorageFS.getDir[Fx.fx1[StorageAction]](programDirKey)
+                _ <- programDir.traverseA { dir =>
+                  val keysToRemove = dir.childFileKeys.map(_.name).toSet -- keys
+                  keysToRemove.toList.traverseA(StorageFS.removeFile[Fx.fx1[StorageAction]](_, programDirKey))
+                }
+              } yield wr._1).detach
             }
+
           }
+        }
         ).map(_.leftMap(Inr.apply).flatMap(
           QQCompiler.compileProgram(DashPrelude, _).leftMap(Inl.apply)
         ))
