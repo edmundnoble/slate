@@ -21,7 +21,7 @@ import qq.cc.{CompiledFilter, QQCompilationException, QQCompiler, QQRuntimeExcep
 import qq.data.{ConcreteFilter, JSON, Program}
 import qq.util._
 import shapeless.ops.coproduct.Unifier
-import shapeless.{:+:, Inl, Inr}
+import shapeless.{:+:, CNil, Inl, Inr}
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
@@ -31,7 +31,7 @@ import scalacss.internal.StringRenderer
 import cats._
 import cats.data._
 import cats.implicits._
-import org.atnos.eff.{Eff, Fx, writer, NoFx}
+import org.atnos.eff.{Eff, Fx, Member, NoFx, writer}
 import org.atnos.eff.syntax.all._
 import slate.storage.StorageFS.AlreadyPresent
 import slate.storage._
@@ -45,7 +45,7 @@ object SlateApp extends scalajs.js.JSApp {
 
   final case class DashProgram[P](id: Int, title: String, titleLink: String, program: P, input: JSON) {
     def map[B](f: P => B): DashProgram[B] = copy(program = f(program))
-    def traverse[G[_]: Functor, B](f: P => G[B]): G[DashProgram[B]] = f(program).map(DashProgram[B](id, title, titleLink, _, input))
+    def traverse[G[_] : Functor, B](f: P => G[B]): G[DashProgram[B]] = f(program).map(DashProgram[B](id, title, titleLink, _, input))
     def nameInputHash: Int = (title, input).hashCode
   }
 
@@ -92,89 +92,121 @@ object SlateApp extends scalajs.js.JSApp {
     programDirKey <- StorageFS.mkDir("program", nonceSource, StorageFS.fsroot)
   } yield programDirKey.get.fold(identity[StorageFS.StorageKey[StorageFS.Dir]])
 
-  def compiledPrograms: List[DashProgram[Task[ErrorCompilingPrograms Xor CompiledFilter]]] =
-    programs.map(program =>
-      program.map { programPrecompiledOrString =>
-        programPrecompiledOrString.fold[Task[ErrorGettingCachedProgram Xor Program[ConcreteFilter]]](e =>
-          Task.now(e.right[ErrorGettingCachedProgram]), { str =>
-          StorageProgram.runProgram(DomStorage.Local, prepareProgramFolder).detach flatMap { programDirKey =>
-            val storageFS = new StorageFS(DomStorage.Local, nonceSource, programDirKey)
-            val loggedProg: Task[(ErrorGettingCachedProgram Xor Program[ConcreteFilter], Vector[String])] =
-              StorageProgram.runProgram(storageFS,
-                writer.runWriterFold(
-                  StorageProgram.logKeys[Fx.fx1[StorageAction], Fx.fx2[StorageAction, Writer[Vector[String], ?]], NoFx, ErrorGettingCachedProgram Xor Program[ConcreteFilter]](
-                    ProgramCache.getCachedProgram(str)
-                  )
-                )(writer.MonoidFold[Vector[String]])
-              ).detach
-            loggedProg.flatMap { wr =>
-              val keys = wr._2.toSet
-              StorageProgram.runProgram(DomStorage.Local, for {
-                programDir <- StorageFS.getDir[Fx.fx1[StorageAction]](programDirKey)
-                _ <- programDir.traverseA { dir =>
-                  val keysToRemove = dir.childFileKeys.map(_.name).toSet -- keys
-                  keysToRemove.toList.traverseA(StorageFS.removeFile[Fx.fx1[StorageAction]](_, programDirKey))
-                }
-              } yield wr._1).detach
-            }
+  def compiledPrograms: Task[List[DashProgram[Xor[ErrorCompilingPrograms, CompiledFilter]]]] = {
 
-          }
+    val prog: StorageProgram[List[DashProgram[Xor[ErrorGettingCachedProgram, Program[ConcreteFilter]]]]] =
+      programs.traverse[StorageProgram, DashProgram[ErrorGettingCachedProgram Xor Program[ConcreteFilter]]](program =>
+        program.traverse[StorageProgram, ErrorGettingCachedProgram Xor Program[ConcreteFilter]] { programPrecompiledOrString =>
+          programPrecompiledOrString.fold[StorageProgram[ErrorGettingCachedProgram Xor Program[ConcreteFilter]]](
+            _.right[ErrorGettingCachedProgram].pureEff[Fx.fx1[StorageAction]], ProgramCache.getCachedProgram)
         }
-        ).map(_.leftMap(Inr.apply).flatMap(
-          QQCompiler.compileProgram(DashPrelude, _).leftMap(Inl.apply)
-        ))
-      }
-    )
-
-  type ErrorRunningPrograms = QQRuntimeException :+: ErrorCompilingPrograms
-
-  private def runCompiledPrograms: List[DashProgram[Task[ErrorRunningPrograms Xor List[JSON]]]] =
-    compiledPrograms.map { program =>
-      program.map(
-        _.map(_.leftMap(Inr[QQRuntimeException, ErrorCompilingPrograms]))
-          .flatMap(_.traverse[Task, ErrorRunningPrograms, ErrorRunningPrograms Xor List[JSON]] { compiled =>
-            CompiledFilter.run(program.input, Map.empty, compiled).map {
-              _.leftMap(exs => Inl(QQRuntimeException(exs))).toXor
-            }
-          }).map(_.flatMap(identity))
       )
+
+    StorageProgram.runProgram(DomStorage.Local, prepareProgramFolder).detach.flatMap { programDirKey =>
+
+      val storageFS = new StorageFS(DomStorage.Local, nonceSource, programDirKey)
+      type mem = Member.Aux[Writer[Vector[String], ?], Fx.fx2[StorageAction, Writer[Vector[String], ?]], Fx.fx1[StorageAction]]
+      StorageProgram.runProgram(storageFS,
+        writer.runWriterFold[Fx.fx2[StorageAction, Writer[Vector[String], ?]],
+          Fx.fx1[StorageAction],
+          Vector[String],
+          List[DashProgram[ErrorGettingCachedProgram Xor Program[ConcreteFilter]]],
+          Vector[String]](
+          StorageProgram.logKeys[Fx.fx1[StorageAction],
+            Fx.fx2[StorageAction, Writer[Vector[String], ?]],
+            NoFx,
+            List[
+              DashProgram[
+                ErrorGettingCachedProgram Xor Program[ConcreteFilter]]]](prog)
+        )(writer.MonoidFold[Vector[String]])(implicitly[mem])).detach
+        .flatMap { case (progs, usedKeys) =>
+          val compiledProgs = progs.map(_.map(_.leftMap(Inr.apply).flatMap(
+            QQCompiler.compileProgram(DashPrelude, _).leftMap(Inl.apply)
+          )))
+          val removeExcessProgram =
+            StorageProgram.runProgram(DomStorage.Local, for {
+              programDir <- StorageFS.getDir[Fx.fx1[StorageAction]](programDirKey)
+              _ <- programDir.traverse[StorageProgram, List[Unit]] { dir =>
+                val keysToRemove = dir.childFileKeys.map(_.name).toSet -- usedKeys
+                keysToRemove.toList.traverseA(StorageFS.removeFile[Fx.fx1[StorageAction]](_, programDirKey))
+              }
+            } yield ()).detach
+          removeExcessProgram.as(compiledProgs)
+        }
+    }
+  }
+
+  type ErrorRunningPrograms = QQRuntimeException :+: CNil
+
+  private def runCompiledPrograms: Task[List[DashProgram[ErrorCompilingPrograms Xor Task[ErrorRunningPrograms Xor List[JSON]]]]] =
+    compiledPrograms.map {
+      programs =>
+        programs.map { program =>
+          program.map(
+            _.map {
+              compiled =>
+                CompiledFilter.run(program.input, Map.empty, compiled).map {
+                  _.leftMap(exs => (Inl(QQRuntimeException(exs)): QQRuntimeException :+: CNil)).toXor
+                }
+            }
+          )
+        }
     }
 
   type ErrorDeserializingProgramOutput = upickle.Invalid.Data :+: ErrorRunningPrograms
 
-  private def deserializeProgramOutput: List[DashProgram[Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]]]] =
-    runCompiledPrograms.map { program =>
-      program.map(
-        _.map(
-          _.leftMap(Inr[upickle.Invalid.Data, ErrorRunningPrograms]).flatMap(
-            _.traverse[ErrorDeserializingProgramOutput Xor ?, ExpandableContentModel] {
-              json =>
-                val upickleJson = JSON.JSONToUpickleRec.apply(json)
-                try ExpandableContentModel.pkl.read(upickleJson).right catch {
-                  case ex: upickle.Invalid.Data => Inl(ex).left
+
+  //  Task[List[DashProgram[Xor[ErrorCompilingPrograms, Task[Xor[ErrorDeserializingProgramOutput, Xor[ErrorDeserializingProgramOutput, List[ExpandableContentModel]]]]]]]] =
+  private def
+  deserializeProgramOutput: Task[List[DashProgram[ErrorCompilingPrograms Xor Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]]]]] =
+    runCompiledPrograms.map {
+      _.map(program =>
+        program.map(
+          _.map[Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]]](
+            _.map(
+              _.leftMap(Inr[upickle.Invalid.Data, ErrorRunningPrograms]).flatMap(
+                _.traverse[ErrorDeserializingProgramOutput Xor ?, ExpandableContentModel] {
+                  json =>
+                    val upickleJson = JSON.JSONToUpickleRec.apply(json)
+                    try ExpandableContentModel.pkl.read(upickleJson).right catch {
+                      case ex: upickle.Invalid.Data => Inl(ex).left
+                    }
                 }
-            }
+              )
+            )
           )
         )
       )
     }
 
-  def getContent: Observable[SearchPageProps] =
-    raceFold(deserializeProgramOutput.map {
-      case DashProgram(id, title, titleLink, out, _) =>
-        val errorsCaughtProgram = out.map {
-          t =>
-            t.swap.foreach { err =>
-              logger.warn("error while running programs",
-                implicitly[Unifier.Aux[ErrorDeserializingProgramOutput, Throwable]].apply(err))
+  type AllErrors = upickle.Invalid.Data :+: QQRuntimeException :+: ErrorCompilingPrograms
+
+  def getContent: Observable[Task[SearchPageProps]] =
+    Observable.fromTask(deserializeProgramOutput).flatMap { o =>
+      raceFold(o.map {
+        case DashProgram(id, title, titleLink, out, _) =>
+          val errorsCaughtProgram = out.map { o =>
+            o.map {
+              t =>
+                t.swap.foreach {
+                  err =>
+                    logger.warn("error while running programs",
+                      implicitly[Unifier.Aux[ErrorDeserializingProgramOutput, Throwable]].apply(err))
+                }
             }
-            AppProps(id, title, titleLink, AppModel(t))
-        }
-        errorsCaughtProgram
-    })(
-      runCompiledPrograms.map(t => AppProps(t.id, t.title, t.titleLink, AppModel(Nil.right)))
-    )((l, ap) => ap :: l.filterNot(_.id == ap.id))
-      .map(appProps => SearchPageProps(appProps.sortBy(_.id)))
+          }
+          import shapeless.ops.coproduct.Basis
+          val injectedErrors = out.leftMap(e =>
+            Basis.apply[AllErrors, ErrorCompilingPrograms].inverse(Right(e))
+          ).map(_.map(_.leftMap(e =>
+            Basis.apply[AllErrors, ErrorDeserializingProgramOutput].inverse(Right(e))
+          ))).sequence[Task, Xor[AllErrors, List[ExpandableContentModel]]].map(_.flatten)
+          injectedErrors.map(e => Task.now(AppProps(id, title, titleLink, AppModel(e))))
+      })(
+        runCompiledPrograms.map(_.map(t => AppProps(t.id, t.title, t.titleLink, AppModel(Nil.right)))
+      ))((l, ap) => Task.mapBoth(ap, l){ (a, li) => a :: li.filterNot(_.id == a.id) })
+        .map(_.map(appProps => SearchPageProps(appProps.sortBy(_.id))))
+    }
 
   def render(container: Element, content: SearchPageProps)(
     implicit scheduler: Scheduler): Task[ReactComponentM[SearchPageProps, Unit, Unit, TopNode]] = {
@@ -206,8 +238,9 @@ object SlateApp extends scalajs.js.JSApp {
     val _ =
       (for {
         _ <- Observable.fromTask(appendStyles())
-        props <- getContent
-        _ <- Observable.fromTask(render(container, props))
+        compilePrograms <- getContent
+        outputs <- Observable.fromTask(compilePrograms)
+        _ <- Observable.fromTask(render(container, outputs))
       } yield ()).subscribe()
     if (!js.isUndefined(Addons.Perf)) {
       logger.info("Stopping perf")
@@ -219,7 +252,9 @@ object SlateApp extends scalajs.js.JSApp {
 
   // TODO: cache
   private def appendStyles() = Task.delay {
+
     import slate.views._
+
     val renderer = new StringRenderer.Raw(StringRenderer.formatTiny)
     val addStyles =
       Seq(

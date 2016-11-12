@@ -1,7 +1,7 @@
 package slate
 package views
 
-import slate.app.SlateApp.ErrorDeserializingProgramOutput
+import slate.app.SlateApp.AllErrors
 import slate.app.ProgramCache.{InvalidBase64, InvalidBytecode}
 import fastparse.all.ParseError
 import japgolly.scalajs.react._
@@ -32,7 +32,7 @@ object ErrorView {
 
   import scalacss.ScalaCssReact._
 
-  def builder(ex: ErrorDeserializingProgramOutput): ReactTagOf[Div] = {
+  def builder(ex: AllErrors): ReactTagOf[Div] = {
     div(Styles.danger, key := ex.toString.hashCode,
       div(
         ex.eliminate(renderDeserializationError,
