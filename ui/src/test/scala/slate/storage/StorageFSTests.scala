@@ -105,7 +105,8 @@ class StorageFSTests extends SlateSuite {
 
   "storage wrapper" - {
     class Fixture {
-      val storage = new StorageFS[State[Map[String, String], ?]](PureStorage, makeDetNonceSource, StorageFS.fsroot)
+      val storageFS: StorageFS[State[Map[String, String], ?]] =
+        new StorageFS[State[Map[String, String], ?]](PureStorage, makeDetNonceSource, StorageFS.fsroot)
     }
     "update/get" in new Fixture {
       val prog = for {
@@ -113,7 +114,7 @@ class StorageFSTests extends SlateSuite {
         v <- StorageProgram.get("key")
         _ = v.value shouldBe "value"
       } yield ()
-      StorageProgram.runProgram(storage, prog).detach.run(initializedFS).value
+      StorageProgram.runProgram(storageFS, prog).detach.run(initializedFS).value
     }
     "update/get/remove" in new Fixture {
       val prog = for {
@@ -122,7 +123,7 @@ class StorageFSTests extends SlateSuite {
         _ = v.value shouldBe "value"
         _ <- StorageProgram.remove("key")
       } yield ()
-      StorageProgram.runProgram(storage, prog).detach.run(initializedFS).value._1 shouldBe initializedFS
+      StorageProgram.runProgram(storageFS, prog).detach.run(initializedFS).value._1 shouldBe initializedFS
     }
   }
 
