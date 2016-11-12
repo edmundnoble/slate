@@ -1,7 +1,7 @@
 package slate
 package views
 
-import slate.app.DashboarderApp.ErrorDeserializingProgramOutput
+import slate.app.SlateApp.ErrorDeserializingProgramOutput
 import slate.app.ProgramCache.{InvalidBase64, InvalidBytecode}
 import fastparse.all.ParseError
 import japgolly.scalajs.react._

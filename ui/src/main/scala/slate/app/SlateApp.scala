@@ -34,7 +34,7 @@ import cats.implicits._
 import org.atnos.eff.syntax.all._
 
 @JSExport
-object DashboarderApp extends scalajs.js.JSApp {
+object SlateApp extends scalajs.js.JSApp {
 
   private[this] val logger = LoggerFactory.getLogger("DashboarderApp")
 

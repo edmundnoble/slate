@@ -1,7 +1,7 @@
 package slate
 package models
 
-import slate.app.DashboarderApp.ErrorDeserializingProgramOutput
+import slate.app.SlateApp.ErrorDeserializingProgramOutput
 import japgolly.scalajs.react.extra.Reusability
 
 import cats.data.Xor
