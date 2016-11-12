@@ -78,8 +78,6 @@ object StorageFS {
 
   final case class File(dataHash: String, dataKey: StorageKey[FileData])
   final case class Dir(childFileKeys: Array[StorageKey[File]], childDirKeys: Array[StorageKey[Dir]])
-  type FSKey = StorageKey[File] Xor StorageKey[Dir]
-  type FSEntry = File Xor Dir
 
   def getRaw[R: _storageAction](key: StorageKey[_]): Eff[R, Option[String]] = {
     import StorageProgram._
