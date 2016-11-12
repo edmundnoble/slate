@@ -2,9 +2,11 @@ package slate
 package storage
 
 import org.atnos.eff._
+import Eff._
 import syntax.all._
 import StorageFS.{Dir, StorageKey}
-import cats.data.Writer
+import cats.data.{State, Writer}
+import cats.implicits._
 
 class StorageFSTests extends SlateSuite {
   def logStorageProgram[A](prog: StorageProgram[A]): StorageProgram[A] = {
@@ -25,7 +27,7 @@ class StorageFSTests extends SlateSuite {
     }
   }
 
-  def initializedDir: Map[String, String] =
+  val initializedFS: Map[String, String] =
     StorageProgram.runProgram(PureStorage, StorageFS.initFS).detach.run(Map.empty).value._1
 
   def makeDetNonceSource: () => String = new (() => String) {
@@ -40,7 +42,7 @@ class StorageFSTests extends SlateSuite {
   "init" in {
     val outDir =
       StorageProgram.runProgram(PureStorage, StorageFS.getDir(StorageFS.fsroot))
-        .detach.run(initializedDir).value._2.value
+        .detach.run(initializedFS).value._2.value
     outDir.isEmpty shouldBe true
   }
 
@@ -60,7 +62,7 @@ class StorageFSTests extends SlateSuite {
       val dirKey = StorageFS.StorageKey[Dir]("dir", "0")
       val nestedKey = StorageFS.StorageKey[Dir]("nested", "1")
       StorageProgram.runProgram(PureStorage, addDir)
-        .detach.run(initializedDir).value._2 shouldBe ((StorageFS.DirMade(dirKey), StorageFS.DirMade(nestedKey), StorageFS.AlreadyPresent(dirKey)))
+        .detach.run(initializedFS).value._2 shouldBe ((StorageFS.DirMade(dirKey), StorageFS.DirMade(nestedKey), StorageFS.AlreadyPresent(dirKey)))
     }
 
     "should return a key to a dir that exists" in {
@@ -70,11 +72,61 @@ class StorageFSTests extends SlateSuite {
         addedDir <- StorageFS.getDir(newDirKey.value.assertDirMade)
       } yield addedDir
       val result = StorageProgram.runProgram(PureStorage, addDir)
-        .detach.run(initializedDir).value._2.value
+        .detach.run(initializedFS).value._2.value
 
       result.isEmpty shouldBe true
     }
 
   }
+
+  "file data" - {
+    class Fixture {
+      val nonceSource: () => String = makeDetNonceSource
+    }
+    "update and get" in new Fixture {
+      val prog = for {
+        k <- StorageFS.updateFileData("f", nonceSource, "datas", StorageFS.fsroot)
+        f <- traverseA(k)(StorageFS.getFile[Fx.fx1[StorageAction]])
+        d <- traverseA(f.flatten)(i => StorageFS.getFileData("f", StorageFS.fsroot))
+        _ = d.flatten.value shouldBe "datas"
+      } yield ()
+      StorageProgram.runProgram(PureStorage, prog).detach.run(initializedFS).value
+    }
+    "remove" in new Fixture {
+      val prog = for {
+        k <- StorageFS.updateFileData("f", nonceSource, "datas", StorageFS.fsroot)
+        f <- traverseA(k)(StorageFS.getFile[Fx.fx1[StorageAction]])
+        d <- traverseA(f.flatten)(i => StorageFS.getFileData("f", StorageFS.fsroot))
+        _ = d.flatten.value shouldBe "datas"
+        _ <- StorageFS.removeFile("f", StorageFS.fsroot)
+      } yield ()
+      StorageProgram.runProgram(PureStorage, prog).detach.run(initializedFS).value._1 shouldBe initializedFS
+    }
+  }
+
+  "storage wrapper" - {
+    class Fixture {
+      val nonceSource = makeDetNonceSource
+      val storage = new StorageFS[State[Map[String, String], ?]](PureStorage, nonceSource, StorageFS.fsroot)
+    }
+    "update/get" in new Fixture {
+      val prog = for {
+        _ <- StorageProgram.update("key", "value")
+        v <- StorageProgram.get("key")
+        _ = v.value shouldBe "value"
+      } yield ()
+      StorageProgram.runProgram(storage, prog).detach.run(initializedFS).value
+    }
+    "update/get/remove" in new Fixture {
+      val prog = for {
+        _ <- StorageProgram.update("key", "value")
+        v <- StorageProgram.get("key")
+        _ = v.value shouldBe "value"
+        _ <- StorageProgram.remove("key")
+      } yield ()
+      StorageProgram.runProgram(storage, prog).detach.run(initializedFS).value._1 shouldBe initializedFS
+    }
+  }
+
 
 }

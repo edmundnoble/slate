@@ -130,22 +130,23 @@ object StorageFS {
     firstResult <- file.flatten.traverseA(f => StorageProgram.get[R](f.dataKey.render))
   } yield firstResult.flatten
 
-  def updateFileData[R: _storageAction](fileName: String, nonceSource: () => String, data: String, dirKey: StorageKey[Dir]): Eff[R, Unit] = for {
+  def updateFileData[R: _storageAction](fileName: String, nonceSource: () => String, data: String, dirKey: StorageKey[Dir]): Eff[R, Option[StorageKey[File]]] = for {
     dir <- getDir[R](dirKey)
     hash = dir.map(_.childFileKeys.find(_.name == fileName))
-    _ <- hash.traverseA { maybeHash =>
-      maybeHash.map(_ => ().pureEff[R]).getOrElse[Eff[R, Unit]] {
-        val dataKey = StorageKey[FileData](fileName, nonceSource())
+    dataKey = StorageKey[FileData](fileName, nonceSource())
+    newFile = File(data.hashCode.toString, dataKey)
+    key <- hash.traverseA { maybeHash =>
+      maybeHash.map(fileKey => (StorageProgram.update(fileKey.render, File.structure.fromInterpret(newFile)) >>
+        StorageProgram.update(dataKey.render, data)).as(fileKey)).getOrElse[Eff[R, StorageKey[File]]] {
         val fileKey = StorageKey[File](fileName, nonceSource())
-        val newFile = File(data.hashCode.toString, dataKey)
-        StorageProgram.update(dataKey.render, data) >>
+        (StorageProgram.update(dataKey.render, data) >>
           StorageProgram.update(fileKey.render, File.structure.fromInterpret(newFile)) >>
           StorageProgram.update(dirKey.render, Dir.structure.fromInterpret(
             dir.get.copy(childFileKeys = dir.get.childFileKeys :+ fileKey)
-          ))
+          ))).as(fileKey)
       }
     }
-  } yield ()
+  } yield key
 
   sealed trait MkDirResult
   case class AlreadyPresent(key: StorageKey[Dir]) extends MkDirResult
@@ -191,7 +192,7 @@ final class StorageFS[F[_] : Monad : RecursiveTailRecM](underlying: Storage[F], 
     StorageProgram.runProgram(underlying, getFileData(key, dirKey)).detach
 
   override def update(key: String, data: String): F[Unit] =
-    StorageProgram.runProgram(underlying, updateFileData(key, nonceSource, data, dirKey)).detach
+    StorageProgram.runProgram(underlying, updateFileData(key, nonceSource, data, dirKey)).detach.as(())
 
   override def remove(key: String): F[Unit] =
     StorageProgram.runProgram(underlying, removeFile(key, dirKey)).detach
