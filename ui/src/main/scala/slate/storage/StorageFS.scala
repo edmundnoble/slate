@@ -1,12 +1,13 @@
 package slate
 package storage
 
-import cats.data.Xor
+import cats.data.{Reader, Xor}
 import cats.{Monad, RecursiveTailRecM}
 
 import scalajs.js
 import cats.implicits._
 import slate.util.DelimitTransform
+import shapeless.tag._
 
 import scala.scalajs.js.Array
 import scala.util.Try
@@ -14,6 +15,24 @@ import org.atnos.eff._, Eff._, syntax.all._
 
 object StorageFS {
   final def fsroot: StorageKey[Dir] = StorageKey[Dir]("fsroot", "fsroot")
+
+  import StorageAction._storageAction
+
+  sealed trait Now
+  type NowDate = js.Date @@ Now
+  type _needsNow[R] = Member.<=[Reader[NowDate, ?], R]
+  type StorageNowStack = Fx.fx2[StorageAction, Reader[NowDate, ?]]
+
+  /** idempotent */
+  def initFS[R: _storageAction: _needsNow]: Eff[R, Unit] = {
+    for {
+      now <- reader.ask[R, NowDate]
+      root <- getDir(fsroot)
+      _ <- root.fold {
+        StorageProgram.update(fsroot.render, Dir.structure.fromInterpret(Dir(NodeMetadata(now, now), Array())))
+      } { _ => ().pureEff[R] }
+    } yield ()
+  }
 
   // TODO: static safety for escaping these
   import slate.util._, DelimitTransform._
@@ -88,7 +107,7 @@ object StorageFS {
   type FSKey = StorageKey[File] Xor StorageKey[Dir]
   type FSEntry = File Xor Dir
 
-  def getRaw(key: StorageKey[_]): StorageProgram[Option[String]] = {
+  def getRaw[R :_storageAction](key: StorageKey[_]): Eff[R, Option[String]] = {
     import StorageProgram._
     for {
       raw <- get(key.name + Delimiters.keyDelimiter + key.nonce)
@@ -103,42 +122,42 @@ object StorageFS {
     } yield NodeMetadata(lastUpdatedParsed, lastAccessedParsed)
   }
 
-  def getDir(key: StorageKey[Dir]): StorageProgram[Option[Dir]] = {
+  def getDir[R: _storageAction](key: StorageKey[Dir]): Eff[R, Option[Dir]] = {
     for {
       raw <- getRaw(key)
     } yield raw.flatMap(Dir.structure.toInterpret)
   }
 
-  def getDirKey(path: Vector[String]): StorageProgram[Option[StorageKey[Dir]]] =
+  def getDirKey[R: _storageAction](path: Vector[String]): Eff[R, Option[StorageKey[Dir]]] =
     for {
       dirKey <- getDirKeyFromRoot(path, fsroot)
     } yield dirKey
 
-  def getDirKeyFromRoot[F](path: Vector[String], rootKey: StorageKey[Dir]): StorageProgram[Option[StorageKey[Dir]]] = {
-    path.foldM[StorageProgram, Option[StorageKey[Dir]]](Some(rootKey)) { (b, s) =>
-      b.traverse(getDir).map(_.flatten).map(_.flatMap(_.childDirKeys.find(_.name == s)))
+  def getDirKeyFromRoot[R: _storageAction](path: Vector[String], rootKey: StorageKey[Dir]): Eff[R, Option[StorageKey[Dir]]] = {
+    path.foldM[Eff[R, ?], Option[StorageKey[Dir]]](Some(rootKey)) { (b, s) =>
+      b.traverse(getDir[R]).map(_.flatten).map(_.flatMap(_.childDirKeys.find(_.name == s)))
     }
   }
 
-  def getFile(key: StorageKey[File]): StorageProgram[Option[File]] = {
+  def getFile[R: _storageAction](key: StorageKey[File]): Eff[R, Option[File]] = {
     for {
       raw <- getRaw(key)
     } yield raw.flatMap(File.structure.toInterpret)
   }
 
-  def getDirPath(path: Vector[String]): StorageProgram[Option[Dir]] = {
+  def getDirPath[R: _storageAction](path: Vector[String]): Eff[R, Option[Dir]] = {
     for {
-      dirKey <- getDirKey(path)
-      dir <- dirKey.traverseM(getDir)
+      dirKey <- getDirKey[R](path)
+      dir <- dirKey.traverseM(getDir[R])
     } yield dir
   }
 
-  def getFilePath[F[_]](path: Vector[String]): StorageProgram[Option[File]] = {
+  def getFilePath[R: _storageAction](path: Vector[String]): Eff[R, Option[File]] = {
     for {
-      dirKey <- getDirKey(path.init)
-      dir <- dirKey.traverseM(getDir)
+      dirKey <- getDirKey[R](path.init)
+      dir <- dirKey.traverseM(getDir[R])
       fileKey = dir.flatMap(_.childFileKeys.find(_.name == path.last))
-      file <- fileKey.traverseM(getFile)
+      file <- fileKey.traverseM(getFile[R])
     } yield file
   }
 
@@ -148,7 +167,7 @@ object StorageFS {
 
 import StorageFS._
 
-sealed class StorageFS[F[_] : Monad : RecursiveTailRecM](underlying: Storage[F], dirKey: StorageKey[Dir]) extends Storage[F] {
+final class StorageFS[F[_] : Monad : RecursiveTailRecM](underlying: Storage[F], dirKey: StorageKey[Dir]) extends Storage[F] {
 
   import StorageFS._
 
