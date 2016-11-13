@@ -68,12 +68,16 @@ object DelimitTransform {
   implicit final class DelimitTransformOps[O](val transform: DelimitTransform[O]) extends AnyVal {
     def thenDelimitBy(delim: String): DelimitTransform[js.Array[O]] =
       DelimitArr(transform, delim)
-    def joinWithDelimiter[O2](delim: String, other: DelimitTransform[O2]): DelimitTransform[(O, O2)] =
-      DelimitFromBegin(transform, delim, other)
+    def |(delim: String): ThenBuilder[O] =
+      new ThenBuilder(transform, delim)
     def imap[O2](to: O => O2, from: O2 => O): DelimitTransform[O2] =
       imapX[O2](o => Some(to(o)), from)
     def imapX[O2](to: O => Option[O2], from: O2 => O): DelimitTransform[O2] =
       DelimitTransformIxmap[O, O2](transform, to, from)
+  }
+  final class ThenBuilder[O](val transform: DelimitTransform[O], val delim: String) {
+    def |[O2](otherTransform: DelimitTransform[O2]): DelimitTransform[(O, O2)] =
+      DelimitFromBegin(transform, delim, otherTransform)
   }
 
 }

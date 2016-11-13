@@ -53,10 +53,9 @@ object StorageFS {
     val empty: Dir = Dir(js.Array(), js.Array())
 
     def nodesStructure: DelimitTransform[Array[(String, String)]] =
-      id.joinWithDelimiter(keyDelimiter, id)
-        .thenDelimitBy(interNodeDelimiter)
+      (id | keyDelimiter | id).thenDelimitBy(interNodeDelimiter)
     def structure: DelimitTransform[Dir] =
-      nodesStructure.joinWithDelimiter(nodeKindDelimiter, nodesStructure)
+      (nodesStructure | nodeKindDelimiter | nodesStructure)
         .imap[Dir]({ case (fileKeys, dirKeys) =>
         Dir(fileKeys.map((StorageKey.apply[File] _).tupled), dirKeys.map((StorageKey.apply[Dir] _).tupled))
       }, { dir =>
@@ -73,9 +72,7 @@ object StorageFS {
     import Delimiters._
 
     def structure: DelimitTransform[File] =
-      id.joinWithDelimiter(hashKeyDelimiter,
-        id.joinWithDelimiter(keyDelimiter, id)
-      ).imap(
+      (id | hashKeyDelimiter | (id | keyDelimiter | id)).imap(
         { case (str1, (str2, str3)) => File(str1, StorageKey(str2, str3)) },
         file => (file.dataHash, (file.dataKey.name, file.dataKey.nonce))
       )
