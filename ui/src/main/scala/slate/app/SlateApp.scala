@@ -155,16 +155,6 @@ object SlateApp extends scalajs.js.JSApp {
     Observable.fromTask(deserializeProgramOutput).flatMap { o =>
       raceFold(o.map {
         case DashProgram(id, title, titleLink, out, _) =>
-          val errorsCaughtProgram = out.map { o =>
-            o.map {
-              t =>
-                t.swap.foreach {
-                  err =>
-                    logger.warn("error while running programs",
-                      implicitly[Unifier.Aux[ErrorDeserializingProgramOutput, Throwable]].apply(err))
-                }
-            }
-          }
           import shapeless.ops.coproduct.Basis
           val injectedErrors = out.leftMap(e =>
             Basis[AllErrors, ErrorCompilingPrograms].inverse(Right(e))
