@@ -190,7 +190,7 @@ object StorageFS {
 
 import StorageFS._
 
-final class StorageFS[F[_] : Monad : RecursiveTailRecM](underlying: Storage[F], nonceSource: () => String, dirKey: StorageKey[Dir]) extends Storage[F] {
+final class StorageFS[F[_] : Monad](underlying: Storage[F], nonceSource: () => String, dirKey: StorageKey[Dir]) extends Storage[F] {
 
   import StorageFS._
 

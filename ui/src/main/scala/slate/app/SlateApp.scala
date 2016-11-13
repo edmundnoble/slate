@@ -15,7 +15,6 @@ import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.Observable
 import monix.cats._
 import org.scalajs.dom
-import org.scalajs.dom.raw._
 import qq.Platform.Rec._
 import qq.cc.{CompiledFilter, QQCompilationException, QQCompiler, QQRuntimeException}
 import qq.data.{ConcreteFilter, JSON, Program}
@@ -103,36 +102,36 @@ object SlateApp extends scalajs.js.JSApp {
       )
 
     StorageProgram.runProgram(DomStorage.Local, prepareProgramFolder).detach.flatMap { programDirKey =>
+      runSealedStorageProgram(prog, DomStorage.Local, programDirKey)
+        .map(_.map(_.map(_.leftMap(Inr.apply).flatMap(QQCompiler.compileProgram(DashPrelude, _).leftMap(Inl.apply)))))
+    }
+  }
 
-      val storageFS = new StorageFS(DomStorage.Local, nonceSource, programDirKey)
-      type mem = Member.Aux[Writer[Vector[String], ?], Fx.fx2[StorageAction, Writer[Vector[String], ?]], Fx.fx1[StorageAction]]
-      StorageProgram.runProgram(storageFS,
-        writer.runWriterFold[Fx.fx2[StorageAction, Writer[Vector[String], ?]],
-          Fx.fx1[StorageAction],
-          Vector[String],
-          List[DashProgram[ErrorGettingCachedProgram Xor Program[ConcreteFilter]]],
-          Vector[String]](
-          StorageProgram.logKeys[Fx.fx1[StorageAction],
-            Fx.fx2[StorageAction, Writer[Vector[String], ?]],
-            NoFx,
-            List[
-              DashProgram[
-                ErrorGettingCachedProgram Xor Program[ConcreteFilter]]]](prog)
-        )(writer.MonoidFold[Vector[String]])(implicitly[mem])).detach
-        .flatMap { case (progs, usedKeys) =>
-          val compiledProgs = progs.map(_.map(_.leftMap(Inr.apply).flatMap(
-            QQCompiler.compileProgram(DashPrelude, _).leftMap(Inl.apply)
-          )))
-          val removeExcessProgram =
-            StorageProgram.runProgram(DomStorage.Local, for {
-              programDir <- StorageFS.getDir[Fx.fx1[StorageAction]](programDirKey)
-              _ <- programDir.traverse[StorageProgram, List[Unit]] { dir =>
-                val keysToRemove = dir.childFileKeys.map(_.name).toSet -- usedKeys
-                keysToRemove.toList.traverseA(StorageFS.removeFile[Fx.fx1[StorageAction]](_, programDirKey))
-              }
-            } yield ()).detach
-          removeExcessProgram.as(compiledProgs)
-        }
+  def runSealedStorageProgram[F[_]: Monad, A](prog: StorageProgram[A], underlying: Storage[F],
+                                       storageRoot: StorageFS.StorageKey[StorageFS.Dir]): F[A] = {
+    val storageFS = new StorageFS(underlying, nonceSource, storageRoot)
+    type mem = Member.Aux[Writer[Vector[String], ?], Fx.fx2[StorageAction, Writer[Vector[String], ?]], Fx.fx1[StorageAction]]
+    val loggedProgram: F[(A, Vector[String])] = StorageProgram.runProgram(storageFS,
+      writer.runWriterFold[Fx.fx2[StorageAction, Writer[Vector[String], ?]],
+        Fx.fx1[StorageAction],
+        Vector[String],
+        A,
+        Vector[String]](
+        StorageProgram.logKeys[Fx.fx1[StorageAction],
+          Fx.fx2[StorageAction, Writer[Vector[String], ?]],
+          NoFx,
+          A](prog)
+      )(writer.MonoidFold[Vector[String]])(implicitly[mem])).detach
+    loggedProgram.flatMap { case (v, usedKeys) =>
+      val removeExcessProgram =
+        StorageProgram.runProgram(underlying, for {
+          programDir <- StorageFS.getDir[Fx.fx1[StorageAction]](storageRoot)
+          _ <- programDir.traverse[StorageProgram, List[Unit]] { dir =>
+            val keysToRemove = dir.childFileKeys.map(_.name).toSet -- usedKeys
+            keysToRemove.toList.traverseA(StorageFS.removeFile[Fx.fx1[StorageAction]](_, storageRoot))
+          }
+        } yield ()).detach
+        removeExcessProgram.as(v)
     }
   }
 
@@ -156,7 +155,6 @@ object SlateApp extends scalajs.js.JSApp {
   type ErrorDeserializingProgramOutput = upickle.Invalid.Data :+: ErrorRunningPrograms
 
 
-  //  Task[List[DashProgram[Xor[ErrorCompilingPrograms, Task[Xor[ErrorDeserializingProgramOutput, Xor[ErrorDeserializingProgramOutput, List[ExpandableContentModel]]]]]]]] =
   private def
   deserializeProgramOutput: Task[List[DashProgram[ErrorCompilingPrograms Xor Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]]]]] =
     runCompiledPrograms.map {
@@ -197,9 +195,9 @@ object SlateApp extends scalajs.js.JSApp {
           }
           import shapeless.ops.coproduct.Basis
           val injectedErrors = out.leftMap(e =>
-            Basis.apply[AllErrors, ErrorCompilingPrograms].inverse(Right(e))
+            Basis[AllErrors, ErrorCompilingPrograms].inverse(Right(e))
           ).map(_.map(_.leftMap(e =>
-            Basis.apply[AllErrors, ErrorDeserializingProgramOutput].inverse(Right(e))
+            Basis[AllErrors, ErrorDeserializingProgramOutput].inverse(Right(e))
           ))).sequence[Task, Xor[AllErrors, List[ExpandableContentModel]]].map(_.flatten)
           injectedErrors.map(e => Task.now(AppProps(id, title, titleLink, AppModel(e))))
       })(
@@ -208,7 +206,7 @@ object SlateApp extends scalajs.js.JSApp {
         .map(_.map(appProps => SearchPageProps(appProps.sortBy(_.id))))
     }
 
-  def render(container: Element, content: SearchPageProps)(
+  def render(container: org.scalajs.dom.raw.Element, content: SearchPageProps)(
     implicit scheduler: Scheduler): Task[ReactComponentM[SearchPageProps, Unit, Unit, TopNode]] = {
 
     val searchPage =
