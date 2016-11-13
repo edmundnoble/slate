@@ -153,18 +153,6 @@ object StorageProgram {
     })
   }
 
-  def retarget[R, U, A](eff: Eff[R, A])(prefix: String, delim: String)
-                       (implicit ev: MemberInOut[StorageAction, R]): Eff[R, A] =
-    interpret.interceptNat(eff)(new (StorageAction ~> StorageAction) {
-      override def apply[X](kv: StorageAction[X]): StorageAction[X] =
-        kv match {
-          // TODO: clean up with access to SI-9760 fix
-          case StorageAction.Get(k) => StorageAction.Get(prefix + delim + k).asInstanceOf[StorageAction[X]]
-          case StorageAction.Update(k, v) => StorageAction.Update(prefix + delim + k, v).asInstanceOf[StorageAction[X]]
-          case StorageAction.Remove(k) => StorageAction.Remove(prefix + delim + k).asInstanceOf[StorageAction[X]]
-        }
-    })
-
 }
 
 // Implementation for dom.ext.Storage values

@@ -11,6 +11,10 @@ import scala.util.Try
 import org.atnos.eff._, Eff._, syntax.all._
 
 object StorageFS {
+  final case class StorageKey[F](name: String, nonce: String) {
+    def render: String = name + Delimiters.keyDelimiter + nonce
+  }
+
   final def fsroot: StorageKey[Dir] = StorageKey[Dir]("fsroot", "fsroot")
 
   import StorageAction._storageAction
@@ -35,6 +39,10 @@ object StorageFS {
     def hashKeyDelimiter = ";"
   }
 
+  final case class Dir(childFileKeys: Array[StorageKey[File]], childDirKeys: Array[StorageKey[Dir]]) {
+    def isEmpty: Boolean = childFileKeys.isEmpty && childDirKeys.isEmpty
+  }
+
   object Dir {
 
     import Delimiters._
@@ -53,6 +61,10 @@ object StorageFS {
       })
   }
 
+  final case class File(dataHash: String, dataKey: StorageKey[FileData])
+
+  final case class FileData(data: String)
+
   object File {
 
     import Delimiters._
@@ -69,16 +81,6 @@ object StorageFS {
   def parseDate(str: String): Option[js.Date] =
     Try(new js.Date(js.Date.parse(str))).toOption
 
-  final case class StorageKey[F](name: String, nonce: String) {
-    def render: String = name + Delimiters.keyDelimiter + nonce
-  }
-
-  final case class FileData(data: String)
-
-  final case class File(dataHash: String, dataKey: StorageKey[FileData])
-  final case class Dir(childFileKeys: Array[StorageKey[File]], childDirKeys: Array[StorageKey[Dir]]) {
-    def isEmpty: Boolean = childFileKeys.isEmpty && childDirKeys.isEmpty
-  }
 
   def getRaw[R: _storageAction](key: StorageKey[_]): Eff[R, Option[String]] =
     StorageProgram.get(key.name + Delimiters.keyDelimiter + key.nonce)
