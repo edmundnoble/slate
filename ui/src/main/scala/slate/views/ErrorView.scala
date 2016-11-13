@@ -2,7 +2,7 @@ package slate
 package views
 
 import slate.app.SlateApp.AllErrors
-import slate.app.ProgramCache.{InvalidBase64, InvalidBytecode}
+import slate.app.ProgramCache.{InvalidBase64, InvalidBytecode, ProgramSerializationError}
 import fastparse.all.ParseError
 import japgolly.scalajs.react._
 import org.scalajs.dom.html.Div
@@ -39,17 +39,16 @@ object ErrorView {
           _.eliminate(renderQQRuntimeException,
             _.eliminate(renderQQCompilerException,
               _.eliminate(renderParsingException,
-                _.eliminate(renderBase64Exception,
-                  _.eliminate(renderBytecodeException,
-                    _.impossible))))))))
+                  _.eliminate(renderSerializationException,
+                    _.impossible)))))))
   }
 
   def renderDeserializationError(err: Invalid.Data): TagMod = {
     "Error deserializing output from QQ program: " + err
   }
 
-  def renderBytecodeException(err: InvalidBytecode): TagMod = {
-    "Error getting QQ program from cache (bytecode): " + err
+  def renderSerializationException(err: ProgramSerializationError): TagMod = {
+    "Error getting QQ program from cache: " + err
   }
 
   def renderBase64Exception(err: InvalidBase64): TagMod = {

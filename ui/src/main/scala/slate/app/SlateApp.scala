@@ -97,7 +97,7 @@ object SlateApp extends scalajs.js.JSApp {
       programs.traverse[StorageProgram, DashProgram[ErrorGettingCachedProgram Xor Program[ConcreteFilter]]](program =>
         program.traverse[StorageProgram, ErrorGettingCachedProgram Xor Program[ConcreteFilter]] { programPrecompiledOrString =>
           programPrecompiledOrString.fold[StorageProgram[ErrorGettingCachedProgram Xor Program[ConcreteFilter]]](
-            _.right[ErrorGettingCachedProgram].pureEff[Fx.fx1[StorageAction]], ProgramCache.getCachedProgram)
+            _.right[ErrorGettingCachedProgram].pureEff[Fx.fx1[StorageAction]], ProgramCache.getCachedProgramByHash)
         }
       )
 
