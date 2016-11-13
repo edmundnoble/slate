@@ -64,7 +64,7 @@ case object Unit extends DelimitTransform[String] {
 }
 
 object DelimitTransform {
-  final def id: DelimitTransform[String] = Unit
+  final def string: DelimitTransform[String] = Unit
   implicit final class DelimitTransformOps[O](val transform: DelimitTransform[O]) extends AnyVal {
     def splitBy(delim: String): DelimitTransform[js.Array[O]] =
       DelimitArr(transform, delim)
