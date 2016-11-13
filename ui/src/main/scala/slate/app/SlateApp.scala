@@ -102,36 +102,8 @@ object SlateApp extends scalajs.js.JSApp {
       )
 
     StorageProgram.runProgram(DomStorage.Local, prepareProgramFolder).detach.flatMap { programDirKey =>
-      runSealedStorageProgram(prog, DomStorage.Local, programDirKey)
+      StorageFS.runSealedStorageProgram(prog, DomStorage.Local, nonceSource, programDirKey)
         .map(_.map(_.map(_.leftMap(Inr.apply).flatMap(QQCompiler.compileProgram(DashPrelude, _).leftMap(Inl.apply)))))
-    }
-  }
-
-  def runSealedStorageProgram[F[_]: Monad, A](prog: StorageProgram[A], underlying: Storage[F],
-                                       storageRoot: StorageFS.StorageKey[StorageFS.Dir]): F[A] = {
-    val storageFS = new StorageFS(underlying, nonceSource, storageRoot)
-    type mem = Member.Aux[Writer[Vector[String], ?], Fx.fx2[StorageAction, Writer[Vector[String], ?]], Fx.fx1[StorageAction]]
-    val loggedProgram: F[(A, Vector[String])] = StorageProgram.runProgram(storageFS,
-      writer.runWriterFold[Fx.fx2[StorageAction, Writer[Vector[String], ?]],
-        Fx.fx1[StorageAction],
-        Vector[String],
-        A,
-        Vector[String]](
-        StorageProgram.logKeys[Fx.fx1[StorageAction],
-          Fx.fx2[StorageAction, Writer[Vector[String], ?]],
-          NoFx,
-          A](prog)
-      )(writer.MonoidFold[Vector[String]])(implicitly[mem])).detach
-    loggedProgram.flatMap { case (v, usedKeys) =>
-      val removeExcessProgram =
-        StorageProgram.runProgram(underlying, for {
-          programDir <- StorageFS.getDir[Fx.fx1[StorageAction]](storageRoot)
-          _ <- programDir.traverse[StorageProgram, List[Unit]] { dir =>
-            val keysToRemove = dir.childFileKeys.map(_.name).toSet -- usedKeys
-            keysToRemove.toList.traverseA(StorageFS.removeFile[Fx.fx1[StorageAction]](_, storageRoot))
-          }
-        } yield ()).detach
-        removeExcessProgram.as(v)
     }
   }
 

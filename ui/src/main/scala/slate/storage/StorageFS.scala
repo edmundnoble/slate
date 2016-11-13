@@ -8,14 +8,17 @@ import cats.implicits._
 
 import scala.scalajs.js.Array
 import scala.util.Try
-import org.atnos.eff._, Eff._, syntax.all._
+import org.atnos.eff._
+import Eff._
+import cats.data.Writer
+import syntax.all._
 
 object StorageFS {
   final case class StorageKey[F](name: String, nonce: String) {
     def render: String = name + Delimiters.keyDelimiter + nonce
   }
 
-  final def fsroot: StorageKey[Dir] = StorageKey[Dir]("fsroot", "fsroot")
+  val fsroot: StorageKey[Dir] = StorageKey[Dir]("fsroot", "fsroot")
 
   import StorageAction._storageAction
 
@@ -184,6 +187,34 @@ object StorageFS {
       )
     )
   } yield ()
+
+  def runSealedStorageProgram[F[_] : Monad, A](prog: StorageProgram[A], underlying: Storage[F], nonceSource: () => String,
+                                               storageRoot: StorageFS.StorageKey[StorageFS.Dir]): F[A] = {
+    val storageFS = new StorageFS(underlying, nonceSource, storageRoot)
+    type mem = Member.Aux[Writer[Vector[String], ?], Fx.fx2[StorageAction, Writer[Vector[String], ?]], Fx.fx1[StorageAction]]
+    val loggedProgram: F[(A, Vector[String])] = StorageProgram.runProgram(storageFS,
+      writer.runWriterFold[Fx.fx2[StorageAction, Writer[Vector[String], ?]],
+        Fx.fx1[StorageAction],
+        Vector[String],
+        A,
+        Vector[String]](
+        StorageProgram.logKeys[Fx.fx1[StorageAction],
+          Fx.fx2[StorageAction, Writer[Vector[String], ?]],
+          NoFx,
+          A](prog)
+      )(writer.MonoidFold[Vector[String]])(implicitly[mem])).detach
+    loggedProgram.flatMap { case (v, usedKeys) =>
+      val removeExcessProgram =
+        StorageProgram.runProgram(underlying, for {
+          programDir <- StorageFS.getDir[Fx.fx1[StorageAction]](storageRoot)
+          _ <- programDir.traverse[StorageProgram, List[Unit]] { dir =>
+            val keysToRemove = dir.childFileKeys.map(_.name).toSet -- usedKeys
+            keysToRemove.toList.traverseA(StorageFS.removeFile[Fx.fx1[StorageAction]](_, storageRoot))
+          }
+        } yield ()).detach
+      removeExcessProgram.as(v)
+    }
+  }
 
 }
 
