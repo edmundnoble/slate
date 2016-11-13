@@ -34,7 +34,6 @@ final case class DelimitArr[O](transform: DelimitTransform[O], delim: String) ex
 }
 
 final case class DelimitFromBegin[O1, O2](transform1: DelimitTransform[O1], delim: String, transform2: DelimitTransform[O2]) extends DelimitTransform[(O1, O2)] {
-
   override def toInterpret(string: String): Option[(O1, O2)] = {
     val ind = string.indexOf(delim)
     if (ind == -1)
@@ -70,9 +69,9 @@ object DelimitTransform {
       DelimitArr(transform, delim)
     def |(delim: String): ThenBuilder[O] =
       new ThenBuilder(transform, delim)
-    def imap[O2](to: O => O2, from: O2 => O): DelimitTransform[O2] =
-      imapX[O2](o => Some(to(o)), from)
-    def imapX[O2](to: O => Option[O2], from: O2 => O): DelimitTransform[O2] =
+    def imap[O2](to: O => O2)(from: O2 => O): DelimitTransform[O2] =
+      imapX[O2](o => Some(to(o)))(from)
+    def imapX[O2](to: O => Option[O2])(from: O2 => O): DelimitTransform[O2] =
       DelimitTransformIxmap[O, O2](transform, to, from)
   }
   final class ThenBuilder[O](val transform: DelimitTransform[O], val delim: String) {

@@ -56,11 +56,12 @@ object StorageFS {
       (string | keyDelimiter | string).splitBy(interNodeDelimiter)
     def structure: DelimitTransform[Dir] =
       (nodesStructure | nodeKindDelimiter | nodesStructure)
-        .imap[Dir]({ case (fileKeys, dirKeys) =>
-        Dir(fileKeys.map((StorageKey.apply[File] _).tupled), dirKeys.map((StorageKey.apply[Dir] _).tupled))
-      }, { dir =>
-        (dir.childFileKeys.map { k => (k.name, k.nonce) }, dir.childDirKeys.map { k => (k.name, k.nonce) })
-      })
+        .imap { case (fileKeys, dirKeys) =>
+          Dir(fileKeys.map((StorageKey.apply[File] _).tupled), dirKeys.map((StorageKey.apply[Dir] _).tupled))
+        } { dir =>
+          (dir.childFileKeys.map { k => (k.name, k.nonce) }, dir.childDirKeys.map { k => (k.name, k.nonce) })
+        }
+
   }
 
   final case class File(dataHash: String, dataKey: StorageKey[FileData])
@@ -72,10 +73,12 @@ object StorageFS {
     import Delimiters._
 
     def structure: DelimitTransform[File] =
-      (string | hashKeyDelimiter | (string | keyDelimiter | string)).imap(
-        { case (str1, (str2, str3)) => File(str1, StorageKey(str2, str3)) },
-        file => (file.dataHash, (file.dataKey.name, file.dataKey.nonce))
-      )
+      (string | hashKeyDelimiter | (string | keyDelimiter | string))
+        .imap { case (hash, (name, nonce)) => File(hash, StorageKey(name, nonce))
+        } {
+          file => (file.dataHash, (file.dataKey.name, file.dataKey.nonce))
+        }
+
   }
 
   def parseDate(str: String): Option[js.Date] =

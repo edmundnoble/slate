@@ -1,8 +1,6 @@
 package slate
 package util
 
-import scalajs.js
-
 class DelimitTransformSuite extends SlateSuite {
 
   import DelimitTransform._
@@ -14,8 +12,8 @@ class DelimitTransformSuite extends SlateSuite {
       string.fromInterpret("hello") shouldBe "hello"
     }
     "arr" in {
-      string.splitBy("d").toInterpret("hello").value.toArray shouldBe Array("hello")
-      string.splitBy("d").toInterpret("heldlo").value.toArray shouldBe Array("hel", "lo")
+      string.splitBy("d").toInterpret("hello").value.toList shouldBe List("hello")
+      string.splitBy("d").toInterpret("heldlo").value.toList shouldBe List("hel", "lo")
     }
     "then" in {
       (string | "o" | string).toInterpret("helloworld").value shouldBe (("hell", "world"))
