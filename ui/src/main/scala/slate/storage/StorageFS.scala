@@ -1,13 +1,10 @@
 package slate
 package storage
 
-import cats.data.{Reader, Xor}
-import cats.{Monad, RecursiveTailRecM}
+import cats.Monad
 
 import scalajs.js
 import cats.implicits._
-import slate.util.DelimitTransform
-import shapeless.tag._
 
 import scala.scalajs.js.Array
 import scala.util.Try

@@ -85,7 +85,7 @@ object StorageProgram {
 
   def runProgram[S[_] : Monad, O, I, U, A](storage: Storage[S], program: Eff[I, A])
                                           (implicit ev: Member.Aux[StorageAction, I, U], ev2: Member.Aux[S, O, U]): Eff[O, A] = {
-    interpret.transform[I, O, U, StorageAction, S, A](program, Storage.storageToStorageActionTrans(storage))
+    interpret.transform(program, Storage.storageToStorageActionTrans(storage))
   }
 
   def printAction: Storage[λ[A => String]] = new Storage[λ[A => String]] {
