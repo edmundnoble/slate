@@ -114,18 +114,14 @@ object StorageProgram {
     }
   }
 
-  def logProgram[I, O, L: Monoid, U, A](eff: Eff[I, A])(log: StorageAction ~> Const[L, ?])
+  def logProgram[I, O, L: Monoid, U, A](eff: Eff[I, A])(log: StorageAction ~> Lambda[P => L])
                                        (implicit ev: Member.Aux[StorageAction, I, U],
                                         ev2: Member[StorageAction, O],
                                         ev3: MemberIn[Writer[L, ?], O],
                                         ev4: IntoPoly[I, O]): Eff[O, A] = {
     translateInto[I, StorageAction, O, A](eff)(new interpret.Translate[StorageAction, O] {
       override def apply[X](kv: StorageAction[X]): Eff[O, X] = {
-        val logValue = log(kv).getConst
-        for {
-          _ <- writer.tell[O, L](logValue)
-          r <- kv.send[O]
-        } yield r
+        writer.tell[O, L](log(kv)) *> kv.send[O]
       }
     })
   }
@@ -135,12 +131,12 @@ object StorageProgram {
                           ev2: Member[StorageAction, O],
                           ev3: MemberIn[Writer[Vector[String], ?], O],
                           ev4: IntoPoly[I, O]): Eff[O, A] =
-    logProgram(eff)(new (StorageAction ~> Const[Vector[String], ?]) {
-      override def apply[X](fa: StorageAction[X]): Const[Vector[String], X] = Const(fa match {
+    logProgram(eff)(new (StorageAction ~> λ[P => Vector[String]]) {
+      override def apply[X](fa: StorageAction[X]): Vector[String] = fa match {
         case StorageAction.Get(k) => Vector.empty[String] :+ k
         case StorageAction.Update(k, _) => Vector.empty[String] :+ k
         case StorageAction.Remove(_) => Vector.empty[String]
-      })
+      }
     })
 
   def logActions[I, O, U, A](eff: Eff[I, A])
@@ -148,12 +144,12 @@ object StorageProgram {
                              ev2: Member[StorageAction, O],
                              ev3: MemberIn[Writer[Vector[String], ?], O],
                              ev4: IntoPoly[I, O]): Eff[O, A] = {
-    logProgram(eff)(new (StorageAction ~> Const[Vector[String], ?]) {
-      override def apply[X](kv: StorageAction[X]): Const[Vector[String], X] = Const(kv match {
+    logProgram(eff)(new (StorageAction ~> λ[P => Vector[String]]) {
+      override def apply[X](kv: StorageAction[X]): Vector[String] = kv match {
         case StorageAction.Get(k) => Vector.empty[String] :+ s"Get($k)"
         case StorageAction.Update(k, v) => Vector.empty[String] :+ s"Update($k, $v)"
         case StorageAction.Remove(k) => Vector.empty[String] :+ s"Remove($k)"
-      })
+      }
     })
   }
 
