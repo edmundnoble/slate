@@ -67,12 +67,19 @@ object ProgramCache {
     import qq.protocol.FilterProtocol._
 
     getCachedBy[ProgramSerializationError, ParseError, Program[ConcreteFilter], String](
-      qqProgram, _.hashCode.toString, { program =>
-        val bytes = programCodec.encode(program).toXor.bimap(InvalidBytecode(_): ProgramSerializationError, _.value)
-        bytes.map(_.toBase64)
+      qqProgram,
+      _.hashCode.toString, { program =>
+        programCodec
+          .encode(program)
+          .toXor
+          .bimap(InvalidBytecode(_): ProgramSerializationError, _.value.toBase64)
       }, { encodedProgram =>
-        val deBased = BitVector.fromBase64(encodedProgram).toRightXor(InvalidBase64(encodedProgram): ProgramSerializationError)
-        deBased.flatMap(programCodec.decode(_).toXor.bimap(InvalidBytecode(_): ProgramSerializationError, _.value.value))
+        val deBased = BitVector.fromBase64(encodedProgram)
+          .toRightXor(InvalidBase64(encodedProgram): ProgramSerializationError)
+        deBased.flatMap(
+          programCodec.decode(_)
+            .toXor.bimap(InvalidBytecode(_): ProgramSerializationError, _.value.value)
+        )
       }, prepareProgram
     )
   }
