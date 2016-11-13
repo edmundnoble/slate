@@ -27,10 +27,10 @@ object ProgramCache {
   type ErrorGettingCachedProgram = ParseError :+: ProgramSerializationError :+: CNil
 
   def getCachedBy[ErrS, ErrP, A, I](input: I,
-                                          getKey: I => String,
-                                          encode: A => ErrS Xor String,
-                                          decode: String => ErrS Xor A,
-                                          prepare: I => ErrP Xor A)(implicit rec: RecursionEngine): StorageProgram[(ErrP :+: ErrS :+: CNil) Xor A] = {
+                                    getKey: I => String,
+                                    encode: A => ErrS Xor String,
+                                    decode: String => ErrS Xor A,
+                                    prepare: I => ErrP Xor A)(implicit rec: RecursionEngine): StorageProgram[(ErrP :+: ErrS :+: CNil) Xor A] = {
 
     import storage.StorageProgram._
 
