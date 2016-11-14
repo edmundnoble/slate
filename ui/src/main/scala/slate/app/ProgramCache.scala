@@ -20,11 +20,11 @@ object ProgramCache {
     optimizedProgram
   }
 
-  sealed abstract class ProgramSerializationError(msg: String) extends Exception(msg)
-  case class InvalidBase64(str: String) extends ProgramSerializationError(str + " is not base64")
-  case class InvalidBytecode(fail: scodec.Attempt.Failure) extends ProgramSerializationError("error decoding program from cache: " + fail.cause)
+  sealed abstract class ProgramSerializationException(msg: String) extends Exception(msg)
+  case class InvalidBase64(str: String) extends ProgramSerializationException(str + " is not base64")
+  case class InvalidBytecode(fail: scodec.Attempt.Failure) extends ProgramSerializationException("error decoding program from cache: " + fail.cause)
 
-  type ErrorGettingCachedProgram = ParseError :+: ProgramSerializationError :+: CNil
+  type ErrorGettingCachedProgram = ParseError :+: ProgramSerializationException :+: CNil
 
   def getCachedBy[ErrS, ErrP, A, I](input: I)(
     getKey: I => String,
@@ -71,13 +71,13 @@ object ProgramCache {
         FilterProtocol.programCodec
           .encode(program)
           .toXor
-          .bimap(InvalidBytecode(_): ProgramSerializationError, _.value.toBase64)
+          .bimap(InvalidBytecode(_): ProgramSerializationException, _.value.toBase64)
       }, { encodedProgram =>
         val deBased = BitVector.fromBase64(encodedProgram)
-          .toRightXor(InvalidBase64(encodedProgram): ProgramSerializationError)
+          .toRightXor(InvalidBase64(encodedProgram): ProgramSerializationException)
         deBased.flatMap(
           FilterProtocol.programCodec.decode(_)
-            .toXor.bimap(InvalidBytecode(_): ProgramSerializationError, _.value.value)
+            .toXor.bimap(InvalidBytecode(_): ProgramSerializationException, _.value.value)
         )
       }, prepareProgram
     )
