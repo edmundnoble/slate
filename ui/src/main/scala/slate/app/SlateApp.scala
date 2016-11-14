@@ -24,7 +24,7 @@ import shapeless.{:+:, CNil, Inl, Inr}
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
-import scala.util.Success
+import scala.util.{Success, Try}
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
 import cats._
@@ -91,7 +91,6 @@ object SlateApp extends scalajs.js.JSApp {
   }
 
   def prepareProgramFolder: StorageProgram[StorageFS.StorageKey[StorageFS.Dir]] = for {
-    _ <- StorageFS.initFS
     programDirKey <- StorageFS.mkDir("program", nonceSource, StorageFS.fsroot)
   } yield programDirKey.get.fold(identity[StorageFS.StorageKey[StorageFS.Dir]])
 
@@ -104,7 +103,7 @@ object SlateApp extends scalajs.js.JSApp {
     }
 
     val prog: StorageProgram[List[DashProgram[Xor[ErrorGettingCachedProgram, Program[ConcreteFilter]]]]] =
-        programs.traverse(reassembleProgram)
+      programs.traverse(reassembleProgram)
 
     StorageProgram.runProgram(DomStorage.Local, prepareProgramFolder).detach.flatMap { programDirKey =>
       StorageFS.runSealedStorageProgram(prog, DomStorage.Local, nonceSource, programDirKey)
@@ -130,7 +129,6 @@ object SlateApp extends scalajs.js.JSApp {
     }
 
   type ErrorDeserializingProgramOutput = upickle.Invalid.Data :+: ErrorRunningPrograms
-
 
   private def
   deserializeProgramOutput: Task[List[DashProgram[ErrorCompilingPrograms Xor Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]]]]] =
@@ -202,6 +200,7 @@ object SlateApp extends scalajs.js.JSApp {
       dom.document.body.children.namedItem("container")
     val _ =
       (for {
+        _ <- Observable.fromTask(StorageProgram.runProgram(DomStorage.Local, StorageFS.initFS).detach)
         _ <- Observable.fromTask(appendStyles())
         compilePrograms <- getContent
         outputs <- Observable.fromTask(compilePrograms)

@@ -27,7 +27,7 @@ object ProgramCache {
 
   type ErrorGettingCachedProgram = ParseError :+: ProgramSerializationException :+: CNil
 
-  def getCachedBy[ErrS, ErrP, A, I](input: I)(
+  def getCachedByPrepare[ErrS, ErrP, A, I](input: I)(
     getKey: I => String,
     encode: A => ErrS Xor String,
     decode: String => ErrS Xor A,
@@ -63,7 +63,7 @@ object ProgramCache {
 
     import qq.protocol.FilterProtocol
 
-    getCachedBy[ProgramSerializationException, ParseError, Program[ConcreteFilter], DashProgram[String]](qqProgram)(
+    getCachedByPrepare[ProgramSerializationException, ParseError, Program[ConcreteFilter], DashProgram[String]](qqProgram)(
       prog => prog.title + prog.program.hashCode.toString, { (program: Program[ConcreteFilter]) =>
         FilterProtocol.programCodec
           .encode(program)
