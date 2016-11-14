@@ -8,6 +8,7 @@ import slate.util.Util._
 import fastparse.all.ParseError
 import qq.util.Recursion.RecursionEngine
 import shapeless.{:+:, CNil}
+import storage.StorageProgram
 
 import cats.data.Xor
 import cats.implicits._
@@ -32,13 +33,11 @@ object ProgramCache {
     decode: String => ErrS Xor A,
     prepare: I => ErrP Xor A): StorageProgram[(ErrP :+: ErrS :+: CNil) Xor A] = {
 
-    import storage.StorageProgram._
-
     val injectError = inj[ErrP :+: ErrS :+: CNil]
     val key = getKey(input)
 
     for {
-      programInStorage <- get(key)
+      programInStorage <- StorageProgram.get(key)
       decodedOptimizedProgram <- programInStorage match {
         case None =>
           val preparedProgram =
@@ -49,7 +48,7 @@ object ProgramCache {
             )
           encodedProgram.fold(
             _.left.pure[StorageProgram],
-            update(key, _).as(preparedProgram)
+            StorageProgram.update(key, _).as(preparedProgram)
           )
         case Some(encodedProgram) =>
           decode(encodedProgram).leftMap(injectError(_)).pure[StorageProgram]
