@@ -65,4 +65,5 @@ object ErrorView {
         err.errors.map(e => div(Styles.runtimeError, e.message)).toList: _*
       )
   }
+
 }
