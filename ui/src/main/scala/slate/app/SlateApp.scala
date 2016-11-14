@@ -32,8 +32,6 @@ import cats.data._
 import cats.implicits._
 import org.atnos.eff.{Eff, Fx, Member, NoFx, writer}
 import org.atnos.eff.syntax.all._
-import slate.storage.StorageFS.AlreadyPresent
-import slate.storage._
 
 @JSExport
 object SlateApp extends scalajs.js.JSApp {
@@ -43,14 +41,20 @@ object SlateApp extends scalajs.js.JSApp {
   final class EmptyResponseException extends java.lang.Exception("Empty response")
 
   final case class DashProgram[P](id: Int, title: String, titleLink: String, program: P, input: JSON) {
-    def map[B](f: P => B): DashProgram[B] = copy(program = f(program))
-    def traverse[G[_] : Functor, B](f: P => G[B]): G[DashProgram[B]] = f(program).map(DashProgram[B](id, title, titleLink, _, input))
+    def withProgram[B](newProgram: B): DashProgram[B] = copy(program = newProgram)
     def nameInputHash: Int = (title, input).hashCode
   }
 
   object DashProgram {
-    implicit def dashProgramFunctor: Functor[DashProgram] = new Functor[DashProgram] {
+
+    implicit def dashProgramTraverse: Traverse[DashProgram] = new Traverse[DashProgram] {
       override def map[A, B](fa: DashProgram[A])(f: (A) => B): DashProgram[B] = fa.copy(program = f(fa.program))
+      override def traverse[G[_], A, B](fa: DashProgram[A])(f: (A) => G[B])(implicit evidence$1: Applicative[G]): G[DashProgram[B]] =
+        f(fa.program).map(fa.withProgram)
+      override def foldLeft[A, B](fa: DashProgram[A], b: B)(f: (B, A) => B): B =
+        f(b, fa.program)
+      override def foldRight[A, B](fa: DashProgram[A], lb: Eval[B])(f: (A, Eval[B]) => Eval[B]): Eval[B] =
+        f(fa.program, lb)
     }
   }
 
@@ -93,13 +97,14 @@ object SlateApp extends scalajs.js.JSApp {
 
   def compiledPrograms: Task[List[DashProgram[Xor[ErrorCompilingPrograms, CompiledFilter]]]] = {
 
+    def reassembleProgram(program: DashProgram[Xor[Program[ConcreteFilter], String]]): StorageProgram[DashProgram[Xor[ErrorGettingCachedProgram, Program[ConcreteFilter]]]] = {
+      program.program.fold[StorageProgram[DashProgram[Xor[ErrorGettingCachedProgram, Program[ConcreteFilter]]]]](p =>
+        Eff.pure(program.withProgram(Xor.right[ErrorGettingCachedProgram, Program[ConcreteFilter]](p))),
+        s => ProgramCache.getCachedProgramByHash(program.withProgram(s)).map(program.withProgram))
+    }
+
     val prog: StorageProgram[List[DashProgram[Xor[ErrorGettingCachedProgram, Program[ConcreteFilter]]]]] =
-      programs.traverse[StorageProgram, DashProgram[ErrorGettingCachedProgram Xor Program[ConcreteFilter]]](program =>
-        program.traverse[StorageProgram, ErrorGettingCachedProgram Xor Program[ConcreteFilter]] { programPrecompiledOrString =>
-          programPrecompiledOrString.fold[StorageProgram[ErrorGettingCachedProgram Xor Program[ConcreteFilter]]](
-            _.right[ErrorGettingCachedProgram].pureEff[Fx.fx1[StorageAction]], ProgramCache.getCachedProgramByHash)
-        }
-      )
+        programs.traverse(reassembleProgram)
 
     StorageProgram.runProgram(DomStorage.Local, prepareProgramFolder).detach.flatMap { programDirKey =>
       StorageFS.runSealedStorageProgram(prog, DomStorage.Local, nonceSource, programDirKey)
@@ -164,7 +169,7 @@ object SlateApp extends scalajs.js.JSApp {
           injectedErrors.map(e => Task.now(AppProps(id, title, titleLink, AppModel(e))))
       })(
         runCompiledPrograms.map(_.map(t => AppProps(t.id, t.title, t.titleLink, AppModel(Nil.right)))
-      ))((l, ap) => Task.mapBoth(ap, l){ (a, li) => a :: li.filterNot(_.id == a.id) })
+        ))((l, ap) => Task.mapBoth(ap, l) { (a, li) => a :: li.filterNot(_.id == a.id) })
         .map(_.map(appProps => SearchPageProps(appProps.sortBy(_.id))))
     }
 

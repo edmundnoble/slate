@@ -9,13 +9,13 @@ import fastparse.all.ParseError
 import qq.util.Recursion.RecursionEngine
 import shapeless.{:+:, CNil}
 import storage.StorageProgram
-
 import cats.data.Xor
 import cats.implicits._
+import slate.app.SlateApp.DashProgram
 
 object ProgramCache {
 
-  def prepareProgram(program: String)(implicit rec: RecursionEngine): ParseError Xor Program[ConcreteFilter] = {
+  def parseAndOptimizeProgram(program: String)(implicit rec: RecursionEngine): ParseError Xor Program[ConcreteFilter] = {
     val parsedQQProgram = Parser.program.parse(program).toXor.bimap(ParseError(_), _.value)
     val optimizedProgram = parsedQQProgram.map(LocalOptimizer.optimizeProgram)
     optimizedProgram
@@ -59,24 +59,24 @@ object ProgramCache {
 
   // cache optimized, parsed programs using their hashcode as a key
   // store them as base64-encoded bytecode
-  def getCachedProgramByHash(qqProgram: String)(implicit rec: RecursionEngine): StorageProgram[ErrorGettingCachedProgram Xor Program[ConcreteFilter]] = {
+  def getCachedProgramByHash(qqProgram: DashProgram[String])(implicit rec: RecursionEngine): StorageProgram[ErrorGettingCachedProgram Xor Program[ConcreteFilter]] = {
 
     import qq.protocol.FilterProtocol
 
-    getCachedBy(qqProgram)(
-      _.hashCode.toString, { program =>
+    getCachedBy[ProgramSerializationException, ParseError, Program[ConcreteFilter], DashProgram[String]](qqProgram)(
+      prog => prog.title + prog.program.hashCode.toString, { (program: Program[ConcreteFilter]) =>
         FilterProtocol.programCodec
           .encode(program)
           .toXor
           .bimap(InvalidBytecode(_): ProgramSerializationException, _.value.toBase64)
       }, { encodedProgram =>
-        val deBased = BitVector.fromBase64(encodedProgram)
+        BitVector.fromBase64(encodedProgram)
           .toRightXor(InvalidBase64(encodedProgram): ProgramSerializationException)
-        deBased.flatMap(
-          FilterProtocol.programCodec.decode(_)
-            .toXor.bimap(InvalidBytecode(_): ProgramSerializationException, _.value.value)
-        )
-      }, prepareProgram
+          .flatMap(
+            FilterProtocol.programCodec.decode(_)
+              .toXor.bimap(InvalidBytecode(_): ProgramSerializationException, _.value.value)
+          )
+      }, dashProgram => parseAndOptimizeProgram(dashProgram.program)
     )
   }
 
