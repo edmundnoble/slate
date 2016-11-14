@@ -29,12 +29,12 @@ object JSONPrelude extends Prelude {
   def `false`: CompiledDefinition = noParamDefinition("false", CompiledFilter.const(JSON.False))
 
   // x | orElse(y): null coalescing operator
-  def orElse: CompiledDefinition = CompiledDefinition("orElse", 1, {
-    case (default :: Nil) =>
-      CompiledFilter.singleton((j: JSON) =>
-        if (j == JSON.Null) default(JSON.Null)
-        else (j :: Nil).pureEff[CompiledFilterStack]
-      ).right
+  def orElse: CompiledDefinition = CompiledDefinition("orElse", 1, { params =>
+    val default = params.head
+    CompiledFilter.singleton((j: JSON) =>
+      if (j == JSON.Null) default(JSON.Null)
+      else (j :: Nil).pureEff[CompiledFilterStack]
+    ).right
   })
 
   // base 64 encoding, duh
@@ -68,8 +68,10 @@ object JSONPrelude extends Prelude {
   // regex replace
   def replaceAll: CompiledDefinition =
     CompiledDefinition(name = "replaceAll", numParams = 2,
-      body = CompiledDefinition.standardEffectDistribution {
-        case (regexRaw :: replacementRaw :: Nil) => (j: JSON) =>
+      body = CompiledDefinition.standardEffectDistribution { params =>
+        val regexRaw = params.head
+        val replacementRaw = params.tail.head
+        (j: JSON) =>
           val regexValidated: OrRuntimeErr[Pattern] = regexRaw match {
             case JSON.Str(string) => Pattern.compile(string).validNel
             case k => NonEmptyList.of[QQRuntimeError](NotARegex(QQRuntime.print(k))).invalid

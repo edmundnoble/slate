@@ -19,7 +19,6 @@ trait Log4JavaScript extends js.Object {
 }
 
 @js.native
-@JSName("log4javascript.Level")
 trait Level extends js.Object {
   val ALL: Level = js.native
   val TRACE: Level = js.native
@@ -31,7 +30,6 @@ trait Level extends js.Object {
 }
 
 @js.native
-@JSName("log4javascript.Logger")
 trait JSLogger extends js.Object {
   def addAppender(appender: Appender): Unit = js.native
 
@@ -69,7 +67,6 @@ trait JSLogger extends js.Object {
 }
 
 @js.native
-@JSName("log4javascript.Layout")
 trait Layout extends js.Object
 
 @js.native
@@ -77,7 +74,6 @@ trait Layout extends js.Object
 class JsonLayout extends Layout
 
 @js.native
-@JSName("log4javascript.Appender")
 trait Appender extends js.Object {
   def setLayout(layout: Layout): Unit = js.native
 
@@ -99,7 +95,8 @@ class AjaxAppender(url: String) extends Appender {
 }
 
 @js.native
-object Log4JavaScript extends js.GlobalScope {
+@js.annotation.JSGlobalScope
+object Log4JavaScript extends js.Any {
   val log4javascript: Log4JavaScript = js.native
 }
 

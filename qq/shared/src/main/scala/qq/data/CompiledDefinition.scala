@@ -28,7 +28,7 @@ object CompiledDefinition {
 
   final def noParamDefinition(name: String, fun: CompiledFilter): CompiledDefinition = {
     CompiledDefinition(
-      name, numParams = 0, { case Nil => fun.right[QQCompilationException] }
+      name, numParams = 0, { _ => fun.right[QQCompilationException] }
     )
   }
 }

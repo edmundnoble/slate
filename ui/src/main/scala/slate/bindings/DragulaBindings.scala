@@ -68,9 +68,6 @@ trait Drake extends js.Object {
   @js.native
   def remove(): Unit = js.native
 
-  @js.native
-  def on() = js.native
-
 }
 
 @js.native

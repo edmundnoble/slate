@@ -186,6 +186,7 @@ object SlateBuild {
       "-deprecation",
       "-feature",
       "-language:higherKinds",
+      "-Xfatal-warnings",
       "-Ywarn-adapted-args",
       "-Ywarn-adapted-args",
       "-Ywarn-inaccessible",
