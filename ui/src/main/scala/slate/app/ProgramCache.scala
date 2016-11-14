@@ -64,11 +64,11 @@ object ProgramCache {
   // store them as base64-encoded bytecode
   def getCachedProgramByHash(qqProgram: String)(implicit rec: RecursionEngine): StorageProgram[ErrorGettingCachedProgram Xor Program[ConcreteFilter]] = {
 
-    import qq.protocol.FilterProtocol._
+    import qq.protocol.FilterProtocol
 
     getCachedBy(qqProgram)(
       _.hashCode.toString, { program =>
-        programCodec
+        FilterProtocol.programCodec
           .encode(program)
           .toXor
           .bimap(InvalidBytecode(_): ProgramSerializationError, _.value.toBase64)
@@ -76,7 +76,7 @@ object ProgramCache {
         val deBased = BitVector.fromBase64(encodedProgram)
           .toRightXor(InvalidBase64(encodedProgram): ProgramSerializationError)
         deBased.flatMap(
-          programCodec.decode(_)
+          FilterProtocol.programCodec.decode(_)
             .toXor.bimap(InvalidBytecode(_): ProgramSerializationError, _.value.value)
         )
       }, prepareProgram
