@@ -178,9 +178,8 @@ object StorageFS {
   def removeFile[R: _storageAction](fileName: String, dirKey: StorageKey[Dir]): Eff[R, Unit] = for {
     dir <- getDir[R](dirKey)
     hash = dir.flatMap(_.childFileKeys.find(_.name == fileName))
-    file <- hash.traverseA(k => for {f <- getFile(k); _ <- StorageProgram.remove[R](k.render)} yield f)
-    u <- file.flatten.traverseA[R, Unit](f => StorageProgram.remove[R](f.dataKey.render))
-    _ <- u.traverseA(_ =>
+    file <- hash.traverseA(k => for {f <- getFile(k); _ <- f.map(_.dataKey.render).traverseA(StorageProgram.remove[R]); _ <- StorageProgram.remove[R](k.render)} yield f)
+    _ <- hash.traverseA(_ =>
       StorageProgram.update[R](dirKey.render,
         Dir.structure.fromInterpret(dir.get.copy(childFileKeys = dir.get.childFileKeys.filter(_.name != fileName)))
       )
