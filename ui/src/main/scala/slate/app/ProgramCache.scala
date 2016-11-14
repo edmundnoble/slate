@@ -52,9 +52,7 @@ object ProgramCache {
             update(key, _).as(preparedProgram)
           )
         case Some(encodedProgram) =>
-          decode(encodedProgram)
-            .leftMap(injectError(_))
-            .pure[StorageProgram]
+          decode(encodedProgram).leftMap(injectError(_)).pure[StorageProgram]
       }
     } yield decodedOptimizedProgram
   }
