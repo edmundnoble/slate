@@ -39,7 +39,6 @@ object StorageFS {
     def keyDelimiter = "\\"
     def nodeKindDelimiter = "^"
     def interNodeDelimiter = ","
-    def hashKeyDelimiter = ";"
   }
 
   final case class Dir(childFileKeys: Array[StorageKey[File]], childDirKeys: Array[StorageKey[Dir]]) {
@@ -64,19 +63,19 @@ object StorageFS {
 
   }
 
-  final case class File(dataHash: String, dataKey: StorageKey[FileData])
+  final case class File(dataKey: StorageKey[FileData]) extends AnyVal
 
-  final case class FileData(data: String)
+  final case class FileData(data: String) extends AnyVal
 
   object File {
 
     import Delimiters._
 
     def structure: DelimitTransform[File] =
-      (string | hashKeyDelimiter | (string | keyDelimiter | string))
-        .imap { case (hash, (name, nonce)) => File(hash, StorageKey(name, nonce))
+      (string | keyDelimiter | string)
+        .imap { case (name, nonce) => File(StorageKey(name, nonce))
         } {
-          file => (file.dataHash, (file.dataKey.name, file.dataKey.nonce))
+          file => (file.dataKey.name, file.dataKey.nonce)
         }
 
   }
@@ -136,7 +135,7 @@ object StorageFS {
     dir <- getDir[R](dirKey)
     hash = dir.map(_.childFileKeys.find(_.name == fileName))
     dataKey = StorageKey[FileData](fileName, nonceSource())
-    newFile = File(data.hashCode.toString, dataKey)
+    newFile = File(dataKey)
     key <- hash.traverseA { maybeHash =>
       maybeHash.map(fileKey => (StorageProgram.update(fileKey.render, File.structure.fromInterpret(newFile)) >>
         StorageProgram.update(dataKey.render, data)).as(fileKey)).getOrElse[Eff[R, StorageKey[File]]] {
