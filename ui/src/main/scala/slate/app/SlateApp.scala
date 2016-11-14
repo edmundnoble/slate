@@ -152,6 +152,30 @@ object SlateApp extends scalajs.js.JSApp {
       )
     }
 
+  def prepareDataFolder: StorageProgram[StorageFS.StorageKey[StorageFS.Dir]] = for {
+    dataDirKey <- StorageFS.mkDir("data", nonceSource, StorageFS.fsroot)
+  } yield dataDirKey.get.fold(identity[StorageFS.StorageKey[StorageFS.Dir]])
+
+  def getCachedOutput(dataDirKey: StorageFS.StorageKey[StorageFS.Dir], programs: List[DashProgram[_]]): Task[List[DashProgram[ErrorCompilingPrograms Xor Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]]]]] =
+    for {
+      progs <- deserializeProgramOutput
+      progMap = progs.groupBy(p => p.title + p.input.hashCode())
+      orf <- StorageFS.runSealedStorageProgram(programs.traverseA(p =>
+        ProgramCache.getCachedByPrepareM[Unit, Unit, DashProgram[ErrorCompilingPrograms Xor Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]]], DashProgram[_]](p)(
+          prg => prg.title + prg.input.hashCode(), { (models: List[ExpandableContentModel]) =>
+            ExpandableContentModel.pkls.write(models).toString().right[Unit]
+          }, { (title, encodedModels) =>
+            Try(upickle.json.read(encodedModels))
+              .toOption.flatMap(ExpandableContentModel.pkls.read.lift)
+              .toRightXor(())
+              .map(progMap(title).head.withProgram(_))
+              .map(_.map[Xor[ErrorCompilingPrograms, Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]]]](m => Task.now(m.right).right))
+          }, { f =>
+            progMap(f.title + f.input.hashCode()).head.right
+          })), DomStorage.Local, nonceSource, dataDirKey)
+    } yield orf
+
+
   type AllErrors = upickle.Invalid.Data :+: QQRuntimeException :+: ErrorCompilingPrograms
 
   def getContent: Observable[Task[SearchPageProps]] =

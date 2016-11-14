@@ -3,7 +3,7 @@ package storage
 
 import cats.data._
 import cats.implicits._
-import cats.{Monad, Monoid, ~>}
+import cats.{Applicative, Functor, Monad, Monoid, ~>}
 import monix.eval.Task
 import org.atnos.eff.Eff._
 import org.atnos.eff._
@@ -151,6 +151,52 @@ object StorageProgram {
         case StorageAction.Remove(k) => Vector.empty[String] :+ s"Remove($k)"
       }
     })
+  }
+
+  // specialize a storageProgram to work on a particular monad
+  def toFixed[F[_] : Monad]: StorageProgram ~> FixedStorageAction[F, ?] = new (StorageProgram ~> FixedStorageAction[F, ?]) {
+    override def apply[A](fa: StorageProgram[A]): FixedStorageAction[F, A] =
+      (storage: Storage[F]) => StorageProgram.runProgram(storage, fa).detach
+  }
+
+}
+
+// a StorageAction which only works with a single functor
+sealed trait FixedStorageAction[F[_], A] {
+  self =>
+
+  def run(storage: Storage[F]): F[A]
+
+  final def hflatMap[B](f: A => F[B])(implicit F: Monad[F]): FixedStorageAction[F, B] =
+    (storage: Storage[F]) => F.flatMap(self.run(storage))(f)
+
+  final def flatMap[B](f: A => FixedStorageAction[F, B])(implicit F: Monad[F]): FixedStorageAction[F, B] =
+    (storage: Storage[F]) => F.flatMap(self.run(storage))(f(_).run(storage))
+
+  final def map[B](f: A => B)(implicit F: Functor[F]): FixedStorageAction[F, B] =
+    (storage: Storage[F]) => F.map(self.run(storage))(f)
+}
+
+object FixedStorageAction {
+
+  def pure[F[_] : Applicative, A](value: A): FixedStorageAction[F, A] = (_: Storage[F]) => value.pure[F]
+
+  def hpure[F[_], A](value: F[A]): FixedStorageAction[F, A] = (_: Storage[F]) => value
+
+  def get[F[_]](key: String): FixedStorageAction[F, Option[String]] =
+    (storage: Storage[F]) => storage(key)
+
+  def update[F[_]](key: String, value: String): FixedStorageAction[F, Unit] =
+    (storage: Storage[F]) => storage.update(key, value)
+
+  def remove[F[_]](key: String): FixedStorageAction[F, Unit] =
+    (storage: Storage[F]) => storage.remove(key)
+
+  implicit def fixedStorageActionMonad[F[_]](implicit F: Monad[F]): Monad[FixedStorageAction[F, ?]] = new Monad[FixedStorageAction[F, ?]] {
+    override def pure[A](x: A): FixedStorageAction[F, A] = FixedStorageAction.pure(x)
+    override def flatMap[A, B](fa: FixedStorageAction[F, A])(f: (A) => FixedStorageAction[F, B]): FixedStorageAction[F, B] = fa.flatMap(f)
+    override def map[A, B](fa: FixedStorageAction[F, A])(f: (A) => B): FixedStorageAction[F, B] = fa.map(f)
+    override def tailRecM[A, B](a: A)(f: (A) => FixedStorageAction[F, Either[A, B]]): FixedStorageAction[F, B] = defaultTailRecM(a)(f)
   }
 
 }

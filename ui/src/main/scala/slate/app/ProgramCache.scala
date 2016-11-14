@@ -1,6 +1,7 @@
 package slate
 package app
 
+import cats.Monad
 import qq.cc._
 import qq.data.{ConcreteFilter, Program}
 import scodec.bits.BitVector
@@ -8,7 +9,7 @@ import slate.util.Util._
 import fastparse.all.ParseError
 import qq.util.Recursion.RecursionEngine
 import shapeless.{:+:, CNil}
-import storage.StorageProgram
+import storage.{FixedStorageAction, StorageProgram}
 import cats.data.Xor
 import cats.implicits._
 import slate.app.SlateApp.DashProgram
@@ -27,10 +28,50 @@ object ProgramCache {
 
   type ErrorGettingCachedProgram = ParseError :+: ProgramSerializationException :+: CNil
 
+  def getCachedBy[ErrS, A](input: A)(
+    getKey: A => String,
+    decode: String => ErrS Xor A): StorageProgram[Option[ErrS Xor A]] = {
+    val key = getKey(input)
+    for {
+      raw <- StorageProgram.get(key)
+      decodedProgram = raw.map(decode)
+    } yield decodedProgram
+  }
+
+  def getCachedByPrepareM[ErrS, ErrP, F[_] : Monad, A, I](input: I)(
+    getKey: I => String,
+    encode: A => ErrS Xor String,
+    decode: (String, String) => ErrS Xor A,
+    prepare: I => ErrP Xor F[A]): FixedStorageAction[F, (ErrP :+: ErrS :+: CNil) Xor A] = {
+
+    val injectError = inj[ErrP :+: ErrS :+: CNil]
+    val key = getKey(input)
+
+    for {
+      programInStorage <- FixedStorageAction.get[F](key)
+      decodedOptimizedProgram <- programInStorage match {
+        case None =>
+          for {
+            preparedProgram <- prepare(input)
+              .map(FixedStorageAction.hpure[F, A])
+              .leftMap(injectError(_))
+              .sequence[FixedStorageAction[F, ?], A]
+            encodedProgram: ((ErrP :+: ErrS :+: CNil) Xor String) = preparedProgram.flatMap(encode(_).leftMap(injectError(_)))
+            result <- encodedProgram.fold(
+              _.left[A].pure[FixedStorageAction[F, ?]],
+              FixedStorageAction.update[F](key, _).map(_ => preparedProgram)
+            )
+          } yield result
+        case Some(encodedProgram) =>
+          decode(key, encodedProgram).leftMap(injectError(_)).traverse(FixedStorageAction.pure[F, A])
+      }
+    } yield decodedOptimizedProgram
+  }
+
   def getCachedByPrepare[ErrS, ErrP, A, I](input: I)(
     getKey: I => String,
     encode: A => ErrS Xor String,
-    decode: String => ErrS Xor A,
+    decode: (String, String) => ErrS Xor A,
     prepare: I => ErrP Xor A): StorageProgram[(ErrP :+: ErrS :+: CNil) Xor A] = {
 
     val injectError = inj[ErrP :+: ErrS :+: CNil]
@@ -51,7 +92,7 @@ object ProgramCache {
             StorageProgram.update(key, _).as(preparedProgram)
           )
         case Some(encodedProgram) =>
-          decode(encodedProgram).leftMap(injectError(_)).pure[StorageProgram]
+          decode(key, encodedProgram).leftMap(injectError(_)).pure[StorageProgram]
       }
     } yield decodedOptimizedProgram
   }
@@ -69,7 +110,7 @@ object ProgramCache {
           .encode(program)
           .toXor
           .bimap(InvalidBytecode(_): ProgramSerializationException, _.value.toBase64)
-      }, { encodedProgram =>
+      }, { (_, encodedProgram) =>
         BitVector.fromBase64(encodedProgram)
           .toRightXor(InvalidBase64(encodedProgram): ProgramSerializationException)
           .flatMap(
