@@ -51,10 +51,6 @@ object ErrorView {
     "Error getting QQ program from cache: " + err
   }
 
-  def renderBase64Exception(err: InvalidBase64): TagMod = {
-    "Error getting QQ program from cache (base64): " + err
-  }
-
   def renderParsingException(err: ParseError): TagMod = {
     "Error parsing QQ program: " + err
   }
