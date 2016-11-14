@@ -30,7 +30,7 @@ object ProgramCache {
     getKey: I => String,
     encode: A => ErrS Xor String,
     decode: String => ErrS Xor A,
-    prepare: I => ErrP Xor A)(implicit rec: RecursionEngine): StorageProgram[(ErrP :+: ErrS :+: CNil) Xor A] = {
+    prepare: I => ErrP Xor A): StorageProgram[(ErrP :+: ErrS :+: CNil) Xor A] = {
 
     import storage.StorageProgram._
 
