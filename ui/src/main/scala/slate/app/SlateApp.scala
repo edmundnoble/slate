@@ -173,15 +173,15 @@ object SlateApp extends scalajs.js.JSApp {
   val errorDeserializingProgramOutputInAllErrors: Basis[AllErrors, ErrorDeserializingProgramOutput] =
     Basis[AllErrors, ErrorDeserializingProgramOutput]
 
-  def makeDataKey(title: String, input: JSON) = title + " " + input.hashCode()
+  def makeDataKey(title: String, input: JSON): String =
+    title + " " + input.hashCode()
 
   def getCachedOutput(dataDirKey: StorageFS.StorageKey[StorageFS.Dir], programs: List[SlateProgram[Unit]]): Task[List[Option[SlateProgram[InvalidJSON Either List[ExpandableContentModel]]]]] = {
     type mem1 = Member.Aux[StorageAction, Fx.fx2[Task, StorageAction], Fx.fx1[Task]]
     type mem2 = Member[Task, Fx.fx1[Task]]
     for {
       progs <- deserializeProgramOutput
-      progMap = progs.groupBy(p => makeDataKey(p.title, p.input))
-      porgs <- StorageFS.runSealedStorageProgramInto[Fx.fx2[Task, StorageAction], Fx.fx1[Task], Task, List[(SlateProgram[Unit], Option[Either[InvalidJSON, List[ExpandableContentModel]]])]](
+      cachedContent <- StorageFS.runSealedStorageProgramInto[Fx.fx2[Task, StorageAction], Fx.fx1[Task], Task, List[(SlateProgram[Unit], Option[Either[InvalidJSON, List[ExpandableContentModel]]])]](
         programs.traverseA(p =>
           Caching.getCachedBy[Fx.fx2[Task, StorageAction], InvalidJSON, SlateProgram[Unit], List[ExpandableContentModel]](p)(
             prg => makeDataKey(prg.title, prg.input), {
@@ -191,7 +191,7 @@ object SlateApp extends scalajs.js.JSApp {
                   .toRight(InvalidJSON(encodedModels))
             })
             .map(ms => (p, ms))), DomStorage.Local, nonceSource, dataDirKey)(Monad[Task], implicitly[mem1], implicitly[mem2]).detach
-      cachedPrograms = porgs.map {
+      cachedPrograms = cachedContent.map {
         case (p, models) => models.map(p.withProgram)
       }
     } yield cachedPrograms
