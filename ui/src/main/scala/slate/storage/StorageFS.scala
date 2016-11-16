@@ -63,22 +63,7 @@ object StorageFS {
 
   }
 
-  final case class File(dataKey: StorageKey[FileData]) extends AnyVal
-
-  final case class FileData(data: String) extends AnyVal
-
-  object File {
-
-    import Delimiters._
-
-    def structure: DelimitTransform[File] =
-      (string | keyDelimiter | string)
-        .imap { case (name, nonce) => File(StorageKey(name, nonce))
-        } {
-          file => (file.dataKey.name, file.dataKey.nonce)
-        }
-
-  }
+  final case class File(data: String) extends AnyVal
 
   def parseDate(str: String): Option[js.Date] =
     Try(new js.Date(js.Date.parse(str))).toOption
@@ -105,7 +90,7 @@ object StorageFS {
   def getFile[R: _storageAction](key: StorageKey[File]): Eff[R, Option[File]] = {
     for {
       raw <- getRaw(key)
-    } yield raw.flatMap(File.structure.toInterpret)
+    } yield raw.map(File)
   }
 
   def getDirPath[R: _storageAction](path: Vector[String]): Eff[R, Option[Dir]] = {
@@ -115,33 +100,20 @@ object StorageFS {
     } yield dir.flatten
   }
 
-  def getFilePath[R: _storageAction](path: Vector[String]): Eff[R, Option[File]] = {
-    for {
-      dirKey <- getDirKey[R](path.init)
-      dir <- dirKey.traverseA(getDir[R])
-      fileKey = dir.flatten.flatMap(_.childFileKeys.find(_.name == path.last))
-      file <- fileKey.traverseA(getFile[R])
-    } yield file.flatten
-  }
-
   def getFileData[R: _storageAction](fileName: String, dirKey: StorageKey[Dir]): Eff[R, Option[String]] = for {
     dir <- getDir[R](dirKey)
     hash = dir.flatMap(_.childFileKeys.find(_.name == fileName))
-    file <- hash.traverseA(getFile[R])
-    firstResult <- file.flatten.traverseA(f => StorageProgram.get[R](f.dataKey.render))
-  } yield firstResult.flatten
+    file <- hash.flatTraverse(getFile[R])
+  } yield file.map(_.data)
 
   def updateFileData[R: _storageAction](fileName: String, nonceSource: () => String, data: String, dirKey: StorageKey[Dir]): Eff[R, Option[StorageKey[File]]] = for {
     dir <- getDir[R](dirKey)
     hash = dir.map(_.childFileKeys.find(_.name == fileName))
     key <- hash.traverseA { maybeHash =>
-      maybeHash.map(fileKey => getFile(fileKey).flatMap(f => StorageProgram.update(f.get.dataKey.render, data))
+      maybeHash.map(fileKey => StorageProgram.update(fileKey.render, data)
         .as(fileKey)).getOrElse[Eff[R, StorageKey[File]]] {
-        val dataKey = StorageKey[FileData](fileName + "|data", nonceSource())
-        val newFile = File(dataKey)
         val fileKey = StorageKey[File](fileName, nonceSource())
-        (StorageProgram.update(dataKey.render, data) >>
-          StorageProgram.update(fileKey.render, File.structure.fromInterpret(newFile)) >>
+        (StorageProgram.update(fileKey.render, data) >>
           StorageProgram.update(dirKey.render, Dir.structure.fromInterpret(
             dir.get.copy(childFileKeys = dir.get.childFileKeys :+ fileKey)
           ))).as(fileKey)
@@ -180,8 +152,6 @@ object StorageFS {
     hash = dir.flatMap(_.childFileKeys.find(_.name == fileName))
     _ <- hash.traverseA(k =>
       for {
-        file <- getFile(k)
-        _ <- file.map(_.dataKey.render).traverseA(StorageProgram.remove[R])
         _ <- StorageProgram.remove[R](k.render)
         _ <- StorageProgram.update[R](dirKey.render,
           Dir.structure.fromInterpret(dir.get.copy(childFileKeys = dir.get.childFileKeys.filter(_.name != fileName)))
