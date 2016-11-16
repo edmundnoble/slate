@@ -181,7 +181,7 @@ object SlateApp extends scalajs.js.JSApp {
     type mem2 = Member[Task, Fx.fx1[Task]]
     for {
       progs <- deserializeProgramOutput
-      cachedContent <- StorageFS.runSealedStorageProgramInto[Fx.fx2[Task, StorageAction], Fx.fx1[Task], Task, List[(SlateProgram[Unit], Option[Either[InvalidJSON, List[ExpandableContentModel]]])]](
+      cachedContent <- StorageFS.runSealedStorageProgramInto(
         programs.traverseA(p =>
           Caching.getCachedBy[Fx.fx2[Task, StorageAction], InvalidJSON, SlateProgram[Unit], List[ExpandableContentModel]](p)(
             prg => makeDataKey(prg.title, prg.input), {
@@ -190,7 +190,9 @@ object SlateApp extends scalajs.js.JSApp {
                   .toOption.flatMap(_.traverse(ExpandableContentModel.pkl.read.lift))
                   .toRight(InvalidJSON(encodedModels))
             })
-            .map(ms => (p, ms))), DomStorage.Local, nonceSource, dataDirKey)(Monad[Task], implicitly[mem1], implicitly[mem2]).detach
+            .map(ms => (p, ms))), DomStorage.Local, nonceSource, dataDirKey)(
+        Monad[Task], implicitly[mem1], implicitly[mem2]
+      ).detach
       cachedPrograms = cachedContent.map {
         case (p, models) => models.map(p.withProgram)
       }
@@ -254,12 +256,12 @@ object SlateApp extends scalajs.js.JSApp {
       dom.document.body.children.namedItem("container")
     val _ = (for {
       dataDirKey <- StorageProgram.runProgram(DomStorage.Local, StorageFS.initFS >> prepareDataFolder).detach
-      _ <- Task.fromFuture((for {
+      _ <- (for {
         _ <- fromTask(appendStyles())
         compilePrograms <- getContent(dataDirKey)
         outputs <- fromTask(compilePrograms)
         _ <- fromTask(render(container, outputs))
-      } yield outputs).runAsyncGetLast)
+      } yield outputs).completedL
     } yield ()).runAsync(new monix.eval.Callback[Unit] {
       override def onSuccess(value: Unit): Unit = println("QQ run loop finished successfully!")
       override def onError(ex: Throwable): Unit = println(s"QQ run loop finished with error: $ex")
