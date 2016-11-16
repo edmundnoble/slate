@@ -19,8 +19,7 @@ import qq.Platform.Rec._
 import qq.cc.{CompiledFilter, QQCompilationException, QQCompiler, QQRuntimeException}
 import qq.data.{ConcreteFilter, JSON, Program}
 import qq.util._
-import shapeless.ops.coproduct.Unifier
-import shapeless.{:+:, CNil, Inl, Inr}
+import shapeless.{:+:, CNil}
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
@@ -208,10 +207,10 @@ object SlateApp extends scalajs.js.JSApp {
             errorCompilingProgramsInAllErrors.inverse(Right(e))
           ).map(_.map(_.leftMap(e => errorDeserializingProgramOutputInAllErrors.inverse(Right(e)))))
             .sequence[Task, Either[AllErrors, List[ExpandableContentModel]]].map(_.flatten)
-          injectedErrors.map(e =>
-            e.traverse(r => StorageProgram.runProgram(new StorageFS(DomStorage.Local, nonceSource, dataDirKey),
+          injectedErrors.map(errorsOrContent =>
+            Eff.traverseA(errorsOrContent)(r => StorageProgram.runProgram(new StorageFS(DomStorage.Local, nonceSource, dataDirKey),
               StorageProgram.update(makeDataKey(title, input), ExpandableContentModel.pkls.write(r).toString())))
-              .detach.as(AppProps(id, input, title, titleLink, AppModel(e)))
+              .detach.as(AppProps(id, input, title, titleLink, AppModel(errorsOrContent)))
           )
       })(
         runCompiledPrograms.map(
@@ -262,10 +261,10 @@ object SlateApp extends scalajs.js.JSApp {
         _ <- fromTask(render(container, outputs))
       } yield outputs).runAsyncGetLast)
       fs = new StorageFS(DomStorage.Local, nonceSource, dataDirKey)
-      _ <- lastResults.traverse(r => StorageProgram.runProgram(fs, r.appProps.traverse {
+      _ <- lastResults.traverse(r => StorageProgram.runProgram(fs, r.appProps.traverseA {
         case AppProps(_, input, title, _, AppModel(content)) =>
           Eff.traverseA(content)(cs => StorageProgram.update(makeDataKey(title, input), ExpandableContentModel.pkls.write(cs).toString()))
-      }).detach) // StorageProgram.update)
+      }).detach)
     } yield ()).runAsync(new monix.eval.Callback[Unit] {
       override def onSuccess(value: Unit): Unit = println("QQ run loop finished successfully!")
       override def onError(ex: Throwable): Unit = println(s"QQ run loop finished with error: $ex")
