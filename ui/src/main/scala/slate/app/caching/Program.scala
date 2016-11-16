@@ -18,6 +18,7 @@ import syntax.all._
 import cats.implicits._
 import slate.app.SlateApp.SlateProgram
 
+// what goes into caching a QQ program in slate
 object Program {
 
   def parseAndOptimizeProgram(program: String)(implicit rec: RecursionEngine): ParseError Either data.Program[data.FilterAST] = {
