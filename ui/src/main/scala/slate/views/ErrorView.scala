@@ -2,7 +2,7 @@ package slate
 package views
 
 import slate.app.SlateApp.{AllErrors, InvalidJSON}
-import slate.app.ProgramCache.{InvalidBase64, InvalidBytecode, ProgramSerializationException}
+import slate.app.caching.Program.{InvalidBase64, InvalidBytecode, ProgramSerializationException}
 import fastparse.all.ParseError
 import japgolly.scalajs.react._
 import org.scalajs.dom.html.Div

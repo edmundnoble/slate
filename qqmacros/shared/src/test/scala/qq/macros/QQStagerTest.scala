@@ -3,12 +3,12 @@ package macros
 
 import org.scalatest.{FreeSpec, Matchers}
 import qq.cc.{LocalOptimizer, Parser}
-import qq.data.{ConcreteFilter, Program}
+import qq.data.{FilterAST, Program}
 import qq.macros.QQStager._
 import qq.util.Recursion
 import qq.util.Recursion.RecursionEngine
 
-case class QQStagerTestCase(name: String, programs: List[String], literalResults: List[Program[ConcreteFilter]])
+case class QQStagerTestCase(name: String, programs: List[String], literalResults: List[Program[FilterAST]])
 
 class QQStagerSmokeTest extends FreeSpec with Matchers {
   implicit val recEngine: RecursionEngine =

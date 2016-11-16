@@ -3,18 +3,18 @@ package bench
 
 import japgolly.scalajs.benchmark._
 import japgolly.scalajs.benchmark.gui._
-import qq.data.{ConcreteFilter, QQDSL}
+import qq.data.{FilterAST, QQDSL}
 import qq.protocol.FilterProtocol
 import scodec.bits.BitVector
 
 object SerializationBench {
 
-  val selectKeyBuilder: Benchmark.Builder[Int, ConcreteFilter] =
-    Benchmark.setup[Int, ConcreteFilter](i => Util.composeBuildRec(i, QQDSL.getPathS(QQDSL.selectKey("key"))))
-  val idBuilder: Benchmark.Builder[Int, ConcreteFilter] =
-    Benchmark.setup[Int, ConcreteFilter](i => Util.composeBuildRec(i, QQDSL.id))
+  val selectKeyBuilder: Benchmark.Builder[Int, FilterAST] =
+    Benchmark.setup[Int, FilterAST](i => Util.composeBuildRec(i, QQDSL.getPathS(QQDSL.selectKey("key"))))
+  val idBuilder: Benchmark.Builder[Int, FilterAST] =
+    Benchmark.setup[Int, FilterAST](i => Util.composeBuildRec(i, QQDSL.id))
 
-  def preEncode(b: Benchmark.Builder[Int, ConcreteFilter]): Benchmark.Builder[Int, BitVector] =
+  def preEncode(b: Benchmark.Builder[Int, FilterAST]): Benchmark.Builder[Int, BitVector] =
     new Benchmark.Builder[Int, BitVector](b.prepare.andThen(FilterProtocol.filterCodec.encode).andThen(_.require))
 
   val serializationBenchSuite: GuiSuite[Int] = GuiSuite(

@@ -117,7 +117,7 @@ object QQCompiler {
   }
 
   final def compileDefinitionStep(soFar: OrCompilationError[Vector[CompiledDefinition]],
-                                  nextDefinition: Definition[ConcreteFilter])
+                                  nextDefinition: Definition[FilterAST])
                                  (implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] =
     soFar.map { (definitionsSoFar: Vector[CompiledDefinition]) =>
       CompiledDefinition(nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter]) => {
@@ -129,7 +129,7 @@ object QQCompiler {
     }
 
   @inline final def compileFilter(definitions: Vector[CompiledDefinition],
-                                  filter: ConcreteFilter)
+                                  filter: FilterAST)
                                  (implicit rec: RecursionEngine): OrCompilationError[CompiledFilter] =
     for {
       builtinDefinitions <- SharedPreludes.all |+| JSONPrelude.all
@@ -141,13 +141,13 @@ object QQCompiler {
     } yield compiledProgram
 
   final def compileDefinitions(prelude: Prelude,
-                               definitions: Program.Definitions[ConcreteFilter])
+                               definitions: Program.Definitions[FilterAST])
                               (implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] = {
     definitions.foldLeft(prelude.all)(compileDefinitionStep)
   }
 
   final def compileProgram(prelude: Prelude,
-                           program: Program[ConcreteFilter])
+                           program: Program[FilterAST])
                           (implicit rec: RecursionEngine): OrCompilationError[CompiledFilter] =
     for {
       compiledDefinitions <- compileDefinitions(prelude, program.defns)

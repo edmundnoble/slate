@@ -8,12 +8,12 @@ import japgolly.scalajs.benchmark.gui.{GuiParam, GuiParams, GuiSuite}
 import monix.eval.Task
 import monocle.Iso
 import qq.cc.{CompiledFilter, QQCompiler}
-import qq.data.{ConcreteFilter, JSON, QQDSL}
+import qq.data.{FilterAST, JSON, QQDSL}
 import qq.Platform.Rec._
 
 object RuntimeBench {
 
-  def runtimeSetup(filt: Int => (ConcreteFilter, String)): Builder[(QQRuntimeParams, Int), BenchParams] =
+  def runtimeSetup(filt: Int => (FilterAST, String)): Builder[(QQRuntimeParams, Int), BenchParams] =
     Benchmark.setup[(QQRuntimeParams, Int), BenchParams] {
       case (params, size) =>
         val (filter, input) = filt(size)

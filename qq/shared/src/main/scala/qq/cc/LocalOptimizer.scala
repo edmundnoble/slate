@@ -29,7 +29,7 @@ object LocalOptimizer {
   type LocalOptimization[F] = F => Option[F]
 
   // The identity filter is an identity with respect to composition of filters
-  final def idCompose(fr: FilterComponent[ConcreteFilter]): Option[FilterComponent[ConcreteFilter]] = {
+  final def idCompose(fr: FilterComponent[FilterAST]): Option[FilterComponent[FilterAST]] = {
     fr match {
       case ComposeFilters(Fix(PathOperation(List(), PathGet)), Fix(s)) => Some(s)
       case ComposeFilters(Fix(f), Fix(PathOperation(List(), PathGet))) => Some(f)
@@ -38,7 +38,7 @@ object LocalOptimizer {
   }
 
   // The collect and enlist operations are inverses
-  final def collectEnlist(fr: FilterComponent[ConcreteFilter]): Option[FilterComponent[ConcreteFilter]] = {
+  final def collectEnlist(fr: FilterComponent[FilterAST]): Option[FilterComponent[FilterAST]] = {
     fr match {
       case EnlistFilter(Fix(ComposeFilters(Fix(f), Fix(PathOperation(List(CollectResults), PathGet))))) => Some(f)
       case EnlistFilter(Fix(PathOperation(List(CollectResults), PathGet))) => Some(PathOperation(Nil, PathGet))
@@ -47,7 +47,7 @@ object LocalOptimizer {
   }
 
   // reduces constant math filters to their results
-  final def constMathReduce(fr: FilterComponent[ConcreteFilter]): Option[FilterComponent[ConcreteFilter]] = fr match {
+  final def constMathReduce(fr: FilterComponent[FilterAST]): Option[FilterComponent[FilterAST]] = fr match {
     case FilterMath(Fix(ConstNumber(f)), Fix(ConstNumber(s)), op) => op match {
       case Add => Some(ConstNumber(f + s))
       case Subtract => Some(ConstNumber(f - s))
@@ -63,7 +63,7 @@ object LocalOptimizer {
     case _ => None
   }
 
-  final def unlet(fr: FilterComponent[ConcreteFilter]): Option[FilterComponent[ConcreteFilter]] = fr match {
+  final def unlet(fr: FilterComponent[FilterAST]): Option[FilterComponent[FilterAST]] = fr match {
     case AsBinding(n, Fix(a), Fix(i))
       if i == Dereference(n) || i == PathOperation(Nil, PathGet) =>
       Some(a)
@@ -72,20 +72,20 @@ object LocalOptimizer {
 
   // a function applying each of the local optimizations available, in rounds,
   // until none of the optimizations applies anymore
-  @inline final def localOptimizationsƒ(tf: ConcreteFilter): ConcreteFilter =
-  repeatedly[ConcreteFilter] { tf =>
+  @inline final def localOptimizationsƒ(tf: FilterAST): FilterAST =
+  repeatedly[FilterAST] { tf =>
     val unfixed = tf.unFix
     (collectEnlist(unfixed) orElse idCompose(unfixed) orElse constMathReduce(unfixed) orElse unlet(unfixed)) map embed
   }(tf)
 
   // localOptimizationsƒ recursively applied deep into a filter
-  @inline final def optimizeFilter(filter: ConcreteFilter)(implicit rec: RecursionEngine): ConcreteFilter =
+  @inline final def optimizeFilter(filter: FilterAST)(implicit rec: RecursionEngine): FilterAST =
   Recursion.transCataT(localOptimizationsƒ).apply(filter)
 
-  @inline final def optimizeDefinition(defn: Definition[ConcreteFilter])(implicit rec: RecursionEngine): Definition[ConcreteFilter] =
+  @inline final def optimizeDefinition(defn: Definition[FilterAST])(implicit rec: RecursionEngine): Definition[FilterAST] =
     defn.copy(body = optimizeFilter(defn.body))
 
-  @inline final def optimizeProgram(program: Program[ConcreteFilter])(implicit rec: RecursionEngine): Program[ConcreteFilter] =
+  @inline final def optimizeProgram(program: Program[FilterAST])(implicit rec: RecursionEngine): Program[FilterAST] =
     program.copy(defns = program.defns.map(optimizeDefinition), main = optimizeFilter(program.main))
 
 }

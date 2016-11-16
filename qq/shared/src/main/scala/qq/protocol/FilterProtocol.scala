@@ -18,11 +18,11 @@ object FilterProtocol {
   implicit def componentCodec[A](implicit v: Lazy[Codec[A]]): Codec[FilterComponent[A]] =
     Codec.coproduct[FilterComponent[A]].auto
 
-  def filterCodec: Codec[ConcreteFilter] = implicitly[Codec[ConcreteFilter]]
+  def filterCodec: Codec[FilterAST] = implicitly[Codec[FilterAST]]
 
-  def definitionsCodec: Codec[Program.Definitions[ConcreteFilter]] = implicitly[Codec[Program.Definitions[ConcreteFilter]]]
+  def definitionsCodec: Codec[Program.Definitions[FilterAST]] = implicitly[Codec[Program.Definitions[FilterAST]]]
 
-  def programCodec: Codec[Program[ConcreteFilter]] = implicitly[Codec[Program[ConcreteFilter]]]
+  def programCodec: Codec[Program[FilterAST]] = implicitly[Codec[Program[FilterAST]]]
 
   def deriveGeneric[A, Rec](implicit lgen: Generic.Aux[A, Rec], auto: Lazy[Codec[Rec]]): Codec[A] =
     auto.value.xmap(lgen.from, lgen.to)

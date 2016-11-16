@@ -1,7 +1,7 @@
 package qq
 
 import qq.data.QQDSL._
-import qq.data.ConcreteFilter
+import qq.data.FilterAST
 import qq.util.Recursion
 import qq.util.Recursion.RecursionEngine
 
@@ -42,7 +42,7 @@ class LocalOptimizerTest extends QQSyncTestSuite {
   }
 
   "no stack overflow on deeply nested filters" taggedAs StackTest in {
-    @annotation.tailrec def enlistRec(f: ConcreteFilter, i: Int): ConcreteFilter =
+    @annotation.tailrec def enlistRec(f: FilterAST, i: Int): FilterAST =
       if (i == 0) f
       else enlistRec(enlist(f), i - 1)
 

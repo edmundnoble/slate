@@ -4,14 +4,14 @@ import monix.eval.Task
 import org.scalactic.NormMethods._
 import org.scalatest.Assertion
 import qq.cc.{CompiledFilter, QQCompiler}
-import qq.data.{ConcreteFilter, JSON, QQDSL}
+import qq.data.{FilterAST, JSON, QQDSL}
 import qq.util.Recursion
 import qq.util.Recursion.RecursionEngine
 
 import scala.concurrent.Future
 
 // data representation of a compiler test case
-case class CompilerTestCase(input: JSON, program: ConcreteFilter, expectedOutput: JSON*)(implicit val recEngine: RecursionEngine)
+case class CompilerTestCase(input: JSON, program: FilterAST, expectedOutput: JSON*)(implicit val recEngine: RecursionEngine)
 
 class CompilerTest extends QQAsyncTestSuite {
 
@@ -77,7 +77,7 @@ class CompilerTest extends QQAsyncTestSuite {
   val lotsOfCompositionTests: List[CompilerTestCase] = {
     // tail recursive builder, giving you (i * 2) compositions of id with f.
     @annotation.tailrec
-    def fun(f: ConcreteFilter, i: Int): ConcreteFilter = if (i == 0) f else fun(id | f | id, i - 1)
+    def fun(f: FilterAST, i: Int): FilterAST = if (i == 0) f else fun(id | f | id, i - 1)
     List(
       CompilerTestCase(JSON.False, fun(id, 10000), JSON.False)(qq.Platform.Rec.defaultRecScheme)
     )
@@ -86,7 +86,7 @@ class CompilerTest extends QQAsyncTestSuite {
   val lotsOfEnsequenceTests: List[CompilerTestCase] = {
     // tail recursive builder, giving you (i * 2) ensequencings of id with f.
     @annotation.tailrec
-    def fun(f: ConcreteFilter, i: Int): ConcreteFilter = if (i == 0) f else fun(id |+| f |+| id, i - 1)
+    def fun(f: FilterAST, i: Int): FilterAST = if (i == 0) f else fun(id |+| f |+| id, i - 1)
     List(
       CompilerTestCase(JSON.False, fun(id, 10000), List.fill(20001)(JSON.`false`): _*)(qq.Platform.Rec.defaultRecScheme)
     )

@@ -2,11 +2,11 @@ package slate
 package app
 
 
-import qq.data.{ConcreteFilter, Program}
+import qq.data.{FilterAST, Program}
 import qq.macros.QQStager._
 
 object TodoistApp {
-  val program: Program[ConcreteFilter] Either String =
+  val program: Program[FilterAST] Either String =
     Left(
 qq"""
 def oAuthParams: { scope: "data:read", client_id, state: randomHex };

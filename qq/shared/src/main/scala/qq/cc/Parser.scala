@@ -108,11 +108,11 @@ object Parser {
         .map(_.nelFoldLeft1(Nil)(_ ++ _))
   )
 
-  def setPathFilter(path: List[PathComponent]): P[ConcreteFilter] = P(
+  def setPathFilter(path: List[PathComponent]): P[FilterAST] = P(
     ("=" ~ whitespace ~ filter).map(dsl.setPath(path, _))
   )
 
-  def modifyPathFilter(path: List[PathComponent]): P[ConcreteFilter] = P(
+  def modifyPathFilter(path: List[PathComponent]): P[FilterAST] = P(
     ("|=" ~ whitespace ~ filter).map(dsl.modifyPath(path, _))
   )
 
@@ -130,7 +130,7 @@ object Parser {
     "$" ~ filterIdentifier
   )
 
-  val asBinding: P[ConcreteFilter] = P(
+  val asBinding: P[FilterAST] = P(
     for {
       variable <- variableIdentifier
       _ <- whitespace ~ LiteralStr("as") ~ whitespace
@@ -140,35 +140,35 @@ object Parser {
     } yield dsl.asBinding(variable, as, in)
   )
 
-  val callFilter: P[ConcreteFilter] = P(
+  val callFilter: P[FilterAST] = P(
     for {
       identifier <- filterIdentifier
       params <- ("(" ~/ whitespace ~ filter.rep(min = 1, sep = whitespace ~ ";" ~ whitespace) ~ whitespace ~ ")").?.map(_.getOrElse(Nil))
     } yield dsl.call(identifier, params)
   )
 
-  val constInt: P[ConcreteFilter] = P(numericLiteral map (dsl.constNumber(_)))
+  val constInt: P[FilterAST] = P(numericLiteral map (dsl.constNumber(_)))
 
-  val constString: P[ConcreteFilter] = P(escapedStringLiteral map dsl.constString)
+  val constString: P[FilterAST] = P(escapedStringLiteral map dsl.constString)
 
-  val constBoolean: P[ConcreteFilter] = P((LiteralStr("true").map(_ => true) | LiteralStr("false").map(_ => false)).map(dsl.constBoolean))
+  val constBoolean: P[FilterAST] = P((LiteralStr("true").map(_ => true) | LiteralStr("false").map(_ => false)).map(dsl.constBoolean))
 
-  val dereference: P[ConcreteFilter] = P(variableIdentifier.map(dsl.deref))
+  val dereference: P[FilterAST] = P(variableIdentifier.map(dsl.deref))
 
-  val smallFilter: P[ConcreteFilter] = P(constInt | constString | paths | dereference | callFilter)
+  val smallFilter: P[FilterAST] = P(constInt | constString | paths | dereference | callFilter)
 
-  val enlistedFilter: P[ConcreteFilter] = P(
+  val enlistedFilter: P[FilterAST] = P(
     "[" ~/ filter.map(dsl.enlist) ~ "]"
   )
 
   // The reason I avoid using basicFilter is to avoid a parsing ambiguity with ensequencedFilters
-  val enjectPair: P[(String Either ConcreteFilter, ConcreteFilter)] = P(
-    ((("(" ~/ whitespace ~ filter ~ whitespace ~ ")").map(Right[String, ConcreteFilter]) |
-      (stringLiteral | escapedStringLiteral).map(Left[String, ConcreteFilter])) ~ ":" ~ whitespace ~ piped) |
+  val enjectPair: P[(String Either FilterAST, FilterAST)] = P(
+    ((("(" ~/ whitespace ~ filter ~ whitespace ~ ")").map(Right[String, FilterAST]) |
+      (stringLiteral | escapedStringLiteral).map(Left[String, FilterAST])) ~ ":" ~ whitespace ~ piped) |
       filterIdentifier.map(id => Left(id) -> dsl.getPath(List(dsl.selectKey(id))))
   )
 
-  val enjectedFilter: P[ConcreteFilter] = P(
+  val enjectedFilter: P[FilterAST] = P(
     "{" ~/ whitespace ~ enjectPair.rep(sep = whitespace ~ "," ~ whitespace).map(dsl.enject) ~ whitespace ~ "}"
   )
 
@@ -184,31 +184,31 @@ object Parser {
   }
 
 
-  val withEquals: P[ConcreteFilter] =
-    P(binaryOperators[ConcreteFilter](
-      binaryOperators[ConcreteFilter](
-        ensequenced, "==" -> dsl.equal _), "!=" -> ((f: ConcreteFilter, s: ConcreteFilter) => dsl.compose(dsl.equal(f, s), dsl.not))
+  val withEquals: P[FilterAST] =
+    P(binaryOperators[FilterAST](
+      binaryOperators[FilterAST](
+        ensequenced, "==" -> dsl.equal _), "!=" -> ((f: FilterAST, s: FilterAST) => dsl.compose(dsl.equal(f, s), dsl.not))
     ))
 
-  val ensequenced: P[ConcreteFilter] =
-    P(binaryOperators[ConcreteFilter](piped, "," -> dsl.ensequence _))
+  val ensequenced: P[FilterAST] =
+    P(binaryOperators[FilterAST](piped, "," -> dsl.ensequence _))
 
-  val piped: P[ConcreteFilter] =
-    P(binaryOperators[ConcreteFilter](expr, "|" -> dsl.compose _))
+  val piped: P[FilterAST] =
+    P(binaryOperators[FilterAST](expr, "|" -> dsl.compose _))
 
-  val expr: P[ConcreteFilter] =
-    P(binaryOperators[ConcreteFilter](term, "+" -> dsl.add _, "-" -> dsl.subtract))
+  val expr: P[FilterAST] =
+    P(binaryOperators[FilterAST](term, "+" -> dsl.add _, "-" -> dsl.subtract))
 
-  val term: P[ConcreteFilter] =
-    P(binaryOperators[ConcreteFilter](factor, "*" -> dsl.multiply _, "/" -> dsl.divide _, "%" -> dsl.modulo _))
+  val term: P[FilterAST] =
+    P(binaryOperators[FilterAST](factor, "*" -> dsl.multiply _, "/" -> dsl.divide _, "%" -> dsl.modulo _))
 
-  val factor: P[ConcreteFilter] =
+  val factor: P[FilterAST] =
     P(("(" ~/ whitespace ~ withEquals ~ whitespace ~ ")") | asBinding | smallFilter | enjectedFilter | enlistedFilter)
 
-  val filter: P[ConcreteFilter] = P(
+  val filter: P[FilterAST] = P(
     for {
       f <- withEquals
-      fun <- "?".!.?.map(_.fold(identity[ConcreteFilter] _)(_ => dsl.silence))
+      fun <- "?".!.?.map(_.fold(identity[FilterAST] _)(_ => dsl.silence))
     } yield fun(f)
   )
 
@@ -216,16 +216,16 @@ object Parser {
     "(" ~/ whitespace ~ filterIdentifier.rep(min = 1, sep = whitespace ~ ";" ~/ whitespace) ~ whitespace ~ ")"
   )
 
-  val definition: P[Definition[ConcreteFilter]] = P(
-    ("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~/ whitespace ~ filter ~ ";") map (Definition[ConcreteFilter] _).tupled
+  val definition: P[Definition[FilterAST]] = P(
+    ("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~/ whitespace ~ filter ~ ";") map (Definition[FilterAST] _).tupled
   )
 
-  val program: P[Program[ConcreteFilter]] = P(
+  val program: P[Program[FilterAST]] = P(
     (whitespace ~
       (definition.rep(min = 1, sep = whitespace) ~ whitespace)
         .?.map(_.getOrElse(Nil)) ~
       filter ~ whitespace ~ Terminals.End())
-      .map((Program[ConcreteFilter] _).tupled)
+      .map((Program[FilterAST] _).tupled)
   )
 
 }

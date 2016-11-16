@@ -4,7 +4,7 @@ package app
 import slate.views.DashboardPage
 import slate.views.DashboardPage.SearchPageProps
 import slate.util.Util._
-import slate.app.ProgramCache.ErrorGettingCachedProgram
+import slate.app.caching.Program.ErrorGettingCachedProgram
 import slate.models.{AppModel, ExpandableContentModel}
 import slate.util.LoggerFactory
 import slate.storage.{DomStorage, StorageAction, StorageFS, StorageProgram}
@@ -17,7 +17,7 @@ import monix.cats._
 import org.scalajs.dom
 import qq.Platform.Rec._
 import qq.cc.{CompiledFilter, QQCompilationException, QQCompiler, QQRuntimeException}
-import qq.data.{ConcreteFilter, JSON, Program}
+import qq.data.{FilterAST, JSON, Program}
 import qq.util._
 import shapeless.{:+:, CNil}
 
@@ -32,6 +32,7 @@ import cats.implicits._
 import monix.execution.cancelables.StackedCancelable
 import org.atnos.eff.{Eff, Fx, Member, NoFx, writer}
 import org.atnos.eff.syntax.all._
+import slate.app.caching.Caching
 import upickle.Invalid.Data
 
 @JSExport
@@ -60,8 +61,8 @@ object SlateApp extends scalajs.js.JSApp {
     }
   }
 
-  def programs: List[SlateProgram[Program[ConcreteFilter] Either String]] = {
-    List[SlateProgram[Program[ConcreteFilter] Either String]](
+  def programs: List[SlateProgram[Program[FilterAST] Either String]] = {
+    List[SlateProgram[Program[FilterAST] Either String]](
       SlateProgram(1, "Gmail", "https://gmail.com", GmailApp.program, JSON.ObjMap(Map())),
       SlateProgram(2, "Todoist", "https://todoist.com", TodoistApp.program,
         JSON.ObjMap(Map(
@@ -95,13 +96,13 @@ object SlateApp extends scalajs.js.JSApp {
 
   def compiledPrograms: Task[List[SlateProgram[Either[ErrorCompilingPrograms, CompiledFilter]]]] = {
 
-    def reassembleProgram(program: SlateProgram[Either[Program[ConcreteFilter], String]]): StorageProgram[SlateProgram[Either[ErrorGettingCachedProgram, Program[ConcreteFilter]]]] = {
-      program.program.fold[StorageProgram[SlateProgram[Either[ErrorGettingCachedProgram, Program[ConcreteFilter]]]]](p =>
-        Eff.pure(program.withProgram(Right[ErrorGettingCachedProgram, Program[ConcreteFilter]](p))),
-        s => ProgramCache.getCachedProgramByHash(program.withProgram(s)).map(program.withProgram))
+    def reassembleProgram(program: SlateProgram[Either[Program[FilterAST], String]]): StorageProgram[SlateProgram[Either[ErrorGettingCachedProgram, Program[FilterAST]]]] = {
+      program.program.fold[StorageProgram[SlateProgram[Either[ErrorGettingCachedProgram, Program[FilterAST]]]]](p =>
+        Eff.pure(program.withProgram(Right[ErrorGettingCachedProgram, Program[FilterAST]](p))),
+        s => caching.Program.getCachedProgramByHash(program.withProgram(s)).map(program.withProgram))
     }
 
-    val prog: StorageProgram[List[SlateProgram[Either[ErrorGettingCachedProgram, Program[ConcreteFilter]]]]] =
+    val prog: StorageProgram[List[SlateProgram[Either[ErrorGettingCachedProgram, Program[FilterAST]]]]] =
       programs.traverse(reassembleProgram)
 
     type StorageOrTask = Fx.fx2[StorageAction, Task]
@@ -182,7 +183,7 @@ object SlateApp extends scalajs.js.JSApp {
       progMap = progs.groupBy(p => makeDataKey(p.title, p.input))
       porgs <- StorageFS.runSealedStorageProgramInto[Fx.fx2[Task, StorageAction], Fx.fx1[Task], Task, List[(SlateProgram[Unit], Option[Either[InvalidJSON, List[ExpandableContentModel]]])]](
         programs.traverseA(p =>
-          ProgramCache.getCachedBy[Fx.fx2[Task, StorageAction], InvalidJSON, SlateProgram[Unit], List[ExpandableContentModel]](p)(
+          Caching.getCachedBy[Fx.fx2[Task, StorageAction], InvalidJSON, SlateProgram[Unit], List[ExpandableContentModel]](p)(
             prg => makeDataKey(prg.title, prg.input), {
               encodedModels =>
                 Try(upickle.json.read(encodedModels).arr.toList)

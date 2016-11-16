@@ -114,6 +114,6 @@ object FilterComponent {
   }
 
   @inline final def embed
-  (v: FilterComponent[ConcreteFilter]): ConcreteFilter = Fix(v)
+  (v: FilterComponent[FilterAST]): FilterAST = Fix(v)
 }
 

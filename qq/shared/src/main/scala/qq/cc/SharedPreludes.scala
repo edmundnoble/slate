@@ -28,7 +28,7 @@ object SharedPreludes extends Prelude {
   }
 
   val raw: Prelude = new Prelude {
-    val map: Definition[ConcreteFilter] = {
+    val map: Definition[FilterAST] = {
       import QQDSL._
       Definition("map",
         params = List("x"),

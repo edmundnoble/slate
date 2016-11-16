@@ -59,38 +59,38 @@ object QQStager {
       case PathSet(s) => f(s).map { r => q"qq.data.PathSet($r)" }
     }
 
-    val liftFilter: RecursiveFunction[ConcreteFilter, c.universe.Tree] = new RecursiveFunction[ConcreteFilter, c.universe.Tree] {
-      override def run(value: ConcreteFilter, loop: ConcreteFilter => Eval[c.universe.Tree]): Eval[c.universe.Tree] = {
+    val liftFilter: RecursiveFunction[FilterAST, c.universe.Tree] = new RecursiveFunction[FilterAST, c.universe.Tree] {
+      override def run(value: FilterAST, loop: FilterAST => Eval[c.universe.Tree]): Eval[c.universe.Tree] = {
         val sub: Eval[c.universe.Tree] = value.unFix match {
-          case PathOperation(pc, op) => pathOpLift(loop)(op) map { o => q"qq.data.PathOperation[qq.data.ConcreteFilter](${lift(pc)}, $o)" }
-          case AsBinding(name, as, in) => (loop(as) |@| loop(in)).map { (a, i) => q"qq.data.AsBinding[qq.data.ConcreteFilter](${lift(name)}, $a, $i)" }
-          case Dereference(name) => Eval.now(q"qq.data.Dereference[qq.data.ConcreteFilter](${lift(name)})")
-          case ComposeFilters(first, second) => (loop(first) |@| loop(second)).map { (f, s) => q"qq.data.ComposeFilters[qq.data.ConcreteFilter]($f, $s)" }
-          case SilenceExceptions(child) => loop(child) map { f => q"qq.data.SilenceExceptions[qq.data.ConcreteFilter]($f)" }
-          case EnlistFilter(child) => loop(child) map { f => q"qq.data.EnlistFilter[qq.data.ConcreteFilter]($f)" }
-          case EnsequenceFilters(first, second) => (loop(first) |@| loop(second)).map { (f, s) => q"qq.data.EnsequenceFilters[qq.data.ConcreteFilter]($f, $s)" }
+          case PathOperation(pc, op) => pathOpLift(loop)(op) map { o => q"qq.data.PathOperation[qq.data.FilterAST](${lift(pc)}, $o)" }
+          case AsBinding(name, as, in) => (loop(as) |@| loop(in)).map { (a, i) => q"qq.data.AsBinding[qq.data.FilterAST](${lift(name)}, $a, $i)" }
+          case Dereference(name) => Eval.now(q"qq.data.Dereference[qq.data.FilterAST](${lift(name)})")
+          case ComposeFilters(first, second) => (loop(first) |@| loop(second)).map { (f, s) => q"qq.data.ComposeFilters[qq.data.FilterAST]($f, $s)" }
+          case SilenceExceptions(child) => loop(child) map { f => q"qq.data.SilenceExceptions[qq.data.FilterAST]($f)" }
+          case EnlistFilter(child) => loop(child) map { f => q"qq.data.EnlistFilter[qq.data.FilterAST]($f)" }
+          case EnsequenceFilters(first, second) => (loop(first) |@| loop(second)).map { (f, s) => q"qq.data.EnsequenceFilters[qq.data.FilterAST]($f, $s)" }
           case EnjectFilters(obj) => obj.traverse[Eval, (c.universe.Tree, c.universe.Tree)] { case (k, v) =>
             for {
               ke <- k.traverse(loop).map(e => lift(e.leftMap(lift(_))))
               ve <- loop(v)
             } yield (ke, ve)
           }
-            .map { o => q"qq.data.EnjectFilters[qq.data.ConcreteFilter](${lift(o)})" }
-          case CallFilter(name: String, params) => params.traverse(loop).map { p => q"qq.data.CallFilter[qq.data.ConcreteFilter](${lift(name)}, $p)" }
-          case FilterNot() => Eval.now(q"qq.data.FilterNot[qq.data.ConcreteFilter]()")
-          case ConstNumber(v) => Eval.now(q"qq.data.ConstNumber[qq.data.ConcreteFilter](${lift(v)})")
-          case ConstBoolean(v) => Eval.now(q"qq.data.ConstBoolean[qq.data.ConcreteFilter](${lift(v)})")
-          case ConstString(v) => Eval.now(q"qq.data.ConstString[qq.data.ConcreteFilter](${lift(v)})")
-          case FilterMath(first, second, op) => (loop(first) |@| loop(second)).map { (f, s) => q"qq.data.FilterMath[qq.data.ConcreteFilter]($f, $s, ${lift(op)})" }
+            .map { o => q"qq.data.EnjectFilters[qq.data.FilterAST](${lift(o)})" }
+          case CallFilter(name: String, params) => params.traverse(loop).map { p => q"qq.data.CallFilter[qq.data.FilterAST](${lift(name)}, $p)" }
+          case FilterNot() => Eval.now(q"qq.data.FilterNot[qq.data.FilterAST]()")
+          case ConstNumber(v) => Eval.now(q"qq.data.ConstNumber[qq.data.FilterAST](${lift(v)})")
+          case ConstBoolean(v) => Eval.now(q"qq.data.ConstBoolean[qq.data.FilterAST](${lift(v)})")
+          case ConstString(v) => Eval.now(q"qq.data.ConstString[qq.data.FilterAST](${lift(v)})")
+          case FilterMath(first, second, op) => (loop(first) |@| loop(second)).map { (f, s) => q"qq.data.FilterMath[qq.data.FilterAST]($f, $s, ${lift(op)})" }
         }
         sub.map(f => q"qq.util.Fix[qq.data.FilterComponent]($f)")
       }
     }
 
-    implicit def concreteFilterLiftable: Liftable[ConcreteFilter] =
+    implicit def concreteFilterLiftable: Liftable[FilterAST] =
       Liftable(liftFilter(_))
 
-    implicit def programLiftable: Liftable[Program[ConcreteFilter]] = Liftable[Program[ConcreteFilter]](
+    implicit def programLiftable: Liftable[Program[FilterAST]] = Liftable[Program[FilterAST]](
       value => q"qq.data.Program(${lift(value.defns)}, ${lift(value.main)})"
     )
 
@@ -108,7 +108,7 @@ object QQStager {
       case _ =>
         c.abort(c.enclosingPosition, "invalid") // TODO: make the error message more readable
     }
-    val parsedProgram: Program[ConcreteFilter] = Parser.program.parse(program) match {
+    val parsedProgram: Program[FilterAST] = Parser.program.parse(program) match {
       case f@Parsed.Failure(_, _, _) =>
         c.abort(c.enclosingPosition, "QQ parsing error: " + f.extra.traced.trace)
       case Parsed.Success(prog, _) => prog
@@ -119,7 +119,7 @@ object QQStager {
 
   final implicit class qqops(val sc: StringContext) {
 
-    def qq(pieces: Any*): Program[ConcreteFilter] = macro QQStager.qqimpl
+    def qq(pieces: Any*): Program[FilterAST] = macro QQStager.qqimpl
 
   }
 

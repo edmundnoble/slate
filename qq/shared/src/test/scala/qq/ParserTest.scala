@@ -3,7 +3,7 @@ package qq
 import org.scalactic.Normalization
 import org.scalatest.matchers.{BeMatcher, MatchResult}
 import qq.cc.Parser
-import qq.data.{ConcreteFilter, Definition, JSON, Program}
+import qq.data.{FilterAST, Definition, JSON, Program}
 
 import cats.implicits._
 
@@ -129,13 +129,13 @@ class ParserTest extends QQSyncTestSuite {
 
   "parse full programs" - {
     "with just a body" in (Parser.program.parse("id").get.value shouldBe
-      Program[ConcreteFilter](List.empty[Definition[ConcreteFilter]], call("id")))
+      Program[FilterAST](List.empty[Definition[FilterAST]], call("id")))
     "with small definitions" in (Parser.program.parse("def id: .; id").get.value shouldBe
-      Program[ConcreteFilter](List(Definition[ConcreteFilter]("id", Nil, id)), call("id")))
+      Program[FilterAST](List(Definition[FilterAST]("id", Nil, id)), call("id")))
     "with whitespace at the start" in (Parser.program.parse(" .").get.value shouldBe
-      Program[ConcreteFilter](List.empty[Definition[ConcreteFilter]], id))
+      Program[FilterAST](List.empty[Definition[FilterAST]], id))
     "with whitespace at the end" in (Parser.program.parse(". ").get.value shouldBe
-      Program[ConcreteFilter](List.empty[Definition[ConcreteFilter]], id))
+      Program[FilterAST](List.empty[Definition[FilterAST]], id))
   }
 
   "parse string literals" in {
