@@ -253,19 +253,13 @@ object SlateApp extends scalajs.js.JSApp {
     val container =
       dom.document.body.children.namedItem("container")
     val _ = (for {
-      dataDirKey <-
-      StorageProgram.runProgram[Task, Fx.fx1[Task], Fx.fx1[StorageAction], NoFx, StorageFS.StorageKey[StorageFS.Dir]](DomStorage.Local, StorageFS.initFS >> prepareDataFolder).detach
-      lastResults <- Task.fromFuture((for {
+      dataDirKey <- StorageProgram.runProgram(DomStorage.Local, StorageFS.initFS >> prepareDataFolder).detach
+      _ <- Task.fromFuture((for {
         _ <- fromTask(appendStyles())
         compilePrograms <- getContent(dataDirKey)
         outputs <- fromTask(compilePrograms)
         _ <- fromTask(render(container, outputs))
       } yield outputs).runAsyncGetLast)
-      fs = new StorageFS(DomStorage.Local, nonceSource, dataDirKey)
-      _ <- lastResults.traverse(r => StorageProgram.runProgram(fs, r.appProps.traverseA {
-        case AppProps(_, input, title, _, AppModel(content)) =>
-          Eff.traverseA(content)(cs => StorageProgram.update(makeDataKey(title, input), ExpandableContentModel.pkls.write(cs).toString()))
-      }).detach)
     } yield ()).runAsync(new monix.eval.Callback[Unit] {
       override def onSuccess(value: Unit): Unit = println("QQ run loop finished successfully!")
       override def onError(ex: Throwable): Unit = println(s"QQ run loop finished with error: $ex")
