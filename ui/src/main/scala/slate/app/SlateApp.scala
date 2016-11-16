@@ -266,13 +266,12 @@ object SlateApp extends scalajs.js.JSApp {
       override def onSuccess(value: Unit): Unit = println("QQ run loop finished successfully!")
       override def onError(ex: Throwable): Unit = println(s"QQ run loop finished with error: $ex")
     })
-    val lastResults =
-      if (!js.isUndefined(Addons.Perf)) {
-        logger.info("Stopping perf")
-        Addons.Perf.stop()
-        logger.info("Printing wasted")
-        logger.info(Addons.Perf.printWasted(Addons.Perf.getLastMeasurements()).toString)
-      }
+    if (!js.isUndefined(Addons.Perf)) {
+      logger.info("Stopping perf")
+      Addons.Perf.stop()
+      logger.info("Printing wasted")
+      logger.info(Addons.Perf.printWasted(Addons.Perf.getLastMeasurements()).toString)
+    }
   }
 
   // TODO: cache
