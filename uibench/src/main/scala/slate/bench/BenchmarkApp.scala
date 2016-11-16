@@ -34,7 +34,7 @@ object BenchmarkApp extends scalajs.js.JSApp {
 
   case object QQRuntimeParams extends QQRuntimeParams {
     type T = qq.data.JSON
-    override val iso: (String) => T = qq.Json.stringToJSON(_).getOrElse(???)
+    override val iso: (String) => T = qq.Json.stringToJSON(_).right.getOrElse(???)
   }
 
   abstract class BenchParams {
