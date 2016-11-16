@@ -208,7 +208,11 @@ object SlateApp extends scalajs.js.JSApp {
             errorCompilingProgramsInAllErrors.inverse(Right(e))
           ).map(_.map(_.leftMap(e => errorDeserializingProgramOutputInAllErrors.inverse(Right(e)))))
             .sequence[Task, Either[AllErrors, List[ExpandableContentModel]]].map(_.flatten)
-          injectedErrors.map(e => Task.now(AppProps(id, input, title, titleLink, AppModel(e))))
+          injectedErrors.map(e =>
+            e.traverse(r => StorageProgram.runProgram(new StorageFS(DomStorage.Local, nonceSource, dataDirKey),
+              StorageProgram.update(makeDataKey(title, input), ExpandableContentModel.pkls.write(r).toString())))
+              .detach.as(AppProps(id, input, title, titleLink, AppModel(e)))
+          )
       })(
         runCompiledPrograms.map(
           _.map(t => AppProps(t.id, t.input, t.title, t.titleLink, AppModel(Either.right(cachedOutputsMapped.getOrElse(t.id, Nil)))))
