@@ -14,7 +14,7 @@ import org.atnos.eff._
 import Eff._
 import syntax.all._
 import cats.implicits._
-import slate.app.SlateApp.DashProgram
+import slate.app.SlateApp.SlateProgram
 
 object ProgramCache {
 
@@ -72,11 +72,11 @@ object ProgramCache {
 
   // cache optimized, parsed programs using their hashcode as a key
   // store them as base64-encoded bytecode
-  def getCachedProgramByHash(qqProgram: DashProgram[String])(implicit rec: RecursionEngine): StorageProgram[ErrorGettingCachedProgram Either Program[ConcreteFilter]] = {
+  def getCachedProgramByHash(qqProgram: SlateProgram[String])(implicit rec: RecursionEngine): StorageProgram[ErrorGettingCachedProgram Either Program[ConcreteFilter]] = {
 
     import qq.protocol.FilterProtocol
 
-    getCachedByPrepare[ProgramSerializationException, ParseError, Program[ConcreteFilter], DashProgram[String]](qqProgram)(
+    getCachedByPrepare[ProgramSerializationException, ParseError, Program[ConcreteFilter], SlateProgram[String]](qqProgram)(
       prog => prog.title + prog.program.hashCode.toString, { (program: Program[ConcreteFilter]) =>
         FilterProtocol.programCodec
           .encode(program)

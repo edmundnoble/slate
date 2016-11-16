@@ -20,7 +20,7 @@ import cats.implicits._
 import org.atnos.eff._
 import syntax.all._
 
-object DashPrelude extends Prelude {
+object SlatePrelude extends Prelude {
 
   import QQRuntimeException._
   import CompiledDefinition.noParamDefinition
