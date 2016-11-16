@@ -1,7 +1,7 @@
 package qq
 package data
 
-import cats.data.Xor
+
 import cats.{Applicative, Eval, Traverse}
 
 import scala.language.higherKinds
@@ -48,7 +48,7 @@ final case class EnlistFilter[A](f: A) extends FilterComponent[A]
 final case class EnsequenceFilters[A](first: A, second: A) extends FilterComponent[A]
 
 // Creates a JSON object from some (string or filter, filter) pairs.
-final case class EnjectFilters[A](obj: List[((String Xor A), A)]) extends FilterComponent[A]
+final case class EnjectFilters[A](obj: List[((String Either A), A)]) extends FilterComponent[A]
 
 // Calls another filter or filter operator.
 final case class CallFilter[A](name: String, params: List[A]) extends FilterComponent[A]
@@ -103,7 +103,7 @@ object FilterComponent {
         case SilenceExceptions(a) => G.map(f(a))(SilenceExceptions(_))
         case EnlistFilter(a) => G.map(f(a))(EnlistFilter(_))
         case EnsequenceFilters(first, second) => G.map2(f(first), f(second))(EnsequenceFilters(_, _))
-        case EnjectFilters(obj) => obj.traverse[G, (String Xor B, B)] { case (k, v) => G.tuple2(k.traverse(f), f(v)) }.map(EnjectFilters(_))
+        case EnjectFilters(obj) => obj.traverse[G, (String Either B, B)] { case (k, v) => G.tuple2(k.traverse(f), f(v)) }.map(EnjectFilters(_))
       }
     }
     // TODO

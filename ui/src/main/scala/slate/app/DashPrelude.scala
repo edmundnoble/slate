@@ -151,6 +151,14 @@ object DashPrelude extends Prelude {
       typeError[CompiledFilterStack, List[JSON]]("formatDatetimeFriendly", "string" -> k)
   })
 
+  def randomHex: CompiledDefinition = noParamDefinition("randomHex", CompiledFilter.constE {
+    Eff.send[TaskParallel, CompiledFilterStack, List[JSON]](Task.eval(JSON.str(List.fill(6) {
+      java.lang.Integer.toHexString(scala.util.Random.nextInt(256))
+    }.mkString) :: Nil).parallel)
+  })
+
   override def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] =
-    Vector(googleAuth, launchAuth, httpDelete, httpGet, httpPost, httpPatch, httpPut, nowRFC3339, formatDatetimeFriendly).right
+    Right(
+      Vector(googleAuth, launchAuth, randomHex, httpDelete, httpGet, httpPost, httpPatch, httpPut, nowRFC3339, formatDatetimeFriendly)
+    )
 }

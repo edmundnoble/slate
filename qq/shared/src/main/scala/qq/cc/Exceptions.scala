@@ -34,11 +34,11 @@ object QQRuntimeException {
       QQRuntimeException(f1.errors |+| f2.errors)
   }
 
-  def typeError[S <: Fx : validated._validatedNel[QQRuntimeError, ?], A](operation: String, typesAndValues: (String, JSON)*): Eff[S, A] =
+  def typeError[S : validated._validatedNel[QQRuntimeError, ?], A](operation: String, typesAndValues: (String, JSON)*): Eff[S, A] =
     validated.invalid(NonEmptyList.of[QQRuntimeError](TypeError(operation, typesAndValues: _*)))
-  def notARegex[S <: Fx : validated._validatedNel[QQRuntimeError, ?], A](asStr: String): CompiledFilterResult[A] =
+  def notARegex[S : validated._validatedNel[QQRuntimeError, ?], A](asStr: String): CompiledFilterResult[A] =
     validated.invalid(NonEmptyList.of[QQRuntimeError](NotARegex(asStr)))
-  def noSuchVariable[S <: Fx : validated._validatedNel[QQRuntimeError, ?], A](variableName: String): CompiledFilterResult[A] =
+  def noSuchVariable[S : validated._validatedNel[QQRuntimeError, ?], A](variableName: String): CompiledFilterResult[A] =
     validated.invalid(NonEmptyList.of[QQRuntimeError](NoSuchVariable(variableName)))
 }
 

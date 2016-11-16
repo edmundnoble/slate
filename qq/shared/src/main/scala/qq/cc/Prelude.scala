@@ -5,11 +5,12 @@ import qq.data.CompiledDefinition
 import qq.util.Recursion.RecursionEngine
 import cats.implicits._
 import cats.Monoid
-import cats.data.Xor
+
 
 object Prelude {
   val empty = new Prelude {
-    override def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] = Vector.empty.right
+    override def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] =
+      Right(Vector.empty)
   }
 
   implicit val preludeMonoid: Monoid[Prelude] = new Monoid[Prelude] {

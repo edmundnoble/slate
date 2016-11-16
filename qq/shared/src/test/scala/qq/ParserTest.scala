@@ -110,19 +110,19 @@ class ParserTest extends QQSyncTestSuite {
   }
 
   "parse enjected pairs" - {
-    "string key" in (Parser.enjectPair.parse("hello: id").get.value shouldBe "hello".left -> call("id"))
-    "escaped string key" in (Parser.enjectPair.parse("\"hello\": id").get.value shouldBe "hello".left -> call("id"))
-    "filter key" in (Parser.enjectPair.parse("(hello): id").get.value shouldBe call("hello").right -> call("id"))
-    "sugar" in (Parser.enjectPair.parse("user").get.value shouldBe "user".left -> getPathS(selectKey("user")))
+    "string key" in (Parser.enjectPair.parse("hello: id").get.value shouldBe Left("hello") -> call("id"))
+    "escaped string key" in (Parser.enjectPair.parse("\"hello\": id").get.value shouldBe Left("hello") -> call("id"))
+    "filter key" in (Parser.enjectPair.parse("(hello): id").get.value shouldBe Right(call("hello")) -> call("id"))
+    "sugar" in (Parser.enjectPair.parse("user").get.value shouldBe Left("user") -> getPathS(selectKey("user")))
   }
 
   "parse enjected filters" in {
     Parser.filter.parse("{ sugar, user: \"user\", title: .titles[] }").get.value shouldBe
       enject(
         List(
-          "sugar".left -> getPathS(selectKey("sugar")),
-          "user".left -> constString("user"),
-          "title".left -> getPath(List(selectKey("titles"), collectResults))
+          Left("sugar") -> getPathS(selectKey("sugar")),
+          Left("user") -> constString("user"),
+          Left("title") -> getPath(List(selectKey("titles"), collectResults))
         )
       )
   }

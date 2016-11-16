@@ -134,11 +134,11 @@ object StorageFS {
   def updateFileData[R: _storageAction](fileName: String, nonceSource: () => String, data: String, dirKey: StorageKey[Dir]): Eff[R, Option[StorageKey[File]]] = for {
     dir <- getDir[R](dirKey)
     hash = dir.map(_.childFileKeys.find(_.name == fileName))
-    dataKey = StorageKey[FileData](fileName, nonceSource())
-    newFile = File(dataKey)
     key <- hash.traverseA { maybeHash =>
-      maybeHash.map(fileKey => (StorageProgram.update(fileKey.render, File.structure.fromInterpret(newFile)) >>
-        StorageProgram.update(dataKey.render, data)).as(fileKey)).getOrElse[Eff[R, StorageKey[File]]] {
+      maybeHash.map(fileKey => getFile(fileKey).flatMap(f => StorageProgram.update(f.get.dataKey.render, data))
+        .as(fileKey)).getOrElse[Eff[R, StorageKey[File]]] {
+        val dataKey = StorageKey[FileData](fileName + "|data", nonceSource())
+        val newFile = File(dataKey)
         val fileKey = StorageKey[File](fileName, nonceSource())
         (StorageProgram.update(dataKey.render, data) >>
           StorageProgram.update(fileKey.render, File.structure.fromInterpret(newFile)) >>
@@ -190,30 +190,53 @@ object StorageFS {
     )
   } yield ()
 
-  def runSealedStorageProgram[F[_] : Monad, A](prog: StorageProgram[A], underlying: Storage[F], nonceSource: () => String,
-                                               storageRoot: StorageFS.StorageKey[StorageFS.Dir]): F[A] = {
+  def runSealedStorageProgram[I, O, U, F[_] : Monad, A](prog: Eff[I, A], underlying: Storage[F],
+                                                        nonceSource: () => String,
+                                                        storageRoot: StorageFS.StorageKey[StorageFS.Dir])(
+                                                         implicit ev: Member.Aux[StorageAction, I, U],
+                                                         ev2: Member.Aux[F, O, U]
+                                                       ): Eff[O, A] = {
     val storageFS = new StorageFS(underlying, nonceSource, storageRoot)
-    type mem = Member.Aux[Writer[Vector[String], ?], Fx.fx2[StorageAction, Writer[Vector[String], ?]], Fx.fx1[StorageAction]]
-    val loggedProgram: F[(A, Vector[String])] = StorageProgram.runProgram(storageFS,
-      writer.runWriterFold[Fx.fx2[StorageAction, Writer[Vector[String], ?]],
-        Fx.fx1[StorageAction],
-        Vector[String],
-        A,
-        Vector[String]](
-        StorageProgram.logKeys[Fx.fx1[StorageAction],
-          Fx.fx2[StorageAction, Writer[Vector[String], ?]],
-          NoFx,
-          A](prog)
-      )(writer.MonoidFold[Vector[String]])(implicitly[mem])).detach
+    val loggedProgram: Eff[O, (A, Vector[String])] =
+      StorageProgram.runProgram[F, O, I, U, (A, Vector[String])](storageFS,
+        StorageProgram.withLoggedKeys(prog)
+      )
     loggedProgram.flatMap { case (v, usedKeys) =>
-      val removeExcessProgram =
+      val removeExcessProgram: Eff[O, Unit] =
         StorageProgram.runProgram(underlying, for {
-          programDir <- StorageFS.getDir[Fx.fx1[StorageAction]](storageRoot)
-          _ <- programDir.traverse[StorageProgram, List[Unit]] { dir =>
+          programDir <- StorageFS.getDir[I](storageRoot)
+          _ <- programDir.traverseA[I, List[Unit]] { dir =>
             val keysToRemove = dir.childFileKeys.map(_.name).toSet -- usedKeys
-            keysToRemove.toList.traverseA(StorageFS.removeFile[Fx.fx1[StorageAction]](_, storageRoot))
+            keysToRemove.toList.traverseA(StorageFS.removeFile[I](_, storageRoot))
           }
-        } yield ()).detach
+        } yield ())
+      removeExcessProgram.as(v)
+    }
+  }
+
+  def runSealedStorageProgramInto[I, U, F[_] : Monad, A](prog: Eff[I, A], underlying: Storage[F],
+                                                         nonceSource: () => String,
+                                                         storageRoot: StorageFS.StorageKey[StorageFS.Dir])(
+                                                          implicit ev: Member.Aux[StorageAction, I, U],
+                                                          ev2: Member[F, U]
+                                                        ): Eff[U, A] = {
+    val storageFS = new StorageFS(underlying, nonceSource, storageRoot)
+    type mem = Member.Aux[Writer[Vector[String], ?], Fx.prepend[Writer[Vector[String], ?], I], I]
+    val loggedProgram: Eff[U, (A, Vector[String])] =
+      StorageProgram.runProgramInto[F, I, U, (A, Vector[String])](storageFS,
+        writer.runWriterFold[Fx.prepend[Writer[Vector[String], ?], I], I, Vector[String], A, Vector[String]](
+          StorageProgram.logKeys[I, Fx.prepend[Writer[Vector[String], ?], I], U, A](prog)
+        )(writer.MonoidFold[Vector[String]])(implicitly[mem])
+      )
+    loggedProgram.flatMap { case (v, usedKeys) =>
+      val removeExcessProgram: Eff[U, Unit] =
+        StorageProgram.runProgramInto(underlying, for {
+          programDir <- StorageFS.getDir[I](storageRoot)
+          _ <- programDir.traverseA[I, List[Unit]] { dir =>
+            val keysToRemove = dir.childFileKeys.map(_.name).toSet -- usedKeys
+            keysToRemove.toList.traverseA(StorageFS.removeFile[I](_, storageRoot))
+          }
+        } yield ())
       removeExcessProgram.as(v)
     }
   }

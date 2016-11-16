@@ -7,7 +7,6 @@ import cats.{Monad, Traverse}
 import monix.eval.Task
 import org.atnos.eff._
 import org.atnos.eff.syntax.all._
-import org.atnos.eff.monix.TaskEffect._
 import qq.util._
 
 /*

@@ -22,7 +22,7 @@ package object cc {
   type CompiledFilterResult[A] = Eff[CompiledFilterStack, A]
   type CompiledFilter = RanTraverseM[CompiledFilterStack, List, JSON, JSON]
 
-  type OrCompilationError[T] = QQCompilationException Xor T
+  type OrCompilationError[T] = QQCompilationException Either T
 
   implicit final class ListToNelOps[A](val l: List[A]) extends AnyVal {
     @inline def unconsFold[B](b: B, f: (A, List[A]) => B): B = if (l.isEmpty) b else f(l.head, l.tail)

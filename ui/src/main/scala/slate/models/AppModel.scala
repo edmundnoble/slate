@@ -3,9 +3,9 @@ package models
 
 import slate.app.SlateApp.AllErrors
 import japgolly.scalajs.react.extra.Reusability
-import cats.data.Xor
 
-case class AppModel(content: AllErrors Xor List[ExpandableContentModel])
+
+case class AppModel(content: AllErrors Either List[ExpandableContentModel])
 
 object AppModel {
 

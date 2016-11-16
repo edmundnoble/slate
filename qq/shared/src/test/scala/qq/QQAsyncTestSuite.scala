@@ -28,6 +28,7 @@ abstract class QQAsyncTestSuite extends AsyncFreeSpec with QQTestSuite with Asyn
       }
       override def currentTimeMillis(): Long = System.currentTimeMillis()
       override def executionModel: ExecutionModel = ExecutionModel.SynchronousExecution
+      override def withExecutionModel(em: ExecutionModel): Scheduler = ???
     }
 
 }

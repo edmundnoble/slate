@@ -10,7 +10,7 @@ import qq.data._
 
 import scala.collection.mutable
 import cats.implicits._
-import cats.data.Xor
+
 
 object Parser {
 
@@ -22,7 +22,7 @@ object Parser {
       parsers.Transformers.FlatMapped(fa, f)
 
     // TODO: Can I make this work?
-    override def tailRecM[A, B](a: A)(f: (A) => Parser[Either[A, B]]): Parser[B] = defaultTailRecM(a)(f)
+    override def tailRecM[A, B](a: A)(f: (A) => Parser[Either[A, B]]): Parser[B] = ???
   }
 
   implicit def listRepeater[T]: Implicits.Repeater[T, List[T]] = new Implicits.Repeater[T, List[T]] {
@@ -162,10 +162,10 @@ object Parser {
   )
 
   // The reason I avoid using basicFilter is to avoid a parsing ambiguity with ensequencedFilters
-  val enjectPair: P[(String Xor ConcreteFilter, ConcreteFilter)] = P(
-    ((("(" ~/ whitespace ~ filter ~ whitespace ~ ")").map(_.right[String]) |
-      (stringLiteral | escapedStringLiteral).map(_.left[ConcreteFilter])) ~ ":" ~ whitespace ~ piped) |
-      filterIdentifier.map(id => id.left -> dsl.getPath(List(dsl.selectKey(id))))
+  val enjectPair: P[(String Either ConcreteFilter, ConcreteFilter)] = P(
+    ((("(" ~/ whitespace ~ filter ~ whitespace ~ ")").map(Right[String, ConcreteFilter]) |
+      (stringLiteral | escapedStringLiteral).map(Left[String, ConcreteFilter])) ~ ":" ~ whitespace ~ piped) |
+      filterIdentifier.map(id => Left(id) -> dsl.getPath(List(dsl.selectKey(id))))
   )
 
   val enjectedFilter: P[ConcreteFilter] = P(

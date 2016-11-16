@@ -9,8 +9,8 @@ import slate.util.Util.observableReusability
 import slate.views.ExpandableContentView.ExpandableContentProps
 
 import scalacss.Defaults._
-import cats.data.Xor
 import cats.implicits._
+import qq.data.JSON
 
 object AppView {
 
@@ -71,7 +71,7 @@ object AppView {
       Reusability.caseClass[AppState]
   }
 
-  final case class AppProps(id: Int, title: String, titleLink: String, model: AppModel)
+  final case class AppProps(id: Int, input: JSON, title: String, titleLink: String, model: AppModel)
 
   object AppProps {
     implicit val reusability: Reusability[AppProps] =
@@ -84,7 +84,7 @@ object AppView {
     import scalacss.ScalaCssReact._
 
     ReactComponentB[AppProps]("Expandable content view")
-      .initialState[AppState](AppState(AppModel(Nil.right)))
+      .initialState[AppState](AppState(AppModel(Right(Nil))))
       .renderP { (_, props) =>
         div(Styles.panel, key := props.id,
           div(Styles.header,

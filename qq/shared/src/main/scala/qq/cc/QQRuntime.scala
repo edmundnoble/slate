@@ -1,7 +1,7 @@
 package qq
 package cc
 
-import cats.data.{NonEmptyList, ValidatedNel, Xor}
+import cats.data.{NonEmptyList, ValidatedNel}
 
 import scala.language.higherKinds
 import monix.eval.Task
@@ -255,14 +255,14 @@ object QQRuntime {
       typeError[CompiledProgramStack, List[JSON]]("flatten", "array" -> v)
   }
 
-  def enjectFilter(obj: List[(String Xor CompiledFilter, CompiledFilter)]): CompiledFilter = {
+  def enjectFilter(obj: List[(String Either CompiledFilter, CompiledFilter)]): CompiledFilter = {
     if (obj.isEmpty) {
       CompiledFilter.singleton(_ => (JSON.obj() :: Nil).pureEff)
     } else {
       CompiledFilter.singleton(
         (jsv: JSON) =>
           obj.traverseA[CompiledFilterStack, List[(String, JSON)]] {
-            case (Xor.Right(filterKey), filterValue) =>
+            case (Right(filterKey), filterValue) =>
               for {
                 keyResults <- filterKey(jsv)
                 valueResults <- filterValue(jsv)
@@ -271,7 +271,7 @@ object QQRuntime {
                   case k => typeError[CompiledFilterStack, List[(String, JSON)]]("use as key", "string" -> k)
                 }
               } yield keyValuePairs.flatten
-            case (Xor.Left(filterName), filterValue) =>
+            case (Left(filterName), filterValue) =>
               for {
                 valueResult <- filterValue(jsv)
               } yield valueResult.map(filterName -> _)

@@ -11,7 +11,7 @@ import qq.util._
 import scodec.codecs.implicits._
 import shapeless._
 
-import cats.data.Xor
+
 
 object FilterProtocol {
 

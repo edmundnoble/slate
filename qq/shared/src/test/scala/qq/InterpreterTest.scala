@@ -22,7 +22,7 @@ class InterpreterTest extends QQAsyncTestSuite {
   }
 
   "quit" in {
-    mainMenu.resume(":q").value should be(InterpreterExitException.left)
+    mainMenu.resume(":q").value should be(Left(InterpreterExitException))
   }
 
   "program interpreter" - {

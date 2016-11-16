@@ -7,7 +7,7 @@ import slate.util.Util._
 import slate.app.ProgramCache.ErrorGettingCachedProgram
 import slate.models.{AppModel, ExpandableContentModel}
 import slate.util.LoggerFactory
-import slate.storage.{DomStorage, StorageFS, StorageProgram}
+import slate.storage.{DomStorage, StorageAction, StorageFS, StorageProgram}
 import slate.views.AppView.AppProps
 import japgolly.scalajs.react.{Addons, ReactComponentM, ReactDOM, TopNode}
 import monix.eval.Task
@@ -30,8 +30,10 @@ import scalacss.internal.StringRenderer
 import cats._
 import cats.data._
 import cats.implicits._
+import monix.execution.cancelables.StackedCancelable
 import org.atnos.eff.{Eff, Fx, Member, NoFx, writer}
 import org.atnos.eff.syntax.all._
+import upickle.Invalid.Data
 
 @JSExport
 object SlateApp extends scalajs.js.JSApp {
@@ -40,8 +42,9 @@ object SlateApp extends scalajs.js.JSApp {
 
   final class EmptyResponseException extends java.lang.Exception("Empty response")
 
-  final case class DashProgram[P](id: Int, title: String, titleLink: String, program: P, input: JSON) {
+  final case class DashProgram[+P](id: Int, title: String, titleLink: String, program: P, input: JSON) {
     def withProgram[B](newProgram: B): DashProgram[B] = copy(program = newProgram)
+    def withoutProgram: DashProgram[Unit] = copy(program = ())
     def nameInputHash: Int = (title, input).hashCode
   }
 
@@ -58,20 +61,15 @@ object SlateApp extends scalajs.js.JSApp {
     }
   }
 
-  def programs: List[DashProgram[Program[ConcreteFilter] Xor String]] = {
-    val todoistState: String = List.fill(6) {
-      java.lang.Integer.toHexString(scala.util.Random.nextInt(256))
-    }.mkString
-
-    List[DashProgram[Program[ConcreteFilter] Xor String]](
-      DashProgram(1, "Gmail", "https://gmail.com", GmailApp.program, JSON.Obj()),
+  def programs: List[DashProgram[Program[ConcreteFilter] Either String]] = {
+    List[DashProgram[Program[ConcreteFilter] Either String]](
+      DashProgram(1, "Gmail", "https://gmail.com", GmailApp.program, JSON.ObjMap(Map())),
       DashProgram(2, "Todoist", "https://todoist.com", TodoistApp.program,
-        JSON.Obj(
+        JSON.ObjMap(Map(
           "client_id" -> JSON.Str(Creds.todoistClientId),
           "client_secret" -> JSON.Str(Creds.todoistClientSecret),
-          "redirect_uri" -> JSON.Str("https://ldhbkcmhfmoaepapkcopmigahjdiekil.chromiumapp.org/provider_cb"),
-          "tok" -> JSON.Str(todoistState)
-        )
+          "redirect_uri" -> JSON.Str("https://ldhbkcmhfmoaepapkcopmigahjdiekil.chromiumapp.org/provider_cb")
+        ))
       ),
       DashProgram(3, "JIRA", "https://dashboarder.atlassian.net", JIRAApp.program,
         JSON.Obj(
@@ -79,11 +77,13 @@ object SlateApp extends scalajs.js.JSApp {
           "password" -> JSON.Str(Creds.jiraPassword)
         )
       ),
-      DashProgram(4, "Google Calendar", "https://calendar.google.com", GCalendarApp.program, JSON.Obj())
+      DashProgram(4, "Google Calendar", "https://calendar.google.com", GCalendarApp.program, JSON.ObjMap(Map()))
     )
   }
 
   type ErrorCompilingPrograms = QQCompilationException :+: ErrorGettingCachedProgram
+
+  import shapeless.ops.coproduct.Basis
 
   def nonceSource(): String = {
     val int = scala.util.Random.nextInt(1000)
@@ -94,55 +94,64 @@ object SlateApp extends scalajs.js.JSApp {
     programDirKey <- StorageFS.mkDir("program", nonceSource, StorageFS.fsroot)
   } yield programDirKey.get.fold(identity[StorageFS.StorageKey[StorageFS.Dir]])
 
-  def compiledPrograms: Task[List[DashProgram[Xor[ErrorCompilingPrograms, CompiledFilter]]]] = {
+  def compiledPrograms: Task[List[DashProgram[Either[ErrorCompilingPrograms, CompiledFilter]]]] = {
 
-    def reassembleProgram(program: DashProgram[Xor[Program[ConcreteFilter], String]]): StorageProgram[DashProgram[Xor[ErrorGettingCachedProgram, Program[ConcreteFilter]]]] = {
-      program.program.fold[StorageProgram[DashProgram[Xor[ErrorGettingCachedProgram, Program[ConcreteFilter]]]]](p =>
-        Eff.pure(program.withProgram(Xor.right[ErrorGettingCachedProgram, Program[ConcreteFilter]](p))),
+    def reassembleProgram(program: DashProgram[Either[Program[ConcreteFilter], String]]): StorageProgram[DashProgram[Either[ErrorGettingCachedProgram, Program[ConcreteFilter]]]] = {
+      program.program.fold[StorageProgram[DashProgram[Either[ErrorGettingCachedProgram, Program[ConcreteFilter]]]]](p =>
+        Eff.pure(program.withProgram(Right[ErrorGettingCachedProgram, Program[ConcreteFilter]](p))),
         s => ProgramCache.getCachedProgramByHash(program.withProgram(s)).map(program.withProgram))
     }
 
-    val prog: StorageProgram[List[DashProgram[Xor[ErrorGettingCachedProgram, Program[ConcreteFilter]]]]] =
+    val prog: StorageProgram[List[DashProgram[Either[ErrorGettingCachedProgram, Program[ConcreteFilter]]]]] =
       programs.traverse(reassembleProgram)
 
-    StorageProgram.runProgram(DomStorage.Local, prepareProgramFolder).detach.flatMap { programDirKey =>
-      StorageFS.runSealedStorageProgram(prog, DomStorage.Local, nonceSource, programDirKey)
-        .map(_.map(_.map(_.leftMap(Inr.apply).flatMap(QQCompiler.compileProgram(DashPrelude, _).leftMap(Inl.apply)))))
-    }
+    type StorageOrTask = Fx.fx2[StorageAction, Task]
+
+    StorageProgram.runProgramInto(DomStorage.Local, prepareProgramFolder.into[StorageOrTask]).flatMap { programDirKey =>
+      StorageFS.runSealedStorageProgramInto(prog.into[StorageOrTask], DomStorage.Local, nonceSource, programDirKey)
+        .map(_.map(_.map(_.leftMap(r => Basis[ErrorCompilingPrograms, ErrorGettingCachedProgram].inverse(Right(r)))
+          .flatMap { p =>
+            QQCompiler.compileProgram(DashPrelude, p).leftMap(inj[ErrorCompilingPrograms].apply[QQCompilationException])
+          }
+        )))
+    }.detach
   }
 
   type ErrorRunningPrograms = QQRuntimeException :+: CNil
 
-  private def runCompiledPrograms: Task[List[DashProgram[ErrorCompilingPrograms Xor Task[ErrorRunningPrograms Xor List[JSON]]]]] =
+  private def runCompiledPrograms: Task[List[DashProgram[ErrorCompilingPrograms Either Task[ErrorRunningPrograms Either List[JSON]]]]] =
     compiledPrograms.map {
       programs =>
-        programs.map { program =>
-          program.map(
-            _.map {
-              compiled =>
-                CompiledFilter.run(program.input, Map.empty, compiled).map {
-                  _.leftMap(exs => (Inl(QQRuntimeException(exs)): QQRuntimeException :+: CNil)).toXor
-                }
-            }
-          )
+        programs.map {
+          program =>
+            program.map(
+              _.map {
+                compiled =>
+                  CompiledFilter.run(program.input, Map.empty, compiled).map {
+                    _.leftMap[ErrorRunningPrograms](exs => inl(QQRuntimeException(exs))).toEither
+                  }
+              }
+            )
         }
     }
 
-  type ErrorDeserializingProgramOutput = upickle.Invalid.Data :+: ErrorRunningPrograms
+  case class InvalidJSON(str: String) extends Exception
+
+  type ErrorDeserializingProgramOutput = InvalidJSON :+: upickle.Invalid.Data :+: ErrorRunningPrograms
 
   private def
-  deserializeProgramOutput: Task[List[DashProgram[ErrorCompilingPrograms Xor Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]]]]] =
+  deserializeProgramOutput: Task[List[DashProgram[ErrorCompilingPrograms Either Task[ErrorDeserializingProgramOutput Either List[ExpandableContentModel]]]]] =
     runCompiledPrograms.map {
       _.map(program =>
         program.map(
-          _.map[Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]]](
+          _.map[Task[ErrorDeserializingProgramOutput Either List[ExpandableContentModel]]](
             _.map(
-              _.leftMap(Inr[upickle.Invalid.Data, ErrorRunningPrograms]).flatMap(
-                _.traverse[ErrorDeserializingProgramOutput Xor ?, ExpandableContentModel] {
+              _.leftMap(r => Basis[ErrorDeserializingProgramOutput, ErrorRunningPrograms].inverse(Right(r))).flatMap(
+                _.traverse[ErrorDeserializingProgramOutput Either ?, ExpandableContentModel] {
                   json =>
                     val upickleJson = JSON.JSONToUpickleRec.apply(json)
-                    try ExpandableContentModel.pkl.read(upickleJson).right catch {
-                      case ex: upickle.Invalid.Data => Inl(ex).left
+                    try Either.right(ExpandableContentModel.pkl.read(upickleJson)) catch {
+                      case ex: upickle.Invalid.Data => Either.left(inj[ErrorDeserializingProgramOutput](ex))
                     }
                 }
               )
@@ -156,44 +165,60 @@ object SlateApp extends scalajs.js.JSApp {
     dataDirKey <- StorageFS.mkDir("data", nonceSource, StorageFS.fsroot)
   } yield dataDirKey.get.fold(identity[StorageFS.StorageKey[StorageFS.Dir]])
 
-  def getCachedOutput(dataDirKey: StorageFS.StorageKey[StorageFS.Dir], programs: List[DashProgram[_]]): Task[List[DashProgram[ErrorCompilingPrograms Xor Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]]]]] =
+  type AllErrors = InvalidJSON :+: upickle.Invalid.Data :+: QQRuntimeException :+: ErrorCompilingPrograms
+
+  val errorCompilingProgramsInAllErrors: Basis[AllErrors, ErrorCompilingPrograms] =
+    Basis[AllErrors, ErrorCompilingPrograms]
+
+  val errorDeserializingProgramOutputInAllErrors: Basis[AllErrors, ErrorDeserializingProgramOutput] =
+    Basis[AllErrors, ErrorDeserializingProgramOutput]
+
+  def makeDataKey(title: String, input: JSON) = title + " " + input.hashCode()
+
+  def getCachedOutput(dataDirKey: StorageFS.StorageKey[StorageFS.Dir], programs: List[DashProgram[Unit]]): Task[List[Option[DashProgram[InvalidJSON Either List[ExpandableContentModel]]]]] = {
+    type mem1 = Member.Aux[StorageAction, Fx.fx2[Task, StorageAction], Fx.fx1[Task]]
+    type mem2 = Member[Task, Fx.fx1[Task]]
     for {
       progs <- deserializeProgramOutput
-      progMap = progs.groupBy(p => p.title + p.input.hashCode())
-      orf <- StorageFS.runSealedStorageProgram(programs.traverseA(p =>
-        ProgramCache.getCachedByPrepareM[Unit, Unit, DashProgram[ErrorCompilingPrograms Xor Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]]], DashProgram[_]](p)(
-          prg => prg.title + prg.input.hashCode(), { (models: List[ExpandableContentModel]) =>
-            ExpandableContentModel.pkls.write(models).toString().right[Unit]
-          }, { (title, encodedModels) =>
-            Try(upickle.json.read(encodedModels))
-              .toOption.flatMap(ExpandableContentModel.pkls.read.lift)
-              .toRightXor(())
-              .map(progMap(title).head.withProgram(_))
-              .map(_.map[Xor[ErrorCompilingPrograms, Task[ErrorDeserializingProgramOutput Xor List[ExpandableContentModel]]]](m => Task.now(m.right).right))
-          }, { f =>
-            progMap(f.title + f.input.hashCode()).head.right
-          })), DomStorage.Local, nonceSource, dataDirKey)
-    } yield orf
+      progMap = progs.groupBy(p => makeDataKey(p.title, p.input))
+      porgs <- StorageFS.runSealedStorageProgramInto[Fx.fx2[Task, StorageAction], Fx.fx1[Task], Task, List[(DashProgram[Unit], Option[Either[InvalidJSON, List[ExpandableContentModel]]])]](
+        programs.traverseA(p =>
+          ProgramCache.getCachedBy[Fx.fx2[Task, StorageAction], InvalidJSON, DashProgram[Unit], List[ExpandableContentModel]](p)(
+            prg => makeDataKey(prg.title, prg.input), {
+              encodedModels =>
+                Try(upickle.json.read(encodedModels).arr.toList)
+                  .toOption.flatMap(_.traverse(ExpandableContentModel.pkl.read.lift))
+                  .toRight(InvalidJSON(encodedModels))
+            })
+            .map(ms => (p, ms))), DomStorage.Local, nonceSource, dataDirKey)(Monad[Task], implicitly[mem1], implicitly[mem2]).detach
+      cachedPrograms = porgs.map {
+        case (p, models) => models.map(p.withProgram)
+      }
+    } yield cachedPrograms
+  }
 
-
-  type AllErrors = upickle.Invalid.Data :+: QQRuntimeException :+: ErrorCompilingPrograms
-
-  def getContent: Observable[Task[SearchPageProps]] =
-    Observable.fromTask(deserializeProgramOutput).flatMap { o =>
-      raceFold(o.map {
-        case DashProgram(id, title, titleLink, out, _) =>
-          import shapeless.ops.coproduct.Basis
+  def getContent(dataDirKey: StorageFS.StorageKey[StorageFS.Dir]): Observable[Task[SearchPageProps]] = {
+    (for {
+      programOutput <- Observable.fromTask(deserializeProgramOutput)
+      cachedOutputs <- Observable.fromTask(getCachedOutput(dataDirKey, programOutput.map(_.withoutProgram)).map(_.flatten))
+      cachedOutputsMapped = cachedOutputs.groupBy(_.id).mapValues(_.head).collect { case (k, DashProgram(_, _, _, Right(li), _)) => (k, li) }
+      results <- raceFold(programOutput.map {
+        case DashProgram(id, title, titleLink, out, input) =>
           val injectedErrors = out.leftMap(e =>
-            Basis[AllErrors, ErrorCompilingPrograms].inverse(Right(e))
-          ).map(_.map(_.leftMap(e =>
-            Basis[AllErrors, ErrorDeserializingProgramOutput].inverse(Right(e))
-          ))).sequence[Task, Xor[AllErrors, List[ExpandableContentModel]]].map(_.flatten)
-          injectedErrors.map(e => Task.now(AppProps(id, title, titleLink, AppModel(e))))
+            errorCompilingProgramsInAllErrors.inverse(Right(e))
+          ).map(_.map(_.leftMap(e => errorDeserializingProgramOutputInAllErrors.inverse(Right(e)))))
+            .sequence[Task, Either[AllErrors, List[ExpandableContentModel]]].map(_.flatten)
+          injectedErrors.map(e => Task.now(AppProps(id, input, title, titleLink, AppModel(e))))
       })(
-        runCompiledPrograms.map(_.map(t => AppProps(t.id, t.title, t.titleLink, AppModel(Nil.right)))
-        ))((l, ap) => Task.mapBoth(ap, l) { (a, li) => a :: li.filterNot(_.id == a.id) })
-        .map(_.map(appProps => SearchPageProps(appProps.sortBy(_.id))))
-    }
+        runCompiledPrograms.map(
+          _.map(t => AppProps(t.id, t.input, t.title, t.titleLink, AppModel(Either.right(cachedOutputsMapped.getOrElse(t.id, Nil)))))
+        )
+      )((l, ap) => Task.mapBoth(ap, l) {
+        (a, li) => a :: li.filterNot(_.id == a.id)
+      })
+    } yield results)
+      .map(_.map(appProps => SearchPageProps(appProps.sortBy(_.id))))
+  }
 
   def render(container: org.scalajs.dom.raw.Element, content: SearchPageProps)(
     implicit scheduler: Scheduler): Task[ReactComponentM[SearchPageProps, Unit, Unit, TopNode]] = {
@@ -214,6 +239,7 @@ object SlateApp extends scalajs.js.JSApp {
   def main(): Unit = {
 
     import monix.execution.Scheduler.Implicits.global
+    import Observable.fromTask
 
     if (!js.isUndefined(Addons.Perf)) {
       logger.info("Starting perf")
@@ -222,20 +248,31 @@ object SlateApp extends scalajs.js.JSApp {
     }
     val container =
       dom.document.body.children.namedItem("container")
-    val _ =
-      (for {
-        _ <- Observable.fromTask(StorageProgram.runProgram(DomStorage.Local, StorageFS.initFS).detach)
-        _ <- Observable.fromTask(appendStyles())
-        compilePrograms <- getContent
-        outputs <- Observable.fromTask(compilePrograms)
-        _ <- Observable.fromTask(render(container, outputs))
-      } yield ()).subscribe()
-    if (!js.isUndefined(Addons.Perf)) {
-      logger.info("Stopping perf")
-      Addons.Perf.stop()
-      logger.info("Printing wasted")
-      logger.info(Addons.Perf.printWasted(Addons.Perf.getLastMeasurements()).toString)
-    }
+    val _ = (for {
+      dataDirKey <-
+      StorageProgram.runProgram[Task, Fx.fx1[Task], Fx.fx1[StorageAction], NoFx, StorageFS.StorageKey[StorageFS.Dir]](DomStorage.Local, StorageFS.initFS >> prepareDataFolder).detach
+      lastResults <- Task.fromFuture((for {
+        _ <- fromTask(appendStyles())
+        compilePrograms <- getContent(dataDirKey)
+        outputs <- fromTask(compilePrograms)
+        _ <- fromTask(render(container, outputs))
+      } yield outputs).runAsyncGetLast)
+      fs = new StorageFS(DomStorage.Local, nonceSource, dataDirKey)
+      _ <- lastResults.traverse(r => StorageProgram.runProgram(fs, r.appProps.traverse {
+        case AppProps(_, input, title, _, AppModel(content)) =>
+          Eff.traverseA(content)(cs => StorageProgram.update(makeDataKey(title, input), ExpandableContentModel.pkls.write(cs).toString()))
+      }).detach) // StorageProgram.update)
+    } yield ()).runAsync(new monix.eval.Callback[Unit] {
+      override def onSuccess(value: Unit): Unit = println("QQ run loop finished successfully!")
+      override def onError(ex: Throwable): Unit = println(s"QQ run loop finished with error: $ex")
+    })
+    val lastResults =
+      if (!js.isUndefined(Addons.Perf)) {
+        logger.info("Stopping perf")
+        Addons.Perf.stop()
+        logger.info("Printing wasted")
+        logger.info(Addons.Perf.printWasted(Addons.Perf.getLastMeasurements()).toString)
+      }
   }
 
   // TODO: cache

@@ -13,17 +13,20 @@ object SlateBuild {
 
   lazy val commonDeps: Seq[Setting[_]] = Seq(
     libraryDependencies ++= Seq(
-      "org.typelevel" %%% "cats-core" % "0.7.2",
-      "org.typelevel" %%% "cats-kernel" % "0.7.2",
-      "org.typelevel" %%% "cats-macros" % "0.7.2",
-      "org.typelevel" %%% "cats-free" % "0.7.2",
-      "org.atnos" %%% "eff-cats" % "2.0.0-RC17",
-      "org.atnos" %%% "eff-cats-monix" % "2.0.0-RC17",
+      "org.typelevel" %%% "cats-core" % "0.8.1",
+      "org.typelevel" %%% "cats-kernel" % "0.8.1",
+      "org.typelevel" %%% "cats-macros" % "0.8.1",
+      "org.typelevel" %%% "cats-free" % "0.8.1",
+      "org.atnos" %%% "eff-cats" % "2.0.0-RC24",
+      "org.atnos" %%% "eff-cats-monix" % "2.0.0-RC24",
       "org.scalatest" %%% "scalatest" % "3.0.0" % "test",
       "com.lihaoyi" %%% "upickle" % "0.4.3",
       "com.lihaoyi" %%% "fastparse" % "0.4.1",
-      "io.monix" %%% "monix" % "2.0.6",
-      "io.monix" %%% "monix-cats" % "2.0.6",
+      "io.monix" %%% "monix-types" % "2.2.0-SNAPSHOT",
+      "io.monix" %%% "monix-eval" % "2.2.0-SNAPSHOT",
+      "io.monix" %%% "monix-execution" % "2.2.0-SNAPSHOT",
+      "io.monix" %%% "monix-reactive" % "2.2.0-SNAPSHOT",
+      "io.monix" %%% "monix-cats" % "2.2.0-SNAPSHOT",
       "org.scodec" %%% "scodec-bits" % "1.1.2",
       "org.scodec" %%% "scodec-core" % "1.10.3",
       "com.chuusai" %%% "shapeless" % "2.3.2"
@@ -208,7 +211,7 @@ object SlateBuild {
       (testOnly in Test).toTask(" -- -oD -n StackTest")
     },
     addCompilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full),
-    addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.0" cross CrossVersion.binary)
+    addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.3" cross CrossVersion.binary)
   )
 
   val jsSettings: Seq[sbt.Def.Setting[_]] = Seq(

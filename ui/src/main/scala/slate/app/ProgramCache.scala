@@ -9,70 +9,42 @@ import slate.util.Util._
 import fastparse.all.ParseError
 import qq.util.Recursion.RecursionEngine
 import shapeless.{:+:, CNil}
-import storage.{FixedStorageAction, StorageProgram}
-import cats.data.Xor
+import storage.{StorageAction, StorageProgram}
+import org.atnos.eff._
+import Eff._
+import syntax.all._
 import cats.implicits._
 import slate.app.SlateApp.DashProgram
 
 object ProgramCache {
 
-  def parseAndOptimizeProgram(program: String)(implicit rec: RecursionEngine): ParseError Xor Program[ConcreteFilter] = {
-    val parsedQQProgram = Parser.program.parse(program).toXor.bimap(ParseError(_), _.value)
+  def parseAndOptimizeProgram(program: String)(implicit rec: RecursionEngine): ParseError Either Program[ConcreteFilter] = {
+    val parsedQQProgram = Parser.program.parse(program).toEither.bimap(ParseError(_), _.value)
     val optimizedProgram = parsedQQProgram.map(LocalOptimizer.optimizeProgram)
     optimizedProgram
   }
 
   sealed abstract class ProgramSerializationException(msg: String) extends Exception(msg)
   case class InvalidBase64(str: String) extends ProgramSerializationException(str + " is not base64")
-  case class InvalidBytecode(fail: scodec.Attempt.Failure) extends ProgramSerializationException("error decoding program from cache: " + fail.cause)
+  case class InvalidBytecode(err: scodec.Err) extends ProgramSerializationException("error decoding program from cache: " + err)
 
   type ErrorGettingCachedProgram = ParseError :+: ProgramSerializationException :+: CNil
 
-  def getCachedBy[ErrS, A](input: A)(
-    getKey: A => String,
-    decode: String => ErrS Xor A): StorageProgram[Option[ErrS Xor A]] = {
+  def getCachedBy[R, ErrS, I, A](input: I)(
+    getKey: I => String,
+    decode: String => ErrS Either A)(implicit ev: MemberIn[StorageAction, R]): Eff[R, Option[ErrS Either A]] = {
     val key = getKey(input)
     for {
-      raw <- StorageProgram.get(key)
+      raw <- StorageProgram.get[R](key)
       decodedProgram = raw.map(decode)
     } yield decodedProgram
   }
 
-  def getCachedByPrepareM[ErrS, ErrP, F[_] : Monad, A, I](input: I)(
-    getKey: I => String,
-    encode: A => ErrS Xor String,
-    decode: (String, String) => ErrS Xor A,
-    prepare: I => ErrP Xor F[A]): FixedStorageAction[F, (ErrP :+: ErrS :+: CNil) Xor A] = {
-
-    val injectError = inj[ErrP :+: ErrS :+: CNil]
-    val key = getKey(input)
-
-    for {
-      programInStorage <- FixedStorageAction.get[F](key)
-      decodedOptimizedProgram <- programInStorage match {
-        case None =>
-          for {
-            preparedProgram <- prepare(input)
-              .map(FixedStorageAction.hpure[F, A])
-              .leftMap(injectError(_))
-              .sequence[FixedStorageAction[F, ?], A]
-            encodedProgram: ((ErrP :+: ErrS :+: CNil) Xor String) = preparedProgram.flatMap(encode(_).leftMap(injectError(_)))
-            result <- encodedProgram.fold(
-              _.left[A].pure[FixedStorageAction[F, ?]],
-              FixedStorageAction.update[F](key, _).map(_ => preparedProgram)
-            )
-          } yield result
-        case Some(encodedProgram) =>
-          decode(key, encodedProgram).leftMap(injectError(_)).traverse(FixedStorageAction.pure[F, A])
-      }
-    } yield decodedOptimizedProgram
-  }
-
   def getCachedByPrepare[ErrS, ErrP, A, I](input: I)(
     getKey: I => String,
-    encode: A => ErrS Xor String,
-    decode: (String, String) => ErrS Xor A,
-    prepare: I => ErrP Xor A): StorageProgram[(ErrP :+: ErrS :+: CNil) Xor A] = {
+    encode: A => ErrS Either String,
+    decode: (String, String) => ErrS Either A,
+    prepare: I => ErrP Either A): StorageProgram[(ErrP :+: ErrS :+: CNil) Either A] = {
 
     val injectError = inj[ErrP :+: ErrS :+: CNil]
     val key = getKey(input)
@@ -88,7 +60,7 @@ object ProgramCache {
               encode(_).leftMap(injectError(_))
             )
           encodedProgram.fold(
-            _.left.pure[StorageProgram],
+            Left(_).pure[StorageProgram],
             StorageProgram.update(key, _).as(preparedProgram)
           )
         case Some(encodedProgram) =>
@@ -100,7 +72,7 @@ object ProgramCache {
 
   // cache optimized, parsed programs using their hashcode as a key
   // store them as base64-encoded bytecode
-  def getCachedProgramByHash(qqProgram: DashProgram[String])(implicit rec: RecursionEngine): StorageProgram[ErrorGettingCachedProgram Xor Program[ConcreteFilter]] = {
+  def getCachedProgramByHash(qqProgram: DashProgram[String])(implicit rec: RecursionEngine): StorageProgram[ErrorGettingCachedProgram Either Program[ConcreteFilter]] = {
 
     import qq.protocol.FilterProtocol
 
@@ -108,14 +80,14 @@ object ProgramCache {
       prog => prog.title + prog.program.hashCode.toString, { (program: Program[ConcreteFilter]) =>
         FilterProtocol.programCodec
           .encode(program)
-          .toXor
-          .bimap(InvalidBytecode(_): ProgramSerializationException, _.value.toBase64)
+          .toEither
+          .bimap(e => InvalidBytecode(e): ProgramSerializationException, _.toBase64)
       }, { (_, encodedProgram) =>
         BitVector.fromBase64(encodedProgram)
-          .toRightXor(InvalidBase64(encodedProgram): ProgramSerializationException)
+          .toRight(InvalidBase64(encodedProgram): ProgramSerializationException)
           .flatMap(
             FilterProtocol.programCodec.decode(_)
-              .toXor.bimap(InvalidBytecode(_): ProgramSerializationException, _.value.value)
+              .toEither.bimap(e => InvalidBytecode(e): ProgramSerializationException, _.value)
           )
       }, dashProgram => parseAndOptimizeProgram(dashProgram.program)
     )

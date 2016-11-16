@@ -3,7 +3,7 @@ package cc
 
 import java.util.regex.Pattern
 
-import cats.data.{Xor, NonEmptyList, Validated, ValidatedNel}
+import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import monix.eval.Task
 import monix.cats._
 import qq.data.{CompiledDefinition, JSON}
@@ -31,10 +31,12 @@ object JSONPrelude extends Prelude {
   // x | orElse(y): null coalescing operator
   def orElse: CompiledDefinition = CompiledDefinition("orElse", 1, { params =>
     val default = params.head
-    CompiledFilter.singleton((j: JSON) =>
-      if (j == JSON.Null) default(JSON.Null)
-      else (j :: Nil).pureEff[CompiledFilterStack]
-    ).right
+    Right(
+      CompiledFilter.singleton((j: JSON) =>
+        if (j == JSON.Null) default(JSON.Null)
+        else (j :: Nil).pureEff[CompiledFilterStack]
+      )
+    )
   })
 
   // base 64 encoding, duh
@@ -92,9 +94,13 @@ object JSONPrelude extends Prelude {
 
   // filter
   def select: CompiledDefinition = CompiledDefinition("select", 1, {
-    case List(filterFun) => CompiledFilter.singleton {
-      (value: JSON) => filterFun(value).map(_.filter(_ == JSON.True).map(_ => value)).into[CompiledFilterStack]
-    }.right
+    case params =>
+      val filterFun = params.head
+      Right(
+        CompiledFilter.singleton {
+          (value: JSON) => filterFun(value).map(_.filter(_ == JSON.True).map(_ => value)).into[CompiledFilterStack]
+        }
+      )
   })
 
   // array or object includes
@@ -174,11 +180,13 @@ object JSONPrelude extends Prelude {
       }
     )
 
-  def all(implicit rec: RecursionEngine): QQCompilationException Xor Vector[CompiledDefinition] =
-    Vector(
-      `null`, `true`, `false`, orElse, b64Encode, includes, // exists, forall,
-      length, keys, replaceAll, select, arrays, objects, iterables, booleans,
-      numbers, strings, nulls, values, scalars, toStringDef
-    ).right
+  def all(implicit rec: RecursionEngine): QQCompilationException Either Vector[CompiledDefinition] =
+    Right(
+      Vector(
+        `null`, `true`, `false`, orElse, b64Encode, includes, // exists, forall,
+        length, keys, replaceAll, select, arrays, objects, iterables, booleans,
+        numbers, strings, nulls, values, scalars, toStringDef
+      )
+    )
 
 }

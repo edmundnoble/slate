@@ -1,7 +1,7 @@
 package slate
 package views
 
-import slate.app.SlateApp.AllErrors
+import slate.app.SlateApp.{AllErrors, InvalidJSON}
 import slate.app.ProgramCache.{InvalidBase64, InvalidBytecode, ProgramSerializationException}
 import fastparse.all.ParseError
 import japgolly.scalajs.react._
@@ -35,12 +35,17 @@ object ErrorView {
   def builder(ex: AllErrors): ReactTagOf[Div] = {
     div(Styles.danger, key := ex.toString.hashCode,
       div(
-        ex.eliminate(renderDeserializationError,
-          _.eliminate(renderQQRuntimeException,
-            _.eliminate(renderQQCompilerException,
-              _.eliminate(renderParsingException,
+        ex.eliminate(renderInvalidJSON,
+          _.eliminate(renderDeserializationError,
+            _.eliminate(renderQQRuntimeException,
+              _.eliminate(renderQQCompilerException,
+                _.eliminate(renderParsingException,
                   _.eliminate(renderSerializationException,
-                    _.impossible)))))))
+                    _.impossible))))))))
+  }
+
+  def renderInvalidJSON(err: InvalidJSON): TagMod = {
+    "Error decaching output from qq program: " + err
   }
 
   def renderDeserializationError(err: Invalid.Data): TagMod = {

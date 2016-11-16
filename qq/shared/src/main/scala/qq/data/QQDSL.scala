@@ -4,7 +4,7 @@ package data
 import qq.data.FilterComponent.embed
 
 import scala.language.{higherKinds, implicitConversions}
-import cats.data.Xor
+
 import qq.util.Fix
 
 // smart constructors that make a FilterComponent node including its children
@@ -77,7 +77,7 @@ object QQDSL {
     @inline def ensequence(first: ConcreteFilter, second: ConcreteFilter): ConcreteFilter =
       Fix(EnsequenceFilters(first, second))
 
-    @inline def enject(obj: List[((String Xor ConcreteFilter), ConcreteFilter)]): ConcreteFilter =
+    @inline def enject(obj: List[((String Either ConcreteFilter), ConcreteFilter)]): ConcreteFilter =
       Fix(EnjectFilters(obj))
 
     @inline def call(name: String, params: List[ConcreteFilter] = Nil): ConcreteFilter =

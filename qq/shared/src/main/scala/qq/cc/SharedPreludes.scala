@@ -23,7 +23,7 @@ object SharedPreludes extends Prelude {
       val empty: CompiledDefinition =
         CompiledDefinition.noParamDefinition("empty", CompiledFilter.constL(Nil))
 
-      Vector(print, empty).right
+      Right(Vector(print, empty))
     }
   }
 

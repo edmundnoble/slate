@@ -2,8 +2,9 @@ package qq
 package util
 
 import cats.Monad
-import cats.data.{Validated, Xor}
+import cats.data.Validated
 import monix.eval.Task
+import monix.cats._
 import scodec._
 import scodec.bits.BitVector
 import shapeless.Lazy
@@ -16,7 +17,9 @@ import shapeless.tag.@@
 trait UtilImplicits {
 
   implicit def taskToParallelOpsConv[A](task: Task[A]): taskToParallelOps[A] = new taskToParallelOps(task)
+
   implicit def taskParallelOpsConv[A](task: TaskParallel[A]): taskParallelOps[A] = new taskParallelOps(task)
+
   implicit def validatedFlattenOpsConv[E, A](va: Validated[E, A]): validatedFlattenOps[E, A] = new validatedFlattenOps(va)
 
   // Monad with ap inconsistent with bind, for parallel operations on Tasks
@@ -32,13 +35,19 @@ trait UtilImplicits {
       fa.unwrap.flatMap(f(_).unwrap).parallel
 
     // TODO
-    override def tailRecM[A, B](a: A)(f: (A) => TaskParallel[Either[A, B]]): TaskParallel[B] = ???
+    override def tailRecM[A, B](a: A)(f: (A) => TaskParallel[Either[A, B]]): TaskParallel[B] =
+      f(a).unwrap.flatMap {
+        case Right(b) =>
+          Task.now(b)
+        case Left(nextA) =>
+          Task.suspend(tailRecM(nextA)(f).unwrap)
+      }.parallel
   }
 
   // sum type encoded with a single bit
-  implicit def eitherCodec[E, A](implicit E: Lazy[Codec[E]], A: Lazy[Codec[A]]): Codec[E Xor A] = {
+  implicit def eitherCodec[E, A](implicit E: Lazy[Codec[E]], A: Lazy[Codec[A]]): Codec[E Either A] = {
     val enc = Encoder.apply {
-      (v: E Xor A) =>
+      (v: E Either A) =>
         v.fold(e => E.value.encode(e).map(BitVector.one ++ _), a => A.value.encode(a).map(BitVector.zero ++ _))
     }
     val dec = Decoder.apply {
@@ -47,9 +56,9 @@ trait UtilImplicits {
           Attempt.failure(Err.insufficientBits(1, 0))
         } else {
           if (in.head) {
-            E.value.decode(in.tail).map(_.map(_.left[A]))
+            E.value.decode(in.tail).map(_.map(Either.left))
           } else {
-            A.value.decode(in.tail).map(_.map(_.right[E]))
+            A.value.decode(in.tail).map(_.map(Either.right))
           }
         }
     }
@@ -68,9 +77,9 @@ trait UtilImplicits {
           Attempt.failure(Err.insufficientBits(1, 0))
         } else {
           if (in.head) {
-            E.value.decode(in.tail).map(_.map(x => cats.data.Coproduct[F, G, A](x.left[G[A]])))
+            E.value.decode(in.tail).map(_.map(x => cats.data.Coproduct[F, G, A](Either.left(x))))
           } else {
-            A.value.decode(in.tail).map(_.map(x => cats.data.Coproduct[F, G, A](x.right[F[A]])))
+            A.value.decode(in.tail).map(_.map(x => cats.data.Coproduct[F, G, A](Either.right(x))))
           }
         }
     }
@@ -89,11 +98,11 @@ final class taskParallelOps[A](val task: TaskParallel[A]) extends AnyVal {
 
 final class validatedFlattenOps[E, A](val va: Validated[E, A]) extends AnyVal {
   def flatten[A1](implicit ev: Validated[E, A1] =:= A): Validated[E, A1] = va match {
-    case f:cats.data.Validated.Invalid[E] => f
+    case f: cats.data.Validated.Invalid[E] => f
     case cats.data.Validated.Valid(v) => v.asInstanceOf[Validated[E, A1]]
   }
   def flatMap[B, EE <: E](f: A => Validated[EE, B]): Validated[E, B] = va match {
-    case f:cats.data.Validated.Invalid[E] => f
+    case f: cats.data.Validated.Invalid[E] => f
     case cats.data.Validated.Valid(v) => f(v)
   }
 }

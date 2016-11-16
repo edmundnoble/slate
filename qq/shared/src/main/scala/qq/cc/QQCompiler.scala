@@ -1,7 +1,7 @@
 package qq
 package cc
 
-import cats.data.{NonEmptyList, Validated, ValidatedNel, Xor}
+import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import monix.eval.Task
 import monix.cats._
 import qq.data._
@@ -51,59 +51,69 @@ object QQCompiler {
   }
 
   final def compileStep(definitions: Map[String, CompiledDefinition],
-                        filter: FilterComponent[CompiledFilter]): QQCompilationException Xor CompiledFilter = filter match {
+                        filter: FilterComponent[CompiledFilter]): QQCompilationException Either CompiledFilter = filter match {
     case Dereference(name) =>
-      CompiledFilter.singleton {
-        (_: JSON) =>
-          for {
-            bindings <- reader.ask[CompiledFilterStack, VarBindings]
-            result <- bindings.get(name).fold(noSuchVariable[CompiledFilterStack, JSON](name))(_.value.pureEff[CompiledFilterStack])
-          } yield result :: Nil
-      }.right
-    case ConstNumber(num) => QQRuntime.constNumber(num).right
-    case ConstString(str) => QQRuntime.constString(str).right
-    case ConstBoolean(bool) => QQRuntime.constBoolean(bool).right
-    case FilterNot() => CompiledFilter.singleton { j =>
+      Right(
+        CompiledFilter.singleton {
+          (_: JSON) =>
+            for {
+              bindings <- reader.ask[CompiledFilterStack, VarBindings]
+              result <- bindings.get(name).fold(noSuchVariable[CompiledFilterStack, JSON](name))(_.value.pureEff[CompiledFilterStack])
+            } yield result :: Nil
+        }
+      )
+    case ConstNumber(num) => Right(QQRuntime.constNumber(num))
+    case ConstString(str) => Right(QQRuntime.constString(str))
+    case ConstBoolean(bool) => Right(QQRuntime.constBoolean(bool))
+    case FilterNot() => Right(CompiledFilter.singleton { j =>
       Eff.send[OrRuntimeErr, CompiledFilterStack, List[JSON]](QQRuntime.not(j).map(_ :: Nil))
-    }.right
+    })
     case PathOperation(components, operationF) =>
       type mem = Member.Aux[VarEnv, CompiledFilterStack, CompiledProgramStack]
-      CompiledFilter.singleton {
-        (j: JSON) =>
-          evaluatePath(components,
-            operationF.map(f =>
-              CompiledProgram.singleton(j =>
-                reader.runReader[CompiledFilterStack, CompiledProgramStack, VarBindings, List[JSON]](Map.empty)(f(j))(implicitly[mem])
+      Right(
+        CompiledFilter.singleton {
+          (j: JSON) =>
+            evaluatePath(components,
+              operationF.map(f =>
+                CompiledProgram.singleton(j =>
+                  reader.runReader[CompiledFilterStack, CompiledProgramStack, VarBindings, List[JSON]](Map.empty)(f(j))(implicitly[mem])
+                )
               )
-            )
-          )(j).into[CompiledFilterStack]
-      }.right
-    case ComposeFilters(f, s) => CompiledFilter.composeFilters(f, s).right
+            )(j).into[CompiledFilterStack]
+        }
+      )
+    case ComposeFilters(f, s) => Right(CompiledFilter.composeFilters(f, s))
     case CallFilter(filterIdentifier, params) =>
-      definitions.get(filterIdentifier).fold((NoSuchMethod(filterIdentifier): QQCompilationException).left[CompiledFilter]) { (defn: CompiledDefinition) =>
+      definitions.get(filterIdentifier).fold(Either.left[QQCompilationException, CompiledFilter](NoSuchMethod(filterIdentifier): QQCompilationException)) { (defn: CompiledDefinition) =>
         if (params.length == defn.numParams)
           defn.body(params)
         else
-          WrongNumParams(filterIdentifier, defn.numParams, params.length).left
+          Either.left[QQCompilationException, CompiledFilter](
+            WrongNumParams(filterIdentifier, defn.numParams, params.length)
+          )
       }
-    case AsBinding(name, as, in) => CompiledFilter.asBinding(name, as, in).right
-    case EnlistFilter(f) => QQRuntime.enlistFilter(f).right
-    case SilenceExceptions(f) => CompiledFilter.singleton { (jsv: JSON) =>
-      val errExposed: Eff[CompiledFilterStack, OrRuntimeErr[List[JSON]]] =
-        validated.by[NonEmptyList[QQRuntimeError]].runErrorParallel(f(jsv)).into[CompiledFilterStack]
-      val recovered: Eff[CompiledFilterStack, OrRuntimeErr[List[JSON]]] =
-        errExposed.map(_.orElse(Nil.valid[NonEmptyList[QQRuntimeError]]))
+    case AsBinding(name, as, in) => Right(CompiledFilter.asBinding(name, as, in))
+    case EnlistFilter(f) => Right(QQRuntime.enlistFilter(f))
+    case SilenceExceptions(f) => Right(
+      CompiledFilter.singleton { (jsv: JSON) =>
+        val errExposed: Eff[CompiledFilterStack, OrRuntimeErr[List[JSON]]] =
+          validated.by[NonEmptyList[QQRuntimeError]].runErrorParallel(f(jsv)).into[CompiledFilterStack]
+        val recovered: Eff[CompiledFilterStack, OrRuntimeErr[List[JSON]]] =
+          errExposed.map(_.orElse(Nil.valid[NonEmptyList[QQRuntimeError]]))
 
-      Eff.collapse[CompiledFilterStack, OrRuntimeErr, List[JSON]](recovered)
-    }.right[QQCompilationException]
-    case EnsequenceFilters(first, second) => CompiledFilter.ensequenceCompiledFilters(first, second).right
-    case EnjectFilters(obj) => QQRuntime.enjectFilter(obj).right
+        Eff.collapse[CompiledFilterStack, OrRuntimeErr, List[JSON]](recovered)
+      }
+    )
+    case EnsequenceFilters(first, second) => Right(CompiledFilter.ensequenceCompiledFilters(first, second))
+    case EnjectFilters(obj) => Right(QQRuntime.enjectFilter(obj))
     case FilterMath(first, second, op) =>
-      CompiledFilter.singleton { j =>
-        (first(j) |@| second(j)).map((v1, v2) =>
-          (for {v1a <- v1; v2a <- v2} yield Eff.send[OrRuntimeErr, CompiledFilterStack, JSON](funFromMathOperator(op)(v1a, v2a))).traverseA(identity)
-        ).flatten
-      }.right
+      Right(
+        CompiledFilter.singleton { j =>
+          (first(j) |@| second(j)).map((v1, v2) =>
+            (for {v1a <- v1; v2a <- v2} yield Eff.send[OrRuntimeErr, CompiledFilterStack, JSON](funFromMathOperator(op)(v1a, v2a))).traverseA(identity)
+          ).flatten
+        }
+      )
   }
 
   final def compileDefinitionStep(soFar: OrCompilationError[Vector[CompiledDefinition]],
@@ -112,7 +122,7 @@ object QQCompiler {
     soFar.map { (definitionsSoFar: Vector[CompiledDefinition]) =>
       CompiledDefinition(nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter]) => {
         val paramsAsDefinitions: Vector[CompiledDefinition] = (nextDefinition.params, params).zipped.map { (filterName, value) =>
-          CompiledDefinition(filterName, 0, (_: List[CompiledFilter]) => value.right[QQCompilationException])
+          CompiledDefinition(filterName, 0, (_: List[CompiledFilter]) => Right(value))
         }(collection.breakOut)
         compileFilter(definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body)
       }) +: definitionsSoFar
