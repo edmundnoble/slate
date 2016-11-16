@@ -103,7 +103,7 @@ object StorageFS {
   def getFileData[R: _storageAction](fileName: String, dirKey: StorageKey[Dir]): Eff[R, Option[String]] = for {
     dir <- getDir[R](dirKey)
     hash = dir.flatMap(_.childFileKeys.find(_.name == fileName))
-    file <- hash.flatTraverse(getFile[R])
+    file <- hash.flatTraverse[Eff[R, ?], File](getFile[R])
   } yield file.map(_.data)
 
   def updateFileData[R: _storageAction](fileName: String, nonceSource: () => String, data: String, dirKey: StorageKey[Dir]): Eff[R, Option[StorageKey[File]]] = for {
