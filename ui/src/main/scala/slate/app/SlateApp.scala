@@ -125,7 +125,7 @@ object SlateApp extends scalajs.js.JSApp {
               _.map {
                 compiled =>
                   CompiledFilter.run(program.input, Map.empty, compiled).map {
-                    _.leftMap[ErrorRunningPrograms](exs => inl(QQRuntimeException(exs))).toEither
+                    _.leftMap[ErrorRunningPrograms](exs => inl(QQRuntimeException(exs)))
                   }
               }
             )

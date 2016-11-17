@@ -1,7 +1,6 @@
 package qq
 package cc
 
-import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import monix.eval.Task
 import monix.cats._
 import qq.data._
@@ -96,12 +95,7 @@ object QQCompiler {
     case EnlistFilter(f) => Right(QQRuntime.enlistFilter(f))
     case SilenceExceptions(f) => Right(
       CompiledFilter.singleton { (jsv: JSON) =>
-        val errExposed: Eff[CompiledFilterStack, OrRuntimeErr[List[JSON]]] =
-          validated.by[NonEmptyList[QQRuntimeError]].runErrorParallel(f(jsv)).into[CompiledFilterStack]
-        val recovered: Eff[CompiledFilterStack, OrRuntimeErr[List[JSON]]] =
-          errExposed.map(_.orElse(Nil.valid[NonEmptyList[QQRuntimeError]]))
-
-        Eff.collapse[CompiledFilterStack, OrRuntimeErr, List[JSON]](recovered)
+        either.catchLeft(f(jsv))((_: RuntimeErrs) => (Nil: List[JSON]).pureEff)
       }
     )
     case EnsequenceFilters(first, second) => Right(CompiledFilter.ensequenceCompiledFilters(first, second))

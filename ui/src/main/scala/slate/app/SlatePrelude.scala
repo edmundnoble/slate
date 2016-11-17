@@ -2,7 +2,7 @@ package slate
 package app
 
 import cats.Applicative
-import cats.data.ValidatedNel
+import cats.data.{Validated, ValidatedNel}
 import cats.implicits._
 import monix.eval.Task
 import org.atnos.eff._
@@ -10,7 +10,7 @@ import org.atnos.eff.syntax.all._
 import org.scalajs.dom.XMLHttpRequest
 import qq.Json
 import qq.Platform.Rec._
-import qq.cc.{CompiledFilter, CompiledFilterStack, OrCompilationError, OrRuntimeErr, Prelude, QQRuntimeError, QQRuntimeException, TypeError}
+import qq.cc.{CompiledFilter, CompiledFilterStack, OrCompilationError, OrRuntimeErr, Prelude, QQRuntimeError, QQRuntimeException, RuntimeErrs, TypeError}
 import qq.data.{CompiledDefinition, JSON}
 import qq.util.Recursion.RecursionEngine
 import qq.util._
@@ -31,19 +31,19 @@ object SlatePrelude extends Prelude {
   def launchAuth: CompiledDefinition =
     CompiledDefinition("launchAuth", 2, CompiledDefinition.standardEffectDistribution {
       case List(urlRaw, queryParamsRaw) => _ =>
-        val urlVerified: OrRuntimeErr[String] = urlRaw match {
+        val urlVerified: Validated[RuntimeErrs, String] = urlRaw match {
           case JSON.Str(s) => s.validNel
           case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
         }
-        val queryParamsVerified: OrRuntimeErr[JSON.ObjList] = queryParamsRaw match {
+        val queryParamsVerified: Validated[RuntimeErrs, JSON.ObjList] = queryParamsRaw match {
           case o: JSON.ObjMap => JSON.ObjList(o.value.toList).validNel
           case o: JSON.ObjList => o.validNel
           case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
         }
-        val urlWithQueryParams = Applicative[OrRuntimeErr].map2(urlVerified, queryParamsVerified)(Ajax.addQueryParams)
+        val urlWithQueryParams = Applicative[Validated[RuntimeErrs, ?]].map2(urlVerified, queryParamsVerified)(Ajax.addQueryParams)
         for {
           webAuthResult <-
-          urlWithQueryParams.send[CompiledFilterStack].flatMap(identify.launchWebAuthFlow(interactive = true, _).parallel.send[CompiledFilterStack])
+          urlWithQueryParams.toEither.send[CompiledFilterStack].flatMap(identify.launchWebAuthFlow(interactive = true, _).parallel.send[CompiledFilterStack])
           accessToken = webAuthResult.substring(webAuthResult.indexOf("&code=") + "&code=".length)
         } yield JSON.obj("code" -> JSON.Str(accessToken)) :: Nil
     })
@@ -53,21 +53,21 @@ object SlatePrelude extends Prelude {
       case List(urlRaw, queryParamsRaw, dataRaw, headersRaw) => _ =>
         type Stack = Fx.fx2[TaskParallel, OrRuntimeErr]
         implicit val ajaxTimeout = Ajax.Timeout(2000.millis)
-        val urlValidated: ValidatedNel[QQRuntimeError, String] = urlRaw match {
+        val urlValidated: Validated[RuntimeErrs, String] = urlRaw match {
           case JSON.Str(s) => s.validNel
           case k => (TypeError("ajax", "string" -> k): QQRuntimeError).invalidNel
         }
-        val queryParamsValidated: OrRuntimeErr[JSON.ObjList] = queryParamsRaw match {
+        val queryParamsValidated: Validated[RuntimeErrs, JSON.ObjList] = queryParamsRaw match {
           case o: JSON.ObjMap => JSON.ObjList(o.value.toList).validNel
           case o: JSON.ObjList => o.validNel
           case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
         }
-        val dataValidated: OrRuntimeErr[String] = dataRaw match {
+        val dataValidated: Validated[RuntimeErrs, String] = dataRaw match {
           case JSON.Str(s) => s.validNel
           case o: JSON.Obj => JSON.render(o).validNel
           case k => (TypeError("ajax", "string | object" -> k): QQRuntimeError).invalidNel
         }
-        val headersValidated: OrRuntimeErr[Map[String, String]] = headersRaw match {
+        val headersValidated: Validated[RuntimeErrs, Map[String, String]] = headersRaw match {
           case o: JSON.ObjList if o.value.forall(_._2.isInstanceOf[JSON.Str]) => o.toMap.value.mapValues(_.asInstanceOf[JSON.Str].value).validNel
           case o: JSON.ObjMap if o.value.forall(_._2.isInstanceOf[JSON.Str]) => o.toMap.value.mapValues(_.asInstanceOf[JSON.Str].value).validNel
           case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
@@ -78,11 +78,11 @@ object SlatePrelude extends Prelude {
             (urlValidated |@| dataValidated |@| queryParamsValidated |@| headersValidated).map(
               Ajax(ajaxMethod, _, _, _, _, withCredentials = false, "")
                 .onErrorRestart(1)
-                .map(_.validNel[QQRuntimeError])
-                .onErrorHandle[ValidatedNel[QQRuntimeError, XMLHttpRequest]] {
-                case e: QQRuntimeException => e.errors.invalid[XMLHttpRequest]
+                .map(Either.right)
+                .onErrorHandle[OrRuntimeErr[XMLHttpRequest]] {
+                case e: QQRuntimeException => Either.left[RuntimeErrs, XMLHttpRequest](e.errors)
               }.parallel
-            ).sequence[TaskParallel, OrRuntimeErr[XMLHttpRequest]].map(_.flatten).parallel.send[Stack]
+            ).toEither.sequence[TaskParallel, OrRuntimeErr[XMLHttpRequest]].map(_.flatten).parallel.send[Stack]
           )
           asJson = Json.stringToJSON(resp.responseText).fold(Task.raiseError(_), t => Task.now(t :: Nil)).parallel
         } yield asJson).into[CompiledFilterStack]
@@ -151,7 +151,7 @@ object SlatePrelude extends Prelude {
       val fuzzy = formatDatetimeFriendlyImpl(new js.Date(asDate))
       (JSON.str(fuzzy) :: Nil).pureEff[CompiledFilterStack]
     case k =>
-      typeError[CompiledFilterStack, List[JSON]]("formatDatetimeFriendly", "string" -> k)
+      typeErrorE[CompiledFilterStack, List[JSON]]("formatDatetimeFriendly", "string" -> k)
   })
 
   def randomHex: CompiledDefinition = noParamDefinition("randomHex", CompiledFilter.constE {

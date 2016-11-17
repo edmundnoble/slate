@@ -34,12 +34,16 @@ object QQRuntimeException {
       QQRuntimeException(f1.errors |+| f2.errors)
   }
 
-  def typeError[S : validated._validatedNel[QQRuntimeError, ?], A](operation: String, typesAndValues: (String, JSON)*): Eff[S, A] =
-    validated.invalid(NonEmptyList.of[QQRuntimeError](TypeError(operation, typesAndValues: _*)))
-  def notARegex[S : validated._validatedNel[QQRuntimeError, ?], A](asStr: String): CompiledFilterResult[A] =
-    validated.invalid(NonEmptyList.of[QQRuntimeError](NotARegex(asStr)))
-  def noSuchVariable[S : validated._validatedNel[QQRuntimeError, ?], A](variableName: String): CompiledFilterResult[A] =
-    validated.invalid(NonEmptyList.of[QQRuntimeError](NoSuchVariable(variableName)))
+  type _either[E, R] = Member[Either[E, ?], R]
+
+  def typeError[A](operation: String, typesAndValues: (String, JSON)*): Either[RuntimeErrs, A] =
+    Either.left(NonEmptyList.of[QQRuntimeError](TypeError(operation, typesAndValues: _*)))
+  def typeErrorE[S : _either[RuntimeErrs, ?], A](operation: String, typesAndValues: (String, JSON)*): Eff[S, A] =
+    either.left(NonEmptyList.of[QQRuntimeError](TypeError(operation, typesAndValues: _*)))
+  def notARegex[S : _either[RuntimeErrs, ?], A](asStr: String): CompiledFilterResult[A] =
+    either.left(NonEmptyList.of[QQRuntimeError](NotARegex(asStr)))
+  def noSuchVariable[S : _either[RuntimeErrs, ?], A](variableName: String): CompiledFilterResult[A] =
+    either.left(NonEmptyList.of[QQRuntimeError](NoSuchVariable(variableName)))
 }
 
 abstract class QQRuntimeError(val message: String)

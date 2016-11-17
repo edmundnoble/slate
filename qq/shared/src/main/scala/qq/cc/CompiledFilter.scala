@@ -6,7 +6,7 @@ import monix.eval.Task
 import monix.cats._
 import qq.data.{JSON, VarBinding}
 import qq.util._
-import cats.{Eval, Monoid, Traverse}
+import cats.{Eval, Monoid, Semigroup, Traverse}
 import cats.implicits._
 import org.atnos.eff
 import org.atnos.eff.{Arrs, Eff, Fx}
@@ -46,21 +46,20 @@ object CompiledFilter {
     } yield inRan.flatten
   }
 
-  def runStack[A](bindings: VarBindings, result: CompiledFilterResult[List[A]]): Task[ValidatedNel[QQRuntimeError, List[A]]] = {
+  def runStack[A](bindings: VarBindings, result: CompiledFilterResult[List[A]]): Task[Either[NonEmptyList[QQRuntimeError], List[A]]] = {
     // TODO: investigate the compiler crash that happens without providing these type arguments explicitly
     type mem = eff.Member.Aux[VarEnv, CompiledFilterStack, CompiledProgramStack]
     type mem1 = eff.Member.Aux[OrRuntimeErr, CompiledProgramStack, Fx.fx1[TaskParallel]]
     val read: Eff[CompiledProgramStack, List[A]] =
       eff.reader.runReader[CompiledFilterStack, CompiledProgramStack, VarBindings, List[A]](bindings)(result)(implicitly[mem])
     val erred: Eff[Fx.fx1[TaskParallel], OrRuntimeErr[List[A]]] =
-      validated
-        .by[NonEmptyList[QQRuntimeError]]
-        .runErrorParallel[Fx.fx2[TaskParallel, OrRuntimeErr], Fx.fx1[TaskParallel], List[A]](read)(implicitly[mem1])
+      eff.either
+        .runEitherCombine[Fx.fx2[TaskParallel, OrRuntimeErr], Fx.fx1[TaskParallel], NonEmptyList[QQRuntimeError], List[A]](read)(implicitly[mem1], implicitly[Semigroup[RuntimeErrs]])
 
-    Eff.detachA[TaskParallel, ValidatedNel[QQRuntimeError, List[A]]](erred).unwrap
+    Eff.detachA[TaskParallel, Either[NonEmptyList[QQRuntimeError], List[A]]](erred).unwrap
   }
 
-  def run(in: JSON, bindings: VarBindings, filter: CompiledFilter): Task[ValidatedNel[QQRuntimeError, List[JSON]]] = {
+  def run(in: JSON, bindings: VarBindings, filter: CompiledFilter): Task[Either[NonEmptyList[QQRuntimeError], List[JSON]]] = {
     runStack(bindings, filter(in))
   }
 

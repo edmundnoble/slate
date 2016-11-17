@@ -42,7 +42,7 @@ object JSONPrelude extends Prelude {
   // base 64 encoding, duh
   def b64Encode: CompiledDefinition = noParamDefinition("b64Encode", CompiledFilter.singleton {
     case JSON.Str(str) => (JSON.str(ByteVector.encodeUtf8(str).right.getOrElse(ByteVector.empty).toBase64) :: Nil).pureEff[CompiledFilterStack]
-    case k => typeError("b64Encode", "string" -> k)
+    case k => typeErrorE("b64Encode", "string" -> k)
   })
 
   // array/object length
@@ -54,7 +54,7 @@ object JSONPrelude extends Prelude {
         case obj: JSON.ObjMap => (JSON.num(obj.value.size) :: Nil).pureEff
         case obj: JSON.ObjList => (JSON.num(obj.value.size) :: Nil).pureEff
         case JSON.Null => (JSON.num(0) :: Nil).pureEff
-        case k => typeError("length", "array | string | object | null" -> k)
+        case k => typeErrorE("length", "array | string | object | null" -> k)
       }
     )
 
@@ -63,7 +63,7 @@ object JSONPrelude extends Prelude {
     noParamDefinition(
       "keys", CompiledFilter.singleton {
         case obj: JSON.Obj => (JSON.arr(obj.map(p => JSON.str(p._1))(collection.breakOut): _*) :: Nil).pureEff[CompiledFilterStack]
-        case k => typeError("keys", "object" -> k)
+        case k => typeErrorE("keys", "object" -> k)
       }
     )
 
@@ -74,22 +74,22 @@ object JSONPrelude extends Prelude {
         val regexRaw = params.head
         val replacementRaw = params.tail.head
         (j: JSON) =>
-          val regexValidated: OrRuntimeErr[Pattern] = regexRaw match {
+          val regexValidated: Validated[RuntimeErrs, Pattern] = regexRaw match {
             case JSON.Str(string) => Pattern.compile(string).validNel
             case k => NonEmptyList.of[QQRuntimeError](NotARegex(QQRuntime.print(k))).invalid
           }
-          val replacementValidated: OrRuntimeErr[String] = replacementRaw match {
+          val replacementValidated: Validated[RuntimeErrs, String] = replacementRaw match {
             case JSON.Str(string) => string.validNel
             case k => NonEmptyList.of[QQRuntimeError](TypeError("replace", "string" -> k)).invalid
           }
-          val valueRegexReplacementList: OrRuntimeErr[List[JSON]] = (regexValidated |@| replacementValidated).map { (regex, replacement) =>
+          val valueRegexReplacementList: Validated[RuntimeErrs, List[JSON]] = (regexValidated |@| replacementValidated).map { (regex, replacement) =>
             j match {
               case JSON.Str(string) =>
                 (JSON.str(regex.matcher(string).replaceAll(replacement)) :: Nil).validNel[QQRuntimeError]
               case k => NonEmptyList.of[QQRuntimeError](TypeError("replace", "string" -> k)).invalid[List[JSON]]
             }
           }.flatten
-          valueRegexReplacementList.send[CompiledFilterStack]
+          valueRegexReplacementList.toEither.send[CompiledFilterStack]
       })
 
   // filter

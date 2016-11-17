@@ -26,7 +26,7 @@ object Runner {
 
   // parse, compile, and run
   def run(qqProgram: String)(input: JSON)
-         (implicit rec: RecursionEngine): (QQCompilationException Either ParseError) Either Task[ValidatedNel[QQRuntimeError, List[JSON]]] = {
+         (implicit rec: RecursionEngine): (QQCompilationException Either ParseError) Either Task[RuntimeErrs Either List[JSON]] = {
     parseAndCompile(qqProgram).map(CompiledFilter.run(input, Map.empty, _))
   }
 

@@ -34,14 +34,14 @@ object QQRuntime {
     component match {
       case CollectResults => {
         case arr: JSON.Arr => arr.value.traverseA(f(_)).map(_.flatten)
-        case v: JSON => typeError[CompiledProgramStack, List[JSON]]("collect results from", "array" -> v)
+        case v: JSON => typeErrorE[CompiledProgramStack, List[JSON]]("collect results from", "array" -> v)
       }
       case SelectKey(key) => {
         case obj: JSON.Obj =>
           val asMap = obj.toMap
           asMap.value.get(key).fold((JSON.`null` :: Nil).pureEff[CompiledProgramStack])(f(_))
             .map(_.map(v => asMap.copy(value = asMap.value + (key -> v))))
-        case v: JSON => typeError[CompiledProgramStack, List[JSON]]("select key \"" + key + "\" in", "object" -> v)
+        case v: JSON => typeErrorE[CompiledProgramStack, List[JSON]]("select key \"" + key + "\" in", "object" -> v)
       }
       case SelectIndex(index: Int) => {
         case arr: JSON.Arr =>
@@ -53,7 +53,7 @@ object QQRuntime {
             })
           }
         case v: JSON =>
-          typeError[CompiledProgramStack, List[JSON]]("select index " + index + " in", "array" -> v)
+          typeErrorE[CompiledProgramStack, List[JSON]]("select index " + index + " in", "array" -> v)
       }
       case SelectRange(start: Int, end: Int) => ???
     }
@@ -67,7 +67,7 @@ object QQRuntime {
       case (component :: rest) => component match {
         case CollectResults => biggerStructure match {
           case arr: JSON.Arr => arr.value.traverseA[SetPathStack, List[JSON]](setPath(rest, _, smallerStructure)).map(_.flatten)
-          case v: JSON => typeError[SetPathStack, List[JSON]]("collect results from", "array" -> v)
+          case v: JSON => typeErrorE[SetPathStack, List[JSON]]("collect results from", "array" -> v)
         }
         case SelectKey(key) => biggerStructure match {
           case obj: JSON.Obj =>
@@ -75,7 +75,7 @@ object QQRuntime {
             asMap.value.get(key).fold((JSON.`null` :: Nil).pureEff[SetPathStack])(
               setPath(rest, _, smallerStructure).map(_.map(nv => asMap.copy(value = asMap.value.updated(key, nv)): JSON))
             )
-          case v: JSON => typeError[SetPathStack, List[JSON]]("select key \"" + key + "\" from ", "array" -> v)
+          case v: JSON => typeErrorE[SetPathStack, List[JSON]]("select key \"" + key + "\" from ", "array" -> v)
         }
         case SelectIndex(index: Int) => biggerStructure match {
           case arr: JSON.Arr =>
@@ -85,7 +85,7 @@ object QQRuntime {
               setPath(rest, arr.value(index), smallerStructure).map(_.map(v => JSON.Arr(arr.value.updated(index, v))))
             }
           case v: JSON =>
-            typeError[SetPathStack, List[JSON]]("select index " + index + " in", "array" -> v)
+            typeErrorE[SetPathStack, List[JSON]]("select index " + index + " in", "array" -> v)
         }
         case SelectRange(start: Int, end: Int) => ???
       }
@@ -101,102 +101,102 @@ object QQRuntime {
   def constBoolean(bool: Boolean): CompiledFilter =
     CompiledFilter.const(if (bool) JSON.True else JSON.False)
 
-  def addJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
+  def addJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
-      JSON.Num(f + s).valid
+      Either.right(JSON.Num(f + s))
     case (JSON.Str(f), JSON.Str(s)) =>
-      JSON.Str(f + s).valid
+      Either.right(JSON.Str(f + s))
     case (f: JSON.Arr, s: JSON.Arr) =>
-      JSON.Arr(f.value ++ s.value).valid
+      Either.right(JSON.Arr(f.value ++ s.value))
     case (f: JSON.Obj, s: JSON.Obj) =>
-      JSON.ObjMap(f.toMap.value ++ s.toMap.value).valid
+      Either.right(JSON.ObjMap(f.toMap.value ++ s.toMap.value))
     case (f, s) =>
-      (TypeError(
+      typeError(
         "add",
         "number | string | array | object" -> f,
-        "number | string | array | object" -> s): QQRuntimeError).invalidNel
+        "number | string | array | object" -> s)
   }
 
-  def subtractJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
+  def subtractJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
-      JSON.Num(f - s).valid
+      Either.right(JSON.Num(f - s))
     case (f: JSON.Arr, s: JSON.Arr) =>
-      JSON.Arr(f.value.filter(!s.value.contains(_))).valid
+      Either.right(JSON.Arr(f.value.filter(!s.value.contains(_))))
     case (f: JSON.Obj, s: JSON.Obj) =>
       val contents: Map[String, JSON] = f.toMap.value -- s.map[String, Set[String]](_._1)(collection.breakOut)
-      JSON.ObjMap(contents).valid
+      Either.right(JSON.ObjMap(contents))
     case (f, s) =>
-      (TypeError(
+      typeError(
         "subtract",
         "number | array | object" -> f,
-        "number | array | object" -> s): QQRuntimeError).invalidNel
+        "number | array | object" -> s)
   }
 
-  def multiplyJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
-    case (JSON.Num(f), JSON.Num(s)) => JSON.Num(f * s).valid
-    case (JSON.Str(f), JSON.Num(s)) => (if (s == 0) JSON.Null else JSON.Str(f * s.toInt)).valid
+  def multiplyJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
+    case (JSON.Num(f), JSON.Num(s)) => Either.right(JSON.Num(f * s))
+    case (JSON.Str(f), JSON.Num(s)) => Either.right(if (s == 0) JSON.Null else JSON.Str(f * s.toInt))
     case (f: JSON.Obj, s: JSON.Obj) =>
-      val firstMapValid = f.toMap.value.mapValues(_.valid[NonEmptyList[QQRuntimeError]])
-      val secondMapValid = s.toMap.value.mapValues(_.valid[NonEmptyList[QQRuntimeError]])
-      Unsafe.mapTraverse[String].sequence[OrRuntimeErr, JSON](
+      val firstMapValid = f.toMap.value.mapValues(_.valid[RuntimeErrs])
+      val secondMapValid = s.toMap.value.mapValues(_.valid[RuntimeErrs])
+      Unsafe.mapTraverse[String].sequence[ValidatedNel[QQRuntimeError, ?], JSON](
         qq.util.unionWith(firstMapValid, secondMapValid)(
-          Applicative[OrRuntimeErr].map2(_, _)(addJsValues).flatten
+          Applicative[ValidatedNel[QQRuntimeError, ?]].map2(_, _)(addJsValues(_, _).toValidated).flatten
         )
-      ).map(JSON.ObjMap)
+      ).map(JSON.ObjMap).toEither
     case (f, s) =>
-      (TypeError(
+      typeError(
         "multiply",
         "number | string | object" -> f,
-        "number | object" -> s): QQRuntimeError).invalidNel
+        "number | object" -> s)
   }
 
-  def divideJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
-    case (JSON.Num(f), JSON.Num(s)) => JSON.Num(f / s).valid
+  def divideJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
+    case (JSON.Num(f), JSON.Num(s)) => Either.right(JSON.Num(f / s))
     case (f, s) =>
-      (TypeError("divide", "number" -> f, "number" -> s): QQRuntimeError).invalidNel
+      typeError("divide", "number" -> f, "number" -> s)
   }
 
-  def moduloJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
-    case (JSON.Num(f), JSON.Num(s)) => JSON.Num(f % s).valid
+  def moduloJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
+    case (JSON.Num(f), JSON.Num(s)) => Either.right(JSON.Num(f % s))
     case (f, s) =>
-      (TypeError("modulo", "number" -> f, "number" -> s): QQRuntimeError).invalidNel
+      typeError("modulo", "number" -> f, "number" -> s)
   }
 
   def equalJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] =
-    (if (first == second) JSON.True else JSON.False).valid
+    Either.right(if (first == second) JSON.True else JSON.False)
 
-  def lteJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
+  def lteJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
-      (if (f <= s) JSON.True else JSON.False).valid
+      Either.right(if (f <= s) JSON.True else JSON.False)
     case (f, s) =>
-      (TypeError("lte", "number" -> f, "number" -> s): QQRuntimeError).invalidNel
+      typeError("lte", "number" -> f, "number" -> s)
   }
 
-  def gteJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
+  def gteJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
-      (if (f >= s) JSON.True else JSON.False).valid
+      Either.right(if (f >= s) JSON.True else JSON.False)
     case (f, s) =>
-      (TypeError("gte", "number" -> f, "number" -> s): QQRuntimeError).invalidNel
+      typeError("gte", "number" -> f, "number" -> s)
   }
 
-  def lessThanJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
+  def lessThanJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
-      (if (f < s) JSON.True else JSON.False).valid
+      Either.right(if (f < s) JSON.True else JSON.False)
     case (f, s) =>
-      (TypeError("lessThan", "number" -> f, "number" -> s): QQRuntimeError).invalidNel
+      typeError("lessThan", "number" -> f, "number" -> s)
   }
 
-  def greaterThanJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = Tuple2(first, second) match {
+  def greaterThanJsValues(first: JSON, second: JSON): OrRuntimeErr[JSON] = (first, second) match {
     case (JSON.Num(f), JSON.Num(s)) =>
-      (if (f > s) JSON.True else JSON.False).valid
+      Either.right(if (f > s) JSON.True else JSON.False)
     case (f, s) =>
-      (TypeError("greaterThan", "number" -> f, "number" -> s): QQRuntimeError).invalidNel
+      typeError("greaterThan", "number" -> f, "number" -> s)
   }
 
   def not(v: JSON): OrRuntimeErr[JSON] = v match {
-    case JSON.True => JSON.False.valid
-    case JSON.False => JSON.True.valid
-    case k: JSON => (TypeError("not", "boolean" -> k): QQRuntimeError).invalidNel
+    case JSON.True => Either.right(JSON.False)
+    case JSON.False => Either.right(JSON.True)
+    case k: JSON => typeError("not", "boolean" -> k)
   }
 
   def enlistFilter(filter: CompiledFilter): CompiledFilter =
@@ -213,7 +213,7 @@ object QQRuntime {
         case Some(v: JSON) => EffMonad[CompiledProgramStack].pure(v :: Nil)
       }
     case v: JSON =>
-      typeError[CompiledProgramStack, List[JSON]]("select key " + key, "object" -> v)
+      typeErrorE[CompiledProgramStack, List[JSON]]("select key " + key, "object" -> v)
   }
 
   def selectIndex(index: Int): CompiledProgram = CompiledProgram.singleton {
@@ -231,7 +231,7 @@ object QQRuntime {
         (JSON.`null` :: Nil).pureEff[CompiledProgramStack]
       }
     case v: JSON =>
-      typeError[CompiledProgramStack, List[JSON]]("select index " + index.toString, "array" -> v)
+      typeErrorE[CompiledProgramStack, List[JSON]]("select index " + index.toString, "array" -> v)
   }
 
   def selectRange(start: Int, end: Int): CompiledProgram = CompiledProgram.singleton {
@@ -243,7 +243,7 @@ object QQRuntime {
         (emptyArray :: Nil).pureEff[CompiledProgramStack]
       }
     case v: JSON =>
-      typeError[CompiledProgramStack, List[JSON]]("select range " + start + ":" + end, "array" -> v)
+      typeErrorE[CompiledProgramStack, List[JSON]]("select range " + start + ":" + end, "array" -> v)
   }
 
   def collectResults: CompiledProgram = CompiledProgram.singleton {
@@ -252,7 +252,7 @@ object QQRuntime {
     case dict: JSON.Obj =>
       dict.map[JSON, List[JSON]](_._2)(collection.breakOut).pureEff
     case v: JSON =>
-      typeError[CompiledProgramStack, List[JSON]]("flatten", "array" -> v)
+      typeErrorE[CompiledProgramStack, List[JSON]]("flatten", "array" -> v)
   }
 
   def enjectFilter(obj: List[(String Either CompiledFilter, CompiledFilter)]): CompiledFilter = {
@@ -268,7 +268,7 @@ object QQRuntime {
                 valueResults <- filterValue(jsv)
                 keyValuePairs <- keyResults.traverseA {
                   case JSON.Str(keyString) => valueResults.map(keyString -> _).pureEff[CompiledFilterStack]
-                  case k => typeError[CompiledFilterStack, List[(String, JSON)]]("use as key", "string" -> k)
+                  case k => typeErrorE[CompiledFilterStack, List[(String, JSON)]]("use as key", "string" -> k)
                 }
               } yield keyValuePairs.flatten
             case (Left(filterName), filterValue) =>

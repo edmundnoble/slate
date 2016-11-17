@@ -12,9 +12,10 @@ package object cc {
 
   type VarBindings = Map[String, VarBinding]
   type VarEnv[A] = Reader[VarBindings, A]
-  type OrRuntimeErr[+A] = ValidatedNel[QQRuntimeError, A]
+  type RuntimeErrs = NonEmptyList[QQRuntimeError]
+  type OrRuntimeErr[+A] = Either[RuntimeErrs, A]
 
-  type CompiledMathOperator = (JSON, JSON) => ValidatedNel[QQRuntimeError, JSON]
+  type CompiledMathOperator = (JSON, JSON) => Either[RuntimeErrs, JSON]
   type CompiledProgramStack = Fx.fx2[TaskParallel, OrRuntimeErr]
   type CompiledProgramResult[A] = Eff[CompiledProgramStack, A]
   type CompiledProgram = Arrs[CompiledProgramStack, JSON, List[JSON]]
