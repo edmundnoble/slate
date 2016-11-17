@@ -3,13 +3,13 @@ package qq
 import cats.data.ValidatedNel
 import org.scalactic.NormMethods._
 import org.scalatest.Assertion
-import qq.cc.{QQRuntimeError, Runner}
+import qq.cc.{QQRuntimeError, Runner, RuntimeErrs}
 import qq.data.JSON
 
 import scala.concurrent.Future
 import cats.implicits._
 
-case class PreludeTestCase(input: JSON, program: String, expectedOutputOrException: ValidatedNel[QQRuntimeError, List[JSON]])
+case class PreludeTestCase(input: JSON, program: String, expectedOutputOrException: Either[RuntimeErrs, List[JSON]])
 
 class PreludeTest extends QQAsyncTestSuite {
 
@@ -26,38 +26,38 @@ class PreludeTest extends QQAsyncTestSuite {
     val second: JSON =
       JSON.Obj("id" -> JSON.Str("second"), "val" -> JSON.Num(2))
     List(
-      PreludeTestCase(first, "select(.id == \"second\")", Nil.validNel),
-      PreludeTestCase(second, "select(.id == \"second\")", List(second).validNel)
+      PreludeTestCase(first, "select(.id == \"second\")", Either.right(Nil)),
+      PreludeTestCase(second, "select(.id == \"second\")", Either.right(List(second)))
     )
   }
 
   val classifierTestInput =
     JSON.Arr(JSON.Arr(), JSON.Obj(), JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False)
 
-  val numbers = PreludeTestCase(classifierTestInput, ".[] | numbers", List(JSON.Num(1)).validNel)
+  val numbers = PreludeTestCase(classifierTestInput, ".[] | numbers", Either.right(List(JSON.Num(1))))
 
-  val arrays = PreludeTestCase(classifierTestInput, ".[] | arrays", List(JSON.Arr()).validNel)
+  val arrays = PreludeTestCase(classifierTestInput, ".[] | arrays", Either.right(List(JSON.Arr())))
 
-  val objects = PreludeTestCase(classifierTestInput, ".[] | objects", List(JSON.Obj()).validNel)
+  val objects = PreludeTestCase(classifierTestInput, ".[] | objects", Either.right(List(JSON.Obj())))
 
-  val iterables = PreludeTestCase(classifierTestInput, ".[] | iterables", List(JSON.Arr(), JSON.Obj()).validNel)
+  val iterables = PreludeTestCase(classifierTestInput, ".[] | iterables", Either.right(List(JSON.Arr(), JSON.Obj())))
 
-  val booleans = PreludeTestCase(classifierTestInput, ".[] | booleans", List(JSON.True, JSON.False).validNel)
+  val booleans = PreludeTestCase(classifierTestInput, ".[] | booleans", Either.right(List(JSON.True, JSON.False)))
 
-  val strings = PreludeTestCase(classifierTestInput, ".[] | strings", List(JSON.Str("foo")).validNel)
+  val strings = PreludeTestCase(classifierTestInput, ".[] | strings", Either.right(List(JSON.Str("foo"))))
 
-  val nulls = PreludeTestCase(classifierTestInput, ".[] | nulls", List(JSON.Null).validNel)
+  val nulls = PreludeTestCase(classifierTestInput, ".[] | nulls", Either.right(List(JSON.Null)))
 
   val values = PreludeTestCase(
     classifierTestInput,
     ".[] | values",
-    List(JSON.Arr(), JSON.Obj(), JSON.Num(1), JSON.Str("foo"), JSON.True, JSON.False).validNel
+    Either.right(List(JSON.Arr(), JSON.Obj(), JSON.Num(1), JSON.Str("foo"), JSON.True, JSON.False))
   )
 
   val scalars = PreludeTestCase(
     classifierTestInput,
     ".[] | scalars",
-    List(JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False).validNel
+    Either.right(List(JSON.Num(1), JSON.Str("foo"), JSON.Null, JSON.True, JSON.False))
   )
 
   "select" in selectTests.traverse(runTest)
