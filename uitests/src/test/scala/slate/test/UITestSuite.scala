@@ -100,6 +100,7 @@ abstract class UITestSuite extends AsyncFreeSpec with Matchers with WebBrowser w
       }
       override def currentTimeMillis(): Long = System.currentTimeMillis()
       override def executionModel: ExecutionModel = ExecutionModel.SynchronousExecution
+      override def withExecutionModel(em: ExecutionModel): Scheduler = ???
     }
 
 
