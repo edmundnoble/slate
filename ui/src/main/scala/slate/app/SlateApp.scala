@@ -78,14 +78,14 @@ object SlateApp extends scalajs.js.JSApp {
   def programs: List[SlateProgram[Program[FilterAST] Either String]] = {
     List[SlateProgram[Program[FilterAST] Either String]](
       SlateProgram(1, "Gmail", BootRefreshPolicy.IfOlderThan(seconds = 5 * 60), "https://gmail.com", GmailApp.program, JSON.ObjMap(Map())),
-      SlateProgram(2, "Todoist", BootRefreshPolicy.Always, "https://todoist.com", TodoistApp.program,
+      SlateProgram(2, "Todoist", BootRefreshPolicy.IfOlderThan(seconds = 5 * 60), "https://todoist.com", TodoistApp.program,
         JSON.ObjMap(Map(
           "client_id" -> JSON.Str(Creds.todoistClientId),
           "client_secret" -> JSON.Str(Creds.todoistClientSecret),
           "redirect_uri" -> JSON.Str("https://ldhbkcmhfmoaepapkcopmigahjdiekil.chromiumapp.org/provider_cb")
         ))
       ),
-      SlateProgram(3, "JIRA", BootRefreshPolicy.Always, "https://dashboarder.atlassian.net", JIRAApp.program,
+      SlateProgram(3, "JIRA", BootRefreshPolicy.Never, "https://dashboarder.atlassian.net", JIRAApp.program,
         JSON.Obj(
           "username" -> JSON.Str(Creds.jiraUsername),
           "password" -> JSON.Str(Creds.jiraPassword)
