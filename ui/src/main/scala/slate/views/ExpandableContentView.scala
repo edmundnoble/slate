@@ -105,7 +105,7 @@ object ExpandableContentView {
       Reusability.caseClass[ExpandableState]
   }
 
-  final case class ExpandableContentProps(model: ExpandableContentModel, updated: js.Date, initiallyExpanded: Boolean)
+  final case class ExpandableContentProps(model: ExpandableContentModel, initiallyExpanded: Boolean)
 
   object ExpandableContentProps {
     implicit val reusability: Reusability[ExpandableContentProps] =

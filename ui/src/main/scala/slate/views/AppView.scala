@@ -58,6 +58,14 @@ object AppView {
       display inline
     )
 
+    val headerRightDate = style(
+      fontSize(12 px),
+      marginRight(10 px),
+      float right,
+      marginTop(10 px),
+      marginBottom(10 px)
+    )
+
     val content = style(
       width(100 %%),
       overflow.hidden
@@ -80,6 +88,37 @@ object AppView {
       Reusability.byRefOr_==
   }
 
+  // TODO: remove from here and SlatePrelude
+  def formatDatetimeFriendlyImpl(d: js.Date): String = {
+    val diff = js.Date.now() - d.getTime()
+    val deltaSeconds = Math.round(diff / 1000)
+
+    val minute = 60
+    val hour = minute * 60
+    val day = hour * 24
+    val week = day * 7
+
+    if (deltaSeconds < 30) {
+      "just then"
+    } else if (deltaSeconds < minute) {
+      deltaSeconds.toString + " seconds ago"
+    } else if (deltaSeconds < 2 * minute) {
+      "a minute ago"
+    } else if (deltaSeconds < hour) {
+      Math.floor(deltaSeconds / minute).toString + " minutes ago"
+    } else if (Math.floor(deltaSeconds / hour) == 1) {
+      "1 hour ago"
+    } else if (deltaSeconds < day) {
+      Math.floor(deltaSeconds / hour).toString + " hours ago"
+    } else if (deltaSeconds < day * 2) {
+      "tomorrow"
+    } else if (deltaSeconds < week) {
+      Math.floor(deltaSeconds / day) + " days ago"
+    } else {
+      Math.floor(deltaSeconds / week) + " weeks ago"
+    }
+  }
+
   def builder(implicit sch: Scheduler): ReactComponentB[AppProps, Unit, Unit, TopNode] = {
     import japgolly.scalajs.react.vdom.all._
 
@@ -93,6 +132,11 @@ object AppView {
             div(ExpandableContentView.Styles.headerLeft,
               span(Styles.title, props.title.toUpperCase()),
               a(Styles.linkIcon, target := "_blank", "link", href := props.titleLink)
+            ),
+            props.model.flatMap(_.right.toOption).map(mo =>
+              div(Styles.headerRightDate,
+                "last updated " + formatDatetimeFriendlyImpl(mo.updated)
+              )
             )
           ),
           div(Styles.content,
@@ -102,7 +146,7 @@ object AppView {
               )(m => m.fold[List[ReactNode]]({ ex =>
                 ErrorView.builder(ex) :: Nil
               }, appModel => appModel.content.map { model =>
-                ExpandableContentView.builder.build(ExpandableContentProps(model, appModel.updated, initiallyExpanded = false))
+                ExpandableContentView.builder.build(ExpandableContentProps(model, initiallyExpanded = false))
               })): _*
             )
           )

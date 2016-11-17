@@ -115,37 +115,41 @@ object SlatePrelude extends Prelude {
     noParamDefinition("nowRFC3339",
       CompiledFilter.constE(Task.eval(JSON.str(toRFC3339(new js.Date())) :: Nil).parallel.send[CompiledFilterStack]))
 
+  // TODO: remove from here and AppView
+  def formatDatetimeFriendlyImpl(d: js.Date): String = {
+    // Make a fuzzy time
+    val delta = Math.round((d.getTime() - new js.Date().getTime()) / 1000)
+
+    val minute = 60
+    val hour = minute * 60
+    val day = hour * 24
+    val week = day * 7
+
+    if (delta < 30) {
+      "just then"
+    } else if (delta < minute) {
+      delta.toString + " seconds ago"
+    } else if (delta < 2 * minute) {
+      "in a minute"
+    } else if (delta < hour) {
+      Math.floor(delta / minute).toString + " minutes ago"
+    } else if (Math.floor(delta / hour) == 1) {
+      "in 1 hour"
+    } else if (delta < day) {
+      "in " + Math.floor(delta / hour).toString + " hours"
+    } else if (delta < day * 2) {
+      "tomorrow"
+    } else if (delta < week) {
+      "in " + Math.floor(delta / day) + " days"
+    } else {
+      "in " + Math.floor(delta / week) + " weeks"
+    }
+  }
+
   def formatDatetimeFriendly: CompiledDefinition = noParamDefinition("formatDatetimeFriendly", CompiledFilter.singleton {
     case JSON.Str(s) =>
       val asDate = js.Date.parse(s)
-      // Make a fuzzy time
-      val delta = Math.round((asDate - new js.Date().getTime()) / 1000)
-
-      val minute = 60
-      val hour = minute * 60
-      val day = hour * 24
-      val week = day * 7
-
-      val fuzzy =
-        if (delta < 30) {
-          "just then"
-        } else if (delta < minute) {
-          delta.toString + " seconds ago"
-        } else if (delta < 2 * minute) {
-          "in a minute"
-        } else if (delta < hour) {
-          Math.floor(delta / minute).toString + " minutes ago"
-        } else if (Math.floor(delta / hour) == 1) {
-          "in 1 hour"
-        } else if (delta < day) {
-          "in " + Math.floor(delta / hour).toString + " hours"
-        } else if (delta < day * 2) {
-          "tomorrow"
-        } else if (delta < week) {
-          "in " + Math.floor(delta / day) + " days"
-        } else {
-          "in " + Math.floor(delta / week) + " weeks"
-        }
+      val fuzzy = formatDatetimeFriendlyImpl(new js.Date(asDate))
       (JSON.str(fuzzy) :: Nil).pureEff[CompiledFilterStack]
     case k =>
       typeError[CompiledFilterStack, List[JSON]]("formatDatetimeFriendly", "string" -> k)
