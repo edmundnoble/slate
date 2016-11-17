@@ -14,10 +14,10 @@ import qq.util._
 object CompiledFilter {
 
   @inline final def singleton(filt: JSON => Eff[CompiledFilterStack, List[JSON]]): CompiledFilter =
-    RanTraverseM.singleton[CompiledFilterStack, List, JSON, JSON](filt)
+    FlatTraverseArrs.singleton[CompiledFilterStack, List, JSON, JSON](filt)
 
   @inline final def constE(result: Eff[CompiledFilterStack, List[JSON]]): CompiledFilter =
-    RanTraverseM.singleton[CompiledFilterStack, List, JSON, JSON](_ => result)
+    FlatTraverseArrs.singleton[CompiledFilterStack, List, JSON, JSON](_ => result)
 
   @inline final def id: CompiledFilter =
     singleton(j => (j :: Nil).pureEff)
@@ -29,7 +29,7 @@ object CompiledFilter {
     constL(value :: Nil)
 
   @inline final def composeFilters(f: CompiledFilter, s: CompiledFilter): CompiledFilter =
-    RanTraverseM.compose(f, s)
+    FlatTraverseArrs.compose(f, s)
 
   @inline final def ensequenceCompiledFilters
   (first: CompiledFilter, second: CompiledFilter): CompiledFilter =

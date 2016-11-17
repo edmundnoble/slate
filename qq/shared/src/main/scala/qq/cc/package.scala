@@ -4,7 +4,7 @@ import cats.data._
 import monix.eval.Task
 import org.atnos.eff.Eff._
 import org.atnos.eff._
-import qq.cc.RanTraverseM._taskPar
+import qq.cc.FlatTraverseArrs._taskPar
 import qq.data.{JSON, VarBinding}
 import qq.util._
 
@@ -21,7 +21,7 @@ package object cc {
   type CompiledProgram = Arrs[CompiledProgramStack, JSON, List[JSON]]
   type CompiledFilterStack = Fx.append[Fx.fx1[VarEnv], CompiledProgramStack]
   type CompiledFilterResult[A] = Eff[CompiledFilterStack, A]
-  type CompiledFilter = RanTraverseM[CompiledFilterStack, List, JSON, JSON]
+  type CompiledFilter = FlatTraverseArrs[CompiledFilterStack, List, JSON, JSON]
 
   type OrCompilationError[T] = QQCompilationException Either T
 
