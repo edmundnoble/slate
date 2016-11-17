@@ -3,7 +3,7 @@ package app
 
 import cats._
 import cats.implicits._
-import japgolly.scalajs.react.{Addons, ReactComponentM, ReactDOM, TopNode}
+import japgolly.scalajs.react.{ReactComponentM, ReactDOM, TopNode}
 import monix.cats._
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
@@ -194,7 +194,6 @@ object SlateApp extends scalajs.js.JSApp {
     type mem1 = Member.Aux[StorageAction, Fx.fx2[Task, StorageAction], Fx.fx1[Task]]
     type mem2 = Member[Task, Fx.fx1[Task]]
     for {
-      progs <- deserializeProgramOutput
       cachedContent <- StorageFS.runSealedStorageProgramInto(
         programs.traverseA(p =>
           Caching.getCachedBy[Fx.fx2[Task, StorageAction], InvalidJSON, SlateProgram[Unit], DatedAppContent](p)(
@@ -228,13 +227,16 @@ object SlateApp extends scalajs.js.JSApp {
           val injectedErrors: Task[Either[AllErrors, DatedAppContent]] = out.leftMap(e =>
             errorCompilingProgramsInAllErrors.inverse(Right(e))
           ).map(_.map(_.leftMap(e => errorDeserializingProgramOutputInAllErrors.inverse(Right(e)))))
-            .sequence[Task, Either[AllErrors, List[ExpandableContentModel]]].map(_.flatten)
-            .map(_.map(models => DatedAppContent(models, new js.Date(js.Date.now()))))
+            .sequence[Task, Either[AllErrors, List[ExpandableContentModel]]].map((modelsErrErr: Either[AllErrors, Either[AllErrors, List[ExpandableContentModel]]]) =>
+            modelsErrErr.flatMap(_.map(models => DatedAppContent(models, new js.Date(js.Date.now()))))
+          )
           injectedErrors.map(errorsOrContent =>
-            errorsOrContent.traverse[Eff[Fx.fx1[Task], ?], Unit](r => StorageProgram.runProgram(
-              new StorageFS(DomStorage.Local, nonceSource, dataDirKey),
-              StorageProgram.update(makeDataKey(title, input), DatedAppContent.pkl.write(r).toString())
-            )).detach.as(AppProps(id, input, title, titleLink, Some(errorsOrContent.map(o => AppModel(o.content, o.date)))))
+            errorsOrContent.traverse[Eff[Fx.fx1[Task], ?], Unit](r =>
+              StorageProgram.runProgram(
+                new StorageFS(DomStorage.Local, nonceSource, dataDirKey),
+                StorageProgram.update(makeDataKey(title, input), DatedAppContent.pkl.write(r).toString())
+              )
+            ).detach.as(AppProps(id, input, title, titleLink, Some(errorsOrContent.map(o => AppModel(o.content, o.date)))))
           )
       })(
         runCompiledPrograms.map(
