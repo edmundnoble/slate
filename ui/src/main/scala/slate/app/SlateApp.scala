@@ -18,6 +18,7 @@ import qq.util._
 import shapeless.{:+:, CNil}
 import slate.app.caching.Caching
 import slate.app.caching.Program.ErrorGettingCachedProgram
+import slate.app.qq.{GCalendarApp, GmailApp, JIRAApp, TodoistApp}
 import slate.models.{AppModel, DatedAppContent, ExpandableContentModel}
 import slate.storage.{DomStorage, StorageAction, StorageFS, StorageProgram}
 import slate.util.LoggerFactory
@@ -39,7 +40,14 @@ object SlateApp extends scalajs.js.JSApp {
 
   final class EmptyResponseException extends java.lang.Exception("Empty response")
 
-  final case class SlateProgram[+P](id: Int, title: String, titleLink: String, program: P, input: JSON) {
+  sealed abstract class BootRefreshPolicy
+  object BootRefreshPolicy {
+    final case class IfOlderThan(seconds: Int) extends BootRefreshPolicy
+    case object Never extends BootRefreshPolicy
+    case object Always extends BootRefreshPolicy
+  }
+
+  final case class SlateProgram[+P](id: Int, title: String, bootRefreshPolicy: BootRefreshPolicy, titleLink: String, program: P, input: JSON) {
     def withProgram[B](newProgram: B): SlateProgram[B] = copy(program = newProgram)
     def withoutProgram: SlateProgram[Unit] = copy(program = ())
     def nameInputHash: Int = (title, input).hashCode
@@ -60,7 +68,7 @@ object SlateApp extends scalajs.js.JSApp {
 
   def programs: List[SlateProgram[Program[FilterAST] Either String]] = {
     List[SlateProgram[Program[FilterAST] Either String]](
-      SlateProgram(1, "Gmail", "https://gmail.com", GmailApp.program, JSON.ObjMap(Map())),
+      SlateProgram(1, "Gmail", RefreshIfOlderThan(seconds = 3600), "https://gmail.com", GmailApp.program, JSON.ObjMap(Map())),
       SlateProgram(2, "Todoist", "https://todoist.com", TodoistApp.program,
         JSON.ObjMap(Map(
           "client_id" -> JSON.Str(Creds.todoistClientId),

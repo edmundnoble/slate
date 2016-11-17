@@ -1,6 +1,6 @@
 package slate
 package app
-
+package builtin
 
 import qq.data.{FilterAST, Program}
 import qq.macros.QQStager._
