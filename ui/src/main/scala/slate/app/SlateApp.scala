@@ -32,6 +32,7 @@ import scala.scalajs.js.annotation.JSExport
 import scala.util.{Success, Try}
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
+import Observable.{fromTask=>toObservable}
 
 @JSExport
 object SlateApp extends scalajs.js.JSApp {
@@ -214,8 +215,8 @@ object SlateApp extends scalajs.js.JSApp {
 
   def loadContent(dataDirKey: StorageFS.StorageKey[StorageFS.Dir]): Observable[Task[SearchPageProps]] = {
     (for {
-      programOutput <- Observable.fromTask(deserializeProgramOutput)
-      cachedOutputs <- Observable.fromTask(getCachedOutput(dataDirKey, programOutput.map(_.withoutProgram)).map(_.flatten))
+      programOutput <- toObservable(deserializeProgramOutput)
+      cachedOutputs <- toObservable(getCachedOutput(dataDirKey, programOutput.map(_.withoutProgram)).map(_.flatten))
       cachedOutputsMapped = cachedOutputs.groupBy(_.id).mapValues(_.head)
       results <- raceFold(programOutput.collect {
         case SlateProgram(id, title, bootRefreshPolicy, titleLink, out, input)
@@ -265,13 +266,11 @@ object SlateApp extends scalajs.js.JSApp {
     }
   }
 
-  import Observable.fromTask
-
   def loadAndRenderContent(dataDirKey: StorageFS.StorageKey[StorageFS.Dir], container: dom.Element)(implicit sch: Scheduler): Observable[SearchPageProps] =
     for {
       compilePrograms <- loadContent(dataDirKey)
-      outputs <- fromTask(compilePrograms)
-      _ <- fromTask(render(container, outputs))
+      outputs <- toObservable(compilePrograms)
+      _ <- toObservable(render(container, outputs))
     } yield outputs
 
   @JSExport
