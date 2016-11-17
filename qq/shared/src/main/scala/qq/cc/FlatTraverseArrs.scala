@@ -15,13 +15,13 @@ It essentially represents a tree of TraverseM arrows (I => Eff[R, T[O]]) which n
 It is VERY similar to the Arrs construct in Eff.
 A FlatTraverseArrs[R, T, I, O] is a function I => Eff[R, T[O]] with re-associated, trampolined composition.
  */
-sealed trait FlatTraverseArrs[R, T[_], I, O] {
+sealed trait FlatTraverseArrs[R, T[_], I, O] extends Any {
   def apply(i: I)(implicit ev1: Traverse[T], ev2: Monad[T], ev3: Member[TaskParallel, R]): Eff[R, T[O]] =
     suspend(FlatTraverseArrs.run[R, T, I, O](this)(i))
 }
 case class Encompose[R, T[_], I, O](arrs: NonEmptyVector[FlatTraverseArrs[R, T, Any, Any]]) extends FlatTraverseArrs[R, T, I, O]
 
-case class Leaf[R, T[_], I, O](arr: I => Eff[R, T[O]]) extends FlatTraverseArrs[R, T, I, O]
+case class Leaf[R, T[_], I, O](arr: I => Eff[R, T[O]]) extends AnyVal with FlatTraverseArrs[R, T, I, O]
 
 object FlatTraverseArrs {
   def singleton[R, T[_], I, O](arr: I => Eff[R, T[O]]): FlatTraverseArrs[R, T, I, O] =
