@@ -1,11 +1,7 @@
 package qq
 
-import org.scalactic.Normalization
-import org.scalatest.matchers.{BeMatcher, MatchResult}
 import qq.cc.Parser
-import qq.data.{FilterAST, Definition, JSON, Program}
-
-import cats.implicits._
+import qq.data.{Definition, FilterAST, Program}
 
 class ParserTest extends QQSyncTestSuite {
 

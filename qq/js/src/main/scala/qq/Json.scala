@@ -1,15 +1,14 @@
 package qq
 
+import cats.Eval
+import cats.implicits._
 import qq.Platform.Js._
 import qq.data.JSON
-import qq.data.JSON.ObjList
 import qq.util.Recursion.{RecursionEngine, RecursiveFunction}
 import qq.util.Unsafe
 import upickle.{Invalid, Js}
 
 import scala.scalajs.js
-import cats.Eval
-import cats.implicits._
 
 
 object Json {

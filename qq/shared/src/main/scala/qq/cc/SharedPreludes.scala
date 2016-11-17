@@ -1,11 +1,11 @@
 package qq
 package cc
 
+import cats.implicits._
+import org.atnos.eff._
+import org.atnos.eff.syntax.all._
 import qq.data._
 import qq.util.Recursion.RecursionEngine
-import org.atnos.eff._, syntax.all._
-
-import cats.implicits._
 
 object SharedPreludes extends Prelude {
 

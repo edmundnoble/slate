@@ -1,9 +1,10 @@
 package qq
 package data
 
-import scala.language.higherKinds
 import cats.Functor
 import cats.implicits._
+
+import scala.language.higherKinds
 
 object Program {
   type Definitions[F] = List[Definition[F]]

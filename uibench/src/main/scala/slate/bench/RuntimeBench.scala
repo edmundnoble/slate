@@ -1,15 +1,15 @@
 package slate
 package bench
 
-import slate.bench.BenchmarkApp._
 import japgolly.scalajs.benchmark.Benchmark.Builder
 import japgolly.scalajs.benchmark._
 import japgolly.scalajs.benchmark.gui.{GuiParam, GuiParams, GuiSuite}
 import monix.eval.Task
 import monocle.Iso
+import qq.Platform.Rec._
 import qq.cc.{CompiledFilter, QQCompiler}
 import qq.data.{FilterAST, JSON, QQDSL}
-import qq.Platform.Rec._
+import slate.bench.BenchmarkApp._
 
 object RuntimeBench {
 

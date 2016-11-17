@@ -3,21 +3,19 @@ package cc
 
 import java.util.regex.Pattern
 
-import cats.data.{NonEmptyList, Validated, ValidatedNel}
-import monix.eval.Task
-import monix.cats._
+import cats.data.{NonEmptyList, Validated}
+import cats.implicits._
+import org.atnos.eff._
+import org.atnos.eff.syntax.all._
 import qq.data.{CompiledDefinition, JSON}
 import qq.util.Recursion.RecursionEngine
 import qq.util._
 import scodec.bits.ByteVector
-import cats.implicits._
-import org.atnos.eff._, Eff._, syntax.all._
 
 object JSONPrelude extends Prelude {
 
-  import QQRuntimeException._
-
   import CompiledDefinition.noParamDefinition
+  import QQRuntimeException._
 
   // null constant
   def `null`: CompiledDefinition = noParamDefinition("null", CompiledFilter.const(JSON.Null))

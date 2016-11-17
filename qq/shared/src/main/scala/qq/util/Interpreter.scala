@@ -2,15 +2,10 @@ package qq
 package util
 
 import monix.eval.Task
+import qq.Platform.Rec._
 import qq.cc._
 import qq.data.JSON
 import upickle.json
-import qq.Platform.Rec._
-import cats.data.{NonEmptyList, Validated, ValidatedNel}
-import cats.implicits._
-import org.atnos.eff._
-import Eff._
-import syntax.all._
 
 // I think this is just a free monad transformer
 final case class Interpreter(name: String, resumePartial: PartialFunction[String, InterpreterExitException.type Either Task[(String, Interpreter)]]) {

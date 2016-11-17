@@ -1,9 +1,9 @@
 package qq
 
+import org.scalactic.NormMethods._
 import qq.data.JSON
 
 import scala.scalajs.js
-import org.scalactic.NormMethods._
 
 class JsonTests extends QQSyncTestSuite {
   "jstoJSON" - {

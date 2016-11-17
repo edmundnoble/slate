@@ -3,8 +3,8 @@ package bench
 
 import japgolly.scalajs.benchmark.gui.BenchmarkGUI
 import org.scalajs.dom
-import qq.cc.CompiledFilter
 import qq.Platform.Rec._
+import qq.cc.CompiledFilter
 import qq.data.JSON
 
 import scala.scalajs.js.annotation.JSExport

@@ -4,8 +4,8 @@ package cc
 import cats.Semigroup
 import cats.data.NonEmptyList
 import cats.implicits._
+import org.atnos.eff._
 import qq.data.JSON
-import org.atnos.eff._, Eff._, syntax.all._
 
 class QQCompilationException(message: String) extends RuntimeException(message)
 
@@ -38,11 +38,11 @@ object QQRuntimeException {
 
   def typeError[A](operation: String, typesAndValues: (String, JSON)*): Either[RuntimeErrs, A] =
     Either.left(NonEmptyList.of[QQRuntimeError](TypeError(operation, typesAndValues: _*)))
-  def typeErrorE[S : _either[RuntimeErrs, ?], A](operation: String, typesAndValues: (String, JSON)*): Eff[S, A] =
+  def typeErrorE[S: _either[RuntimeErrs, ?], A](operation: String, typesAndValues: (String, JSON)*): Eff[S, A] =
     either.left(NonEmptyList.of[QQRuntimeError](TypeError(operation, typesAndValues: _*)))
-  def notARegex[S : _either[RuntimeErrs, ?], A](asStr: String): CompiledFilterResult[A] =
+  def notARegex[S: _either[RuntimeErrs, ?], A](asStr: String): CompiledFilterResult[A] =
     either.left(NonEmptyList.of[QQRuntimeError](NotARegex(asStr)))
-  def noSuchVariable[S : _either[RuntimeErrs, ?], A](variableName: String): CompiledFilterResult[A] =
+  def noSuchVariable[S: _either[RuntimeErrs, ?], A](variableName: String): CompiledFilterResult[A] =
     either.left(NonEmptyList.of[QQRuntimeError](NoSuchVariable(variableName)))
 }
 

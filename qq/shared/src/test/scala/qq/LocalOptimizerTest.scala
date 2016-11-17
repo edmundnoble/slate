@@ -1,7 +1,7 @@
 package qq
 
-import qq.data.QQDSL._
 import qq.data.FilterAST
+import qq.data.QQDSL._
 import qq.util.Recursion
 import qq.util.Recursion.RecursionEngine
 

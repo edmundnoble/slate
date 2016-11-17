@@ -1,17 +1,15 @@
 package qq
 package cc
 
-import monix.eval.Task
-import monix.cats._
+import cats.implicits._
+import org.atnos.eff.Eff._
+import org.atnos.eff._
+import org.atnos.eff.syntax.all._
 import qq.data._
 import qq.util.Recursion.RecursionEngine
 import qq.util._
-import org.atnos.eff._
-import Eff._
-import syntax.all._
 
 import scala.language.higherKinds
-import cats.implicits._
 
 object QQCompiler {
 

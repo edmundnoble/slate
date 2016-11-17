@@ -3,16 +3,13 @@ package util
 
 import cats.Monad
 import cats.data.Validated
+import cats.implicits._
 import monix.eval.Task
-import monix.cats._
 import scodec._
 import scodec.bits.BitVector
 import shapeless.Lazy
 
 import scala.language.{higherKinds, implicitConversions}
-import cats.implicits._
-import shapeless._
-import shapeless.tag.@@
 
 trait UtilImplicits {
 

@@ -1,20 +1,17 @@
 package qq
 package cc
 
-import cats.data.{NonEmptyList, ValidatedNel}
-
-import scala.language.higherKinds
-import monix.eval.Task
-import monix.cats._
+import cats.Applicative
+import cats.data.ValidatedNel
+import cats.implicits._
+import org.atnos.eff.Eff._
+import org.atnos.eff._
+import org.atnos.eff.syntax.all._
 import qq.data._
 import qq.util._
 
 import scala.collection.immutable.Nil
-import cats.implicits._
-import org.atnos.eff._
-import Eff._
-import cats.Applicative
-import syntax.all._
+import scala.language.higherKinds
 
 object QQRuntime {
 

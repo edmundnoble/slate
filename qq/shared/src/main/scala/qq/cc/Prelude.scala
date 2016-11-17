@@ -1,10 +1,10 @@
 package qq
 package cc
 
-import qq.data.CompiledDefinition
-import qq.util.Recursion.RecursionEngine
 import cats.implicits._
 import cats.Monoid
+import qq.data.CompiledDefinition
+import qq.util.Recursion.RecursionEngine
 
 
 object Prelude {

@@ -1,13 +1,12 @@
 package qq
 
-import cats.data.ValidatedNel
+import cats.implicits._
 import org.scalactic.NormMethods._
 import org.scalatest.Assertion
-import qq.cc.{QQRuntimeError, Runner, RuntimeErrs}
+import qq.cc.{Runner, RuntimeErrs}
 import qq.data.JSON
 
 import scala.concurrent.Future
-import cats.implicits._
 
 case class PreludeTestCase(input: JSON, program: String, expectedOutputOrException: Either[RuntimeErrs, List[JSON]])
 

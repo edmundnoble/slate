@@ -1,11 +1,11 @@
 package qq
 package util
 
+import cats.implicits._
 import cats.{Applicative, Eval, Traverse}
 
 import scala.collection.mutable
 import scala.language.higherKinds
-import cats.implicits._
 
 object Unsafe {
 

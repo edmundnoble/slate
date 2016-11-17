@@ -2,10 +2,10 @@ package qq
 
 import cats.data._
 import monix.eval.Task
-import qq.data.{JSON, VarBinding}
-import org.atnos.eff._
 import org.atnos.eff.Eff._
+import org.atnos.eff._
 import qq.cc.RanTraverseM._taskPar
+import qq.data.{JSON, VarBinding}
 import qq.util._
 
 package object cc {

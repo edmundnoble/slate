@@ -11,7 +11,7 @@ import scala.scalajs.js.{UndefOr, WrappedArray}
 object Platform {
   object Rec {
     implicit val defaultRecScheme: RecursionEngine =
-       Recursion.Unsafe.LimitStack(maxStackSize = 50)
+      Recursion.Unsafe.LimitStack(maxStackSize = 50)
   }
   object Js {
     implicit class objectOps(val obj: js.Object) extends AnyVal {

@@ -1,7 +1,7 @@
 package slate
 package bench
 
-import qq.data.{FilterAST, FilterComponent, QQDSL}
+import qq.data.{FilterAST, QQDSL}
 
 import scala.annotation.tailrec
 

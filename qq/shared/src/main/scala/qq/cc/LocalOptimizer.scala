@@ -2,12 +2,10 @@ package qq
 package cc
 
 import qq.data._
-import qq.util.{Fix, Recursion}
 import qq.util.Recursion.RecursionEngine
+import qq.util.{Fix, Recursion}
 
 import scala.language.higherKinds
-import cats.implicits._
-import cats.implicits._
 
 // QQ's local optimizer; not a whole-program optimizer, but optimizes a single filter.
 object LocalOptimizer {

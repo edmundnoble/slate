@@ -8,14 +8,23 @@ import scala.annotation.elidable._
 
 trait Logger {
   @elidable(FINE) def debug(msg: String, e: Throwable): Unit
+
   @elidable(FINE) def debug(msg: String): Unit
+
   @elidable(INFO) def info(msg: String, e: Throwable): Unit
+
   @elidable(INFO) def info(msg: String): Unit
+
   @elidable(WARNING) def warn(msg: String, e: Throwable): Unit
+
   @elidable(WARNING) def warn(msg: String): Unit
+
   @elidable(SEVERE) def error(msg: String, e: Throwable): Unit
+
   @elidable(SEVERE) def error(msg: String): Unit
+
   @elidable(SEVERE) def fatal(msg: String, e: Throwable): Unit
+
   @elidable(SEVERE) def fatal(msg: String): Unit
 }
 

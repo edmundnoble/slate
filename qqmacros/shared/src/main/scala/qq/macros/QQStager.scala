@@ -1,17 +1,16 @@
 package qq
 package macros
 
+import cats.Eval
+import cats.implicits._
 import fastparse.core.Parsed
+import qq.Platform.Rec._
 import qq.cc.{LocalOptimizer, Parser}
 import qq.data._
 import qq.util.Recursion.RecursiveFunction
 
 import scala.language.experimental.macros
 import scala.reflect.macros.whitebox
-import cats.Eval
-
-import cats.implicits._
-import qq.Platform.Rec._
 
 // this is used to pre-prepare QQ programs at compile time
 object QQStager {

@@ -50,7 +50,7 @@ object Styles extends StyleSheet.Inline {
   )
 
   val layoutContainer: StyleA = style(
-      addClassName("mdl-layout__container")
+    addClassName("mdl-layout__container")
   )
 
   val layoutContent = style(

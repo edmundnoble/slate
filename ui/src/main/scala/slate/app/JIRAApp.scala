@@ -9,7 +9,7 @@ object JIRAApp {
 
   val program: Program[FilterAST] Either String =
     Left(
-    qq"""
+      qq"""
 def authHeaders: (.username + ":" + .password | b64Encode) | { Authorization: "Basic " + . };
 
 def extractIssues: .issues[] | {
@@ -44,9 +44,9 @@ def contentFromFilter: { title: .name,
 
 $$auth as authHeaders in
   httpGet("https://dashboarder.atlassian.net/rest/api/2/filter/favourite"; {}; {}; $$auth)
-      | extractFilters($$auth)
-      | contentFromFilter
+         | extractFilters($$auth)
+         | contentFromFilter
 """
-  )
+    )
 
 }

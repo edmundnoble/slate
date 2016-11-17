@@ -2,15 +2,13 @@ package qq
 package protocol
 
 import qq.data._
-
-import scodec._
-import codecs._
-import CoproductBuilderAuto._
-import CoproductBuilderAutoDiscriminators._
 import qq.util._
+import scodec._
+import scodec.codecs.CoproductBuilderAuto._
+import scodec.codecs.CoproductBuilderAutoDiscriminators._
+import scodec.codecs._
 import scodec.codecs.implicits._
 import shapeless._
-
 
 
 object FilterProtocol {

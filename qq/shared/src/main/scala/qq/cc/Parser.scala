@@ -2,14 +2,14 @@ package qq
 package cc
 
 import cats.Monad
+import cats.implicits._
 import fastparse.all._
-import fastparse.all.ParseCtx
+import fastparse.core.Implicits
+import fastparse.parsers
 import fastparse.parsers.Terminals
-import fastparse.core.Implicits, fastparse.parsers
 import qq.data._
 
 import scala.collection.mutable
-import cats.implicits._
 
 
 object Parser {
@@ -44,17 +44,17 @@ object Parser {
 
   def isStringLiteralChar(c: Char): Boolean = Character.isAlphabetic(c) || Character.isDigit(c)
 
-//  case class CharsWhileFastSetup(set: Seq[Char], min: Int = 1) extends Parser[Unit]() {
-//    private[this] val uberSet = CharBitSet(set)
-//
-//    def parseRec(cfg: ParseCtx, index: Int) = {
-//      var curr = index
-//      val input = cfg.input
-//      while (curr < input.length && uberSet(input(curr))) curr += 1
-//      if (curr - index < min) fail(cfg.failure, curr)
-//      else success(cfg.success, (), curr, Set.empty, cut = false)
-//    }
-//  }
+  //  case class CharsWhileFastSetup(set: Seq[Char], min: Int = 1) extends Parser[Unit]() {
+  //    private[this] val uberSet = CharBitSet(set)
+  //
+  //    def parseRec(cfg: ParseCtx, index: Int) = {
+  //      var curr = index
+  //      val input = cfg.input
+  //      while (curr < input.length && uberSet(input(curr))) curr += 1
+  //      if (curr - index < min) fail(cfg.failure, curr)
+  //      else success(cfg.success, (), curr, Set.empty, cut = false)
+  //    }
+  //  }
 
   val stringLiteralChars: Seq[Char] = ('a' to 'z') ++ ('A' to 'Z') ++ ('0' to '9') ++ "↪+*-_".toSeq
   val stringLiteral: P[String] = P(CharIn(stringLiteralChars).rep(min = 1).!)

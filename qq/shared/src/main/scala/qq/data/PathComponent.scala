@@ -1,8 +1,9 @@
 package qq
 package data
 
-import scala.language.higherKinds
 import cats.{Applicative, Eval, Traverse}
+
+import scala.language.higherKinds
 
 sealed abstract class PathComponent
 

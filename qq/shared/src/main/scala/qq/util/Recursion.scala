@@ -1,11 +1,10 @@
 package qq
 package util
 
-import cats.{Monad, Traverse, Functor}
 import cats.implicits._
+import cats.{Eval, Monad, Traverse}
 
 import scala.language.higherKinds
-import cats.Eval
 
 object Recursion {
 

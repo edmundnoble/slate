@@ -1,13 +1,14 @@
 package slate
 package bench
 
-import slate.views.DashboardPage.SearchPageProps
-import slate.app.SlateApp
 import japgolly.scalajs.benchmark.gui.GuiSuite
 import japgolly.scalajs.benchmark.{Benchmark, Suite}
 import org.scalajs.dom
+import slate.app.SlateApp
+import slate.views.DashboardPage.SearchPageProps
 
 object UIBench {
+
   import monix.execution.Scheduler.Implicits.global
 
   val startupSuite = GuiSuite(

@@ -3,9 +3,9 @@ package bench
 
 import japgolly.scalajs.benchmark._
 import japgolly.scalajs.benchmark.gui.{GuiParam, GuiParams, GuiSuite}
-import qq.cc.{CompiledFilter, OrCompilationError, QQCompiler}
-import qq.data.{FilterAST, FilterComponent, QQDSL}
 import qq.Platform.Rec._
+import qq.cc.{CompiledFilter, OrCompilationError, QQCompiler}
+import qq.data.{FilterAST, QQDSL}
 
 object CompilerBench {
 

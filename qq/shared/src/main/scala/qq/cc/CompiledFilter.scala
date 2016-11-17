@@ -2,15 +2,14 @@ package qq
 package cc
 
 import cats.data._
+import cats.implicits._
+import cats.{Monoid, Semigroup}
 import monix.eval.Task
-import monix.cats._
+import org.atnos.eff
+import org.atnos.eff.syntax.eff._
+import org.atnos.eff.{Eff, Fx}
 import qq.data.{JSON, VarBinding}
 import qq.util._
-import cats.{Eval, Monoid, Semigroup, Traverse}
-import cats.implicits._
-import org.atnos.eff
-import org.atnos.eff.{Arrs, Eff, Fx}
-import org.atnos.eff.syntax.eff._
 
 object CompiledFilter {
 

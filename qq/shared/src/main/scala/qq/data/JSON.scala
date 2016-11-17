@@ -1,14 +1,14 @@
 package qq
 package data
 
+import cats.Eval
+import cats.implicits._
+import qq.cc.ListToNelOps
 import qq.util.Recursion.RecursiveFunction
 import qq.util.Unsafe
 import upickle.Js
 
 import scala.collection.generic.CanBuildFrom
-import cats.Eval
-import cats.implicits._
-import qq.cc.ListToNelOps
 
 sealed trait JSON {
   override def toString: String = JSON.render(this)

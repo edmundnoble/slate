@@ -2,11 +2,11 @@ package qq
 package data
 
 
+import cats.implicits._
 import cats.{Applicative, Eval, Traverse}
+import qq.util.Fix
 
 import scala.language.higherKinds
-import cats.implicits._
-import qq.util.Fix
 
 // A single node of the QQ AST. Type parameter is used for child nodes.
 sealed abstract class FilterComponent[A]

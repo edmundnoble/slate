@@ -1,7 +1,6 @@
 package qq
 
 import cats.~>
-import monix.cats._
 import monix.eval.Task
 import shapeless.tag._
 

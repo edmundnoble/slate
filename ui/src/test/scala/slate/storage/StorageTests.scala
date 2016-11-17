@@ -1,7 +1,6 @@
 package slate
 package storage
 
-import org.atnos.eff._
 import org.atnos.eff.syntax.all._
 
 class StorageTests extends SlateSuite {

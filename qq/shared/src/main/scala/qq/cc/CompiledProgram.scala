@@ -2,15 +2,11 @@ package qq
 package cc
 
 import cats.Monoid
-import cats.data.{NonEmptyList, ValidatedNel}
-import monix.eval.Task
-import qq.util.TaskParallel
-import qq.util._
-import monix.cats._
-import org.atnos.eff._, Eff._, syntax.all._
-import qq.data.JSON
-
 import cats.implicits._
+import org.atnos.eff._
+import org.atnos.eff.syntax.all._
+import qq.data.JSON
+import qq.util.{TaskParallel, _}
 
 object CompiledProgram {
 

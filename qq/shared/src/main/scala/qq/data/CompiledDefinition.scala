@@ -1,13 +1,10 @@
 package qq
 package data
 
-import cats.data.{ValidatedNel, Validated, NonEmptyList}
-import monix.eval.Task
-import util._
-import cc._
-import monix.cats._
 import cats.implicits._
-import org.atnos.eff._, Eff._, syntax.all._
+import org.atnos.eff._
+import org.atnos.eff.syntax.all._
+import qq.cc._
 
 final case class CompiledDefinition
 (name: String, numParams: Int, body: (List[CompiledFilter] => OrCompilationError[CompiledFilter]))

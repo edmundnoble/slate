@@ -2,7 +2,7 @@ package slate
 package app
 
 import cats.Applicative
-import cats.data.{Validated, ValidatedNel}
+import cats.data.Validated
 import cats.implicits._
 import monix.eval.Task
 import org.atnos.eff._

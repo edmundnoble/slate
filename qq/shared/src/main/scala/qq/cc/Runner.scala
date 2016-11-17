@@ -1,15 +1,12 @@
 package qq
 package cc
 
-import cats.data.{NonEmptyList, ValidatedNel}
+import cats.implicits._
 import fastparse.all.{ParseError, Parsed}
 import monix.eval.Task
-import monix.cats._
 import qq.data.JSON
 import qq.util.Recursion.RecursionEngine
 import qq.util._
-import cats.implicits._
-import org.atnos.eff._, Eff._, syntax.all._
 
 // tools for running parts of the compiler together
 object Runner {

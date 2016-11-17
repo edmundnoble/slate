@@ -9,7 +9,7 @@ object GmailApp {
 
   val program: Program[FilterAST] Either String =
     Left(
-    qq"""
+      qq"""
 def authHeaders: { Authorization: "Bearer " + googleAuth };
 
 def listUnreadThreadParams: {
@@ -38,6 +38,6 @@ def unreadThreadDetailsToContent: {
 
 [unreadThreadDetails] | unreadThreadDetailsToContent
     """
-  )
+    )
 
 }

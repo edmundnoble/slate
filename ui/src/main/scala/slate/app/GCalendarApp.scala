@@ -23,5 +23,5 @@ httpGet("https://www.googleapis.com/calendar/v3/users/me/calendarList"; {minAcce
       content: .location | orElse("")
     }]
 }"""
-  )
+    )
 }
