@@ -40,11 +40,20 @@ object SlateApp extends scalajs.js.JSApp {
 
   final class EmptyResponseException extends java.lang.Exception("Empty response")
 
-  sealed abstract class BootRefreshPolicy
+  sealed abstract class BootRefreshPolicy {
+    def shouldRefresh(secondsAge: Int): Boolean
+  }
+
   object BootRefreshPolicy {
-    final case class IfOlderThan(seconds: Int) extends BootRefreshPolicy
-    case object Never extends BootRefreshPolicy
-    case object Always extends BootRefreshPolicy
+    final case class IfOlderThan(seconds: Int) extends BootRefreshPolicy {
+      override def shouldRefresh(secondsAge: Int): Boolean = secondsAge > seconds
+    }
+    case object Never extends BootRefreshPolicy {
+      override def shouldRefresh(secondsAge: Int): Boolean = false
+    }
+    case object Always extends BootRefreshPolicy {
+      override def shouldRefresh(secondsAge: Int): Boolean = true
+    }
   }
 
   final case class SlateProgram[+P](id: Int, title: String, bootRefreshPolicy: BootRefreshPolicy, titleLink: String, program: P, input: JSON) {
@@ -210,7 +219,12 @@ object SlateApp extends scalajs.js.JSApp {
       cachedOutputs <- Observable.fromTask(getCachedOutput(dataDirKey, programOutput.map(_.withoutProgram)).map(_.flatten))
       cachedOutputsMapped = cachedOutputs.groupBy(_.id).mapValues(_.head)
       results <- raceFold(programOutput.map {
-        case SlateProgram(id, title, _, titleLink, out, input) =>
+        case SlateProgram(id, title, bootRefreshPolicy, titleLink, out, input)
+          if cachedOutputsMapped.get(id).forall(
+            _.program.forall(d =>
+              bootRefreshPolicy.shouldRefresh(((js.Date.now() - d.date.getTime()) / 1000.0).toInt)
+            )
+          ) =>
           val injectedErrors: Task[Either[AllErrors, DatedAppContent]] = out.leftMap(e =>
             errorCompilingProgramsInAllErrors.inverse(Right(e))
           ).map(_.map(_.leftMap(e => errorDeserializingProgramOutputInAllErrors.inverse(Right(e)))))
