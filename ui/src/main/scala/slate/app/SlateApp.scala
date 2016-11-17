@@ -16,9 +16,9 @@ import qq.cc.{CompiledFilter, QQCompilationException, QQCompiler, QQRuntimeExcep
 import qq.data.{FilterAST, JSON, Program}
 import qq.util._
 import shapeless.{:+:, CNil}
+import slate.app.builtin.{GCalendarApp, GmailApp, JIRAApp, TodoistApp}
 import slate.app.caching.Caching
 import slate.app.caching.Program.ErrorGettingCachedProgram
-import slate.app.builtin.{GCalendarApp, GmailApp, JIRAApp, TodoistApp}
 import slate.models.{AppModel, DatedAppContent, ExpandableContentModel}
 import slate.storage.{DomStorage, StorageAction, StorageFS, StorageProgram}
 import slate.util.LoggerFactory
@@ -213,7 +213,7 @@ object SlateApp extends scalajs.js.JSApp {
     } yield cachedPrograms
   }
 
-  def getContent(dataDirKey: StorageFS.StorageKey[StorageFS.Dir]): Observable[Task[SearchPageProps]] = {
+  def loadContent(dataDirKey: StorageFS.StorageKey[StorageFS.Dir]): Observable[Task[SearchPageProps]] = {
     (for {
       programOutput <- Observable.fromTask(deserializeProgramOutput)
       cachedOutputs <- Observable.fromTask(getCachedOutput(dataDirKey, programOutput.map(_.withoutProgram)).map(_.flatten))
@@ -263,41 +263,34 @@ object SlateApp extends scalajs.js.JSApp {
     }
   }
 
+  import Observable.fromTask
+
+  def loadAndRenderContent(dataDirKey: StorageFS.StorageKey[StorageFS.Dir], container: dom.Element)(implicit sch: Scheduler): Observable[SearchPageProps] =
+    for {
+      compilePrograms <- loadContent(dataDirKey)
+      outputs <- fromTask(compilePrograms)
+      _ <- fromTask(render(container, outputs))
+    } yield outputs
+
   @JSExport
   def main(): Unit = {
 
-    import Observable.fromTask
     import monix.execution.Scheduler.Implicits.global
 
-    if (!js.isUndefined(Addons.Perf)) {
-      logger.info("Starting perf")
-      Addons.Perf.start()
-      logger.info("Rendering DOM")
-    }
-    val container =
+    val container: dom.Element =
       dom.document.body.children.namedItem("container")
     val _ = (for {
+      _ <- appendStyles
       dataDirKey <- StorageProgram.runProgram(DomStorage.Local, StorageFS.initFS >> prepareDataFolder).detach
-      _ <- (for {
-        _ <- fromTask(appendStyles())
-        compilePrograms <- getContent(dataDirKey)
-        outputs <- fromTask(compilePrograms)
-        _ <- fromTask(render(container, outputs))
-      } yield outputs).completedL
+      _ <- loadAndRenderContent(dataDirKey, container).completedL
     } yield ()).runAsync(new monix.eval.Callback[Unit] {
       override def onSuccess(value: Unit): Unit = println("QQ run loop finished successfully!")
       override def onError(ex: Throwable): Unit = println(s"QQ run loop finished with error: $ex")
     })
-    if (!js.isUndefined(Addons.Perf)) {
-      logger.info("Stopping perf")
-      Addons.Perf.stop()
-      logger.info("Printing wasted")
-      logger.info(Addons.Perf.printWasted(Addons.Perf.getLastMeasurements()).toString)
-    }
   }
 
   // TODO: cache
-  private def appendStyles() = Task.delay {
+  private def appendStyles = Task.delay {
 
     import slate.views._
 
