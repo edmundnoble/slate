@@ -1,17 +1,13 @@
 package slate
 package views
 
-import slate.models.ExpandableContentModel
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.extra.Reusability
 import monix.execution.Scheduler
+import slate.models.ExpandableContentModel
 
 import scala.language.higherKinds
 import scalacss.Defaults._
-import cats.implicits._
-import slate.util.Util._
-
-import scala.scalajs.js
 
 object ExpandableContentView {
   object Styles extends StyleSheet.Inline {

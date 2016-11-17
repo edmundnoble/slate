@@ -1,7 +1,6 @@
 package slate.views
 
 import org.scalajs.dom.html.Div
-import slate.app.SlateApp.AllErrors
 
 object LoadingView {
 

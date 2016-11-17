@@ -1,11 +1,10 @@
 package slate
 package views
 
-import slate.views.AppView.AppProps
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.extra.Reusability
 import monix.execution.Scheduler
-import monix.reactive.Observable
+import slate.views.AppView.AppProps
 
 import scalacss.Defaults._
 

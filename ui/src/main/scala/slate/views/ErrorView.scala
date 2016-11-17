@@ -1,12 +1,12 @@
 package slate
 package views
 
-import slate.app.SlateApp.{AllErrors, InvalidJSON}
-import slate.app.caching.Program.{InvalidBase64, InvalidBytecode, ProgramSerializationException}
 import fastparse.all.ParseError
 import japgolly.scalajs.react._
 import org.scalajs.dom.html.Div
 import qq.cc.{QQCompilationException, QQRuntimeException}
+import slate.app.SlateApp.{AllErrors, InvalidJSON}
+import slate.app.caching.Program.ProgramSerializationException
 import upickle.Invalid
 
 import scalacss.Defaults._
@@ -15,6 +15,7 @@ object ErrorView {
   object Styles extends StyleSheet.Inline {
 
     import dsl._
+
     import scala.language.postfixOps
 
     val danger: StyleA = style(

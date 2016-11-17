@@ -2,21 +2,15 @@ package slate
 package app
 package caching
 
-import qq.cc.LocalOptimizer
-import cats.Monad
-import qq.cc._
-import qq.data
-import scodec.bits.BitVector
-import slate.util.Util._
-import fastparse.all.ParseError
-import qq.util.Recursion.RecursionEngine
-import shapeless.{:+:, CNil}
-import storage.{StorageAction, StorageProgram}
-import org.atnos.eff._
-import Eff._
-import syntax.all._
 import cats.implicits._
+import fastparse.all.ParseError
+import qq.cc.{LocalOptimizer, _}
+import qq.data
+import qq.util.Recursion.RecursionEngine
+import scodec.bits.BitVector
+import shapeless.{:+:, CNil}
 import slate.app.SlateApp.SlateProgram
+import slate.util.Util._
 
 // what goes into caching a QQ program in slate
 object Program {

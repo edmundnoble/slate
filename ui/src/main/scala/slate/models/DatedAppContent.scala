@@ -1,10 +1,10 @@
 package slate.models
 
+import cats.implicits._
 import upickle.Js
 
 import scala.scalajs.js
 import scala.util.Try
-import cats.implicits._
 
 case class DatedAppContent(content: List[ExpandableContentModel], date: js.Date)
 

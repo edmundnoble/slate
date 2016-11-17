@@ -7,8 +7,8 @@ import cats.data.NonEmptyList
 import monix.eval.Task
 import monix.execution.Cancelable
 import org.scalajs.dom
-import org.scalajs.dom.{Event, FormData, XMLHttpRequest}
 import org.scalajs.dom.raw.Blob
+import org.scalajs.dom.{Event, FormData, XMLHttpRequest}
 import qq.cc.{QQRuntimeError, QQRuntimeException}
 import qq.data.JSON
 import qq.data.JSON.ObjList

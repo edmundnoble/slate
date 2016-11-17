@@ -5,10 +5,9 @@ import japgolly.scalajs.react.Addons.ReactCssTransitionGroup
 import japgolly.scalajs.react.{ReactComponentU_, ReactNode}
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
 import scalacss.Defaults._
 import scalacss.StyleA
-
-import scala.language.postfixOps
 
 abstract class ReactAnimationStyles(val className: String)(implicit r: scalacss.internal.mutable.Register) extends StyleSheet.Inline()(r) {
   def enterClassName: String = className + "-enter"

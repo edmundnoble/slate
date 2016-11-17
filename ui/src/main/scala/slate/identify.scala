@@ -1,8 +1,8 @@
 package slate
 
-import slate.chrome._
 import monix.eval.Task
 import monix.execution.Cancelable
+import slate.chrome._
 
 import scala.scalajs.js
 import scala.scalajs.js.UndefOr

@@ -2,14 +2,12 @@ package slate
 package storage
 
 import org.atnos.eff._
-import Eff._
-import cats.data.State
-import syntax.all._
+import org.atnos.eff.syntax.all._
 
 class StorageTests extends SlateSuite {
 
-  import StorageProgram._
   import StorageAction._
+  import StorageProgram._
 
   "pure interpreter" - {
     "get key" in {

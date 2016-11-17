@@ -1,10 +1,9 @@
 package slate
 package models
 
+import cats.implicits._
 import japgolly.scalajs.react.extra.Reusability
 import upickle.Js
-import cats.implicits._
-import upickle.Js.Value
 
 import scala.util.Try
 

@@ -3,7 +3,7 @@ package storage
 
 import cats.data._
 import cats.implicits._
-import cats.{Applicative, Functor, Monad, Monoid, ~>}
+import cats.{Monad, Monoid, ~>}
 import monix.eval.Task
 import org.atnos.eff.Eff._
 import org.atnos.eff._

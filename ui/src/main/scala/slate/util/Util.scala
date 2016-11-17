@@ -1,14 +1,11 @@
 package slate
 package util
 
-import cats.free.{Coyoneda, Free}
-import cats.implicits._
-import cats.{Monad, Monoid, ~>}
+import cats.{Monoid, ~>}
 import fastparse.all.Parsed
 import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.vdom.TagMod
 import japgolly.scalajs.react.{CallbackTo, vdom}
-import monix.eval.Task.Context
 import monix.eval.{Callback, Task}
 import monix.execution.cancelables.{CompositeCancelable, StackedCancelable}
 import monix.execution.{CancelableFuture, Scheduler}

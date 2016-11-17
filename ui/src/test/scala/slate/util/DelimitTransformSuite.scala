@@ -4,7 +4,6 @@ package util
 class DelimitTransformSuite extends SlateSuite {
 
   import DelimitTransform._
-  import scala.scalajs.js.JSConverters._
 
   "simple" - {
     "string" in {

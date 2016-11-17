@@ -1,40 +1,36 @@
 package slate
 package app
 
-import slate.views.DashboardPage
-import slate.views.DashboardPage.SearchPageProps
-import slate.util.Util._
-import slate.app.caching.Program.ErrorGettingCachedProgram
-import slate.models.{AppModel, DatedAppContent, ExpandableContentModel}
-import slate.util.LoggerFactory
-import slate.storage.{DomStorage, StorageAction, StorageFS, StorageProgram}
-import slate.views.AppView.AppProps
+import cats._
+import cats.implicits._
 import japgolly.scalajs.react.{Addons, ReactComponentM, ReactDOM, TopNode}
+import monix.cats._
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.Observable
-import monix.cats._
+import org.atnos.eff.syntax.all._
+import org.atnos.eff.{Eff, Fx, Member}
 import org.scalajs.dom
 import qq.Platform.Rec._
 import qq.cc.{CompiledFilter, QQCompilationException, QQCompiler, QQRuntimeException}
 import qq.data.{FilterAST, JSON, Program}
 import qq.util._
 import shapeless.{:+:, CNil}
+import slate.app.caching.Caching
+import slate.app.caching.Program.ErrorGettingCachedProgram
+import slate.models.{AppModel, DatedAppContent, ExpandableContentModel}
+import slate.storage.{DomStorage, StorageAction, StorageFS, StorageProgram}
+import slate.util.LoggerFactory
+import slate.util.Util._
+import slate.views.AppView.AppProps
+import slate.views.DashboardPage
+import slate.views.DashboardPage.SearchPageProps
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
 import scala.util.{Success, Try}
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
-import cats._
-import cats.data._
-import cats.implicits._
-import japgolly.scalajs.react.extra.Reusability
-import monix.execution.cancelables.StackedCancelable
-import org.atnos.eff.{Eff, Fx, Member, NoFx, writer}
-import org.atnos.eff.syntax.all._
-import slate.app.caching.Caching
-import upickle.Invalid.Data
 
 @JSExport
 object SlateApp extends scalajs.js.JSApp {
@@ -248,8 +244,8 @@ object SlateApp extends scalajs.js.JSApp {
   @JSExport
   def main(): Unit = {
 
-    import monix.execution.Scheduler.Implicits.global
     import Observable.fromTask
+    import monix.execution.Scheduler.Implicits.global
 
     if (!js.isUndefined(Addons.Perf)) {
       logger.info("Starting perf")

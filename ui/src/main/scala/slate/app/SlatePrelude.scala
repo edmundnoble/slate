@@ -1,9 +1,12 @@
 package slate
 package app
 
-import slate.ajax.{Ajax, AjaxMethod}
+import cats.Applicative
+import cats.data.ValidatedNel
+import cats.implicits._
 import monix.eval.Task
-import monix.cats._
+import org.atnos.eff._
+import org.atnos.eff.syntax.all._
 import org.scalajs.dom.XMLHttpRequest
 import qq.Json
 import qq.Platform.Rec._
@@ -11,19 +14,15 @@ import qq.cc.{CompiledFilter, CompiledFilterStack, OrCompilationError, OrRuntime
 import qq.data.{CompiledDefinition, JSON}
 import qq.util.Recursion.RecursionEngine
 import qq.util._
+import slate.ajax.{Ajax, AjaxMethod}
 
 import scala.concurrent.duration._
 import scala.scalajs.js
-import cats.data.ValidatedNel
-import cats.Applicative
-import cats.implicits._
-import org.atnos.eff._
-import syntax.all._
 
 object SlatePrelude extends Prelude {
 
-  import QQRuntimeException._
   import CompiledDefinition.noParamDefinition
+  import QQRuntimeException._
 
   def googleAuth: CompiledDefinition =
     noParamDefinition("googleAuth",

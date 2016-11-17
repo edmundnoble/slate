@@ -1,11 +1,10 @@
 package slate
 package views
 
+import cats.Monoid
 import japgolly.scalajs.react.{CallbackTo, ReactComponentB, TopNode}
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.Observable
-
-import cats.Monoid
 
 object ReactiveReact {
   case class ReactiveState[ST](reactivePart: ST, cancelableFuture: CancelableFuture[Unit])

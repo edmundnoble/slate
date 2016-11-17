@@ -5,7 +5,7 @@ import cats.Applicative
 import cats.implicits._
 import qq.util.Unsafe
 
-import scalajs.js
+import scala.scalajs.js
 
 sealed abstract class DelimitTransform[O] {
   def toInterpret(string: String): Option[O]

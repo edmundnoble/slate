@@ -1,12 +1,12 @@
 package slate
 package storage
 
-import org.atnos.eff._
-import Eff._
-import syntax.all._
-import StorageFS.{Dir, StorageKey}
 import cats.data.{State, Writer}
 import cats.implicits._
+import org.atnos.eff.Eff._
+import org.atnos.eff._
+import org.atnos.eff.syntax.all._
+import slate.storage.StorageFS.{Dir, StorageKey}
 
 class StorageFSTests extends SlateSuite {
   def logStorageProgram[A](prog: StorageProgram[A]): StorageProgram[A] = {

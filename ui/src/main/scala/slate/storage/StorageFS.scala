@@ -2,16 +2,15 @@ package slate
 package storage
 
 import cats.Monad
-
-import scalajs.js
+import cats.data.Writer
 import cats.implicits._
+import org.atnos.eff.Eff._
+import org.atnos.eff._
+import org.atnos.eff.syntax.all._
 
+import scala.scalajs.js
 import scala.scalajs.js.Array
 import scala.util.Try
-import org.atnos.eff._
-import Eff._
-import cats.data.Writer
-import syntax.all._
 
 object StorageFS {
   final case class StorageKey[F](name: String, nonce: String) {
@@ -33,7 +32,8 @@ object StorageFS {
   }
 
   // TODO: static safety for escaping these
-  import slate.util._, DelimitTransform._
+  import slate.util._
+  import DelimitTransform._
 
   object Delimiters {
     def keyDelimiter = "\\"
@@ -213,7 +213,7 @@ object StorageFS {
 
 }
 
-import StorageFS._
+import slate.storage.StorageFS._
 
 final class StorageFS[F[_] : Monad](underlying: Storage[F], nonceSource: () => String, dirKey: StorageKey[Dir]) extends Storage[F] {
 

@@ -1,11 +1,9 @@
 package slate
 package views
 
-import slate.models.TitledContentModel
-import japgolly.scalajs.react.{ReactComponentB, _}
 import japgolly.scalajs.react.extra.Reusability
-import cats.implicits._
-import slate.util.Util._
+import japgolly.scalajs.react.{ReactComponentB, _}
+import slate.models.TitledContentModel
 
 import scalacss.Defaults._
 
