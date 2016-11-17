@@ -57,7 +57,7 @@ object AppView {
     )
 
     val headerRightDate = style(
-      fontSize(12 px),
+      fontSize(10 px),
       marginRight(10 px),
       float right,
       marginTop(10 px),
