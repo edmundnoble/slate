@@ -24,9 +24,10 @@ def getThreadDetailsParams: {
 };
 
 def unreadThreadDetails:
-  httpGet("https://www.googleapis.com/gmail/v1/users/me/threads"; listUnreadThreadParams; ""; authHeaders) |
+  $$auth as authHeaders in
+    httpGet("https://www.googleapis.com/gmail/v1/users/me/threads"; listUnreadThreadParams; ""; $$auth) |
     .threads[].id |
-    httpGet("https://www.googleapis.com/gmail/v1/users/me/threads/" + .; getThreadDetailsParams; ""; authHeaders);
+    httpGet("https://www.googleapis.com/gmail/v1/users/me/threads/" + .; getThreadDetailsParams; ""; $$auth);
 
 def unreadThreadDetailsToContent: {
   title: "Unread threads",
