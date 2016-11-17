@@ -266,12 +266,15 @@ object SlateApp extends scalajs.js.JSApp {
     }
   }
 
+  import scala.concurrent.duration._
+
   def loadAndRenderContent(dataDirKey: StorageFS.StorageKey[StorageFS.Dir], container: dom.Element)(implicit sch: Scheduler): Observable[SearchPageProps] =
-    for {
+    (for {
       compilePrograms <- loadContent(dataDirKey)
       outputs <- toObservable(compilePrograms)
-      _ <- toObservable(render(container, outputs))
-    } yield outputs
+    } yield outputs).throttleLast(500.millis).flatMap(r =>
+      toObservable(render(container, r)).map(_ => r)
+    )
 
   @JSExport
   def main(): Unit = {
