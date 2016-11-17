@@ -5,7 +5,7 @@ import slate.views.DashboardPage
 import slate.views.DashboardPage.SearchPageProps
 import slate.util.Util._
 import slate.app.caching.Program.ErrorGettingCachedProgram
-import slate.models.{AppModel, ExpandableContentModel}
+import slate.models.{AppModel, DatedAppContent, ExpandableContentModel}
 import slate.util.LoggerFactory
 import slate.storage.{DomStorage, StorageAction, StorageFS, StorageProgram}
 import slate.views.AppView.AppProps
@@ -29,6 +29,7 @@ import scalacss.internal.StringRenderer
 import cats._
 import cats.data._
 import cats.implicits._
+import japgolly.scalajs.react.extra.Reusability
 import monix.execution.cancelables.StackedCancelable
 import org.atnos.eff.{Eff, Fx, Member, NoFx, writer}
 import org.atnos.eff.syntax.all._
@@ -174,20 +175,20 @@ object SlateApp extends scalajs.js.JSApp {
     Basis[AllErrors, ErrorDeserializingProgramOutput]
 
   def makeDataKey(title: String, input: JSON): String =
-    title + " " + input.hashCode()
+    title + "|" + input.hashCode()
 
-  def getCachedOutput(dataDirKey: StorageFS.StorageKey[StorageFS.Dir], programs: List[SlateProgram[Unit]]): Task[List[Option[SlateProgram[InvalidJSON Either List[ExpandableContentModel]]]]] = {
+  def getCachedOutput(dataDirKey: StorageFS.StorageKey[StorageFS.Dir], programs: List[SlateProgram[Unit]]): Task[List[Option[SlateProgram[InvalidJSON Either DatedAppContent]]]] = {
     type mem1 = Member.Aux[StorageAction, Fx.fx2[Task, StorageAction], Fx.fx1[Task]]
     type mem2 = Member[Task, Fx.fx1[Task]]
     for {
       progs <- deserializeProgramOutput
       cachedContent <- StorageFS.runSealedStorageProgramInto(
         programs.traverseA(p =>
-          Caching.getCachedBy[Fx.fx2[Task, StorageAction], InvalidJSON, SlateProgram[Unit], List[ExpandableContentModel]](p)(
+          Caching.getCachedBy[Fx.fx2[Task, StorageAction], InvalidJSON, SlateProgram[Unit], DatedAppContent](p)(
             prg => makeDataKey(prg.title, prg.input), {
               encodedModels =>
-                Try(upickle.json.read(encodedModels).arr.toList)
-                  .toOption.flatMap(_.traverse(ExpandableContentModel.pkl.read.lift))
+                Try(upickle.json.read(encodedModels))
+                  .toOption.flatMap(DatedAppContent.pkl.read.lift)
                   .toRight(InvalidJSON(encodedModels))
             })
             .map(ms => (p, ms))), DomStorage.Local, nonceSource, dataDirKey)(
@@ -203,27 +204,30 @@ object SlateApp extends scalajs.js.JSApp {
     (for {
       programOutput <- Observable.fromTask(deserializeProgramOutput)
       cachedOutputs <- Observable.fromTask(getCachedOutput(dataDirKey, programOutput.map(_.withoutProgram)).map(_.flatten))
-      cachedOutputsMapped = cachedOutputs.groupBy(_.id).mapValues(_.head).collect { case (k, SlateProgram(_, _, _, Right(li), _)) => (k, li) }
+      cachedOutputsMapped = cachedOutputs.groupBy(_.id).mapValues(_.head)
       results <- raceFold(programOutput.map {
         case SlateProgram(id, title, titleLink, out, input) =>
-          val injectedErrors = out.leftMap(e =>
+          val injectedErrors: Task[Either[AllErrors, DatedAppContent]] = out.leftMap(e =>
             errorCompilingProgramsInAllErrors.inverse(Right(e))
           ).map(_.map(_.leftMap(e => errorDeserializingProgramOutputInAllErrors.inverse(Right(e)))))
             .sequence[Task, Either[AllErrors, List[ExpandableContentModel]]].map(_.flatten)
+            .map(_.map(models => DatedAppContent(models, new js.Date(js.Date.now()))))
           injectedErrors.map(errorsOrContent =>
-            Eff.traverseA(errorsOrContent)(r => StorageProgram.runProgram(new StorageFS(DomStorage.Local, nonceSource, dataDirKey),
-              StorageProgram.update(makeDataKey(title, input), ExpandableContentModel.pkls.write(r).toString())))
-              .detach.as(AppProps(id, input, title, titleLink, AppModel(errorsOrContent)))
+            errorsOrContent.traverse[Eff[Fx.fx1[Task], ?], Unit](r => StorageProgram.runProgram(
+              new StorageFS(DomStorage.Local, nonceSource, dataDirKey),
+              StorageProgram.update(makeDataKey(title, input), DatedAppContent.pkl.write(r).toString())
+            )).detach.as(AppProps(id, input, title, titleLink, Some(errorsOrContent.map(o => AppModel(o.content, o.date)))))
           )
       })(
         runCompiledPrograms.map(
-          _.map(t => AppProps(t.id, t.input, t.title, t.titleLink, AppModel(Either.right(cachedOutputsMapped.getOrElse(t.id, Nil)))))
-        )
+          _.map(t => AppProps(t.id, t.input, t.title, t.titleLink, cachedOutputsMapped.get(t.id).map {
+            p =>
+              p.program.leftMap(inj[AllErrors].apply[InvalidJSON]).map(pa => AppModel(pa.content, pa.date))
+          })))
       )((l, ap) => Task.mapBoth(ap, l) {
         (a, li) => a :: li.filterNot(_.id == a.id)
       })
-    } yield results)
-      .map(_.map(appProps => SearchPageProps(appProps.sortBy(_.id))))
+    } yield results).map(_.map(appProps => SearchPageProps(appProps.sortBy(_.id))))
   }
 
   def render(container: org.scalajs.dom.raw.Element, content: SearchPageProps)(

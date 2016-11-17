@@ -4,8 +4,9 @@ package models
 import slate.app.SlateApp.AllErrors
 import japgolly.scalajs.react.extra.Reusability
 
+import scala.scalajs.js
 
-case class AppModel(content: AllErrors Either List[ExpandableContentModel])
+case class AppModel(content: List[ExpandableContentModel], updated: js.Date)
 
 object AppModel {
 

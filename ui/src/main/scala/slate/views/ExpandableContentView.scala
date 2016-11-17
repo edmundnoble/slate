@@ -11,6 +11,8 @@ import scalacss.Defaults._
 import cats.implicits._
 import slate.util.Util._
 
+import scala.scalajs.js
+
 object ExpandableContentView {
   object Styles extends StyleSheet.Inline {
 
@@ -103,7 +105,7 @@ object ExpandableContentView {
       Reusability.caseClass[ExpandableState]
   }
 
-  final case class ExpandableContentProps(model: ExpandableContentModel, initiallyExpanded: Boolean)
+  final case class ExpandableContentProps(model: ExpandableContentModel, updated: js.Date, initiallyExpanded: Boolean)
 
   object ExpandableContentProps {
     implicit val reusability: Reusability[ExpandableContentProps] =

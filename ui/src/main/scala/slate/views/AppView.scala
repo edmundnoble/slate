@@ -11,6 +11,9 @@ import slate.views.ExpandableContentView.ExpandableContentProps
 import scalacss.Defaults._
 import cats.implicits._
 import qq.data.JSON
+import slate.app.SlateApp.AllErrors
+
+import scala.scalajs.js
 
 object AppView {
 
@@ -64,27 +67,26 @@ object AppView {
 
   }
 
-  final case class AppState(model: AppModel)
+  implicit def dateReusability: Reusability[js.Date] =
+    Reusability.double(0).contramap(_.getTime())
 
-  object AppState {
-    implicit val reusability: Reusability[AppState] =
-      Reusability.caseClass[AppState]
-  }
+  implicit val errorReusability: Reusability[AllErrors] =
+    Reusability.byRef
 
-  final case class AppProps(id: Int, input: JSON, title: String, titleLink: String, model: AppModel)
+  final case class AppProps(id: Int, input: JSON, title: String, titleLink: String, model: Option[AllErrors Either AppModel])
 
   object AppProps {
     implicit val reusability: Reusability[AppProps] =
       Reusability.byRefOr_==
   }
 
-  def builder(implicit sch: Scheduler): ReactComponentB[AppProps, AppState, Unit, TopNode] = {
+  def builder(implicit sch: Scheduler): ReactComponentB[AppProps, Unit, Unit, TopNode] = {
     import japgolly.scalajs.react.vdom.all._
 
     import scalacss.ScalaCssReact._
 
     ReactComponentB[AppProps]("Expandable content view")
-      .initialState[AppState](AppState(AppModel(Right(Nil))))
+      .stateless
       .renderP { (_, props) =>
         div(Styles.panel, key := props.id,
           div(Styles.header,
@@ -95,11 +97,13 @@ object AppView {
           ),
           div(Styles.content,
             Styles.animationGroup(
-              props.model.content.fold[List[ReactNode]]({ ex =>
+              props.model.fold[List[ReactNode]](
+                LoadingView.builder() :: Nil
+              )(m => m.fold[List[ReactNode]]({ ex =>
                 ErrorView.builder(ex) :: Nil
-              }, _.map { model =>
-                ExpandableContentView.builder.build(ExpandableContentProps(model, initiallyExpanded = false))
-              }): _*
+              }, appModel => appModel.content.map { model =>
+                ExpandableContentView.builder.build(ExpandableContentProps(model, appModel.updated, initiallyExpanded = false))
+              })): _*
             )
           )
         )
