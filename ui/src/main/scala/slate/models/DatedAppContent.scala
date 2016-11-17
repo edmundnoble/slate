@@ -1,4 +1,5 @@
-package slate.models
+package slate
+package models
 
 import cats.implicits._
 import upickle.Js

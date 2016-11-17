@@ -1,4 +1,5 @@
-package slate.views
+package slate
+package views
 
 import org.scalajs.dom.html.Div
 
