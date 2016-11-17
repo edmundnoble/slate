@@ -18,7 +18,7 @@ import qq.util._
 import shapeless.{:+:, CNil}
 import slate.app.caching.Caching
 import slate.app.caching.Program.ErrorGettingCachedProgram
-import slate.app.qq.{GCalendarApp, GmailApp, JIRAApp, TodoistApp}
+import slate.app.builtin.{GCalendarApp, GmailApp, JIRAApp, TodoistApp}
 import slate.models.{AppModel, DatedAppContent, ExpandableContentModel}
 import slate.storage.{DomStorage, StorageAction, StorageFS, StorageProgram}
 import slate.util.LoggerFactory
@@ -68,21 +68,21 @@ object SlateApp extends scalajs.js.JSApp {
 
   def programs: List[SlateProgram[Program[FilterAST] Either String]] = {
     List[SlateProgram[Program[FilterAST] Either String]](
-      SlateProgram(1, "Gmail", RefreshIfOlderThan(seconds = 3600), "https://gmail.com", GmailApp.program, JSON.ObjMap(Map())),
-      SlateProgram(2, "Todoist", "https://todoist.com", TodoistApp.program,
+      SlateProgram(1, "Gmail", BootRefreshPolicy.IfOlderThan(seconds = 3600), "https://gmail.com", GmailApp.program, JSON.ObjMap(Map())),
+      SlateProgram(2, "Todoist", BootRefreshPolicy.Always, "https://todoist.com", TodoistApp.program,
         JSON.ObjMap(Map(
           "client_id" -> JSON.Str(Creds.todoistClientId),
           "client_secret" -> JSON.Str(Creds.todoistClientSecret),
           "redirect_uri" -> JSON.Str("https://ldhbkcmhfmoaepapkcopmigahjdiekil.chromiumapp.org/provider_cb")
         ))
       ),
-      SlateProgram(3, "JIRA", "https://dashboarder.atlassian.net", JIRAApp.program,
+      SlateProgram(3, "JIRA", BootRefreshPolicy.Always, "https://dashboarder.atlassian.net", JIRAApp.program,
         JSON.Obj(
           "username" -> JSON.Str(Creds.jiraUsername),
           "password" -> JSON.Str(Creds.jiraPassword)
         )
       ),
-      SlateProgram(4, "Google Calendar", "https://calendar.google.com", GCalendarApp.program, JSON.ObjMap(Map()))
+      SlateProgram(4, "Google Calendar", BootRefreshPolicy.Always, "https://calendar.google.com", GCalendarApp.program, JSON.ObjMap(Map()))
     )
   }
 
@@ -210,7 +210,7 @@ object SlateApp extends scalajs.js.JSApp {
       cachedOutputs <- Observable.fromTask(getCachedOutput(dataDirKey, programOutput.map(_.withoutProgram)).map(_.flatten))
       cachedOutputsMapped = cachedOutputs.groupBy(_.id).mapValues(_.head)
       results <- raceFold(programOutput.map {
-        case SlateProgram(id, title, titleLink, out, input) =>
+        case SlateProgram(id, title, _, titleLink, out, input) =>
           val injectedErrors: Task[Either[AllErrors, DatedAppContent]] = out.leftMap(e =>
             errorCompilingProgramsInAllErrors.inverse(Right(e))
           ).map(_.map(_.leftMap(e => errorDeserializingProgramOutputInAllErrors.inverse(Right(e)))))
