@@ -63,7 +63,7 @@ object QQRuntime {
     components match {
       case (component :: rest) => component match {
         case CollectResults => biggerStructure match {
-          case arr: JSON.Arr => arr.value.traverseA[SetPathStack, List[JSON]](setPath(rest, _, smallerStructure)).map(_.flatten)
+          case arr: JSON.Arr => arr.value.traverseA(setPath(rest, _, smallerStructure)).map(_.flatten)
           case v: JSON => typeErrorE[SetPathStack, List[JSON]]("collect results from", "array" -> v)
         }
         case SelectKey(key) => biggerStructure match {
