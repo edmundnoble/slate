@@ -218,7 +218,7 @@ object SlateApp extends scalajs.js.JSApp {
       programOutput <- Observable.fromTask(deserializeProgramOutput)
       cachedOutputs <- Observable.fromTask(getCachedOutput(dataDirKey, programOutput.map(_.withoutProgram)).map(_.flatten))
       cachedOutputsMapped = cachedOutputs.groupBy(_.id).mapValues(_.head)
-      results <- raceFold(programOutput.map {
+      results <- raceFold(programOutput.collect {
         case SlateProgram(id, title, bootRefreshPolicy, titleLink, out, input)
           if cachedOutputsMapped.get(id).forall(
             _.program.forall(d =>
