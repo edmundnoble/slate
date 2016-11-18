@@ -42,7 +42,14 @@ object StorageFS {
   }
 
   final case class Dir(childFileKeys: Array[StorageKey[File]], childDirKeys: Array[StorageKey[Dir]]) {
-    def isEmpty: Boolean = childFileKeys.isEmpty && childDirKeys.isEmpty
+    def isEmpty: Boolean =
+      childFileKeys.isEmpty && childDirKeys.isEmpty
+    def addFileKey(key: StorageKey[File]): Dir =
+      copy(childFileKeys = childFileKeys :+ key)
+    def findFileByName(fileName: String): Option[StorageKey[File]] =
+      childFileKeys.find(_.name == fileName)
+    def findDirByName(dirName: String): Option[StorageKey[Dir]] =
+      childDirKeys.find(_.name == dirName)
   }
 
   object Dir {
@@ -101,24 +108,25 @@ object StorageFS {
 
   def getFileInDir[R: _storageAction](fileName: String, dirKey: StorageKey[Dir]): Eff[R, Option[String]] = for {
     dir <- getDir[R](dirKey)
-    hash = dir.flatMap(_.childFileKeys.find(_.name == fileName))
+    hash = dir.flatMap(_.findFileByName(fileName))
     file <- hash.flatTraverse[Eff[R, ?], File](getFile[R])
   } yield file.map(_.data)
 
   def updateFileInDir[R: _storageAction](fileName: String, nonceSource: () => String, data: String, dirKey: StorageKey[Dir]): Eff[R, Option[StorageKey[File]]] = for {
     maybeDir <- getDir[R](dirKey)
-    hash = maybeDir.fproduct(_.childFileKeys.find(_.name == fileName))
+    hash = maybeDir.fproduct(_.findFileByName(fileName))
     key <- hash.traverseA {
       case (dir, maybeHash) =>
-        maybeHash.map(fileKey => StorageProgram.update(fileKey.render, data)
-          .as(fileKey)).getOrElse[Eff[R, StorageKey[File]]] {
+        maybeHash.map(fileKey =>
+          StorageProgram.update(fileKey.render, data).as(fileKey)
+        ).getOrElse[Eff[R, StorageKey[File]]] {
           val fileKey = StorageKey[File](fileName, nonceSource())
-          val updateAction =
-            StorageProgram.update(fileKey.render, data) >>
-              StorageProgram.update(dirKey.render, Dir.structure.from(
-                dir.copy(childFileKeys = dir.childFileKeys :+ fileKey)
-              ))
-          updateAction.as(fileKey)
+          for {
+            _ <- StorageProgram.update(fileKey.render, data)
+            _ <- StorageProgram.update(dirKey.render, Dir.structure.from(
+              dir.addFileKey(fileKey)
+            ))
+          } yield fileKey
         }
     }
   } yield key
@@ -133,12 +141,12 @@ object StorageFS {
     def fold[A](f: StorageKey[Dir] => A): A = f(key)
   }
 
-  def mkDir[R: _storageAction](fileName: String, nonceSource: () => String, dirKey: StorageKey[Dir]): Eff[R, Option[MkDirResult]] = for {
+  def mkDir[R: _storageAction](dirName: String, nonceSource: () => String, dirKey: StorageKey[Dir]): Eff[R, Option[MkDirResult]] = for {
     dir <- getDir[R](dirKey)
-    hash = dir.map(_.childDirKeys.find(_.name == fileName))
+    hash = dir.map(_.findDirByName(dirName))
     key <- hash.traverseA { maybeHash =>
       maybeHash.fold[Eff[R, MkDirResult]] {
-        val subDirKey = StorageKey[Dir](fileName, nonceSource())
+        val subDirKey = StorageKey[Dir](dirName, nonceSource())
         val newDir = Dir(js.Array(), js.Array())
         (StorageProgram.update(subDirKey.render, Dir.structure.from(newDir)) >>
           StorageProgram.update(dirKey.render, Dir.structure.from(
