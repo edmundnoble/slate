@@ -106,19 +106,20 @@ object StorageFS {
   } yield file.map(_.data)
 
   def updateFileInDir[R: _storageAction](fileName: String, nonceSource: () => String, data: String, dirKey: StorageKey[Dir]): Eff[R, Option[StorageKey[File]]] = for {
-    dir <- getDir[R](dirKey)
-    hash = dir.map(_.childFileKeys.find(_.name == fileName))
-    key <- hash.traverseA { maybeHash =>
-      maybeHash.map(fileKey => StorageProgram.update(fileKey.render, data)
-        .as(fileKey)).getOrElse[Eff[R, StorageKey[File]]] {
-        val fileKey = StorageKey[File](fileName, nonceSource())
-        val updateAction =
-          StorageProgram.update(fileKey.render, data) >>
-            StorageProgram.update(dirKey.render, Dir.structure.from(
-              dir.get.copy(childFileKeys = dir.get.childFileKeys :+ fileKey)
-            ))
-        updateAction.as(fileKey)
-      }
+    maybeDir <- getDir[R](dirKey)
+    hash = maybeDir.fproduct(_.childFileKeys.find(_.name == fileName))
+    key <- hash.traverseA {
+      case (dir, maybeHash) =>
+        maybeHash.map(fileKey => StorageProgram.update(fileKey.render, data)
+          .as(fileKey)).getOrElse[Eff[R, StorageKey[File]]] {
+          val fileKey = StorageKey[File](fileName, nonceSource())
+          val updateAction =
+            StorageProgram.update(fileKey.render, data) >>
+              StorageProgram.update(dirKey.render, Dir.structure.from(
+                dir.copy(childFileKeys = dir.childFileKeys :+ fileKey)
+              ))
+          updateAction.as(fileKey)
+        }
     }
   } yield key
 
