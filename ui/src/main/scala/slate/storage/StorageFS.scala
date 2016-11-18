@@ -123,9 +123,7 @@ object StorageFS {
           val fileKey = StorageKey[File](fileName, nonceSource())
           for {
             _ <- StorageProgram.update(fileKey.render, data)
-            _ <- StorageProgram.update(dirKey.render, Dir.structure.from(
-              dir.addFileKey(fileKey)
-            ))
+            _ <- StorageProgram.update(dirKey.render, Dir.structure.from(dir.addFileKey(fileKey)))
           } yield fileKey
         }
     }
