@@ -46,6 +46,8 @@ object StorageFS {
       childFileKeys.isEmpty && childDirKeys.isEmpty
     def addFileKey(key: StorageKey[File]): Dir =
       copy(childFileKeys = childFileKeys :+ key)
+    def addDirKey(key: StorageKey[Dir]): Dir =
+      copy(childDirKeys = childDirKeys :+ key)
     def findFileByName(fileName: String): Option[StorageKey[File]] =
       childFileKeys.find(_.name == fileName)
     def findDirByName(dirName: String): Option[StorageKey[Dir]] =
@@ -114,10 +116,10 @@ object StorageFS {
 
   def updateFileInDir[R: _storageAction](fileName: String, nonceSource: () => String, data: String, dirKey: StorageKey[Dir]): Eff[R, Option[StorageKey[File]]] = for {
     maybeDir <- getDir[R](dirKey)
-    hash = maybeDir.fproduct(_.findFileByName(fileName))
-    key <- hash.traverseA {
-      case (dir, maybeHash) =>
-        maybeHash.map(fileKey =>
+    maybeDirAndMaybeFileKey = maybeDir.fproduct(_.findFileByName(fileName))
+    key <- maybeDirAndMaybeFileKey.traverseA {
+      case (dir, maybeFileKey) =>
+        maybeFileKey.map(fileKey =>
           StorageProgram.update(fileKey.render, data).as(fileKey)
         ).getOrElse[Eff[R, StorageKey[File]]] {
           val fileKey = StorageKey[File](fileName, nonceSource())
@@ -140,19 +142,21 @@ object StorageFS {
   }
 
   def mkDir[R: _storageAction](dirName: String, nonceSource: () => String, dirKey: StorageKey[Dir]): Eff[R, Option[MkDirResult]] = for {
-    dir <- getDir[R](dirKey)
-    hash = dir.map(_.findDirByName(dirName))
-    key <- hash.traverseA { maybeHash =>
-      maybeHash.fold[Eff[R, MkDirResult]] {
-        val subDirKey = StorageKey[Dir](dirName, nonceSource())
-        val newDir = Dir(js.Array(), js.Array())
-        (StorageProgram.update(subDirKey.render, Dir.codec.from(newDir)) >>
-          StorageProgram.update(dirKey.render, Dir.codec.from(
-            dir.get.copy(childDirKeys = dir.get.childDirKeys :+ subDirKey)
-          ))).as(DirMade(subDirKey))
-      }(dirExistsAlready => (AlreadyPresent(dirExistsAlready): MkDirResult).pureEff[R])
+    maybeDir <- getDir[R](dirKey)
+    maybeDirAndMaybeDirKey = maybeDir.fproduct(_.findDirByName(dirName))
+    key <- maybeDirAndMaybeDirKey.traverseA {
+      case (dir, maybeDirKey) =>
+        maybeDirKey.fold[Eff[R, MkDirResult]] {
+          val subDirKey = StorageKey[Dir](dirName, nonceSource())
+          val newDir = Dir(js.Array(), js.Array())
+          (StorageProgram.update(subDirKey.render, Dir.codec.from(newDir)) >>
+            StorageProgram.update(dirKey.render, Dir.codec.from(
+              dir.addDirKey(subDirKey)
+            ))).as(DirMade(subDirKey))
+        }(dirExistsAlready => (AlreadyPresent(dirExistsAlready): MkDirResult).pureEff[R])
     }
-  } yield key
+  }
+    yield key
 
 
   def removeFile[R: _storageAction](fileName: String, dirKey: StorageKey[Dir]): Eff[R, Unit] = for {
@@ -179,16 +183,18 @@ object StorageFS {
       StorageProgram.runProgram[F, O, I, U, (A, Vector[String])](storageFS,
         StorageProgram.withLoggedKeys(prog)
       )
-    loggedProgram.flatMap { case (v, usedKeys) =>
-      val removeExcessProgram: Eff[O, Unit] =
-        StorageProgram.runProgram(underlying, for {
-          programDir <- StorageFS.getDir[I](storageRoot)
-          _ <- programDir.traverseA[I, List[Unit]] { dir =>
-            val keysToRemove = dir.childFileKeys.map(_.name).toSet -- usedKeys
-            keysToRemove.toList.traverseA(StorageFS.removeFile[I](_, storageRoot))
-          }
-        } yield ())
-      removeExcessProgram.as(v)
+    loggedProgram.flatMap {
+      case (v, usedKeys) =>
+        val removeExcessProgram: Eff[O, Unit] =
+          StorageProgram.runProgram(underlying, for {
+            programDir <- StorageFS.getDir[I](storageRoot)
+            _ <- programDir.traverseA[I, List[Unit]] {
+              dir =>
+                val keysToRemove = dir.childFileKeys.map(_.name).toSet -- usedKeys
+                keysToRemove.toList.traverseA(StorageFS.removeFile[I](_, storageRoot))
+            }
+          } yield ())
+        removeExcessProgram.as(v)
     }
   }
 
@@ -206,16 +212,18 @@ object StorageFS {
           StorageProgram.logKeys[I, Fx.prepend[Writer[Vector[String], ?], I], U, A](prog)
         )(writer.MonoidFold[Vector[String]])(implicitly[mem])
       )
-    loggedProgram.flatMap { case (v, usedKeys) =>
-      val removeExcessProgram: Eff[U, Unit] =
-        StorageProgram.runProgramInto(underlying, for {
-          programDir <- StorageFS.getDir[I](storageRoot)
-          _ <- programDir.traverseA[I, List[Unit]] { dir =>
-            val keysToRemove = dir.childFileKeys.map(_.name).toSet -- usedKeys
-            keysToRemove.toList.traverseA(StorageFS.removeFile[I](_, storageRoot))
-          }
-        } yield ())
-      removeExcessProgram.as(v)
+    loggedProgram.flatMap {
+      case (v, usedKeys) =>
+        val removeExcessProgram: Eff[U, Unit] =
+          StorageProgram.runProgramInto(underlying, for {
+            programDir <- StorageFS.getDir[I](storageRoot)
+            _ <- programDir.traverseA[I, List[Unit]] {
+              dir =>
+                val keysToRemove = dir.childFileKeys.map(_.name).toSet -- usedKeys
+                keysToRemove.toList.traverseA(StorageFS.removeFile[I](_, storageRoot))
+            }
+          } yield ())
+        removeExcessProgram.as(v)
     }
   }
 
