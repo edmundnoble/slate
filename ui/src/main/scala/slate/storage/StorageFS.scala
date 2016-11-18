@@ -99,13 +99,13 @@ object StorageFS {
     } yield dir.flatten
   }
 
-  def getFileData[R: _storageAction](fileName: String, dirKey: StorageKey[Dir]): Eff[R, Option[String]] = for {
+  def getFileInDir[R: _storageAction](fileName: String, dirKey: StorageKey[Dir]): Eff[R, Option[String]] = for {
     dir <- getDir[R](dirKey)
     hash = dir.flatMap(_.childFileKeys.find(_.name == fileName))
     file <- hash.flatTraverse[Eff[R, ?], File](getFile[R])
   } yield file.map(_.data)
 
-  def updateFileData[R: _storageAction](fileName: String, nonceSource: () => String, data: String, dirKey: StorageKey[Dir]): Eff[R, Option[StorageKey[File]]] = for {
+  def updateFileInDir[R: _storageAction](fileName: String, nonceSource: () => String, data: String, dirKey: StorageKey[Dir]): Eff[R, Option[StorageKey[File]]] = for {
     dir <- getDir[R](dirKey)
     hash = dir.map(_.childFileKeys.find(_.name == fileName))
     key <- hash.traverseA { maybeHash =>
@@ -115,7 +115,8 @@ object StorageFS {
         (StorageProgram.update(fileKey.render, data) >>
           StorageProgram.update(dirKey.render, Dir.structure.from(
             dir.get.copy(childFileKeys = dir.get.childFileKeys :+ fileKey)
-          ))).as(fileKey)
+          ))
+          ).as(fileKey)
       }
     }
   } yield key
@@ -219,10 +220,10 @@ final class StorageFS[F[_] : Monad](underlying: Storage[F], nonceSource: () => S
   import StorageFS._
 
   override def apply(key: String): F[Option[String]] =
-    StorageProgram.runProgram(underlying, getFileData(key, dirKey)).detach
+    StorageProgram.runProgram(underlying, getFileInDir(key, dirKey)).detach
 
   override def update(key: String, data: String): F[Unit] =
-    StorageProgram.runProgram(underlying, updateFileData(key, nonceSource, data, dirKey)).detach.as(())
+    StorageProgram.runProgram(underlying, updateFileInDir(key, nonceSource, data, dirKey)).detach.as(())
 
   override def remove(key: String): F[Unit] =
     StorageProgram.runProgram(underlying, removeFile(key, dirKey)).detach

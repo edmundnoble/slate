@@ -86,8 +86,8 @@ class StorageFSTests extends SlateSuite {
 
     "update/get" in new Fixture {
       val prog = for {
-        _ <- StorageFS.updateFileData("f", nonceSource, "datas", StorageFS.fsroot)
-        d <- StorageFS.getFileData("f", StorageFS.fsroot)
+        _ <- StorageFS.updateFileInDir("f", nonceSource, "datas", StorageFS.fsroot)
+        d <- StorageFS.getFileInDir("f", StorageFS.fsroot)
         _ = d.value shouldBe "datas"
       } yield ()
       StorageProgram.runProgram(PureStorage, prog).detach.run(initializedFS).value
@@ -95,9 +95,9 @@ class StorageFSTests extends SlateSuite {
 
     "update/get/remove" in new Fixture {
       val prog = for {
-        k <- StorageFS.updateFileData("f", nonceSource, "datas", StorageFS.fsroot)
+        k <- StorageFS.updateFileInDir("f", nonceSource, "datas", StorageFS.fsroot)
         f <- traverseA(k)(StorageFS.getFile[Fx.fx1[StorageAction]])
-        d <- traverseA(f.flatten)(i => StorageFS.getFileData("f", StorageFS.fsroot))
+        d <- traverseA(f.flatten)(i => StorageFS.getFileInDir("f", StorageFS.fsroot))
         _ = d.flatten.value shouldBe "datas"
         _ <- StorageFS.removeFile("f", StorageFS.fsroot)
       } yield ()
