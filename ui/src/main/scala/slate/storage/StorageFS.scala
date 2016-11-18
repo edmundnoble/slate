@@ -122,13 +122,13 @@ object StorageFS {
     }
   } yield key
 
-  sealed abstract class MkDirResult {
+  sealed trait MkDirResult extends Any {
     def fold[A](f: StorageKey[Dir] => A): A
   }
-  final case class AlreadyPresent(key: StorageKey[Dir]) extends MkDirResult {
+  final case class AlreadyPresent(key: StorageKey[Dir]) extends AnyVal with MkDirResult {
     def fold[A](f: StorageKey[Dir] => A): A = f(key)
   }
-  final case class DirMade(key: StorageKey[Dir]) extends MkDirResult {
+  final case class DirMade(key: StorageKey[Dir]) extends AnyVal with MkDirResult {
     def fold[A](f: StorageKey[Dir] => A): A = f(key)
   }
 
