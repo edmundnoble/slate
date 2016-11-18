@@ -26,7 +26,7 @@ object StorageFS {
     for {
       root <- getDir(fsroot)
       newRoot <- root.map(_.pureEff[R]).getOrElse {
-        StorageProgram.update[R](fsroot.render, Dir.structure.fromInterpret(Dir.empty)).as(Dir.empty)
+        StorageProgram.update[R](fsroot.render, Dir.structure.from(Dir.empty)).as(Dir.empty)
       }
     } yield newRoot
   }
@@ -75,7 +75,7 @@ object StorageFS {
   def getDir[R: _storageAction](key: StorageKey[Dir]): Eff[R, Option[Dir]] = {
     for {
       raw <- getRaw(key)
-    } yield raw.flatMap(Dir.structure.toInterpret)
+    } yield raw.flatMap(Dir.structure.to)
   }
 
   def getDirKey[R: _storageAction](path: Vector[String]): Eff[R, Option[StorageKey[Dir]]] =
@@ -114,7 +114,7 @@ object StorageFS {
         .as(fileKey)).getOrElse[Eff[R, StorageKey[File]]] {
         val fileKey = StorageKey[File](fileName, nonceSource())
         (StorageProgram.update(fileKey.render, data) >>
-          StorageProgram.update(dirKey.render, Dir.structure.fromInterpret(
+          StorageProgram.update(dirKey.render, Dir.structure.from(
             dir.get.copy(childFileKeys = dir.get.childFileKeys :+ fileKey)
           ))).as(fileKey)
       }
@@ -138,8 +138,8 @@ object StorageFS {
       maybeHash.fold[Eff[R, MkDirResult]] {
         val subDirKey = StorageKey[Dir](fileName, nonceSource())
         val newDir = Dir(js.Array(), js.Array())
-        (StorageProgram.update(subDirKey.render, Dir.structure.fromInterpret(newDir)) >>
-          StorageProgram.update(dirKey.render, Dir.structure.fromInterpret(
+        (StorageProgram.update(subDirKey.render, Dir.structure.from(newDir)) >>
+          StorageProgram.update(dirKey.render, Dir.structure.from(
             dir.get.copy(childDirKeys = dir.get.childDirKeys :+ subDirKey)
           ))).as(DirMade(subDirKey))
       }(dirExistsAlready => (AlreadyPresent(dirExistsAlready): MkDirResult).pureEff[R])
@@ -154,7 +154,7 @@ object StorageFS {
       for {
         _ <- StorageProgram.remove[R](k.render)
         _ <- StorageProgram.update[R](dirKey.render,
-          Dir.structure.fromInterpret(dir.get.copy(childFileKeys = dir.get.childFileKeys.filter(_.name != fileName)))
+          Dir.structure.from(dir.get.copy(childFileKeys = dir.get.childFileKeys.filter(_.name != fileName)))
         )
       } yield ()
     )
