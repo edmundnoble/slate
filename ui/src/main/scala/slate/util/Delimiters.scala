@@ -84,6 +84,7 @@ case object Unit extends DelimitTransform[String] {
   override def to(string: String): Option[String] = Some(string)
 }
 
+// The DSL you can use for practically using the above classes.
 object DelimitTransform {
   final def string: DelimitTransform[String] = Unit
   implicit final class DelimitTransformOps[O](val transform: DelimitTransform[O]) extends AnyVal {

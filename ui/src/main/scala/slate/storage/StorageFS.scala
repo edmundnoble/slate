@@ -53,7 +53,7 @@ object StorageFS {
 
     def nodesStructure: DelimitTransform[Array[(String, String)]] =
       (string | keyDelimiter | string).splitBy(interNodeDelimiter)
-    def structure: DelimitTransform[Dir] =
+    val structure: DelimitTransform[Dir] =
       (nodesStructure | nodeKindDelimiter | nodesStructure)
         .imap { case (fileKeys, dirKeys) =>
           Dir(fileKeys.map((StorageKey.apply[File] _).tupled), dirKeys.map((StorageKey.apply[Dir] _).tupled))
@@ -67,7 +67,6 @@ object StorageFS {
 
   def parseDate(str: String): Option[js.Date] =
     Try(new js.Date(js.Date.parse(str))).toOption
-
 
   def getRaw[R: _storageAction](key: StorageKey[_]): Eff[R, Option[String]] =
     StorageProgram.get(key.name + Delimiters.keyDelimiter + key.nonce)
