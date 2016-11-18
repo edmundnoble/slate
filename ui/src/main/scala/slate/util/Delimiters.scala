@@ -11,6 +11,7 @@ sealed abstract class DelimitTransform[O] {
   def to(string: String): Option[O]
   def from(o: O): String
 }
+
 final case class DelimitArr[O](transform: DelimitTransform[O], delim: String) extends DelimitTransform[js.Array[O]] {
 
   import scala.scalajs.js.JSConverters._
