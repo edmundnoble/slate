@@ -112,11 +112,12 @@ object StorageFS {
       maybeHash.map(fileKey => StorageProgram.update(fileKey.render, data)
         .as(fileKey)).getOrElse[Eff[R, StorageKey[File]]] {
         val fileKey = StorageKey[File](fileName, nonceSource())
-        (StorageProgram.update(fileKey.render, data) >>
-          StorageProgram.update(dirKey.render, Dir.structure.from(
-            dir.get.copy(childFileKeys = dir.get.childFileKeys :+ fileKey)
-          ))
-          ).as(fileKey)
+        val updateAction =
+          StorageProgram.update(fileKey.render, data) >>
+            StorageProgram.update(dirKey.render, Dir.structure.from(
+              dir.get.copy(childFileKeys = dir.get.childFileKeys :+ fileKey)
+            ))
+        updateAction.as(fileKey)
       }
     }
   } yield key
