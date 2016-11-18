@@ -18,7 +18,7 @@ object StorageFS {
   import DelimitTransform._
 
   final case class StorageKey[+F](name: String, nonce: String) {
-    def pmap[B]: StorageKey[B] = copy()
+    def pmap[B]: StorageKey[B] = this.asInstanceOf[StorageKey[B]]
     def render: String = StorageKey.codec.from(this)
   }
 
