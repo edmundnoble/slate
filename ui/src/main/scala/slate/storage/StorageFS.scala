@@ -13,8 +13,19 @@ import scala.scalajs.js.Array
 import scala.util.Try
 
 object StorageFS {
-  final case class StorageKey[F](name: String, nonce: String) {
-    def render: String = name + Delimiters.keyDelimiter + nonce
+  // TODO: static safety for escaping these
+  import slate.util._
+  import DelimitTransform._
+
+  final case class StorageKey[+F](name: String, nonce: String) {
+    def pmap[B]: StorageKey[B] = copy()
+    def render: String = StorageKey.codec.from(this)
+  }
+
+  object StorageKey {
+    val codec: DelimitTransform[StorageKey[_]] =
+      (string | Delimiters.keyDelimiter | string)
+        .imap { case (name, nonce) => StorageKey[Any](name, nonce) } { k => (k.name, k.nonce) }
   }
 
   val fsroot: StorageKey[Dir] = StorageKey[Dir]("fsroot", "fsroot")
@@ -30,10 +41,6 @@ object StorageFS {
       }
     } yield newRoot
   }
-
-  // TODO: static safety for escaping these
-  import slate.util._
-  import DelimitTransform._
 
   object Delimiters {
     def keyDelimiter = "\\"
@@ -60,14 +67,14 @@ object StorageFS {
 
     val empty: Dir = Dir(js.Array(), js.Array())
 
-    def nodesCodec: DelimitTransform[Array[(String, String)]] =
-      (string | keyDelimiter | string).splitBy(interNodeDelimiter)
+    def nodesCodec: DelimitTransform[Array[StorageKey[_]]] =
+      StorageKey.codec.splitBy(interNodeDelimiter)
     val codec: DelimitTransform[Dir] =
       (nodesCodec | nodeKindDelimiter | nodesCodec)
         .imap { case (fileKeys, dirKeys) =>
-          Dir(fileKeys.map((StorageKey.apply[File] _).tupled), dirKeys.map((StorageKey.apply[Dir] _).tupled))
+          Dir(fileKeys.map(_.pmap[File]), dirKeys.map(_.pmap[Dir]))
         } { dir =>
-          (dir.childFileKeys.map { k => (k.name, k.nonce) }, dir.childDirKeys.map { k => (k.name, k.nonce) })
+          (dir.childFileKeys.map(_.pmap[Any]), dir.childDirKeys.map(_.pmap[Any]))
         }
 
   }
