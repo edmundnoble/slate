@@ -33,7 +33,7 @@ trait UtilImplicits {
         case Right(b) =>
           Task.now(b)
         case Left(nextA) =>
-          Task.suspend(tailRecM(nextA)(f).unwrap)
+          tailRecM(nextA)(f).unwrap
       }.parallel
   }
 
