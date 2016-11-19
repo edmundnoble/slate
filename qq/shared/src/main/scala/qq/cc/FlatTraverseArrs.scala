@@ -14,7 +14,7 @@ This is an experimental construct I created to address stack-safety problems wit
 It essentially represents a tree of TraverseM arrows (I => Eff[R, T[O]]) which need to be composed.
 It is VERY similar to the Arrs construct in Eff.
 A FlatTraverseArrs[R, T, I, O] is a function I => Eff[R, T[O]] with re-associated, trampolined composition.
-The trampolining is performed inside the result effect.
+The trampolining is performed inside the result effect; that's the real magic.
  */
 sealed trait FlatTraverseArrs[R, T[_], I, O] extends Any {
   def apply(i: I)(implicit ev1: Traverse[T], ev2: Monad[T], ev3: Member[TaskParallel, R]): Eff[R, T[O]] =

@@ -11,6 +11,13 @@ import org.atnos.eff.{Eff, Fx}
 import qq.data.{JSON, VarBinding}
 import qq.util._
 
+// Tools for CompiledFilters; that is, QQ filters that have been compiled.
+// QQ filters, after compilation, are functions from JSON to Eff[CompiledFilterStack, List[JSON]]
+// (with a special representation to avoid stack overflows, see FlatTraverseArrs.scala)
+// CompiledFilterStack is all of the effects that can be associated with the result of a CompiledFilter's execution:
+// 1. It has an environment of variables it can access (VarEnv)
+// 2. It can return errors (OrRuntimeErr)
+// 3. It can perform asynchronous side-effects (TaskParallel)
 object CompiledFilter {
 
   @inline final def singleton(filt: JSON => Eff[CompiledFilterStack, List[JSON]]): CompiledFilter =
