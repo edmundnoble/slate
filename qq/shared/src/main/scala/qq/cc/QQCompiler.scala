@@ -28,23 +28,23 @@ object QQCompiler {
     case GreaterThan => QQRuntime.greaterThanJsValues
   }
 
-  @inline final def evaluatePath(components: List[PathComponent], operation: PathOperationF[CompiledProgram]): CompiledProgram = operation match {
+  @inline final def evaluatePath(components: List[PathComponent], operation: PathOperationF[CompiledFilter]): CompiledFilter = operation match {
     case PathGet =>
       components
-        .map(QQRuntime.makePathComponentGetter)
-        .nelFoldLeft1(CompiledProgram.id)(CompiledProgram.composePrograms)
+        .map(QQRuntime.makePathComponentGetter[CompiledFilterStack])
+        .nelFoldLeft1(CompiledFilter.id)(CompiledFilter.composeFilters)
     case PathSet(set) =>
-      CompiledProgram.singleton { j =>
+      CompiledFilter.singleton { j =>
         set(j).flatMap {
           _.traverseA {
-            QQRuntime.setPath(components, j, _).into[CompiledProgramStack]
+            QQRuntime.setPath[CompiledFilterStack](components, j, _)
           }.map(_.flatten)
         }
       }
     case PathModify(modify) =>
       components
-        .map(QQRuntime.modifyPath)
-        .nelFoldLeft1(identity[CompiledProgram])((f, s) => (i: CompiledProgram) => f(s(i)))(modify)
+        .map(QQRuntime.modifyPath[CompiledFilterStack])
+        .nelFoldLeft1(identity[CompiledFilter])((f, s) => (i: CompiledFilter) => f(s(i)))(modify)
   }
 
   final def compileStep(definitions: Map[String, CompiledDefinition],
@@ -68,16 +68,7 @@ object QQCompiler {
     case PathOperation(components, operationF) =>
       type mem = Member.Aux[VarEnv, CompiledFilterStack, CompiledProgramStack]
       Right(
-        CompiledFilter.singleton {
-          (j: JSON) =>
-            evaluatePath(components,
-              operationF.map(f =>
-                CompiledProgram.singleton(j =>
-                  reader.runReader[CompiledFilterStack, CompiledProgramStack, VarBindings, List[JSON]](Map.empty)(f(j))(implicitly[mem])
-                )
-              )
-            )(j).into[CompiledFilterStack]
-        }
+          evaluatePath(components, operationF)
       )
     case ComposeFilters(f, s) => Right(CompiledFilter.composeFilters(f, s))
     case CallFilter(filterIdentifier, params) =>

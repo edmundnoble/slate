@@ -1,10 +1,11 @@
 package qq
 
+import cats.Eval
 import monix.eval.Task
 import org.scalactic.NormMethods._
 import org.scalatest.Assertion
 import qq.cc.{CompiledFilter, QQCompiler}
-import qq.data.{FilterAST, JSON, QQDSL}
+import qq.data.{FilterAST, JSON, QQDSL, SelectKey}
 import qq.util.Recursion
 import qq.util.Recursion.RecursionEngine
 
@@ -92,6 +93,22 @@ class CompilerTest extends QQAsyncTestSuite {
     )
   }
 
+  val lotsOfSelectKeyTests: List[CompilerTestCase] = {
+    // tail recursive builders, giving you i invocations of
+    // selectKey composed both inside and outside of a single path component
+    @annotation.tailrec
+    def funSlow(f: FilterAST, i: Int): FilterAST = if (i == 0) f else funSlow(f | getPathS(SelectKey("key")), i - 1)
+    def funFast(f: FilterAST, i: Int): FilterAST = f | getPath(List.fill(i)(SelectKey("key")))
+    def nest(obj: JSON, i: Int): Eval[JSON] =
+      if (i == 0) Eval.now(obj)
+      else Eval.defer(nest(obj, i - 1)).map(r => JSON.obj("key" -> r))
+    val input = nest(JSON.False, 10000).value
+    List(
+      CompilerTestCase(input, funFast(id, 10000), JSON.`false`)(qq.Platform.Rec.defaultRecScheme),
+      CompilerTestCase(input, funSlow(id, 10000), JSON.`false`)(qq.Platform.Rec.defaultRecScheme)
+    )
+  }
+
   val variableTests: List[CompilerTestCase] =
     List(
       CompilerTestCase(JSON.Str("input"), asBinding("hello", id, deref("hello")), JSON.Str("input")),
@@ -170,6 +187,7 @@ class CompilerTest extends QQAsyncTestSuite {
   "collect results" in Future.traverse(collectResultsTests)(runTest)
   "lots of compositions" taggedAs StackTest in Future.traverse(lotsOfCompositionTests)(runTest)
   "lots of ensequence" taggedAs StackTest in Future.traverse(lotsOfEnsequenceTests)(runTest)
+  "lots of selectKey" taggedAs StackTest in Future.traverse(lotsOfSelectKeyTests)(runTest)
   "variables" in Future.traverse(variableTests)(runTest)
   "path setters" in Future.traverse(pathSetterTests)(runTest)
   "path modifiers" in Future.traverse(pathModifierTests)(runTest)

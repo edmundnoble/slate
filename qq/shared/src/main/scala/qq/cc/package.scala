@@ -14,6 +14,7 @@ package object cc {
   type VarEnv[A] = Reader[VarBindings, A]
   type RuntimeErrs = NonEmptyList[QQRuntimeError]
   type OrRuntimeErr[+A] = Either[RuntimeErrs, A]
+  type _orRuntimeErr[R] = Member[Either[RuntimeErrs, ?], R]
 
   type CompiledMathOperator = (JSON, JSON) => Either[RuntimeErrs, JSON]
   type CompiledProgramStack = Fx.fx2[TaskParallel, OrRuntimeErr]

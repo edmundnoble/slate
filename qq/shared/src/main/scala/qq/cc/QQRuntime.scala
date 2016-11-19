@@ -4,9 +4,9 @@ package cc
 import cats.Applicative
 import cats.data.ValidatedNel
 import cats.implicits._
-import org.atnos.eff.Eff._
 import org.atnos.eff._
 import org.atnos.eff.syntax.all._
+import qq.cc.FlatTraverseArrs._taskPar
 import qq.data._
 import qq.util._
 
@@ -20,73 +20,75 @@ object QQRuntime {
   val taskOfListOfNull: CompiledFilterResult[List[JSON]] = (JSON.`null` :: Nil).pureEff[CompiledFilterStack]
   val emptyArray: JSON = JSON.Arr()
 
-  @inline final def makePathComponentGetter(component: PathComponent): CompiledProgram = component match {
-    case CollectResults => QQRuntime.collectResults
-    case SelectKey(key) => QQRuntime.selectKey(key)
-    case SelectIndex(index: Int) => QQRuntime.selectIndex(index)
-    case SelectRange(start: Int, end: Int) => QQRuntime.selectRange(start, end)
-  }
-
-  def modifyPath(component: PathComponent)(f: CompiledProgram): CompiledProgram = CompiledProgram.singleton(
-    component match {
-      case CollectResults => {
-        case arr: JSON.Arr => arr.value.traverseA(f(_)).map(_.flatten)
-        case v: JSON => typeErrorE[CompiledProgramStack, List[JSON]]("collect results from", "array" -> v)
+  @inline final def makePathComponentGetter[R: _taskPar : _orRuntimeErr](component: PathComponent): FlatTraverseArrs[R, List, JSON, JSON] =
+    FlatTraverseArrs.singleton[R, List, JSON, JSON] {
+      component match {
+        case CollectResults => QQRuntime.collectResults[R]
+        case SelectKey(key) => QQRuntime.selectKey[R](key)
+        case SelectIndex(index: Int) => QQRuntime.selectIndex[R](index)
+        case SelectRange(start: Int, end: Int) => QQRuntime.selectRange[R](start, end)
       }
-      case SelectKey(key) => {
-        case obj: JSON.Obj =>
-          val asMap = obj.toMap
-          asMap.value.get(key).fold((JSON.`null` :: Nil).pureEff[CompiledProgramStack])(f(_))
-            .map(_.map(v => asMap.copy(value = asMap.value + (key -> v))))
-        case v: JSON => typeErrorE[CompiledProgramStack, List[JSON]]("select key \"" + key + "\" in", "object" -> v)
-      }
-      case SelectIndex(index: Int) => {
-        case arr: JSON.Arr =>
-          if (arr.value.length <= index) {
-            (JSON.`null` :: Nil).pureEff[CompiledProgramStack]
-          } else {
-            f(arr.value(index)).map(_.map { v =>
-              JSON.arr(arr.value.updated(index, v): _*)
-            })
-          }
-        case v: JSON =>
-          typeErrorE[CompiledProgramStack, List[JSON]]("select index " + index + " in", "array" -> v)
-      }
-      case SelectRange(start: Int, end: Int) => ???
     }
-  )
 
-  type SetPathStack = Fx.fx2[OrRuntimeErr, TaskParallel]
-  type SetPathResult[A] = Eff[SetPathStack, A]
+  def modifyPath[R: _taskPar : _orRuntimeErr](component: PathComponent)(f: FlatTraverseArrs[R, List, JSON, JSON]): FlatTraverseArrs[R, List, JSON, JSON] =
+    FlatTraverseArrs.singleton[R, List, JSON, JSON] {
+      component match {
+        case CollectResults => {
+          case arr: JSON.Arr => arr.value.traverseA(f(_)).map(_.flatten)
+          case v: JSON => typeErrorE[R, List[JSON]]("collect results from", "array" -> v)
+        }
+        case SelectKey(key) => {
+          case obj: JSON.Obj =>
+            val asMap = obj.toMap
+            asMap.value.get(key).fold((JSON.`null` :: Nil).pureEff[R])(f(_))
+              .map(_.map(v => asMap.copy(value = asMap.value + (key -> v))))
+          case v: JSON => typeErrorE[R, List[JSON]]("select key \"" + key + "\" in", "object" -> v)
+        }
+        case SelectIndex(index: Int) => {
+          case arr: JSON.Arr =>
+            if (arr.value.length <= index) {
+              (JSON.`null` :: Nil).pureEff[R]
+            } else {
+              f(arr.value(index)).map(_.map {
+                v =>
+                  JSON.arr(arr.value.updated(index, v): _*)
+              })
+            }
+          case v: JSON =>
+            typeErrorE[R, List[JSON]]("select index " + index + " in", "array" -> v)
+        }
+        case SelectRange(start: Int, end: Int) => ???
+      }
+    }
 
-  def setPath(components: List[PathComponent], biggerStructure: JSON, smallerStructure: JSON): Eff[SetPathStack, List[JSON]] =
+  def setPath[R: _taskPar : _orRuntimeErr](components: List[PathComponent], biggerStructure: JSON, smallerStructure: JSON): Eff[R, List[JSON]] =
     components match {
       case (component :: rest) => component match {
         case CollectResults => biggerStructure match {
-          case arr: JSON.Arr => arr.value.traverseA(setPath(rest, _, smallerStructure)).map(_.flatten)
-          case v: JSON => typeErrorE[SetPathStack, List[JSON]]("collect results from", "array" -> v)
+          case arr: JSON.Arr => arr.value.traverseA(setPath[R](rest, _, smallerStructure)).map(_.flatten)
+          case v: JSON => typeErrorE[R, List[JSON]]("collect results from", "array" -> v)
         }
         case SelectKey(key) => biggerStructure match {
           case obj: JSON.Obj =>
             val asMap = obj.toMap
-            asMap.value.get(key).fold((JSON.`null` :: Nil).pureEff[SetPathStack])(
-              setPath(rest, _, smallerStructure).map(_.map(nv => asMap.copy(value = asMap.value.updated(key, nv)): JSON))
+            asMap.value.get(key).fold((JSON.`null` :: Nil).pureEff[R])(
+              setPath[R](rest, _, smallerStructure).map(_.map(nv => asMap.copy(value = asMap.value.updated(key, nv)): JSON))
             )
-          case v: JSON => typeErrorE[SetPathStack, List[JSON]]("select key \"" + key + "\" from ", "array" -> v)
+          case v: JSON => typeErrorE[R, List[JSON]]("select key \"" + key + "\" from ", "array" -> v)
         }
         case SelectIndex(index: Int) => biggerStructure match {
           case arr: JSON.Arr =>
             if (arr.value.length <= index) {
               ???
             } else {
-              setPath(rest, arr.value(index), smallerStructure).map(_.map(v => JSON.Arr(arr.value.updated(index, v))))
+              setPath[R](rest, arr.value(index), smallerStructure).map(_.map(v => JSON.Arr(arr.value.updated(index, v))))
             }
           case v: JSON =>
-            typeErrorE[SetPathStack, List[JSON]]("select index " + index + " in", "array" -> v)
+            typeErrorE[R, List[JSON]]("select index " + index + " in", "array" -> v)
         }
         case SelectRange(start: Int, end: Int) => ???
       }
-      case Nil => (smallerStructure :: Nil).pureEff[SetPathStack]
+      case Nil => (smallerStructure :: Nil).pureEff[R]
     }
 
   def constNumber(num: Double): CompiledFilter =
@@ -203,53 +205,53 @@ object QQRuntime {
       }
     )
 
-  def selectKey(key: String): CompiledProgram = CompiledProgram.singleton {
+  def selectKey[R: _taskPar : _orRuntimeErr](key: String): JSON => Eff[R, List[JSON]] = {
     case f: JSON.Obj =>
       f.toMap.value.get(key) match {
-        case None => EffMonad[CompiledProgramStack].pure(JSON.`null` :: Nil)
-        case Some(v: JSON) => EffMonad[CompiledProgramStack].pure(v :: Nil)
+        case None => (JSON.`null` :: Nil).pureEff[R]
+        case Some(v: JSON) => (v :: Nil).pureEff[R]
       }
     case v: JSON =>
-      typeErrorE[CompiledProgramStack, List[JSON]]("select key " + key, "object" -> v)
+      typeErrorE[R, List[JSON]]("select key " + key, "object" -> v)
   }
 
-  def selectIndex(index: Int): CompiledProgram = CompiledProgram.singleton {
+  def selectIndex[R: _orRuntimeErr](index: Int): JSON => Eff[R, List[JSON]] = {
     case f: JSON.Arr =>
       val seq = f.value
-      if (index >= -seq.length) {
+      ((if (index >= -seq.length) {
         if (index >= 0 && index < seq.length) {
-          (seq(index) :: Nil).pureEff[CompiledProgramStack]
+          seq(index)
         } else if (index < 0) {
-          (seq(seq.length + index) :: Nil).pureEff[CompiledProgramStack]
+          seq(seq.length + index)
         } else {
-          (JSON.`null` :: Nil).pureEff[CompiledProgramStack]
+          JSON.`null`
         }
       } else {
-        (JSON.`null` :: Nil).pureEff[CompiledProgramStack]
-      }
+        JSON.`null`
+      }) :: Nil).pureEff[R]
     case v: JSON =>
-      typeErrorE[CompiledProgramStack, List[JSON]]("select index " + index.toString, "array" -> v)
+      typeErrorE[R, List[JSON]]("select index " + index.toString, "array" -> v)
   }
 
-  def selectRange(start: Int, end: Int): CompiledProgram = CompiledProgram.singleton {
+  def selectRange[R: _taskPar : _orRuntimeErr](start: Int, end: Int): JSON => Eff[R, List[JSON]] = {
     case f: JSON.Arr =>
       val seq = f.value
       if (start < end && start < seq.length) {
-        (JSON.arr(seq.slice(start, end): _*) :: Nil).pureEff[CompiledProgramStack]
+        (JSON.arr(seq.slice(start, end): _*) :: Nil).pureEff[R]
       } else {
-        (emptyArray :: Nil).pureEff[CompiledProgramStack]
+        (emptyArray :: Nil).pureEff[R]
       }
     case v: JSON =>
-      typeErrorE[CompiledProgramStack, List[JSON]]("select range " + start + ":" + end, "array" -> v)
+      typeErrorE[R, List[JSON]]("select range " + start + ":" + end, "array" -> v)
   }
 
-  def collectResults: CompiledProgram = CompiledProgram.singleton {
+  def collectResults[R: _taskPar : _orRuntimeErr]: JSON => Eff[R, List[JSON]] = {
     case arr: JSON.Arr =>
       arr.value.pureEff
     case dict: JSON.Obj =>
       dict.map[JSON, List[JSON]](_._2)(collection.breakOut).pureEff
     case v: JSON =>
-      typeErrorE[CompiledProgramStack, List[JSON]]("flatten", "array" -> v)
+      typeErrorE[R, List[JSON]]("flatten", "array" -> v)
   }
 
   def enjectFilter(obj: List[(String Either CompiledFilter, CompiledFilter)]): CompiledFilter = {

@@ -8,6 +8,8 @@ import org.atnos.eff.syntax.all._
 import qq.data.JSON
 import qq.util.{TaskParallel, _}
 
+// Tools for compiled QQ programs, which are equivalent to compiled QQ filters (see CompiledFilter.scala)
+// EXCEPT that they do not accept an environment of variables.
 object CompiledProgram {
 
   @inline def singleton(f: JSON => Eff[CompiledProgramStack, List[JSON]]): CompiledProgram =
