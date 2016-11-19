@@ -30,7 +30,9 @@ object SlatePrelude extends Prelude {
 
   def launchAuth: CompiledDefinition =
     CompiledDefinition("launchAuth", 2, CompiledDefinition.standardEffectDistribution {
-      case List(urlRaw, queryParamsRaw) => _ =>
+      params => _ =>
+        val urlRaw = params.head
+        val queryParamsRaw = params.tail.head
         val urlVerified: Validated[RuntimeErrs, String] = urlRaw match {
           case JSON.Str(s) => s.validNel
           case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
@@ -43,14 +45,19 @@ object SlatePrelude extends Prelude {
         val urlWithQueryParams = Applicative[Validated[RuntimeErrs, ?]].map2(urlVerified, queryParamsVerified)(Ajax.addQueryParams)
         for {
           webAuthResult <-
-          urlWithQueryParams.toEither.send[CompiledFilterStack].flatMap(identify.launchWebAuthFlow(interactive = true, _).parallel.send[CompiledFilterStack])
+          Eff.send[OrRuntimeErr, CompiledFilterStack, String](urlWithQueryParams.toEither)
+            .flatMap(identify.launchWebAuthFlow(interactive = true, _).parallel.send[CompiledFilterStack])
           accessToken = webAuthResult.substring(webAuthResult.indexOf("&code=") + "&code=".length)
         } yield JSON.obj("code" -> JSON.Str(accessToken)) :: Nil
     })
 
   private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition(name, 4,
     CompiledDefinition.standardEffectDistribution {
-      case List(urlRaw, queryParamsRaw, dataRaw, headersRaw) => _ =>
+      params =>  _ =>
+        val urlRaw = params.head
+        val queryParamsRaw = params.tail.head
+        val dataRaw = params.tail.tail.head
+        val headersRaw = params.tail.tail.tail.head
         type Stack = Fx.fx2[TaskParallel, OrRuntimeErr]
         implicit val ajaxTimeout = Ajax.Timeout(2000.millis)
         val urlValidated: Validated[RuntimeErrs, String] = urlRaw match {
