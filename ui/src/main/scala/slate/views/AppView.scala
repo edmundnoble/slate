@@ -96,10 +96,8 @@ object AppView {
     val day = hour * 24
     val week = day * 7
 
-    if (deltaSeconds < 30) {
+    if (deltaSeconds < minute) {
       "just now"
-    } else if (deltaSeconds < minute) {
-      deltaSeconds.toString + " seconds ago"
     } else if (deltaSeconds < 2 * minute) {
       "a minute ago"
     } else if (deltaSeconds < hour) {
