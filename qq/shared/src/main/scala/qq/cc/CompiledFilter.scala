@@ -62,7 +62,7 @@ object CompiledFilter {
       eff.either
         .runEitherCombine[Fx.fx2[TaskParallel, OrRuntimeErr], Fx.fx1[TaskParallel], NonEmptyList[QQRuntimeError], List[A]](read)(implicitly[mem1], implicitly[Semigroup[RuntimeErrs]])
 
-    Eff.detachA[TaskParallel, Either[NonEmptyList[QQRuntimeError], List[A]]](erred).unwrap
+    Eff.detachA[TaskParallel, Either[NonEmptyList[QQRuntimeError], List[A]]](erred)(util.TaskParMonad, util.TaskParAp).unwrap
   }
 
   def run(in: JSON, bindings: VarBindings, filter: CompiledFilter): Task[Either[NonEmptyList[QQRuntimeError], List[JSON]]] = {

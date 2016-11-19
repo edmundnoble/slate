@@ -1,7 +1,7 @@
 package qq
 package util
 
-import cats.Monad
+import cats.{Applicative, Monad}
 import cats.data.Validated
 import cats.implicits._
 import monix.eval.Task
@@ -25,20 +25,23 @@ trait UtilImplicits {
   new Monad[TaskParallel] {
     override def pure[A](a: A): TaskParallel[A] = Task.now(a).parallel
 
-    override def ap[A, B](ff: TaskParallel[(A) => B])(f: TaskParallel[A]): TaskParallel[B] =
-      Task.mapBoth(ff.unwrap, f.unwrap)(_ (_)).parallel
-
     override def flatMap[A, B](fa: TaskParallel[A])(f: (A) => TaskParallel[B]): TaskParallel[B] =
       fa.unwrap.flatMap(f(_).unwrap).parallel
 
-    // TODO
     override def tailRecM[A, B](a: A)(f: (A) => TaskParallel[Either[A, B]]): TaskParallel[B] =
-      f(a).unwrap.flatMap {
+      Task.defer(f(a).unwrap).flatMap {
         case Right(b) =>
           Task.now(b)
         case Left(nextA) =>
           Task.suspend(tailRecM(nextA)(f).unwrap)
       }.parallel
+  }
+
+  implicit val TaskParAp: Applicative[TaskParallel] = new Applicative[TaskParallel] {
+    override def pure[A](a: A): TaskParallel[A] = Task.now(a).parallel
+
+    override def ap[A, B](ff: TaskParallel[(A) => B])(f: TaskParallel[A]): TaskParallel[B] =
+      Task.mapBoth(ff.unwrap, f.unwrap)(_ (_)).parallel
   }
 
   // sum type encoded with a single bit

@@ -17,10 +17,8 @@ package object cc {
   type _orRuntimeErr[R] = Member[Either[RuntimeErrs, ?], R]
 
   type CompiledMathOperator = (JSON, JSON) => Either[RuntimeErrs, JSON]
+  type CompiledFilterStack = Fx.fx3[VarEnv, TaskParallel, OrRuntimeErr]
   type CompiledProgramStack = Fx.fx2[TaskParallel, OrRuntimeErr]
-  type CompiledProgramResult[A] = Eff[CompiledProgramStack, A]
-  type CompiledProgram = FlatTraverseArrs[CompiledProgramStack, List, JSON, JSON]
-  type CompiledFilterStack = Fx.prepend[VarEnv, CompiledProgramStack]
   type CompiledFilterResult[A] = Eff[CompiledFilterStack, A]
   type CompiledFilter = FlatTraverseArrs[CompiledFilterStack, List, JSON, JSON]
 
