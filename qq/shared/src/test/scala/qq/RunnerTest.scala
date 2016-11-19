@@ -5,7 +5,7 @@ import cats.implicits._
 import org.scalactic.NormMethods._
 import org.scalatest.Assertion
 import qq.cc.QQRuntimeException._
-import qq.cc.{QQRuntimeError, QQRuntimeException, Runner, RuntimeErrs, TypeError}
+import qq.cc.{QQRuntimeError, Runner, RuntimeErrs, TypeError}
 import qq.data.JSON
 
 import scala.concurrent.Future
