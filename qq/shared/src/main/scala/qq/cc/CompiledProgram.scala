@@ -11,7 +11,7 @@ import qq.util.{TaskParallel, _}
 object CompiledProgram {
 
   @inline def singleton(f: JSON => Eff[CompiledProgramStack, List[JSON]]): CompiledProgram =
-    Arrs.singleton(f)
+    FlatTraverseArrs.singleton(f)
 
   @inline def id: CompiledProgram =
     singleton(j => (j :: Nil).pureEff)
@@ -20,7 +20,7 @@ object CompiledProgram {
     singleton(_ => (value :: Nil).pureEff)
 
   @inline final def composePrograms(f: CompiledProgram, s: CompiledProgram): CompiledProgram =
-    f.mapLast(_.flatMap(_.traverseA[CompiledProgramStack, List[JSON]](s(_))).map(_.flatten))
+    FlatTraverseArrs.compose(f, s)
 
   implicit def compiledProgramMonoid: Monoid[CompiledProgram] = new Monoid[CompiledProgram] {
     override def combine(f1: CompiledProgram, f2: CompiledProgram): CompiledProgram =
