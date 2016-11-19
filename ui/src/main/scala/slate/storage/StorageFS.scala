@@ -67,7 +67,7 @@ object StorageFS {
 
     val empty: Dir = Dir(js.Array(), js.Array())
 
-    def nodesCodec: DelimitTransform[Array[StorageKey[_]]] =
+    val nodesCodec: DelimitTransform[Array[StorageKey[_]]] =
       StorageKey.codec.splitBy(interNodeDelimiter)
     val codec: DelimitTransform[Dir] =
       (nodesCodec | nodeKindDelimiter | nodesCodec)
