@@ -21,7 +21,7 @@ trait UtilImplicits {
 
   // Monad with ap inconsistent with bind, for parallel operations on Tasks
   // (used for task-parallelism in QQ's compiler)
-  implicit val TaskParMonad: Monad[TaskParallel] =
+  val TaskParMonad: Monad[TaskParallel] =
   new Monad[TaskParallel] {
     override def pure[A](a: A): TaskParallel[A] = Task.now(a).parallel
 
