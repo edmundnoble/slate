@@ -33,6 +33,6 @@ package object util extends UtilImplicits {
     unionWithKey(m1, m2)((_, x, y) => f(x, y))
 
   final def toMapWith[K, V](f: V => K)(seq: Seq[V]): Map[K, V] =
-    seq.map(d => f(d) -> d)(collection.breakOut)
+    seq.map(v => f(v) -> v)(collection.breakOut)
 
 }
