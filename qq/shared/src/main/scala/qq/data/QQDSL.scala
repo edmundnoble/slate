@@ -3,8 +3,6 @@ package data
 
 import qq.util.Fix
 
-import scala.language.{higherKinds, implicitConversions}
-
 // smart constructors that make a FilterComponent node including its children
 object QQDSL {
 

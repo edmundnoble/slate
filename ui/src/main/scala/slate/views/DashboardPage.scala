@@ -13,7 +13,6 @@ object DashboardPage {
 
   import japgolly.scalajs.react.vdom.all._
 
-  import scala.language.implicitConversions
   import scalacss.ScalaCssReact._
 
   def makeAppCell(result: AppProps)(implicit sch: Scheduler): ReactElement =

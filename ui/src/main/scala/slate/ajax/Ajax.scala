@@ -14,7 +14,6 @@ import qq.data.JSON
 import qq.data.JSON.ObjList
 
 import scala.concurrent.duration._
-import scala.language.implicitConversions
 import scala.scalajs.js
 import scala.scalajs.js.typedarray.TypedArrayBufferOps._
 import scala.scalajs.js.typedarray._

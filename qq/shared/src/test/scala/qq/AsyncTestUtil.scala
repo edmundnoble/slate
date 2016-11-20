@@ -3,7 +3,6 @@ package qq
 import org.scalatest.{Assertion, Succeeded}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.language.implicitConversions
 
 trait AsyncTestUtil extends TestUtil {
 

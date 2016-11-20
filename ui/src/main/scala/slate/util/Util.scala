@@ -14,7 +14,6 @@ import scodec.Attempt
 import shapeless.{Coproduct, Inl, Inr}
 
 import scala.collection.mutable.ListBuffer
-import scala.language.implicitConversions
 
 object Util {
 

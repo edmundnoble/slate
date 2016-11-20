@@ -14,7 +14,6 @@ import org.scalajs.dom
 import qq.Platform.Rec._
 import qq.cc.{CompiledFilter, QQCompilationException, QQCompiler, QQRuntimeException}
 import qq.data.{FilterAST, JSON, Program}
-import qq.util._
 import shapeless.{:+:, CNil}
 import slate.app.builtin.{GCalendarApp, GmailApp, JIRAApp, TodoistApp}
 import slate.app.caching.Caching

@@ -5,7 +5,6 @@ package caching
 import cats.implicits._
 import org.atnos.eff.Eff._
 import org.atnos.eff._
-import qq.util.Recursion.RecursionEngine
 import shapeless.{:+:, CNil}
 import slate.storage.{StorageAction, StorageProgram}
 

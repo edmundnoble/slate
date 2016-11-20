@@ -11,7 +11,6 @@ import qq.data._
 import qq.util._
 
 import scala.collection.immutable.Nil
-import scala.language.higherKinds
 
 object QQRuntime {
 

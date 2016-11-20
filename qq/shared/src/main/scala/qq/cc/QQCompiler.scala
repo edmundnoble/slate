@@ -9,8 +9,6 @@ import qq.data._
 import qq.util.Recursion.RecursionEngine
 import qq.util._
 
-import scala.language.higherKinds
-
 object QQCompiler {
 
   import QQRuntimeException._

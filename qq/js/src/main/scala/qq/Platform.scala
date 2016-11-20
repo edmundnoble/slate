@@ -6,7 +6,7 @@ import qq.util.Unsafe.{GenericBuilderFactory, Liskov1}
 
 import scala.collection.mutable
 import scala.scalajs.js
-import scala.scalajs.js.{UndefOr, WrappedArray}
+import scala.scalajs.js.WrappedArray
 
 object Platform {
   object Rec {

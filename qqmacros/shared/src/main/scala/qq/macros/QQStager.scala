@@ -15,8 +15,6 @@ import scala.reflect.macros.whitebox
 // this is used to pre-prepare QQ programs at compile time
 object QQStager {
 
-  import scala.language.implicitConversions
-
   def qqimpl(c: whitebox.Context)(pieces: c.Tree*): c.Tree = {
     import c.universe._
     def lift[T: Liftable](value: T): Tree = implicitly[Liftable[T]].apply(value)

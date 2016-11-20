@@ -2,7 +2,6 @@ package qq
 package data
 
 import cats.implicits._
-import org.atnos.eff._
 import org.atnos.eff.syntax.all._
 import qq.cc._
 

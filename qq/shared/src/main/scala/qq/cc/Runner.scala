@@ -6,7 +6,6 @@ import fastparse.all.{ParseError, Parsed}
 import monix.eval.Task
 import qq.data.JSON
 import qq.util.Recursion.RecursionEngine
-import qq.util._
 
 // tools for running parts of the compiler together
 object Runner {

@@ -5,8 +5,6 @@ import qq.data._
 import qq.util.Recursion.RecursionEngine
 import qq.util.{Fix, Recursion}
 
-import scala.language.higherKinds
-
 // QQ's local optimizer; not a whole-program optimizer, but optimizes a single filter.
 object LocalOptimizer {
 

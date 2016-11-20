@@ -5,7 +5,6 @@ import java.util.regex.Pattern
 
 import cats.data.{NonEmptyList, Validated}
 import cats.implicits._
-import org.atnos.eff._
 import org.atnos.eff.syntax.all._
 import qq.data.{CompiledDefinition, JSON}
 import qq.util.Recursion.RecursionEngine

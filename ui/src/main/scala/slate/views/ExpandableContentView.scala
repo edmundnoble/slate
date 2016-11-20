@@ -6,7 +6,6 @@ import japgolly.scalajs.react.extra.Reusability
 import monix.execution.Scheduler
 import slate.models.ExpandableContentModel
 
-import scala.language.higherKinds
 import scalacss.Defaults._
 
 object ExpandableContentView {

@@ -7,8 +7,6 @@ import qq.data.JSON
 import qq.util.Recursion
 import qq.util.Recursion.RecursionEngine
 
-import scala.language.implicitConversions
-
 trait TestUtil {
 
   // this is necessary to encode the isomorphism between ObjList and ObjMap
