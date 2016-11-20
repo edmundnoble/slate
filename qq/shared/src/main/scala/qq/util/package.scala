@@ -7,10 +7,10 @@ import shapeless.tag._
 package object util extends UtilImplicits {
   type TaskParallel[A] = Task[A] @@ Parallel
 
-  def withPrefixes[A](xss: List[List[A]], ys: List[A]): List[List[A]] =
+  final def withPrefixes[A](xss: List[List[A]], ys: List[A]): List[List[A]] =
     for {xs <- xss; y <- ys} yield y :: xs
 
-  def foldWithPrefixes[A](firstPrefix: List[A], nextPrefixes: List[A]*): List[List[A]] =
+  final def foldWithPrefixes[A](firstPrefix: List[A], nextPrefixes: List[A]*): List[List[A]] =
     nextPrefixes.foldLeft(firstPrefix :: Nil)(withPrefixes)
 
   def single: Option ~> Seq = new (Option ~> Seq) {
@@ -32,7 +32,7 @@ package object util extends UtilImplicits {
   final def unionWith[K, A](m1: Map[K, A], m2: Map[K, A])(f: (A, A) => A): Map[K, A] =
     unionWithKey(m1, m2)((_, x, y) => f(x, y))
 
-  @inline def toMapWith[K, V](f: V => K)(seq: Seq[V]): Map[K, V] =
+  final def toMapWith[K, V](f: V => K)(seq: Seq[V]): Map[K, V] =
     seq.map(d => f(d) -> d)(collection.breakOut)
 
 }
