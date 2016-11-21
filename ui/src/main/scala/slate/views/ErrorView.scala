@@ -20,7 +20,7 @@ object ErrorView {
 
     val danger: StyleA = style(
       margin(20 px),
-      fontFamily(views.Styles.sanFrancisco)
+        fontFamily :=! "San Francisco"
     )
 
     val runtimeError: StyleA = style(

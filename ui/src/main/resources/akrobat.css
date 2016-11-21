@@ -1,0 +1,41 @@
+/** Extra Light */
+@font-face {
+    font-family: "Akrobat";
+    font-weight: 100;
+    src: url("fonts/akrobat/AkrobatExtraLight.woff2");
+}
+
+/** Thin */
+@font-face {
+    font-family: "Akrobat";
+    font-weight: 200;
+    src: url("fonts/akrobat/AkrobatThin.woff2");
+}
+
+/** Light */
+@font-face {
+    font-family: "Akrobat";
+    font-weight: 300;
+    src: url("fonts/akrobat/AkrobatLight.woff2");
+}
+
+/** Regular */
+@font-face {
+    font-family: "Akrobat";
+    font-weight: 400;
+    src: url("fonts/akrobat/AkrobatRegular.woff2");
+}
+
+/** Semi Bold */
+@font-face {
+    font-family: "San Francisco";
+    font-weight: 600;
+    src: url("fonts/akrobat/AkrobatSemibold.woff2");
+}
+
+/** Bold */
+@font-face {
+    font-family: "San Francisco";
+    font-weight: 700;
+    src: url("fonts/akrobat/AkrobatBold.woff2");
+}

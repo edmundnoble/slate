@@ -52,7 +52,7 @@ object AppView {
       fontWeight._700,
       textOverflow := "ellipsis",
       letterSpacing(1 px),
-      fontFamily(slate.views.Styles.akrobat),
+      fontFamily :=! "Akrobat",
       display inline
     )
 

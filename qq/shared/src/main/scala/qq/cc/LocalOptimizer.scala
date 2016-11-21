@@ -66,12 +66,24 @@ object LocalOptimizer {
     case _ => None
   }
 
+  final def letFree(fr: FilterComponent[FilterAST])(implicit recursionEngine: RecursionEngine): Option[FilterComponent[FilterAST]] = fr match {
+    case AsBinding(n, Fix(a), i)
+      if !Recursion.cata[FilterComponent, Boolean](notFree(_, n)).apply(i) =>
+      Some(i.unFix)
+    case _ => None
+  }
+
+  final def notFree(fr: FilterComponent[Boolean], name: String): Boolean = fr match {
+    case Dereference(n) => n == name
+    case comp => comp.children.exists(identity)
+  }
+
   // a function applying each of the local optimizations available, in rounds,
   // until none of the optimizations applies anymore
-  @inline final def localOptimizationsƒ(tf: FilterAST): FilterAST =
+  @inline final def localOptimizationsƒ(tf: FilterAST)(implicit rec: RecursionEngine): FilterAST =
   repeatedly[FilterAST] { tf =>
     val unfixed = tf.unFix
-    (collectEnlist(unfixed) orElse idCompose(unfixed) orElse constMathReduce(unfixed) orElse unlet(unfixed)) map embed
+    (collectEnlist(unfixed) orElse idCompose(unfixed) orElse constMathReduce(unfixed) orElse unlet(unfixed) orElse letFree(unfixed)) map embed
   }(tf)
 
   // localOptimizationsƒ recursively applied deep into a filter

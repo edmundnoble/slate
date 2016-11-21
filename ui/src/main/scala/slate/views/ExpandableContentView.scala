@@ -12,7 +12,6 @@ object ExpandableContentView {
   object Styles extends StyleSheet.Inline {
 
     import dsl._
-    import slate.views.Styles._
 
     import scala.language.postfixOps
 
@@ -66,7 +65,7 @@ object ExpandableContentView {
       fontSize(22 px),
       fontWeight._600,
       addClassName("mdl-color-text--grey-800"),
-      fontFamily(akrobat),
+      fontFamily :=! "Akrobat",
       marginLeft(5 px),
       paddingRight(5 px),
       display inline
@@ -76,7 +75,7 @@ object ExpandableContentView {
       fontSize(22 px),
       fontWeight._300,
       addClassName("mdl-color-text--grey-500"),
-      fontFamily(akrobat),
+      fontFamily :=! "Akrobat",
       display inline
     )
 

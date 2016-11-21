@@ -40,6 +40,12 @@ class LocalOptimizerTest extends QQSyncTestSuite {
     ) shouldBe constNumber(1)
   }
 
+  "letFree" in {
+    optimizeFilter(
+      asBinding("foo", constNumber(1), constNumber(2))
+    ) shouldBe constNumber(2)
+  }
+
   "no stack overflow on deeply nested filters" taggedAs StackTest in {
     @annotation.tailrec def enlistRec(f: FilterAST, i: Int): FilterAST =
       if (i == 0) f

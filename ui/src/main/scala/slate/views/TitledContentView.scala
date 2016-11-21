@@ -48,7 +48,7 @@ object TitledContentView {
     val content = style(
       addClassName("mdl-list__item-text-body"),
       marginTop(5 px),
-      fontFamily(sanFrancisco),
+      fontFamily :=! "San Francisco",
       overflow hidden,
       maxHeight(2.4 em),
       minHeight(2.4 em),
@@ -61,7 +61,7 @@ object TitledContentView {
       color(rgba(0, 0, 0, 0.86)),
       (textOverflow := "ellipsis").important,
       fontSize(17 px),
-      fontFamily(sanFrancisco),
+      fontFamily :=! "San Francisco",
       whiteSpace nowrap,
       overflow.hidden.important,
       position relative,

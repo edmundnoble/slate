@@ -20,11 +20,19 @@ final case class SelectIndex(index: Int) extends PathComponent
 
 final case class SelectRange(start: Int, end: Int) extends PathComponent
 
-sealed abstract class PathOperationF[+A]
+sealed abstract class PathOperationF[+A] {
+  def child: Option[A]
+}
 
-case object PathGet extends PathOperationF[Nothing]
-case class PathModify[A](value: A) extends PathOperationF[A]
-case class PathSet[A](value: A) extends PathOperationF[A]
+case object PathGet extends PathOperationF[Nothing] {
+  def child = None
+}
+case class PathModify[A](value: A) extends PathOperationF[A] {
+  def child = Some(value)
+}
+case class PathSet[A](value: A) extends PathOperationF[A] {
+  def child = Some(value)
+}
 
 object PathOperationF {
   implicit def pathOperationTraverse: Traverse[PathOperationF] = new Traverse[PathOperationF] {

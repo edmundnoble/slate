@@ -9,6 +9,7 @@ case class ChromeManifest(name: String,
                           //                                 description: Option[String] = None,
                           offlineEnabled: Boolean,
                           permissions: Set[String],
+                          webAccessibleResources: Set[String],
                           //                                 icons: Map[Int, String] = Map(),
                           chromeUrlOverrides: Overrides)
 
@@ -39,6 +40,7 @@ object ChromeManifest {
     background = Background(List("deps.js", "main.js", "launcher.js")),
     offlineEnabled = true,
     permissions = Set("<all_urls>", "identity"),
+    webAccessibleResources = Set("fonts/akrobat/*.woff2", "fonts/sanfrancisco/*.woff", "fonts/*"),
     chromeUrlOverrides = Overrides(newtab = "index-dev.html")
   )
 
