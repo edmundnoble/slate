@@ -40,7 +40,7 @@ object ChromeManifest {
     background = Background(List("deps.js", "main.js", "launcher.js")),
     offlineEnabled = true,
     permissions = Set("<all_urls>", "identity"),
-    webAccessibleResources = Set("fonts/akrobat/*.woff2", "fonts/sanfrancisco/*.woff", "fonts/*"),
+    webAccessibleResources = Set("fonts/akrobat/*.woff2", "fonts/sanfrancisco/*.woff", "fonts/roboto/*"),
     chromeUrlOverrides = Overrides(newtab = "index-dev.html")
   )
 

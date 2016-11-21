@@ -21,7 +21,7 @@ object Styles extends StyleSheet.Inline {
   val appBarText: StyleA = style(
     addClassName("mdl-layout-title"),
     color(c"#303030"),
-    fontSize(160 %%),
+    fontSize(180 %%),
     letterSpacing(2 px),
     fontWeight._800,
     paddingLeft(75 px),
