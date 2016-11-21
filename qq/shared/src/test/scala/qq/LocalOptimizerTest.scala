@@ -2,7 +2,6 @@ package qq
 
 import qq.data.FilterAST
 import qq.data.QQDSL._
-import qq.util.Recursion
 import qq.util.Recursion.RecursionEngine
 
 class LocalOptimizerTest extends QQSyncTestSuite {

@@ -6,7 +6,6 @@ import org.scalactic.NormMethods._
 import org.scalatest.Assertion
 import qq.cc.{CompiledFilter, QQCompiler}
 import qq.data.{FilterAST, JSON, QQDSL, SelectKey}
-import qq.util.Recursion
 import qq.util.Recursion.RecursionEngine
 
 import scala.concurrent.Future
@@ -118,6 +117,9 @@ class CompilerTest extends QQAsyncTestSuite {
   val pathSetterTests: List[CompilerTestCase] =
     List(
       CompilerTestCase(JSON.Num(2), setPath(Nil, constNumber(3)), JSON.Num(3)),
+      CompilerTestCase(JSON.arr(JSON.num(1), JSON.num(2)), setPath(List(selectIndex(1)), constNumber(1)), JSON.arr(JSON.num(1), JSON.num(1))),
+      CompilerTestCase(JSON.arr(JSON.num(1), JSON.num(2)), setPath(List(selectIndex(2)), constNumber(1)), JSON.arr(JSON.num(1), JSON.num(2), JSON.num(1))),
+      CompilerTestCase(JSON.arr(JSON.num(1), JSON.num(2)), setPath(List(selectIndex(3)), constNumber(1)), JSON.arr(JSON.num(1), JSON.num(2), JSON.`null`, JSON.num(1))),
       CompilerTestCase(
         JSON.Arr(
           JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("input1")), "out1" -> JSON.Str("output1")),

@@ -77,11 +77,8 @@ object QQRuntime {
         }
         case SelectIndex(index: Int) => biggerStructure match {
           case arr: JSON.Arr =>
-            if (arr.value.length <= index) {
-              ???
-            } else {
-              setPath[R](rest, arr.value(index), smallerStructure).map(_.map(v => JSON.Arr(arr.value.updated(index, v))))
-            }
+            val filledArr = arr.value ++ List.fill(index - (arr.value.length - 1))(JSON.`null`)
+              setPath[R](rest, filledArr(index), smallerStructure).map(_.map(v => JSON.Arr(filledArr.updated(index, v))))
           case v: JSON =>
             typeErrorE[R, List[JSON]]("select index " + index + " in", "array" -> v)
         }
