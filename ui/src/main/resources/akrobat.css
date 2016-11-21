@@ -39,3 +39,17 @@
     font-weight: 700;
     src: url("fonts/akrobat/AkrobatBold.woff2");
 }
+
+/** ExtraBold */
+@font-face {
+    font-family: "San Francisco";
+    font-weight: 800;
+    src: url("fonts/akrobat/AkrobatExtraBold.woff2");
+}
+
+/** Black */
+@font-face {
+    font-family: "San Francisco";
+    font-weight: 900;
+    src: url("fonts/akrobat/AkrobatBlack.woff2");
+}
