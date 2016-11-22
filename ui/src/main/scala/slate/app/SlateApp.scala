@@ -15,7 +15,7 @@ import qq.Platform.Rec._
 import qq.cc.{CompiledFilter, QQCompilationException, QQCompiler, QQRuntimeException}
 import qq.data.{FilterAST, JSON, Program}
 import shapeless.{:+:, CNil}
-import slate.app.builtin.{GCalendarApp, GmailApp, JIRAApp, TodoistApp}
+import slate.app.builtin.{GCalendarApp, GmailApp}
 import slate.app.caching.Caching
 import slate.app.caching.Program.ErrorGettingCachedProgram
 import slate.models.{AppModel, DatedAppContent, ExpandableContentModel}
@@ -31,7 +31,7 @@ import scala.scalajs.js.annotation.JSExport
 import scala.util.{Success, Try}
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
-import Observable.{fromTask=>toObservable}
+import Observable.{fromTask => toObservable}
 
 @JSExport
 object SlateApp extends scalajs.js.JSApp {
@@ -77,21 +77,8 @@ object SlateApp extends scalajs.js.JSApp {
 
   def programs: Vector[SlateProgram[Program[FilterAST] Either String]] = {
     Vector[SlateProgram[Program[FilterAST] Either String]](
-      SlateProgram(1, "Gmail", BootRefreshPolicy.IfOlderThan(seconds = 1 * 60), "https://gmail.com", GmailApp.program, JSON.ObjMap(Map())),
-      SlateProgram(2, "Todoist", BootRefreshPolicy.IfOlderThan(seconds = 1 * 60), "https://todoist.com", TodoistApp.program,
-        JSON.ObjMap(Map(
-          "client_id" -> JSON.Str(Creds.todoistClientId),
-          "client_secret" -> JSON.Str(Creds.todoistClientSecret),
-          "redirect_uri" -> JSON.Str("https://ldhbkcmhfmoaepapkcopmigahjdiekil.chromiumapp.org/provider_cb")
-        ))
-      ),
-      SlateProgram(3, "JIRA", BootRefreshPolicy.Never, "https://dashboarder.atlassian.net", JIRAApp.program,
-        JSON.Obj(
-          "username" -> JSON.Str(Creds.jiraUsername),
-          "password" -> JSON.Str(Creds.jiraPassword)
-        )
-      ),
-      SlateProgram(4, "Google Calendar", BootRefreshPolicy.Always, "https://calendar.google.com", GCalendarApp.program, JSON.ObjMap(Map()))
+      SlateProgram(1, "Gmail", BootRefreshPolicy.Always, "https://gmail.com", GmailApp.program, JSON.ObjMap(Map())),
+      SlateProgram(2, "Google Calendar", BootRefreshPolicy.Always, "https://calendar.google.com", GCalendarApp.program, JSON.ObjMap(Map()))
     )
   }
 
