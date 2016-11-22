@@ -176,6 +176,7 @@ object SlateBuild {
 
   val unitTest: TaskKey[Unit] = TaskKey[Unit]("unitTest")
   val itTest: TaskKey[Unit] = TaskKey[Unit]("itTest")
+  val nonBrowserTest: TaskKey[Unit] = TaskKey[Unit]("nonBrowserTest")
   val stackTest: TaskKey[Unit] = TaskKey[Unit]("stackTest")
   //val unitTestQuick = TaskKey[Unit]("unitTestQuick")
   //val itTestQuick = TaskKey[Unit]("itTestQuick")
@@ -208,6 +209,9 @@ object SlateBuild {
     persistLauncher in Test := false,
     unitTest <<= {
       (testOnly in Test).toTask(" -- -oD -l WebTest -l StackTest")
+    },
+    nonBrowserTest <<= {
+      (testOnly in Test).toTask(" -- -oD -l WebTest -n StackTest")
     },
     itTest <<= {
       (testOnly in Test).toTask(" -- -oD -n WebTest -n StackTest")
@@ -284,6 +288,7 @@ object SlateBuild {
     .settings((testOptions in Test) <<= (testOptions in Test).dependsOn(compile in Test in qqjvm))
     .settings((testQuick in Test) := (test in Test).value)
     .settings(unitTest := ())
+    .settings(nonBrowserTest := ())
     .settings(stackTest := ())
 
   lazy val uibench: Project = project.in(file("uibench"))
