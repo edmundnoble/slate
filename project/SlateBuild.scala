@@ -184,6 +184,7 @@ object SlateBuild {
   val baseSettings: Seq[sbt.Def.Setting[_]] = Seq(
     version := "0.0.1",
     scalaVersion := "2.11.8",
+    updateOptions ~= (_.withConsolidatedResolution(true)),
     scalacOptions ++= Seq(
       "-encoding", "UTF-8",
       "-Xlint",
