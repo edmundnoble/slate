@@ -126,7 +126,7 @@ object Ajax {
     Task.create[dom.XMLHttpRequest] { (_, callback) =>
       val req = new dom.XMLHttpRequest()
 
-      req.onreadystatechange = { (e: Event) =>
+      req.onreadystatechange = { (_: Event) =>
         if (req.readyState == 4) {
           if ((req.status >= 200 && req.status < 300) || req.status == 304)
             callback.onSuccess(req)
@@ -136,13 +136,14 @@ object Ajax {
       }
 
       val urlWithQuery = addQueryParams(url, queryParams)
-      req.open(method, urlWithQuery)
+      // TODO: Remove this shit when scala.js issue #2631 is fixed, crashes scoverage
+      req.asInstanceOf[js.Dynamic].open(method, urlWithQuery)
       req.responseType = responseType
-      req.timeout = if (timeout.value.isFinite()) timeout.value.toMillis else 0
+      req.asInstanceOf[js.Dynamic].timeout = if (timeout.value.isFinite()) timeout.value.toMillis.toInt else 0
       req.withCredentials = withCredentials
       headers.foreach((req.setRequestHeader _).tupled)
       if (data == null)
-        req.send()
+        req.asInstanceOf[js.Dynamic].send()
       else
         req.send(data)
 

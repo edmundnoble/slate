@@ -67,7 +67,7 @@ object LocalOptimizer {
   }
 
   final def letFree(fr: FilterComponent[FilterAST])(implicit recursionEngine: RecursionEngine): Option[FilterComponent[FilterAST]] = fr match {
-    case AsBinding(n, Fix(a), i)
+    case AsBinding(n, _, i)
       if !Recursion.cata[FilterComponent, Boolean](notFree(_, n)).apply(i) =>
       Some(i.unFix)
     case _ => None

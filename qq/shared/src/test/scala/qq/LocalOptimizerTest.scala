@@ -42,8 +42,8 @@ class LocalOptimizerTest extends QQSyncTestSuite {
 
   "letFree" in {
     optimizeFilter(
-      asBinding("foo", constNumber(1), constNumber(2))
-    ) shouldBe constNumber(2)
+      asBinding("foo", constNumber(1), getPath(Vector(selectKey("key1"), selectKey("key2"))) | id + id)
+    ) shouldBe getPath(Vector(selectKey("key1"), selectKey("key2"))) | id + id
   }
 
   "fuseGetPathOperation" in {

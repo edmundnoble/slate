@@ -15,7 +15,7 @@ object Json {
 
   def stringToJs(s: String): Invalid.Json Either js.Any =
     try {
-      Right(js.JSON.parse(s))
+      new Right(js.JSON.asInstanceOf[js.Dynamic].parse(s): js.Any)
     } catch {
       case js.JavaScriptException(e: js.SyntaxError) =>
         Left(Invalid.Json(e.message, s))

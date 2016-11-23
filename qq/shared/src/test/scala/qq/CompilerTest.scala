@@ -1,29 +1,30 @@
 package qq
 
 import cats.Eval
+import cats.implicits._
 import monix.eval.Task
 import org.scalatest.Assertion
-import qq.cc.{CompiledFilter, QQCompiler}
+import qq.cc.{CompiledFilter, QQCompiler, QQRuntimeException}
 import qq.data.{FilterAST, JSON, QQDSL, SelectKey}
 import qq.util.Recursion.RecursionEngine
 
 import scala.concurrent.Future
 
 // data representation of a compiler test case
-case class CompilerTestCase(input: JSON, program: FilterAST, expectedOutput: JSON*)(implicit val recEngine: RecursionEngine)
+case class CompilerTestCase(input: JSON, program: FilterAST, expectedOutput: Either[QQRuntimeException, Vector[JSON]])(implicit val recEngine: RecursionEngine)
 
 class CompilerTest extends QQAsyncTestSuite {
 
   import qq.data.QQDSL._
 
   def runTest(qqCompilerTest: CompilerTestCase): Future[Assertion] = qqCompilerTest match {
-    case CompilerTestCase(input, filter, expectedOutput@_*) =>
+    case CompilerTestCase(input, filter, expectedOutput) =>
       QQCompiler
         .compileFilter(Vector.empty, filter)(qqCompilerTest.recEngine)
         .fold[Task[Assertion]](
         err => Task.eval(fail("error occurred during compilation: \n" + err.toString)),
         program => CompiledFilter.run(input, Map.empty, program).map { output =>
-          output.rightValue.map(_.norm) shouldBe expectedOutput.toVector.map(_.norm)
+          output.map(_.map(_.norm)) shouldBe expectedOutput.map(_.map(_.norm))
         })
         .runAsync
   }
@@ -31,45 +32,45 @@ class CompilerTest extends QQAsyncTestSuite {
   val selectKeyTests: Vector[CompilerTestCase] = {
     val dict = JSON.Obj("present" -> JSON.Num(1))
     Vector(
-      CompilerTestCase(dict, selectKey("present"), JSON.Num(1)),
-      CompilerTestCase(dict, selectKey("absent"), JSON.Null)
+      CompilerTestCase(dict, selectKey("present"), Either.right(Vector(JSON.Num(1)))),
+      CompilerTestCase(dict, selectKey("absent"), Either.right(Vector(JSON.Null)))
     )
   }
 
   val selectIndexTests: Vector[CompilerTestCase] = {
     val arr = JSON.Arr(JSON.Num(1), JSON.Num(2))
     Vector(
-      CompilerTestCase(arr, selectIndex(-3), JSON.Null),
-      CompilerTestCase(arr, selectIndex(-2), JSON.Num(1)),
-      CompilerTestCase(arr, selectIndex(-1), JSON.Num(2)),
-      CompilerTestCase(arr, selectIndex(0), JSON.Num(1)),
-      CompilerTestCase(arr, selectIndex(1), JSON.Num(2)),
-      CompilerTestCase(arr, selectIndex(2), JSON.Null)
+      CompilerTestCase(arr, selectIndex(-3), Either.right(Vector(JSON.Null))),
+      CompilerTestCase(arr, selectIndex(-2), Either.right(Vector(JSON.Num(1)))),
+      CompilerTestCase(arr, selectIndex(-1), Either.right(Vector(JSON.Num(2)))),
+      CompilerTestCase(arr, selectIndex(0), Either.right(Vector(JSON.Num(1)))),
+      CompilerTestCase(arr, selectIndex(1), Either.right(Vector(JSON.Num(2)))),
+      CompilerTestCase(arr, selectIndex(2), Either.right(Vector(JSON.Null)))
     )
   }
 
   val idTests: Vector[CompilerTestCase] = {
     val dict = JSON.Obj("present" -> JSON.Num(1))
-    Vector(CompilerTestCase(dict, id, dict))
+    Vector(CompilerTestCase(dict, id, Either.right(Vector(dict))))
   }
 
   val selectRangeTests: Vector[CompilerTestCase] = {
     val arr = JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4))
     Vector(
-      CompilerTestCase(arr, selectRange(0, 0), JSON.Arr()),
-      CompilerTestCase(arr, selectRange(0, 1), JSON.Arr(JSON.Num(1))),
-      CompilerTestCase(arr, selectRange(0, 2), JSON.Arr(JSON.Num(1), JSON.Num(2))),
-      CompilerTestCase(arr, selectRange(0, 3), JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3))),
-      CompilerTestCase(arr, selectRange(0, 4), JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4))),
-      CompilerTestCase(arr, selectRange(0, 5), JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4))),
-      CompilerTestCase(arr, selectRange(1, 5), JSON.Arr(JSON.Num(2), JSON.Num(3), JSON.Num(4)))
+      CompilerTestCase(arr, selectRange(0, 0), Either.right(Vector(JSON.Arr()))),
+      CompilerTestCase(arr, selectRange(0, 1), Either.right(Vector(JSON.Arr(JSON.Num(1))))),
+      CompilerTestCase(arr, selectRange(0, 2), Either.right(Vector(JSON.Arr(JSON.Num(1), JSON.Num(2))))),
+      CompilerTestCase(arr, selectRange(0, 3), Either.right(Vector(JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3))))),
+      CompilerTestCase(arr, selectRange(0, 4), Either.right(Vector(JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4))))),
+      CompilerTestCase(arr, selectRange(0, 5), Either.right(Vector(JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4))))),
+      CompilerTestCase(arr, selectRange(1, 5), Either.right(Vector(JSON.Arr(JSON.Num(2), JSON.Num(3), JSON.Num(4)))))
     )
   }
 
   val collectResultsTests: Vector[CompilerTestCase] = {
     Vector(
-      CompilerTestCase(JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4)), collectResults, JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4)),
-      CompilerTestCase(JSON.Obj("a" -> JSON.Num(1), "b" -> JSON.Str("c")), collectResults, JSON.Num(1), JSON.Str("c"))
+      CompilerTestCase(JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4)), collectResults, Either.right(Vector(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4)))),
+      CompilerTestCase(JSON.obj("a" -> JSON.Num(1), "b" -> JSON.Str("c")), collectResults, Either.right(Vector(JSON.Num(1), JSON.Str("c"))))
     )
   }
 
@@ -78,7 +79,7 @@ class CompilerTest extends QQAsyncTestSuite {
     @annotation.tailrec
     def fun(f: FilterAST, i: Int): FilterAST = if (i == 0) f else fun(id | f | id, i - 1)
     Vector(
-      CompilerTestCase(JSON.False, fun(id, 10000), JSON.False)(qq.Platform.Rec.defaultRecScheme)
+      CompilerTestCase(JSON.False, fun(id, 10000), Either.right(Vector(JSON.False)))(qq.Platform.Rec.defaultRecScheme)
     )
   }
 
@@ -87,7 +88,7 @@ class CompilerTest extends QQAsyncTestSuite {
     @annotation.tailrec
     def fun(f: FilterAST, i: Int): FilterAST = if (i == 0) f else fun(id |+| f |+| id, i - 1)
     Vector(
-      CompilerTestCase(JSON.False, fun(id, 10000), Vector.fill(20001)(JSON.`false`): _*)(qq.Platform.Rec.defaultRecScheme)
+      CompilerTestCase(JSON.False, fun(id, 10000), Either.right(Vector.fill(20001)(JSON.`false`)))(qq.Platform.Rec.defaultRecScheme)
     )
   }
 
@@ -102,45 +103,45 @@ class CompilerTest extends QQAsyncTestSuite {
       else Eval.defer(nest(obj, i - 1)).map(r => JSON.obj("key" -> r))
     val input = nest(JSON.False, 10000).value
     Vector(
-      CompilerTestCase(input, funFast(id, 10000), JSON.`false`)(qq.Platform.Rec.defaultRecScheme),
-      CompilerTestCase(input, funSlow(id, 10000), JSON.`false`)(qq.Platform.Rec.defaultRecScheme)
+      CompilerTestCase(input, funFast(id, 10000), Either.right(Vector(JSON.`false`)))(qq.Platform.Rec.defaultRecScheme),
+      CompilerTestCase(input, funSlow(id, 10000), Either.right(Vector(JSON.`false`)))(qq.Platform.Rec.defaultRecScheme)
     )
   }
 
   val variableTests: Vector[CompilerTestCase] =
     Vector(
-      CompilerTestCase(JSON.Str("input"), asBinding("hello", id, deref("hello")), JSON.Str("input")),
-      CompilerTestCase(JSON.Str("input"), asBinding("hello", add(id, constString("hi")), add(constString("hey"), deref("hello"))), JSON.Str("heyinputhi"))
+      CompilerTestCase(JSON.Str("input"), asBinding("hello", id, deref("hello")), Either.right(Vector(JSON.Str("input")))),
+      CompilerTestCase(JSON.Str("input"), asBinding("hello", add(id, constString("hi")), add(constString("hey"), deref("hello"))), Either.right(Vector(JSON.Str("heyinputhi"))))
     )
 
   val pathSetterTests: Vector[CompilerTestCase] =
     Vector(
-      CompilerTestCase(JSON.Num(2), setPath(Vector.empty, constNumber(3)), JSON.Num(3)),
-      CompilerTestCase(JSON.arr(JSON.num(1), JSON.num(2)), setPath(Vector(selectIndex(1)), constNumber(1)), JSON.arr(JSON.num(1), JSON.num(1))),
-      CompilerTestCase(JSON.arr(JSON.num(1), JSON.num(2)), setPath(Vector(selectIndex(2)), constNumber(1)), JSON.arr(JSON.num(1), JSON.num(2), JSON.num(1))),
-      CompilerTestCase(JSON.arr(JSON.num(1), JSON.num(2)), setPath(Vector(selectIndex(3)), constNumber(1)), JSON.arr(JSON.num(1), JSON.num(2), JSON.`null`, JSON.num(1))),
+      CompilerTestCase(JSON.Num(2), setPath(Vector.empty, constNumber(3)), Either.right(Vector(JSON.Num(3)))),
+      CompilerTestCase(JSON.arr(JSON.num(1), JSON.num(2)), setPath(Vector(selectIndex(1)), constNumber(1)), Either.right(Vector(JSON.arr(JSON.num(1), JSON.num(1))))),
+      CompilerTestCase(JSON.arr(JSON.num(1), JSON.num(2)), setPath(Vector(selectIndex(2)), constNumber(1)), Either.right(Vector(JSON.arr(JSON.num(1), JSON.num(2), JSON.num(1))))),
+      CompilerTestCase(JSON.arr(JSON.num(1), JSON.num(2)), setPath(Vector(selectIndex(3)), constNumber(1)), Either.right(Vector(JSON.arr(JSON.num(1), JSON.num(2), JSON.`null`, JSON.num(1))))),
       CompilerTestCase(
         JSON.Arr(
           JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("input1")), "out1" -> JSON.Str("output1")),
           JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("input2")), "out1" -> JSON.Str("output2"))
         ),
         getPathS(collectResults) | setPath(Vector(selectKey("key1"), selectKey("key2")), getPathS(selectKey("out1"))),
-        JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("output1")), "out1" -> JSON.Str("output1")),
-        JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("output2")), "out1" -> JSON.Str("output2"))
+        Either.right(Vector(JSON.obj("key1" -> JSON.Obj("key2" -> JSON.Str("output1")), "out1" -> JSON.Str("output1")),
+        JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("output2")), "out1" -> JSON.Str("output2"))))
       )
     )
 
   val pathModifierTests: Vector[CompilerTestCase] =
     Vector(
-      CompilerTestCase(JSON.Num(2), modifyPath(Vector.empty, constNumber(3)), JSON.Num(3)),
+      CompilerTestCase(JSON.Num(2), modifyPath(Vector.empty, constNumber(3)), Either.right(Vector(JSON.Num(3)))),
       CompilerTestCase(
         JSON.Arr(
           JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output1"))),
           JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output2")))
         ),
         modifyPath(Vector(collectResults, selectKey("key1"), selectKey("out1")), add(id, constString("mod"))),
-        JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output1mod"))),
-        JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output2mod")))
+        Either.right(Vector(JSON.obj("key1" -> JSON.Obj("out1" -> JSON.Str("output1mod"))),
+          JSON.obj("key1" -> JSON.Obj("out1" -> JSON.Str("output2mod")))))
       ),
       CompilerTestCase(
         JSON.Arr(
@@ -148,8 +149,8 @@ class CompilerTest extends QQAsyncTestSuite {
           JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output2")))
         ),
         modifyPath(Vector(collectResults, selectKey("key1")), getPathS(selectKey("out1"))),
-        JSON.Obj("key1" -> JSON.Str("output1")),
-        JSON.Obj("key1" -> JSON.Str("output2"))
+        Either.right(Vector(JSON.Obj("key1" -> JSON.Str("output1")),
+          JSON.Obj("key1" -> JSON.Str("output2"))))
       ),
       CompilerTestCase(
         JSON.Arr(
@@ -157,27 +158,27 @@ class CompilerTest extends QQAsyncTestSuite {
           JSON.Obj("out1" -> JSON.Str("output2"))
         ),
         modifyPath(Vector(selectIndex(0)), getPathS(selectKey("out1"))),
-        JSON.Arr(
+        Either.right(Vector(JSON.Arr(
           JSON.Str("output1"),
           JSON.Obj("out1" -> JSON.Str("output2"))
-        )
+        )))
       )
     )
 
   val mathTests = {
     val obj = JSON.Obj("fst" -> JSON.Num(1), "snd" -> JSON.Num(2))
     Vector(
-      CompilerTestCase(obj, add(selectKey("fst"), selectKey("snd")), JSON.Num(3)),
-      CompilerTestCase(obj, multiply(selectKey("fst"), selectKey("snd")), JSON.Num(2)),
-      CompilerTestCase(obj, divide(selectKey("fst"), selectKey("snd")), JSON.Num(0.5)),
-      CompilerTestCase(obj, modulo(selectKey("fst"), selectKey("snd")), JSON.Num(1)),
-      CompilerTestCase(obj, QQDSL.equal(selectKey("fst"), selectKey("snd")), JSON.False),
-      CompilerTestCase(obj, QQDSL.lte(selectKey("fst"), selectKey("snd")), JSON.True),
-      CompilerTestCase(obj, QQDSL.gte(selectKey("fst"), selectKey("snd")), JSON.False),
-      CompilerTestCase(obj, lessThan(selectKey("fst"), selectKey("snd")), JSON.True),
-      CompilerTestCase(obj, greaterThan(selectKey("fst"), selectKey("snd")), JSON.False),
-      CompilerTestCase(obj, multiply("fst", 0), JSON.Null),
-      CompilerTestCase(obj, multiply("fst", 2), JSON.Str("fstfst"))
+      CompilerTestCase(obj, add(selectKey("fst"), selectKey("snd")), Either.right(Vector(JSON.Num(3)))),
+      CompilerTestCase(obj, multiply(selectKey("fst"), selectKey("snd")), Either.right(Vector(JSON.Num(2)))),
+      CompilerTestCase(obj, divide(selectKey("fst"), selectKey("snd")), Either.right(Vector(JSON.Num(0.5)))),
+      CompilerTestCase(obj, modulo(selectKey("fst"), selectKey("snd")), Either.right(Vector(JSON.Num(1)))),
+      CompilerTestCase(obj, QQDSL.equal(selectKey("fst"), selectKey("snd")), Either.right(Vector(JSON.False))),
+      CompilerTestCase(obj, QQDSL.lte(selectKey("fst"), selectKey("snd")), Either.right(Vector(JSON.True))),
+      CompilerTestCase(obj, QQDSL.gte(selectKey("fst"), selectKey("snd")), Either.right(Vector(JSON.False))),
+      CompilerTestCase(obj, lessThan(selectKey("fst"), selectKey("snd")), Either.right(Vector(JSON.True))),
+      CompilerTestCase(obj, greaterThan(selectKey("fst"), selectKey("snd")), Either.right(Vector(JSON.False))),
+      CompilerTestCase(obj, multiply("fst", 0), Either.right(Vector(JSON.Null))),
+      CompilerTestCase(obj, multiply("fst", 2), Either.right(Vector(JSON.Str("fstfst"))))
     )
   }
 

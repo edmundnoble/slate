@@ -268,7 +268,7 @@ object QQRuntime {
               for {
                 valueResult <- filterValue(jsv)
               } yield valueResult.map(filterName -> _)
-          }.map(_.unconsFold(Vector.empty, foldWithPrefixesV(_, _)).map(JSON.ObjList))
+          }.map(_.unconsFold(Vector.empty, foldWithPrefixesV).map(JSON.ObjList))
       )
     }
   }
