@@ -26,7 +26,7 @@ object QQCompiler {
     case GreaterThan => QQRuntime.greaterThanJsValues
   }
 
-  @inline final def evaluatePath(components: List[PathComponent], operation: PathOperationF[CompiledFilter]): CompiledFilter = operation match {
+  @inline final def evaluatePath(components: Vector[PathComponent], operation: PathOperationF[CompiledFilter]): CompiledFilter = operation match {
     case PathGet =>
       components
         .map(QQRuntime.makePathComponentGetter[CompiledFilterStack])
@@ -54,14 +54,14 @@ object QQCompiler {
             for {
               bindings <- reader.ask[CompiledFilterStack, VarBindings]
               result <- bindings.get(name).fold(noSuchVariable[CompiledFilterStack, JSON](name))(_.value.pureEff[CompiledFilterStack])
-            } yield result :: Nil
+            } yield result +: Vector.empty[JSON]
         }
       )
     case ConstNumber(num) => Right(QQRuntime.constNumber(num))
     case ConstString(str) => Right(QQRuntime.constString(str))
     case ConstBoolean(bool) => Right(QQRuntime.constBoolean(bool))
     case FilterNot() => Right(CompiledFilter.singleton { j =>
-      Eff.send[OrRuntimeErr, CompiledFilterStack, List[JSON]](QQRuntime.not(j).map(_ :: Nil))
+      Eff.send[OrRuntimeErr, CompiledFilterStack, Vector[JSON]](QQRuntime.not(j).map(_ +: Vector.empty))
     })
     case PathOperation(components, operationF) =>
       type mem = Member.Aux[VarEnv, CompiledFilterStack, CompiledProgramStack]
@@ -82,7 +82,7 @@ object QQCompiler {
     case EnlistFilter(f) => Right(QQRuntime.enlistFilter(f))
     case SilenceExceptions(f) => Right(
       CompiledFilter.singleton { (jsv: JSON) =>
-        either.catchLeft(f(jsv))((_: RuntimeErrs) => (Nil: List[JSON]).pureEff)
+        either.catchLeft(f(jsv))((_: RuntimeErrs) => Vector.empty[JSON].pureEff)
       }
     )
     case EnsequenceFilters(first, second) => Right(CompiledFilter.ensequenceCompiledFilters(first, second))
@@ -101,9 +101,9 @@ object QQCompiler {
                                   nextDefinition: Definition[FilterAST])
                                  (implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] =
     soFar.map { (definitionsSoFar: Vector[CompiledDefinition]) =>
-      CompiledDefinition(nextDefinition.name, nextDefinition.params.length, (params: List[CompiledFilter]) => {
+      CompiledDefinition(nextDefinition.name, nextDefinition.params.length, (params: Vector[CompiledFilter]) => {
         val paramsAsDefinitions: Vector[CompiledDefinition] = (nextDefinition.params, params).zipped.map { (filterName, value) =>
-          CompiledDefinition(filterName, 0, (_: List[CompiledFilter]) => Right(value))
+          CompiledDefinition(filterName, 0, (_: Vector[CompiledFilter]) => Right(value))
         }(collection.breakOut)
         compileFilter(definitionsSoFar ++ paramsAsDefinitions, nextDefinition.body)
       }) +: definitionsSoFar

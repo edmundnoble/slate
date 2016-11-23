@@ -15,12 +15,12 @@ object SharedPreludes extends Prelude {
         CompiledDefinition.noParamDefinition("print",
           CompiledFilter.singleton { (jsv: JSON) =>
             println("debug: " + QQRuntime.print(jsv))
-            (jsv :: Nil).pureEff
+            (jsv +: Vector.empty).pureEff
           }
         )
 
       val empty: CompiledDefinition =
-        CompiledDefinition.noParamDefinition("empty", CompiledFilter.constL(Nil))
+        CompiledDefinition.noParamDefinition("empty", CompiledFilter.constL(Vector.empty))
 
       Right(Vector(print, empty))
     }
@@ -30,13 +30,13 @@ object SharedPreludes extends Prelude {
     val map: Definition[FilterAST] = {
       import QQDSL._
       Definition("map",
-        params = List("x"),
+        params = Vector("x"),
         body = compose(collectResults, call("x"))
       )
     }
 
     override def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] =
-      QQCompiler.compileDefinitions(Prelude.empty, List(map))
+      QQCompiler.compileDefinitions(Prelude.empty, Vector(map))
   }
 
   def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] =

@@ -13,8 +13,8 @@ class ParserTest extends QQSyncTestSuite {
 
   "parse selections" - {
     "select key" in {
-      Parser.fullPath.parse(".key").get.value shouldBe List(selectKey("key"))
-      Parser.fullPath.parse(".viewUrl").get.value shouldBe List(selectKey("viewUrl"))
+      Parser.fullPath.parse(".key").get.value shouldBe Vector(selectKey("key"))
+      Parser.fullPath.parse(".viewUrl").get.value shouldBe Vector(selectKey("viewUrl"))
     }
     "select index" in {
       Parser.selectIndex.parse("1").get.value shouldBe selectIndex(1)
@@ -23,19 +23,19 @@ class ParserTest extends QQSyncTestSuite {
   }
 
   "parse single path components" in {
-    Parser.pathComponent.parse("[\"filter \"]").get.value shouldBe List(selectKey("filter "))
+    Parser.pathComponent.parse("[\"filter \"]").get.value shouldBe Vector(selectKey("filter "))
   }
 
   "parse full paths" in {
-    Parser.fullPath.parse(".").get.value shouldBe Nil
-    Parser.fullPath.parse(".[]").get.value shouldBe List(collectResults)
-    Parser.fullPath.parse(".key").get.value shouldBe List(selectKey("key"))
-    Parser.fullPath.parse(".[1]").get.value shouldBe List(selectIndex(1))
-    Parser.fullPath.parse(".[-1]").get.value shouldBe List(selectIndex(-1))
-    Parser.fullPath.parse(".[1][]").get.value shouldBe List(selectIndex(1), collectResults)
-    Parser.fullPath.parse(".key[]").get.value shouldBe List(selectKey("key"), collectResults)
+    Parser.fullPath.parse(".").get.value shouldBe Vector.empty
+    Parser.fullPath.parse(".[]").get.value shouldBe Vector(collectResults)
+    Parser.fullPath.parse(".key").get.value shouldBe Vector(selectKey("key"))
+    Parser.fullPath.parse(".[1]").get.value shouldBe Vector(selectIndex(1))
+    Parser.fullPath.parse(".[-1]").get.value shouldBe Vector(selectIndex(-1))
+    Parser.fullPath.parse(".[1][]").get.value shouldBe Vector(selectIndex(1), collectResults)
+    Parser.fullPath.parse(".key[]").get.value shouldBe Vector(selectKey("key"), collectResults)
     Parser.fullPath.parse(""".key.otherkey.1.[1][].[1:3].["this key"]""").get.value shouldBe
-      List(selectKey("key"), selectKey("otherkey"), selectKey("1"),
+      Vector(selectKey("key"), selectKey("otherkey"), selectKey("1"),
         selectIndex(1), collectResults, selectRange(1, 3), selectKey("this key"))
   }
 
@@ -44,17 +44,17 @@ class ParserTest extends QQSyncTestSuite {
   }
 
   "parse path setters" in {
-    Parser.filter.parse(".key = 1").get.value shouldBe setPath(List(selectKey("key")), constNumber(1))
+    Parser.filter.parse(".key = 1").get.value shouldBe setPath(Vector(selectKey("key")), constNumber(1))
   }
 
   "parse path modifiers" in {
-    Parser.filter.parse(".key |= . + 1").get.value shouldBe modifyPath(List(selectKey("key")), add(id, constNumber(1)))
+    Parser.filter.parse(".key |= . + 1").get.value shouldBe modifyPath(Vector(selectKey("key")), add(id, constNumber(1)))
   }
 
   "parse called filters" in {
-    Parser.callFilter.parse("test").get.value shouldBe call("test", Nil)
-    Parser.callFilter.parse("test(.)").get.value shouldBe call("test", List(id))
-    Parser.callFilter.parse("test(.;.)").get.value shouldBe call("test", List(id, id))
+    Parser.callFilter.parse("test").get.value shouldBe call("test", Vector.empty)
+    Parser.callFilter.parse("test(.)").get.value shouldBe call("test", Vector(id))
+    Parser.callFilter.parse("test(.;.)").get.value shouldBe call("test", Vector(id, id))
   }
 
   "parse piped filters" in {
@@ -80,11 +80,11 @@ class ParserTest extends QQSyncTestSuite {
 
   "parse definitions" in {
     Parser.definition.parse("def id: .;").get.value shouldBe
-      Definition("id", Nil, id)
+      Definition("id", Vector.empty, id)
     Parser.definition.parse("def id(f): .;").get.value shouldBe
-      Definition("id", List("f"), id)
+      Definition("id", Vector("f"), id)
     Parser.definition.parse("def id(f; s): .;").get.value shouldBe
-      Definition("id", List("f", "s"), id)
+      Definition("id", Vector("f", "s"), id)
   }
 
   "parse constants" - {
@@ -115,23 +115,23 @@ class ParserTest extends QQSyncTestSuite {
   "parse enjected filters" in {
     Parser.filter.parse("{ sugar, user: \"user\", title: .titles[] }").get.value shouldBe
       enject(
-        List(
+        Vector(
           Left("sugar") -> getPathS(selectKey("sugar")),
           Left("user") -> constString("user"),
-          Left("title") -> getPath(List(selectKey("titles"), collectResults))
+          Left("title") -> getPath(Vector(selectKey("titles"), collectResults))
         )
       )
   }
 
   "parse full programs" - {
     "with just a body" in (Parser.program.parse("id").get.value shouldBe
-      Program[FilterAST](List.empty[Definition[FilterAST]], call("id")))
+      Program[FilterAST](Vector.empty[Definition[FilterAST]], call("id")))
     "with small definitions" in (Parser.program.parse("def id: .; id").get.value shouldBe
-      Program[FilterAST](List(Definition[FilterAST]("id", Nil, id)), call("id")))
+      Program[FilterAST](Vector(Definition[FilterAST]("id", Vector.empty, id)), call("id")))
     "with whitespace at the start" in (Parser.program.parse(" .").get.value shouldBe
-      Program[FilterAST](List.empty[Definition[FilterAST]], id))
+      Program[FilterAST](Vector.empty[Definition[FilterAST]], id))
     "with whitespace at the end" in (Parser.program.parse(". ").get.value shouldBe
-      Program[FilterAST](List.empty[Definition[FilterAST]], id))
+      Program[FilterAST](Vector.empty[Definition[FilterAST]], id))
   }
 
   "parse string literals" in {
@@ -155,7 +155,7 @@ class ParserTest extends QQSyncTestSuite {
 
   "dereference variables" - {
     "literal parsing" in (Parser.dereference.parse("$hello").get.value shouldBe deref("hello"))
-    "in a filter call" in (Parser.filter.parse("f($hello)").get.value shouldBe call("f", List(deref("hello"))))
+    "in a filter call" in (Parser.filter.parse("f($hello)").get.value shouldBe call("f", Vector(deref("hello"))))
   }
 
   "as bindings" - {

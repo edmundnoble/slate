@@ -40,25 +40,25 @@ object QQDSL {
   implicit def embedDouble(d: Double): FilterAST = constNumber(d)
 
   @inline def id: FilterAST =
-    getPath(Nil)
+    getPath(Vector.empty)
 
-  @inline implicit def getPath(components: List[PathComponent]): FilterAST = {
+  @inline implicit def getPath(components: Vector[PathComponent]): FilterAST = {
     Fix(PathOperation(components, PathGet))
   }
 
   @inline implicit def getPathS(component: PathComponent): FilterAST = {
-    getPath(component :: Nil)
+    getPath(component +: Vector.empty)
   }
 
-  @inline def setPath(components: List[PathComponent], value: FilterAST): FilterAST = {
+  @inline def setPath(components: Vector[PathComponent], value: FilterAST): FilterAST = {
     Fix(PathOperation(components, PathSet(value)))
   }
 
-  @inline def modifyPath(components: List[PathComponent], modify: FilterAST): FilterAST = {
+  @inline def modifyPath(components: Vector[PathComponent], modify: FilterAST): FilterAST = {
     Fix(PathOperation(components, PathModify(modify)))
   }
 
-  @inline def define(name: String, params: List[String], body: FilterAST): Definition[FilterAST] =
+  @inline def define(name: String, params: Vector[String], body: FilterAST): Definition[FilterAST] =
     Definition[FilterAST](name, params, body)
 
   @inline def compose(first: FilterAST, second: FilterAST): FilterAST =
@@ -73,10 +73,10 @@ object QQDSL {
   @inline def ensequence(first: FilterAST, second: FilterAST): FilterAST =
     Fix(EnsequenceFilters(first, second))
 
-  @inline def enject(obj: List[((String Either FilterAST), FilterAST)]): FilterAST =
+  @inline def enject(obj: Vector[((String Either FilterAST), FilterAST)]): FilterAST =
     Fix(EnjectFilters(obj))
 
-  @inline def call(name: String, params: List[FilterAST] = Nil): FilterAST =
+  @inline def call(name: String, params: Vector[FilterAST] = Vector.empty): FilterAST =
     Fix(CallFilter(name, params))
 
   @inline def add(first: FilterAST, second: FilterAST): FilterAST =

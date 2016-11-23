@@ -10,7 +10,7 @@ import scala.language.higherKinds
 
 // A single node of the QQ AST. Type parameter is used for child nodes.
 sealed abstract class FilterComponent[A] {
-  def children: List[A]
+  def children: Vector[A]
 }
 
 // AST nodes with no child nodes. Phantom-variant functors.
@@ -18,20 +18,20 @@ sealed abstract class LeafComponent[A] extends FilterComponent[A] {
   @inline
   final def retag[B]: LeafComponent[B] = this.asInstanceOf[LeafComponent[B]]
 
-  override final def children: List[A] = Nil
+  override final def children: Vector[A] = Vector.empty
 }
 
 // AST nodes that represent filters ignoring their input.
 sealed abstract class ConstantComponent[A] extends LeafComponent[A]
 
 // AST node containing a path selector subtree and an operation
-final case class PathOperation[A](pathComponents: List[PathComponent], operation: PathOperationF[A]) extends FilterComponent[A] {
-  override def children: List[A] = operation.child.toList
+final case class PathOperation[A](pathComponents: Vector[PathComponent], operation: PathOperationF[A]) extends FilterComponent[A] {
+  override def children: Vector[A] = operation.child.fold(Vector.empty[A])(_ +: Vector.empty)
 }
 
 // Variable binding, with raw names and lexical scoping
 final case class AsBinding[A](name: String, as: A, in: A) extends FilterComponent[A] {
-  override def children: List[A] = as :: in :: Nil
+  override def children: Vector[A] = as +: in +: Vector.empty
 }
 
 // Access let-bindings
@@ -41,39 +41,39 @@ final case class Dereference[A](name: String) extends ConstantComponent[A]
 // ComposeFilters(first, second) is a filter which executes the parameter filters in named order on the input values.
 // Associative.
 final case class ComposeFilters[A](first: A, second: A) extends FilterComponent[A]{
-  override def children: List[A] = first :: second :: Nil
+  override def children: Vector[A] = first +: second +: Vector.empty
 }
 
 // Makes a new filter silence the exceptions coming from another filter
 // Idempotent.
 final case class SilenceExceptions[A](f: A) extends FilterComponent[A]{
-  override def children: List[A] = f :: Nil
+  override def children: Vector[A] = f +: Vector.empty
 }
 
 // Enlisting a filter entails taking the list of results it returns,
 // and returning that as a single result in a JSON array.
 // Inverse of CollectResults.
 final case class EnlistFilter[A](f: A) extends FilterComponent[A]{
-  override def children: List[A] = f :: Nil
+  override def children: Vector[A] = f +: Vector.empty
 }
 
 // Runs two filters at once, appending their result lists.
 // Associative.
 final case class EnsequenceFilters[A](first: A, second: A) extends FilterComponent[A]{
-  override def children: List[A] = first :: second :: Nil
+  override def children: Vector[A] = first +: second +: Vector.empty
 }
 
 // Creates a JSON object from some (string or filter, filter) pairs.
-final case class EnjectFilters[A](obj: List[((String Either A), A)]) extends FilterComponent[A]{
-  override def children: List[A] =
+final case class EnjectFilters[A](obj: Vector[((String Either A), A)]) extends FilterComponent[A]{
+  override def children: Vector[A] =
     obj.flatMap {
-      case (e, a) => a :: e.fold(_ => Nil, _ :: Nil)
+      case (e, a) => a +: e.fold(_ => Nil, _ +: Vector.empty)
     }
 }
 
 // Calls another filter or filter operator.
-final case class CallFilter[A](name: String, params: List[A]) extends FilterComponent[A]{
-  override def children: List[A] = params
+final case class CallFilter[A](name: String, params: Vector[A]) extends FilterComponent[A]{
+  override def children: Vector[A] = params
 }
 
 // not, i.e., bang (!)
@@ -88,7 +88,7 @@ final case class ConstString[A](value: String) extends ConstantComponent[A]
 
 // Math, with operator as its own type
 final case class FilterMath[A](first: A, second: A, op: MathOperator) extends FilterComponent[A]{
-  override def children: List[A] = first :: second :: Nil
+  override def children: Vector[A] = first +: second +: Vector.empty
 }
 
 sealed trait MathOperator
@@ -132,9 +132,9 @@ object FilterComponent {
       }
     }
     override def foldLeft[A, B](fa: FilterComponent[A], b: B)(f: (B, A) => B): B =
-      Foldable[List].foldLeft(fa.children, b)(f)
+      Foldable[Vector].foldLeft(fa.children, b)(f)
     override def foldRight[A, B](fa: FilterComponent[A], lb: Eval[B])(f: (A, Eval[B]) => Eval[B]): Eval[B] =
-      Foldable[List].foldRight(fa.children, lb)(f)
+      Foldable[Vector].foldRight(fa.children, lb)(f)
   }
 
   @inline final def embed

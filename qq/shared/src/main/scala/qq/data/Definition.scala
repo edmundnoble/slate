@@ -5,7 +5,7 @@ import cats.Functor
 
 // parameters are represented as strings for now, sorry performance
 final case class Definition[F](name: String,
-                               params: List[String],
+                               params: Vector[String],
                                body: F)
 
 object Definition {

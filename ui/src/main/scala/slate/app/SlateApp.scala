@@ -75,8 +75,8 @@ object SlateApp extends scalajs.js.JSApp {
     }
   }
 
-  def programs: List[SlateProgram[Program[FilterAST] Either String]] = {
-    List[SlateProgram[Program[FilterAST] Either String]](
+  def programs: Vector[SlateProgram[Program[FilterAST] Either String]] = {
+    Vector[SlateProgram[Program[FilterAST] Either String]](
       SlateProgram(1, "Gmail", BootRefreshPolicy.IfOlderThan(seconds = 1 * 60), "https://gmail.com", GmailApp.program, JSON.ObjMap(Map())),
       SlateProgram(2, "Todoist", BootRefreshPolicy.IfOlderThan(seconds = 1 * 60), "https://todoist.com", TodoistApp.program,
         JSON.ObjMap(Map(
@@ -108,7 +108,7 @@ object SlateApp extends scalajs.js.JSApp {
     programDirKey <- StorageFS.mkDir("program", nonceSource, StorageFS.fsroot)
   } yield programDirKey.get.fold(identity[StorageFS.StorageKey[StorageFS.Dir]])
 
-  def compiledPrograms: Task[List[SlateProgram[Either[ErrorCompilingPrograms, CompiledFilter]]]] = {
+  def compiledPrograms: Task[Vector[SlateProgram[Either[ErrorCompilingPrograms, CompiledFilter]]]] = {
 
     def reassembleProgram(program: SlateProgram[Either[Program[FilterAST], String]]): StorageProgram[SlateProgram[Either[ErrorGettingCachedProgram, Program[FilterAST]]]] = {
       program.program.fold[StorageProgram[SlateProgram[Either[ErrorGettingCachedProgram, Program[FilterAST]]]]](p =>
@@ -116,7 +116,7 @@ object SlateApp extends scalajs.js.JSApp {
         s => caching.Program.getCachedProgramByHash(program.withProgram(s)).map(program.withProgram))
     }
 
-    val prog: StorageProgram[List[SlateProgram[Either[ErrorGettingCachedProgram, Program[FilterAST]]]]] =
+    val prog: StorageProgram[Vector[SlateProgram[Either[ErrorGettingCachedProgram, Program[FilterAST]]]]] =
       programs.traverse(reassembleProgram)
 
     type StorageOrTask = Fx.fx2[StorageAction, Task]
@@ -133,7 +133,7 @@ object SlateApp extends scalajs.js.JSApp {
 
   type ErrorRunningPrograms = QQRuntimeException :+: CNil
 
-  private def runCompiledPrograms: Task[List[SlateProgram[ErrorCompilingPrograms Either Task[ErrorRunningPrograms Either List[JSON]]]]] =
+  private def runCompiledPrograms: Task[Vector[SlateProgram[ErrorCompilingPrograms Either Task[ErrorRunningPrograms Either Vector[JSON]]]]] =
     compiledPrograms.map {
       programs =>
         programs.map {
@@ -154,11 +154,11 @@ object SlateApp extends scalajs.js.JSApp {
   type ErrorDeserializingProgramOutput = InvalidJSON :+: upickle.Invalid.Data :+: ErrorRunningPrograms
 
   private def
-  deserializeProgramOutput: Task[List[SlateProgram[ErrorCompilingPrograms Either Task[ErrorDeserializingProgramOutput Either List[ExpandableContentModel]]]]] =
+  deserializeProgramOutput: Task[Vector[SlateProgram[ErrorCompilingPrograms Either Task[ErrorDeserializingProgramOutput Either Vector[ExpandableContentModel]]]]] =
     runCompiledPrograms.map {
       _.map(program =>
         program.map(
-          _.map[Task[ErrorDeserializingProgramOutput Either List[ExpandableContentModel]]](
+          _.map[Task[ErrorDeserializingProgramOutput Either Vector[ExpandableContentModel]]](
             _.map(
               _.leftMap(r => Basis[ErrorDeserializingProgramOutput, ErrorRunningPrograms].inverse(Right(r))).flatMap(
                 _.traverse[ErrorDeserializingProgramOutput Either ?, ExpandableContentModel] {
@@ -190,7 +190,7 @@ object SlateApp extends scalajs.js.JSApp {
   def makeDataKey(title: String, input: JSON): String =
     title + "|" + input.hashCode()
 
-  def getCachedOutput(dataDirKey: StorageFS.StorageKey[StorageFS.Dir], programs: List[SlateProgram[Unit]]): Task[List[Option[SlateProgram[InvalidJSON Either DatedAppContent]]]] = {
+  def getCachedOutput(dataDirKey: StorageFS.StorageKey[StorageFS.Dir], programs: Vector[SlateProgram[Unit]]): Task[Vector[Option[SlateProgram[InvalidJSON Either DatedAppContent]]]] = {
     type mem1 = Member.Aux[StorageAction, Fx.fx2[Task, StorageAction], Fx.fx1[Task]]
     type mem2 = Member[Task, Fx.fx1[Task]]
     for {
@@ -227,8 +227,8 @@ object SlateApp extends scalajs.js.JSApp {
           val injectedErrors: Task[Either[AllErrors, DatedAppContent]] = out.leftMap(e =>
             errorCompilingProgramsInAllErrors.inverse(Right(e))
           ).map(_.map(_.leftMap(e => errorDeserializingProgramOutputInAllErrors.inverse(Right(e)))))
-            .sequence[Task, Either[AllErrors, List[ExpandableContentModel]]].map((modelsErrErr: Either[AllErrors, Either[AllErrors, List[ExpandableContentModel]]]) =>
-            modelsErrErr.flatMap(_.map(models => DatedAppContent(models, new js.Date(js.Date.now()))))
+            .sequence[Task, Either[AllErrors, Vector[ExpandableContentModel]]].map((modelsErrErr: Either[AllErrors, Either[AllErrors, Vector[ExpandableContentModel]]]) =>
+            modelsErrErr.flatMap(_.map(models => DatedAppContent(models.toList, new js.Date(js.Date.now()))))
           )
           injectedErrors.map(errorsOrContent =>
             errorsOrContent.traverse[Eff[Fx.fx1[Task], ?], Unit](r =>
@@ -245,9 +245,9 @@ object SlateApp extends scalajs.js.JSApp {
               p.program.leftMap(inj[AllErrors].apply[InvalidJSON]).map(pa => AppModel(pa.content, pa.date))
           })))
       )((l, ap) => Task.mapBoth(ap, l) {
-        (a, li) => a :: li.filterNot(_.id == a.id)
+        (a, li) => a +: li.filterNot(_.id == a.id)
       })
-    } yield results).map(_.map(appProps => SearchPageProps(appProps.sortBy(_.id))))
+    } yield results).map(_.map(appProps => SearchPageProps(appProps.sortBy(_.id).toList)))
   }
 
   def render(container: org.scalajs.dom.raw.Element, content: SearchPageProps)(

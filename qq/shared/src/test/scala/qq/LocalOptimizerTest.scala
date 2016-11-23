@@ -48,8 +48,8 @@ class LocalOptimizerTest extends QQSyncTestSuite {
 
   "fuseGetPathOperation" in {
     optimizeFilter(
-      getPath(List(selectKey("key1"), selectKey("key2"))) | getPath(List(selectKey("key3", selectKey("key4"))))
-    ) shouldBe getPath(List(selectKey("key1"), selectKey("key2"), selectKey("key3"), selectKey("key4")))
+      getPath(Vector(selectKey("key1"), selectKey("key2"))) | getPath(Vector(selectKey("key3"), selectKey("key4")))
+    ) shouldBe getPath(Vector(selectKey("key1"), selectKey("key2"), selectKey("key3"), selectKey("key4")))
   }
 
   "no stack overflow on deeply nested filters" taggedAs StackTest in {

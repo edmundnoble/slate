@@ -10,7 +10,7 @@ import qq.data.JSON
 
 import scala.concurrent.Future
 
-case class RunnerTestCase(input: JSON, program: String, expectedOutputOrException: Either[RuntimeErrs, List[JSON]])
+case class RunnerTestCase(input: JSON, program: String, expectedOutputOrException: Either[RuntimeErrs, Vector[JSON]])
 
 class RunnerTest extends QQAsyncTestSuite {
 
@@ -23,32 +23,32 @@ class RunnerTest extends QQAsyncTestSuite {
 
   val identityProgram: RunnerTestCase = {
     val dict = JSON.Obj("1" -> JSON.Num(2), "3" -> JSON.Num(4))
-    RunnerTestCase(dict, ".", Either.right(List(dict)))
+    RunnerTestCase(dict, ".", Either.right(Vector(dict)))
   }
 
   val selectKeyProgram = RunnerTestCase(
     JSON.Obj("lol" -> JSON.Str("test")),
     ".lol",
-    Either.right(List(JSON.Str("test")))
+    Either.right(Vector(JSON.Str("test")))
   )
 
   val ensequencedFilters = RunnerTestCase(
     JSON.Obj("lol" -> JSON.Str("lol1"), "wat" -> JSON.Str("wat1")),
     ".lol, .wat",
-    Either.right(List(JSON.Str("lol1"), JSON.Str("wat1")))
+    Either.right(Vector(JSON.Str("lol1"), JSON.Str("wat1")))
   )
 
   val enlistedFilters = RunnerTestCase(
     JSON.Obj("lol" -> JSON.Str("lol1"), "wat" -> JSON.Str("wat1")),
     "[.lol, .wat]",
-    Either.right(List(JSON.Arr(JSON.Str("lol1"), JSON.Str("wat1"))))
+    Either.right(Vector(JSON.Arr(JSON.Str("lol1"), JSON.Str("wat1"))))
   )
 
-  val collectResults = List(
+  val collectResults = Vector(
     RunnerTestCase(
       JSON.Obj("titles" -> JSON.Arr(JSON.Str("lol1"), JSON.Str("wat1"))),
       ".titles[]",
-      Either.right(List(JSON.Str("lol1"), JSON.Str("wat1")))
+      Either.right(Vector(JSON.Str("lol1"), JSON.Str("wat1")))
     ),
     RunnerTestCase(JSON.Num(1), ".[]", typeError("flatten", "array" -> JSON.Num(1)))
   )
@@ -60,7 +60,7 @@ class RunnerTest extends QQAsyncTestSuite {
       "titles" -> JSON.Arr(JSON.Str("JQ Primer"), JSON.Str("More JQ"))
     ),
     "{user, (.titleName[]): .titles[]}",
-    Either.right(List(
+    Either.right(Vector(
       JSON.Obj(
         "title1" -> JSON.Str("JQ Primer"),
         "user" -> JSON.Str("stedolan")
@@ -82,41 +82,41 @@ class RunnerTest extends QQAsyncTestSuite {
   val pipes = RunnerTestCase(
     JSON.Arr(JSON.Obj("name" -> JSON.Str("JSON"), "good" -> JSON.True), JSON.Obj("name" -> JSON.Str("XML"), "good" -> JSON.False)),
     ".[] | .name",
-    Either.right(List(JSON.Str("JSON"), JSON.Str("XML")))
+    Either.right(Vector(JSON.Str("JSON"), JSON.Str("XML")))
   )
 
   val lengthTest = RunnerTestCase(
     JSON.Arr(JSON.Arr(JSON.Num(1), JSON.Num(2)), JSON.Str("string"), JSON.Obj("a" -> JSON.Num(2)), JSON.Null),
     ".[] | length",
-    Either.right(List(JSON.Num(2), JSON.Num(6), JSON.Num(1), JSON.Num(0)))
+    Either.right(Vector(JSON.Num(2), JSON.Num(6), JSON.Num(1), JSON.Num(0)))
   )
 
   val keys = RunnerTestCase(
     JSON.Obj("abc" -> JSON.Num(1), "abcd" -> JSON.Num(2), "Foo" -> JSON.Num(3)),
     "keys",
-    Either.right(List(JSON.Arr(JSON.Str("abc"), JSON.Str("abcd"), JSON.Str("Foo"))))
+    Either.right(Vector(JSON.Arr(JSON.Str("abc"), JSON.Str("abcd"), JSON.Str("Foo"))))
   )
 
   val add = RunnerTestCase(
     JSON.Arr(JSON.Num(1), JSON.Arr(JSON.Num(1)), JSON.Str("test")),
     ".[] | (. + .)",
-    Either.right(List(JSON.Num(2), JSON.Arr(JSON.Num(1), JSON.Num(1)), JSON.Str("testtest")))
+    Either.right(Vector(JSON.Num(2), JSON.Arr(JSON.Num(1), JSON.Num(1)), JSON.Str("testtest")))
   )
 
   val multiply = RunnerTestCase(
     JSON.Obj("nested" -> JSON.Obj("nested" -> JSON.Obj("nested" -> JSON.Obj("nested" -> JSON.Num(1))))),
     ".[] | (. * .nested)",
-    Either.right(List(JSON.Obj("nested" -> JSON.Obj("nested" -> JSON.Num(1)))))
+    Either.right(Vector(JSON.Obj("nested" -> JSON.Obj("nested" -> JSON.Num(1)))))
   )
 
   val maths =
-    RunnerTestCase(JSON.Num(4), ". % (. / 2)", Either.right(List(JSON.Num(0))))
+    RunnerTestCase(JSON.Num(4), ". % (. / 2)", Either.right(Vector(JSON.Num(0))))
 
   val bedmas =
-    RunnerTestCase(JSON.Num(5), ". + . * .", Either.right(List(JSON.Num(30))))
+    RunnerTestCase(JSON.Num(5), ". + . * .", Either.right(Vector(JSON.Num(30))))
 
   val map =
-    RunnerTestCase(JSON.Arr(JSON.Num(1)), "def f: . + 2; map(f)", Either.right(List(JSON.Num(3))))
+    RunnerTestCase(JSON.Arr(JSON.Num(1)), "def f: . + 2; map(f)", Either.right(Vector(JSON.Num(3))))
 
   val addNullException =
     RunnerTestCase(JSON.Arr(), ".[0] + .[0]", typeError(
@@ -126,18 +126,18 @@ class RunnerTest extends QQAsyncTestSuite {
     ))
 
   val silencedException =
-    RunnerTestCase(JSON.Arr(), "(.[0] + .[0])?", Either.right(List()))
+    RunnerTestCase(JSON.Arr(), "(.[0] + .[0])?", Either.right(Vector()))
 
   val emptyObjectProgram =
-    RunnerTestCase(JSON.Null, "{}", Either.right(List(JSON.Obj())))
+    RunnerTestCase(JSON.Null, "{}", Either.right(Vector(JSON.Obj())))
 
   val constants =
-    RunnerTestCase(JSON.Null, "true, false, null", Either.right(List(JSON.True, JSON.False, JSON.Null)))
+    RunnerTestCase(JSON.Null, "true, false, null", Either.right(Vector(JSON.True, JSON.False, JSON.Null)))
 
   val base64Encode =
-    RunnerTestCase(JSON.Str("hi"), "b64Encode", Either.right(List(JSON.Str("aGk="))))
+    RunnerTestCase(JSON.Str("hi"), "b64Encode", Either.right(Vector(JSON.Str("aGk="))))
 
-  val multipleErrorTests = List(
+  val multipleErrorTests = Vector(
     RunnerTestCase(JSON.Obj("a" -> JSON.Arr(JSON.Obj("b" -> JSON.Null), JSON.Obj("b" -> JSON.Null))),
       ".a.[].b.c",
       Either.left(

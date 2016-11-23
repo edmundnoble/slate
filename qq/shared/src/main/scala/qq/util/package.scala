@@ -13,6 +13,12 @@ package object util extends UtilImplicits {
   final def foldWithPrefixes[A](firstPrefix: List[A], nextPrefixes: List[A]*): List[List[A]] =
     nextPrefixes.foldLeft(firstPrefix :: Nil)(withPrefixes)
 
+  final def withPrefixesV[A](xss: Vector[Vector[A]], ys: Vector[A]): Vector[Vector[A]] =
+    for {xs <- xss; y <- ys} yield y +: xs
+
+  final def foldWithPrefixesV[A](firstPrefix: Vector[A], nextPrefixes: Vector[Vector[A]]): Vector[Vector[A]] =
+    nextPrefixes.foldLeft(firstPrefix +: Vector.empty)(withPrefixesV)
+
   def single: Option ~> Seq = new (Option ~> Seq) {
     def apply[A](op: Option[A]): Seq[A] =
       op match {

@@ -24,22 +24,22 @@ class CompilerTest extends QQAsyncTestSuite {
         .fold[Task[Assertion]](
         err => Task.eval(fail("error occurred during compilation: \n" + err.toString)),
         program => CompiledFilter.run(input, Map.empty, program).map { output =>
-          output.value.map(_.norm) shouldBe expectedOutput.toList.map(_.norm)
+          output.value.map(_.norm) shouldBe expectedOutput.toVector.map(_.norm)
         })
         .runAsync
   }
 
-  val selectKeyTests: List[CompilerTestCase] = {
+  val selectKeyTests: Vector[CompilerTestCase] = {
     val dict = JSON.Obj("present" -> JSON.Num(1))
-    List(
+    Vector(
       CompilerTestCase(dict, selectKey("present"), JSON.Num(1)),
       CompilerTestCase(dict, selectKey("absent"), JSON.Null)
     )
   }
 
-  val selectIndexTests: List[CompilerTestCase] = {
+  val selectIndexTests: Vector[CompilerTestCase] = {
     val arr = JSON.Arr(JSON.Num(1), JSON.Num(2))
-    List(
+    Vector(
       CompilerTestCase(arr, selectIndex(-3), JSON.Null),
       CompilerTestCase(arr, selectIndex(-2), JSON.Num(1)),
       CompilerTestCase(arr, selectIndex(-1), JSON.Num(2)),
@@ -49,14 +49,14 @@ class CompilerTest extends QQAsyncTestSuite {
     )
   }
 
-  val idTests: List[CompilerTestCase] = {
+  val idTests: Vector[CompilerTestCase] = {
     val dict = JSON.Obj("present" -> JSON.Num(1))
-    List(CompilerTestCase(dict, id, dict))
+    Vector(CompilerTestCase(dict, id, dict))
   }
 
-  val selectRangeTests: List[CompilerTestCase] = {
+  val selectRangeTests: Vector[CompilerTestCase] = {
     val arr = JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4))
-    List(
+    Vector(
       CompilerTestCase(arr, selectRange(0, 0), JSON.Arr()),
       CompilerTestCase(arr, selectRange(0, 1), JSON.Arr(JSON.Num(1))),
       CompilerTestCase(arr, selectRange(0, 2), JSON.Arr(JSON.Num(1), JSON.Num(2))),
@@ -67,79 +67,79 @@ class CompilerTest extends QQAsyncTestSuite {
     )
   }
 
-  val collectResultsTests: List[CompilerTestCase] = {
-    List(
+  val collectResultsTests: Vector[CompilerTestCase] = {
+    Vector(
       CompilerTestCase(JSON.Arr(JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4)), collectResults, JSON.Num(1), JSON.Num(2), JSON.Num(3), JSON.Num(4)),
       CompilerTestCase(JSON.Obj("a" -> JSON.Num(1), "b" -> JSON.Str("c")), collectResults, JSON.Num(1), JSON.Str("c"))
     )
   }
 
-  val lotsOfCompositionTests: List[CompilerTestCase] = {
+  val lotsOfCompositionTests: Vector[CompilerTestCase] = {
     // tail recursive builder, giving you (i * 2) compositions of id with f.
     @annotation.tailrec
     def fun(f: FilterAST, i: Int): FilterAST = if (i == 0) f else fun(id | f | id, i - 1)
-    List(
+    Vector(
       CompilerTestCase(JSON.False, fun(id, 10000), JSON.False)(qq.Platform.Rec.defaultRecScheme)
     )
   }
 
-  val lotsOfEnsequenceTests: List[CompilerTestCase] = {
+  val lotsOfEnsequenceTests: Vector[CompilerTestCase] = {
     // tail recursive builder, giving you (i * 2) ensequencings of id with f.
     @annotation.tailrec
     def fun(f: FilterAST, i: Int): FilterAST = if (i == 0) f else fun(id |+| f |+| id, i - 1)
-    List(
-      CompilerTestCase(JSON.False, fun(id, 10000), List.fill(20001)(JSON.`false`): _*)(qq.Platform.Rec.defaultRecScheme)
+    Vector(
+      CompilerTestCase(JSON.False, fun(id, 10000), Vector.fill(20001)(JSON.`false`): _*)(qq.Platform.Rec.defaultRecScheme)
     )
   }
 
-  val lotsOfSelectKeyTests: List[CompilerTestCase] = {
+  val lotsOfSelectKeyTests: Vector[CompilerTestCase] = {
     // tail recursive builders, giving you i invocations of
     // selectKey composed both inside and outside of a single path component
     @annotation.tailrec
     def funSlow(f: FilterAST, i: Int): FilterAST = if (i == 0) f else funSlow(f | getPathS(SelectKey("key")), i - 1)
-    def funFast(f: FilterAST, i: Int): FilterAST = f | getPath(List.fill(i)(SelectKey("key")))
+    def funFast(f: FilterAST, i: Int): FilterAST = f | getPath(Vector.fill(i)(SelectKey("key")))
     def nest(obj: JSON, i: Int): Eval[JSON] =
       if (i == 0) Eval.now(obj)
       else Eval.defer(nest(obj, i - 1)).map(r => JSON.obj("key" -> r))
     val input = nest(JSON.False, 10000).value
-    List(
+    Vector(
       CompilerTestCase(input, funFast(id, 10000), JSON.`false`)(qq.Platform.Rec.defaultRecScheme),
       CompilerTestCase(input, funSlow(id, 10000), JSON.`false`)(qq.Platform.Rec.defaultRecScheme)
     )
   }
 
-  val variableTests: List[CompilerTestCase] =
-    List(
+  val variableTests: Vector[CompilerTestCase] =
+    Vector(
       CompilerTestCase(JSON.Str("input"), asBinding("hello", id, deref("hello")), JSON.Str("input")),
       CompilerTestCase(JSON.Str("input"), asBinding("hello", add(id, constString("hi")), add(constString("hey"), deref("hello"))), JSON.Str("heyinputhi"))
     )
 
-  val pathSetterTests: List[CompilerTestCase] =
-    List(
-      CompilerTestCase(JSON.Num(2), setPath(Nil, constNumber(3)), JSON.Num(3)),
-      CompilerTestCase(JSON.arr(JSON.num(1), JSON.num(2)), setPath(List(selectIndex(1)), constNumber(1)), JSON.arr(JSON.num(1), JSON.num(1))),
-      CompilerTestCase(JSON.arr(JSON.num(1), JSON.num(2)), setPath(List(selectIndex(2)), constNumber(1)), JSON.arr(JSON.num(1), JSON.num(2), JSON.num(1))),
-      CompilerTestCase(JSON.arr(JSON.num(1), JSON.num(2)), setPath(List(selectIndex(3)), constNumber(1)), JSON.arr(JSON.num(1), JSON.num(2), JSON.`null`, JSON.num(1))),
+  val pathSetterTests: Vector[CompilerTestCase] =
+    Vector(
+      CompilerTestCase(JSON.Num(2), setPath(Vector.empty, constNumber(3)), JSON.Num(3)),
+      CompilerTestCase(JSON.arr(JSON.num(1), JSON.num(2)), setPath(Vector(selectIndex(1)), constNumber(1)), JSON.arr(JSON.num(1), JSON.num(1))),
+      CompilerTestCase(JSON.arr(JSON.num(1), JSON.num(2)), setPath(Vector(selectIndex(2)), constNumber(1)), JSON.arr(JSON.num(1), JSON.num(2), JSON.num(1))),
+      CompilerTestCase(JSON.arr(JSON.num(1), JSON.num(2)), setPath(Vector(selectIndex(3)), constNumber(1)), JSON.arr(JSON.num(1), JSON.num(2), JSON.`null`, JSON.num(1))),
       CompilerTestCase(
         JSON.Arr(
           JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("input1")), "out1" -> JSON.Str("output1")),
           JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("input2")), "out1" -> JSON.Str("output2"))
         ),
-        getPathS(collectResults) | setPath(List(selectKey("key1"), selectKey("key2")), getPathS(selectKey("out1"))),
+        getPathS(collectResults) | setPath(Vector(selectKey("key1"), selectKey("key2")), getPathS(selectKey("out1"))),
         JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("output1")), "out1" -> JSON.Str("output1")),
         JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("output2")), "out1" -> JSON.Str("output2"))
       )
     )
 
-  val pathModifierTests: List[CompilerTestCase] =
-    List(
-      CompilerTestCase(JSON.Num(2), modifyPath(Nil, constNumber(3)), JSON.Num(3)),
+  val pathModifierTests: Vector[CompilerTestCase] =
+    Vector(
+      CompilerTestCase(JSON.Num(2), modifyPath(Vector.empty, constNumber(3)), JSON.Num(3)),
       CompilerTestCase(
         JSON.Arr(
           JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output1"))),
           JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output2")))
         ),
-        modifyPath(List(collectResults, selectKey("key1"), selectKey("out1")), add(id, constString("mod"))),
+        modifyPath(Vector(collectResults, selectKey("key1"), selectKey("out1")), add(id, constString("mod"))),
         JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output1mod"))),
         JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output2mod")))
       ),
@@ -148,7 +148,7 @@ class CompilerTest extends QQAsyncTestSuite {
           JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output1"))),
           JSON.Obj("key1" -> JSON.Obj("out1" -> JSON.Str("output2")))
         ),
-        modifyPath(List(collectResults, selectKey("key1")), getPathS(selectKey("out1"))),
+        modifyPath(Vector(collectResults, selectKey("key1")), getPathS(selectKey("out1"))),
         JSON.Obj("key1" -> JSON.Str("output1")),
         JSON.Obj("key1" -> JSON.Str("output2"))
       ),
@@ -157,7 +157,7 @@ class CompilerTest extends QQAsyncTestSuite {
           JSON.Obj("out1" -> JSON.Str("output1")),
           JSON.Obj("out1" -> JSON.Str("output2"))
         ),
-        modifyPath(List(selectIndex(0)), getPathS(selectKey("out1"))),
+        modifyPath(Vector(selectIndex(0)), getPathS(selectKey("out1"))),
         JSON.Arr(
           JSON.Str("output1"),
           JSON.Obj("out1" -> JSON.Str("output2"))
@@ -167,7 +167,7 @@ class CompilerTest extends QQAsyncTestSuite {
 
   val mathTests = {
     val obj = JSON.Obj("fst" -> JSON.Num(1), "snd" -> JSON.Num(2))
-    List(
+    Vector(
       CompilerTestCase(obj, add(selectKey("fst"), selectKey("snd")), JSON.Num(3)),
       CompilerTestCase(obj, multiply(selectKey("fst"), selectKey("snd")), JSON.Num(2)),
       CompilerTestCase(obj, divide(selectKey("fst"), selectKey("snd")), JSON.Num(0.5)),

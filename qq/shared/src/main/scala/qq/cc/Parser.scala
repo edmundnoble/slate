@@ -9,9 +9,6 @@ import fastparse.parsers
 import fastparse.parsers.Terminals
 import qq.data._
 
-import scala.collection.mutable
-
-
 object Parser {
 
   implicit object ParserMonad extends Monad[Parser] {
@@ -25,16 +22,16 @@ object Parser {
     override def tailRecM[A, B](a: A)(f: (A) => Parser[Either[A, B]]): Parser[B] = ???
   }
 
-  implicit def listRepeater[T]: Implicits.Repeater[T, List[T]] = new Implicits.Repeater[T, List[T]] {
-    type Acc = mutable.ListBuffer[T]
+  implicit def vectorRepeater[T]: Implicits.Repeater[T, Vector[T]] = new Implicits.Repeater[T, Vector[T]] {
+    type Acc = collection.immutable.VectorBuilder[T]
 
-    def initial: Acc = new mutable.ListBuffer[T]()
+    def initial: Acc = new Acc()
 
     def accumulate(t: T, acc: Acc): Unit = {
       val _ = acc += t
     }
 
-    def result(acc: Acc): List[T] = acc.result()
+    def result(acc: Acc): Vector[T] = acc.result()
   }
 
   import qq.data.{QQDSL => dsl}
@@ -94,25 +91,25 @@ object Parser {
     ("[" ~/ ((escapedStringLiteral map dsl.selectKey) | selectRange | selectIndex) ~ "]") | (stringLiteral map dsl.selectKey) | selectIndex
   )
 
-  val pathComponent: P[List[PathComponent]] = P(
+  val pathComponent: P[Vector[PathComponent]] = P(
     for {
       s <- simplePathComponent
-      f <- "[]".!.?.map(_.fold(List.empty[PathComponent])(_ => dsl.collectResults :: Nil))
-    } yield s :: f
+      f <- "[]".!.?.map(_.fold(Vector.empty[PathComponent])(_ => dsl.collectResults +: Vector.empty))
+    } yield s +: f
   )
 
-  val fullPath: P[List[PathComponent]] = P(
+  val fullPath: P[Vector[PathComponent]] = P(
     dot ~
-      ((LiteralStr("[]").as(dsl.collectResults :: Nil)) | pathComponent)
+      ((LiteralStr("[]").as(dsl.collectResults +: Vector.empty)) | pathComponent)
         .rep(sep = dot)
-        .map(_.nelFoldLeft1(Nil)(_ ++ _))
+        .map(_.nelFoldLeft1(Vector.empty[PathComponent])(_ ++ _))
   )
 
-  def setPathFilter(path: List[PathComponent]): P[FilterAST] = P(
+  def setPathFilter(path: Vector[PathComponent]): P[FilterAST] = P(
     ("=" ~ whitespace ~ filter).map(dsl.setPath(path, _))
   )
 
-  def modifyPathFilter(path: List[PathComponent]): P[FilterAST] = P(
+  def modifyPathFilter(path: Vector[PathComponent]): P[FilterAST] = P(
     ("|=" ~ whitespace ~ filter).map(dsl.modifyPath(path, _))
   )
 
@@ -143,7 +140,7 @@ object Parser {
   val callFilter: P[FilterAST] = P(
     for {
       identifier <- filterIdentifier
-      params <- ("(" ~/ whitespace ~ filter.rep(min = 1, sep = whitespace ~ ";" ~ whitespace) ~ whitespace ~ ")").?.map(_.getOrElse(Nil))
+      params <- ("(" ~/ whitespace ~ filter.rep(min = 1, sep = whitespace ~ ";" ~ whitespace) ~ whitespace ~ ")").?.map(_.getOrElse(Vector.empty))
     } yield dsl.call(identifier, params)
   )
 
@@ -165,7 +162,7 @@ object Parser {
   val enjectPair: P[(String Either FilterAST, FilterAST)] = P(
     ((("(" ~/ whitespace ~ filter ~ whitespace ~ ")").map(Right[String, FilterAST]) |
       (stringLiteral | escapedStringLiteral).map(Left[String, FilterAST])) ~ ":" ~ whitespace ~ piped) |
-      filterIdentifier.map(id => Left(id) -> dsl.getPath(List(dsl.selectKey(id))))
+      filterIdentifier.map(id => Left(id) -> dsl.getPath(Vector(dsl.selectKey(id))))
   )
 
   val enjectedFilter: P[FilterAST] = P(
@@ -176,7 +173,7 @@ object Parser {
   def binaryOperators[A](rec: P[A], ops: (String, (A, A) => A)*): P[A] = {
     def makeParser(text: String, function: (A, A) => A): P[(A, A) => A] = LiteralStr(text).as(function)
 
-    def foldOperators(begin: A, operators: List[((A, A) => A, A)]): A =
+    def foldOperators(begin: A, operators: Vector[((A, A) => A, A)]): A =
       operators.foldLeft(begin) { case (f, (combFun, nextF)) => combFun(f, nextF) }
 
     val op = ops.map((makeParser _).tupled).reduceLeft(_ | _)
@@ -212,18 +209,18 @@ object Parser {
     } yield fun(f)
   )
 
-  val arguments: P[List[String]] = P(
+  val arguments: P[Vector[String]] = P(
     "(" ~/ whitespace ~ filterIdentifier.rep(min = 1, sep = whitespace ~ ";" ~/ whitespace) ~ whitespace ~ ")"
   )
 
   val definition: P[Definition[FilterAST]] = P(
-    ("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Nil)) ~ ":" ~/ whitespace ~ filter ~ ";") map (Definition[FilterAST] _).tupled
+    ("def" ~/ whitespace ~ filterIdentifier ~ arguments.?.map(_.getOrElse(Vector.empty)) ~ ":" ~/ whitespace ~ filter ~ ";") map (Definition[FilterAST] _).tupled
   )
 
   val program: P[Program[FilterAST]] = P(
     (whitespace ~
       (definition.rep(min = 1, sep = whitespace) ~ whitespace)
-        .?.map(_.getOrElse(Nil)) ~
+        .?.map(_.getOrElse(Vector.empty)) ~
       filter ~ whitespace ~ Terminals.End())
       .map((Program[FilterAST] _).tupled)
   )

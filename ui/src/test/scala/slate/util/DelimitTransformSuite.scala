@@ -11,8 +11,8 @@ class DelimitTransformSuite extends SlateSuite {
       string.from("hello") shouldBe "hello"
     }
     "arr" in {
-      string.splitBy("d").to("hello").value.toList shouldBe List("hello")
-      string.splitBy("d").to("heldlo").value.toList shouldBe List("hel", "lo")
+      string.splitBy("d").to("hello").value.toVector shouldBe Vector("hello")
+      string.splitBy("d").to("heldlo").value.toVector shouldBe Vector("hel", "lo")
     }
     "then" in {
       (string | "o" | string).to("helloworld").value shouldBe (("hell", "world"))
@@ -22,7 +22,7 @@ class DelimitTransformSuite extends SlateSuite {
     "arr - join - arr" in {
       val (r1, r2) =
         (string.splitBy(",") | ":" | string.splitBy(";")).to("hello,world:bonjour;monde").value
-      (r1.toList, r2.toList) shouldBe ((List("hello", "world"), List("bonjour", "monde")))
+      (r1.toVector, r2.toVector) shouldBe ((Vector("hello", "world"), Vector("bonjour", "monde")))
     }
   }
 }

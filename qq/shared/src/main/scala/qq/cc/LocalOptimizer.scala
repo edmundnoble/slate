@@ -27,8 +27,8 @@ object LocalOptimizer {
   // The identity filter is an identity with respect to composition of filters
   final def idCompose(fr: FilterComponent[FilterAST]): Option[FilterComponent[FilterAST]] = {
     fr match {
-      case ComposeFilters(Fix(PathOperation(List(), PathGet)), Fix(s)) => Some(s)
-      case ComposeFilters(Fix(f), Fix(PathOperation(List(), PathGet))) => Some(f)
+      case ComposeFilters(Fix(PathOperation(o, PathGet)), Fix(s))  if o.isEmpty=> Some(s)
+      case ComposeFilters(Fix(f), Fix(PathOperation(o, PathGet)))  if o.isEmpty=> Some(f)
       case _ => None
     }
   }
@@ -36,8 +36,8 @@ object LocalOptimizer {
   // The collect and enlist operations are inverses
   final def collectEnlist(fr: FilterComponent[FilterAST]): Option[FilterComponent[FilterAST]] = {
     fr match {
-      case EnlistFilter(Fix(ComposeFilters(Fix(f), Fix(PathOperation(List(CollectResults), PathGet))))) => Some(f)
-      case EnlistFilter(Fix(PathOperation(List(CollectResults), PathGet))) => Some(PathOperation(Nil, PathGet))
+      case EnlistFilter(Fix(ComposeFilters(Fix(f), Fix(PathOperation(CollectResults +: o, PathGet)))))if o.isEmpty  => Some(f)
+      case EnlistFilter(Fix(PathOperation(CollectResults +: o, PathGet))) if o.isEmpty => Some(PathOperation(Vector.empty, PathGet))
       case _ => None
     }
   }
@@ -61,7 +61,7 @@ object LocalOptimizer {
 
   final def unlet(fr: FilterComponent[FilterAST]): Option[FilterComponent[FilterAST]] = fr match {
     case AsBinding(n, Fix(a), Fix(i))
-      if i == Dereference(n) || i == PathOperation(Nil, PathGet) =>
+      if i == Dereference(n) || i == PathOperation(Vector.empty, PathGet) =>
       Some(a)
     case _ => None
   }

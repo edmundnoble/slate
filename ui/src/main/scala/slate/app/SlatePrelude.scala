@@ -26,7 +26,7 @@ object SlatePrelude extends Prelude {
 
   def googleAuth: CompiledDefinition =
     noParamDefinition("googleAuth",
-      CompiledFilter.constE(identify.getAuthToken(interactive = true).map[List[JSON]](JSON.Str(_) :: Nil).parallel.send[CompiledFilterStack]))
+      CompiledFilter.constE(identify.getAuthToken(interactive = true).map[Vector[JSON]](JSON.Str(_) +: Vector.empty).parallel.send[CompiledFilterStack]))
 
   def launchAuth: CompiledDefinition =
     CompiledDefinition("launchAuth", 2, CompiledDefinition.standardEffectDistribution {
@@ -38,7 +38,7 @@ object SlatePrelude extends Prelude {
           case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
         }
         val queryParamsVerified: Validated[RuntimeErrs, JSON.ObjList] = queryParamsRaw match {
-          case o: JSON.ObjMap => JSON.ObjList(o.value.toList).validNel
+          case o: JSON.ObjMap => JSON.ObjList(o.value.toVector).validNel
           case o: JSON.ObjList => o.validNel
           case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
         }
@@ -48,7 +48,7 @@ object SlatePrelude extends Prelude {
           Eff.send[OrRuntimeErr, CompiledFilterStack, String](urlWithQueryParams.toEither)
             .flatMap(identify.launchWebAuthFlow(interactive = true, _).parallel.send[CompiledFilterStack])
           accessToken = webAuthResult.substring(webAuthResult.indexOf("&code=") + "&code=".length)
-        } yield JSON.obj("code" -> JSON.Str(accessToken)) :: Nil
+        } yield JSON.obj("code" -> JSON.Str(accessToken)) +: Vector.empty
     })
 
   private def makeAjaxDefinition(name: String, ajaxMethod: AjaxMethod) = CompiledDefinition(name, 4,
@@ -65,7 +65,7 @@ object SlatePrelude extends Prelude {
           case k => (TypeError("ajax", "string" -> k): QQRuntimeError).invalidNel
         }
         val queryParamsValidated: Validated[RuntimeErrs, JSON.ObjList] = queryParamsRaw match {
-          case o: JSON.ObjMap => JSON.ObjList(o.value.toList).validNel
+          case o: JSON.ObjMap => JSON.ObjList(o.value.toVector).validNel
           case o: JSON.ObjList => o.validNel
           case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
         }
@@ -79,7 +79,7 @@ object SlatePrelude extends Prelude {
           case o: JSON.ObjMap if o.value.forall(_._2.isInstanceOf[JSON.Str]) => o.toMap.value.mapValues(_.asInstanceOf[JSON.Str].value).validNel
           case k => (TypeError("ajax", "object" -> k): QQRuntimeError).invalidNel
         }
-        Eff.collapse[Stack, TaskParallel, List[JSON]](for {
+        Eff.collapse[Stack, TaskParallel, Vector[JSON]](for {
           resp <-
           Eff.collapse[Stack, OrRuntimeErr, XMLHttpRequest](
             (urlValidated |@| dataValidated |@| queryParamsValidated |@| headersValidated).map(
@@ -91,7 +91,7 @@ object SlatePrelude extends Prelude {
               }.parallel
             ).toEither.sequence[TaskParallel, OrRuntimeErr[XMLHttpRequest]].map(_.flatten).parallel.send[Stack]
           )
-          asJson = Json.stringToJSON(resp.responseText).fold(Task.raiseError(_), t => Task.now(t :: Nil)).parallel
+          asJson = Json.stringToJSON(resp.responseText).fold(Task.raiseError(_), t => Task.now(t +: Vector.empty)).parallel
         } yield asJson).into[CompiledFilterStack]
     })
 
@@ -119,7 +119,7 @@ object SlatePrelude extends Prelude {
 
   def nowRFC3339: CompiledDefinition =
     noParamDefinition("nowRFC3339",
-      CompiledFilter.constE(Task.eval(JSON.str(toRFC3339(new js.Date())) :: Nil).parallel.send[CompiledFilterStack]))
+      CompiledFilter.constE(Task.eval(JSON.str(toRFC3339(new js.Date())) +: Vector.empty).parallel.send[CompiledFilterStack]))
 
   // TODO: remove from here and AppView
   def formatDatetimeFriendlyImpl(d: js.Date): String = {
@@ -156,15 +156,15 @@ object SlatePrelude extends Prelude {
     case JSON.Str(s) =>
       val asDate = js.Date.parse(s)
       val fuzzy = formatDatetimeFriendlyImpl(new js.Date(asDate))
-      (JSON.str(fuzzy) :: Nil).pureEff[CompiledFilterStack]
+      (JSON.str(fuzzy) +: Vector.empty).pureEff[CompiledFilterStack]
     case k =>
-      typeErrorE[CompiledFilterStack, List[JSON]]("formatDatetimeFriendly", "string" -> k)
+      typeErrorE[CompiledFilterStack, Vector[JSON]]("formatDatetimeFriendly", "string" -> k)
   })
 
   def randomHex: CompiledDefinition = noParamDefinition("randomHex", CompiledFilter.constE {
-    Eff.send[TaskParallel, CompiledFilterStack, List[JSON]](Task.eval(JSON.str(List.fill(6) {
+    Eff.send[TaskParallel, CompiledFilterStack, Vector[JSON]](Task.eval(JSON.str(Vector.fill(6) {
       java.lang.Integer.toHexString(scala.util.Random.nextInt(256))
-    }.mkString) :: Nil).parallel)
+    }.mkString) +: Vector.empty).parallel)
   })
 
   override def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] =

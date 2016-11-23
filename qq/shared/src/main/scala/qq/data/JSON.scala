@@ -3,7 +3,7 @@ package data
 
 import cats.Eval
 import cats.implicits._
-import qq.cc.ListToNelOps
+import qq.cc.VectorToNelOps
 import qq.util.Recursion.RecursiveFunction
 import qq.util.Unsafe
 import upickle.Js
@@ -30,7 +30,7 @@ object JSON {
       case obj: Js.Obj =>
         Unsafe.builderTraverse[Seq]
           .traverse[Eval, (String, Js.Value), (String, JSON)](obj.value) { case (s, d) => loop(d) map (r => (s, r)) }
-          .map(s => JSON.ObjList(s.toList))
+          .map(s => JSON.ObjList(s.toVector))
     }
   }
 
@@ -98,11 +98,11 @@ object JSON {
     def map[B, That](f: ((String, JSON)) => B)(implicit cbf: CanBuildFrom[Any, B, That]): That
   }
   object Obj {
-    def apply(values: (String, JSON)*): ObjList = ObjList(values.toList)
-    private[Obj] val empty = ObjList(Nil)
+    def apply(values: (String, JSON)*): ObjList = ObjList(values.toVector)
+    private[Obj] val empty = ObjList(Vector.empty)
     def apply(): ObjList = empty
   }
-  final case class ObjList(value: List[(String, JSON)]) extends Obj {
+  final case class ObjList(value: Vector[(String, JSON)]) extends Obj {
     override def toMap: ObjMap = ObjMap(value.toMap)
     override def toList: ObjList = this
     override def map[B, That](f: ((String, JSON)) => B)(implicit cbf: CanBuildFrom[Any, B, That]): That =
@@ -110,15 +110,15 @@ object JSON {
   }
   final case class ObjMap(value: Map[String, JSON]) extends Obj {
     override def toMap: ObjMap = this
-    override def toList: ObjList = ObjList(value.toList)
+    override def toList: ObjList = ObjList(value.toVector)
     override def map[B, That](f: ((String, JSON)) => B)(implicit cbf: CanBuildFrom[Any, B, That]): That =
       value.map(f)(cbf)
   }
   def obj(values: (String, JSON)*): JSON = Obj(values: _*)
 
-  final case class Arr(value: List[JSON]) extends JSON
+  final case class Arr(value: Vector[JSON]) extends JSON
   object Arr {
-    def apply(values: JSON*): Arr = Arr(values.toList)
+    def apply(values: JSON*): Arr = Arr(values.toVector)
   }
-  def arr(values: JSON*): JSON = Arr(values.toList)
+  def arr(values: JSON*): JSON = Arr(values.toVector)
 }
