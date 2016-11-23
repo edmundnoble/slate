@@ -52,7 +52,7 @@ object Program {
             FilterProtocol.programCodec.decode(_)
               .toEither.bimap(InvalidBytecode(_): ProgramSerializationException, _.value)
           )
-      }, dashProgram => parseAndOptimizeProgram(dashProgram.program)
+      }, slateProgram => parseAndOptimizeProgram(slateProgram.program)
     )
   }
 

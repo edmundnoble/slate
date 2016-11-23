@@ -64,7 +64,7 @@ object SlateApp extends scalajs.js.JSApp {
 
   object SlateProgram {
 
-    implicit def dashProgramTraverse: Traverse[SlateProgram] = new Traverse[SlateProgram] {
+    implicit def slateProgramTraverse: Traverse[SlateProgram] = new Traverse[SlateProgram] {
       override def map[A, B](fa: SlateProgram[A])(f: (A) => B): SlateProgram[B] = fa.copy(program = f(fa.program))
       override def traverse[G[_], A, B](fa: SlateProgram[A])(f: (A) => G[B])(implicit evidence$1: Applicative[G]): G[SlateProgram[B]] =
         f(fa.program).map(fa.withProgram)
