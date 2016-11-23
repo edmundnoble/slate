@@ -125,7 +125,7 @@ object SlateApp extends scalajs.js.JSApp {
       StorageFS.runSealedStorageProgramInto(prog.into[StorageOrTask], DomStorage.Local, nonceSource, programDirKey)
         .map(_.map(_.map(_.leftMap(r => Basis[ErrorCompilingPrograms, ErrorGettingCachedProgram].inverse(Right(r)))
           .flatMap {
-            QQCompiler.compileProgram(SlatePrelude, _).leftMap(inj[ErrorCompilingPrograms].apply[QQCompilationException])
+            QQCompiler.compileProgram(SlatePrelude, _).leftMap(inj[ErrorCompilingPrograms][QQCompilationException])
           }
         )))
     }.detach
