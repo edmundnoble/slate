@@ -1,7 +1,6 @@
 package qq
 
 import cats.implicits._
-import org.scalactic.NormMethods._
 import org.scalatest.Assertion
 import qq.cc.{Runner, RuntimeErrs}
 import qq.data.JSON
@@ -15,7 +14,7 @@ class PreludeTest extends QQAsyncTestSuite {
   def runTest(test: PreludeTestCase): Future[Assertion] =
     Runner
       .run(test.program)(test.input)
-      .value
+      .rightValue
       .map(_.map(_.map(_.norm)) should be(test.expectedOutputOrException.map(_.map(_.norm))))
       .runAsync
 

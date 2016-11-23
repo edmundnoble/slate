@@ -97,7 +97,7 @@ class StorageFSTests extends SlateSuite {
       val prog = for {
         k <- StorageFS.updateFileInDir("f", nonceSource, "datas", StorageFS.fsroot)
         f <- traverseA(k)(StorageFS.getFile[Fx.fx1[StorageAction]])
-        d <- traverseA(f.flatten)(i => StorageFS.getFileInDir("f", StorageFS.fsroot))
+        d <- traverseA(f.flatten)(_ => StorageFS.getFileInDir("f", StorageFS.fsroot))
         _ = d.flatten.value shouldBe "datas"
         _ <- StorageFS.removeFile("f", StorageFS.fsroot)
       } yield ()

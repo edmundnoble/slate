@@ -2,7 +2,6 @@ package qq
 
 import cats.Eval
 import monix.eval.Task
-import org.scalactic.NormMethods._
 import org.scalatest.Assertion
 import qq.cc.{CompiledFilter, QQCompiler}
 import qq.data.{FilterAST, JSON, QQDSL, SelectKey}
@@ -24,7 +23,7 @@ class CompilerTest extends QQAsyncTestSuite {
         .fold[Task[Assertion]](
         err => Task.eval(fail("error occurred during compilation: \n" + err.toString)),
         program => CompiledFilter.run(input, Map.empty, program).map { output =>
-          output.value.map(_.norm) shouldBe expectedOutput.toVector.map(_.norm)
+          output.rightValue.map(_.norm) shouldBe expectedOutput.toVector.map(_.norm)
         })
         .runAsync
   }

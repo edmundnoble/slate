@@ -9,7 +9,7 @@ import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.Observable
 import org.atnos.eff.syntax.all._
-import org.atnos.eff.{Eff, Fx, Member}
+import org.atnos.eff.{Eff, Fx}
 import org.scalajs.dom
 import qq.Platform.Rec._
 import qq.cc.{CompiledFilter, QQCompilationException, QQCompiler, QQRuntimeException}
@@ -191,8 +191,6 @@ object SlateApp extends scalajs.js.JSApp {
     title + "|" + input.hashCode()
 
   def getCachedOutput(dataDirKey: StorageFS.StorageKey[StorageFS.Dir], programs: Vector[SlateProgram[Unit]]): Task[Vector[Option[SlateProgram[InvalidJSON Either DatedAppContent]]]] = {
-    type mem1 = Member.Aux[StorageAction, Fx.fx2[Task, StorageAction], Fx.fx1[Task]]
-    type mem2 = Member[Task, Fx.fx1[Task]]
     for {
       cachedContent <- StorageFS.runSealedStorageProgramInto(
         programs.traverseA(p =>
@@ -203,8 +201,7 @@ object SlateApp extends scalajs.js.JSApp {
                   .toOption.flatMap(DatedAppContent.pkl.read.lift)
                   .toRight(InvalidJSON(encodedModels))
             })
-            .map(ms => (p, ms))), DomStorage.Local, nonceSource, dataDirKey)(
-        Monad[Task], implicitly[mem1], implicitly[mem2]
+            .map(ms => (p, ms))), DomStorage.Local, nonceSource, dataDirKey
       ).detach
       cachedPrograms = cachedContent.map {
         case (p, models) => models.map(p.withProgram)

@@ -1,8 +1,5 @@
 package qq
 
-import cats.data.Validated
-import org.scalactic.Uniformity
-import org.scalatest.OptionValues._
 import qq.data.JSON
 import qq.util.Recursion
 import qq.util.Recursion.RecursionEngine
@@ -11,14 +8,8 @@ trait TestUtil {
 
   // this is necessary to encode the isomorphism between ObjList and ObjMap
   // into the equality checked by tests
-  implicit object canonicalized extends Uniformity[JSON] {
-    final def normalizedCanHandle(b: Any): Boolean = b.isInstanceOf[JSON]
-    final def normalizedOrSame(b: Any): Any =
-      b match {
-        case s: JSON => normalized(s)
-        case _ => b
-      }
-    def normalized(right: JSON): JSON = toCanonical(right)
+  implicit final class normJSON(json: JSON) {
+    def norm: JSON = toCanonical(json)
   }
 
   def toCanonical(j: JSON): JSON = j match {
@@ -28,11 +19,16 @@ trait TestUtil {
     case _ => j
   }
 
-  implicit def convertEitherToValuable[E, A](either: E Either A)(implicit pos: org.scalactic.source.Position): Valuable[A] =
-    new Valuable(either.right.toOption, pos)
-
-  implicit def convertValidatedToValuable[E, A](dis: Validated[E, A])(implicit pos: org.scalactic.source.Position): Valuable[A] =
-    new Valuable(dis.toOption, pos)
+  implicit final class eitherValueOps[E, A](either: E Either A) {
+    def rightValue: A = {
+      assert(either.isRight, s"rightValue called on $either")
+      either.right.get
+    }
+    def leftValue: E = {
+      assert(either.isLeft, s"rightValue called on $either")
+      either.left.get
+    }
+  }
 
   implicit val recEngine: RecursionEngine =
     Recursion.Unsafe.Direct

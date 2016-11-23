@@ -2,7 +2,6 @@ package qq
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import org.scalactic.NormMethods._
 import org.scalatest.Assertion
 import qq.cc.QQRuntimeException._
 import qq.cc.{QQRuntimeError, Runner, RuntimeErrs, TypeError}
@@ -17,7 +16,7 @@ class RunnerTest extends QQAsyncTestSuite {
   def runTest(test: RunnerTestCase): Future[Assertion] =
     Runner
       .run(test.program)(test.input)
-      .value
+      .rightValue
       .map(_.map(_.map(_.norm)) should be(test.expectedOutputOrException.map(_.map(_.norm))))
       .runAsync
 

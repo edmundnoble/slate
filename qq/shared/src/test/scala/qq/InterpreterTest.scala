@@ -8,7 +8,7 @@ class InterpreterTest extends QQAsyncTestSuite {
   import Interpreter._
 
   def runInterpreter(interpreter: Interpreter, input: String, next: String*): Task[(String, Interpreter)] = {
-    val run = interpreter.resume(input).value.value
+    val run = interpreter.resume(input).value.rightValue
     if (next.isEmpty) {
       run
     } else {
