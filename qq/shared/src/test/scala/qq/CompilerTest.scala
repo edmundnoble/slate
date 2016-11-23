@@ -4,14 +4,14 @@ import cats.Eval
 import cats.implicits._
 import monix.eval.Task
 import org.scalatest.Assertion
-import qq.cc.{CompiledFilter, QQCompiler, QQRuntimeException}
+import qq.cc.{CompiledFilter, QQCompiler, QQRuntimeException, RuntimeErrs}
 import qq.data.{FilterAST, JSON, QQDSL, SelectKey}
 import qq.util.Recursion.RecursionEngine
 
 import scala.concurrent.Future
 
 // data representation of a compiler test case
-case class CompilerTestCase(input: JSON, program: FilterAST, expectedOutput: Either[QQRuntimeException, Vector[JSON]])(implicit val recEngine: RecursionEngine)
+case class CompilerTestCase(input: JSON, program: FilterAST, expectedOutput: Either[RuntimeErrs, Vector[JSON]])(implicit val recEngine: RecursionEngine)
 
 class CompilerTest extends QQAsyncTestSuite {
 
@@ -127,7 +127,7 @@ class CompilerTest extends QQAsyncTestSuite {
         ),
         getPathS(collectResults) | setPath(Vector(selectKey("key1"), selectKey("key2")), getPathS(selectKey("out1"))),
         Either.right(Vector(JSON.obj("key1" -> JSON.Obj("key2" -> JSON.Str("output1")), "out1" -> JSON.Str("output1")),
-        JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("output2")), "out1" -> JSON.Str("output2"))))
+          JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("output2")), "out1" -> JSON.Str("output2"))))
       )
     )
 
@@ -162,6 +162,21 @@ class CompilerTest extends QQAsyncTestSuite {
           JSON.Str("output1"),
           JSON.Obj("out1" -> JSON.Str("output2"))
         )))
+      ),
+      CompilerTestCase(
+        JSON.num(2),
+        modifyPath(Vector(collectResults), getPath(Vector.empty)),
+        QQRuntimeException.typeError("collect results from", "array" -> JSON.num(2))
+      ),
+      CompilerTestCase(
+        JSON.num(2),
+        modifyPath(Vector(selectKey("key")), getPath(Vector.empty)),
+        QQRuntimeException.typeError("select key \"key\" in", "object" -> JSON.num(2))
+      ),
+      CompilerTestCase(
+        JSON.num(2),
+        modifyPath(Vector(selectIndex(2)), getPath(Vector.empty)),
+        QQRuntimeException.typeError("select index 2 in", "array" -> JSON.num(2))
       )
     )
 
