@@ -46,6 +46,12 @@ class LocalOptimizerTest extends QQSyncTestSuite {
     ) shouldBe constNumber(2)
   }
 
+  "fuseGetPathOperation" in {
+    optimizeFilter(
+      getPath(List(selectKey("key1"), selectKey("key2"))) | getPath(List(selectKey("key3", selectKey("key4"))))
+    ) shouldBe getPath(List(selectKey("key1"), selectKey("key2"), selectKey("key3"), selectKey("key4")))
+  }
+
   "no stack overflow on deeply nested filters" taggedAs StackTest in {
     @annotation.tailrec def enlistRec(f: FilterAST, i: Int): FilterAST =
       if (i == 0) f

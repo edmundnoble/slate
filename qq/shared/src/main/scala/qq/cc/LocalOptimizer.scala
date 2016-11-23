@@ -78,12 +78,19 @@ object LocalOptimizer {
     case comp => comp.children.exists(identity)
   }
 
+  final def fuseGetPathOperation(fr: FilterComponent[FilterAST]): Option[FilterComponent[FilterAST]] = fr match {
+    case ComposeFilters(Fix(PathOperation(components1, PathGet)), Fix(PathOperation(components2, PathGet))) =>
+      Some(PathOperation[FilterAST](components1 ++ components2, PathGet))
+    case _ => None
+  }
+
   // a function applying each of the local optimizations available, in rounds,
   // until none of the optimizations applies anymore
   @inline final def localOptimizationsƒ(tf: FilterAST)(implicit rec: RecursionEngine): FilterAST =
   repeatedly[FilterAST] { tf =>
     val unfixed = tf.unFix
-    (collectEnlist(unfixed) orElse idCompose(unfixed) orElse constMathReduce(unfixed) orElse unlet(unfixed) orElse letFree(unfixed)) map embed
+    (collectEnlist(unfixed) orElse idCompose(unfixed) orElse constMathReduce(unfixed) orElse
+      unlet(unfixed) orElse letFree(unfixed) orElse fuseGetPathOperation(unfixed)) map embed
   }(tf)
 
   // localOptimizationsƒ recursively applied deep into a filter
