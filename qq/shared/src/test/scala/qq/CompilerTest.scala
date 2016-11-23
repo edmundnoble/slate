@@ -128,6 +128,21 @@ class CompilerTest extends QQAsyncTestSuite {
         getPathS(collectResults) | setPath(Vector(selectKey("key1"), selectKey("key2")), getPathS(selectKey("out1"))),
         Either.right(Vector(JSON.obj("key1" -> JSON.Obj("key2" -> JSON.Str("output1")), "out1" -> JSON.Str("output1")),
           JSON.Obj("key1" -> JSON.Obj("key2" -> JSON.Str("output2")), "out1" -> JSON.Str("output2"))))
+      ),
+      CompilerTestCase(
+        JSON.num(2),
+        setPath(Vector(collectResults), getPath(Vector.empty)),
+        QQRuntimeException.typeError("collect results from", "array" -> JSON.num(2))
+      ),
+      CompilerTestCase(
+        JSON.num(2),
+        setPath(Vector(selectKey("key")), getPath(Vector.empty)),
+        QQRuntimeException.typeError("select key \"key\" in", "object" -> JSON.num(2))
+      ),
+      CompilerTestCase(
+        JSON.num(2),
+        setPath(Vector(selectIndex(2)), getPath(Vector.empty)),
+        QQRuntimeException.typeError("select index 2 in", "array" -> JSON.num(2))
       )
     )
 

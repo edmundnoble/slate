@@ -71,7 +71,7 @@ object QQRuntime {
             asMap.value.get(key).fold((JSON.`null` +: Vector.empty[JSON]).pureEff[R])(
               setPath[R](rest, _, smallerStructure).map(_.map(nv => asMap.copy(value = asMap.value.updated(key, nv)): JSON))
             )
-          case v: JSON => typeErrorE[R, Vector[JSON]]("select key \"" + key + "\" from ", "array" -> v)
+          case v: JSON => typeErrorE[R, Vector[JSON]]("select key \"" + key + "\" in", "object" -> v)
         }
         case SelectIndex(index: Int) => biggerStructure match {
           case arr: JSON.Arr =>
