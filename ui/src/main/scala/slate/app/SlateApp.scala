@@ -38,8 +38,6 @@ object SlateApp extends scalajs.js.JSApp {
 
   private[this] val logger = LoggerFactory.getLogger("DashboarderApp")
 
-  final class EmptyResponseException extends java.lang.Exception("Empty response")
-
   sealed abstract class BootRefreshPolicy {
     def shouldRefresh(secondsAge: Int): Boolean
   }
