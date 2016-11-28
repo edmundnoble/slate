@@ -180,12 +180,13 @@ object StorageFS {
   } yield ()
 
   def runSealedStorageProgram[I, O, U, F[_] : Monad, A](prog: Eff[I, A], underlying: Storage[F],
+                                                        transform: Storage[F] => Storage[F],
                                                         nonceSource: () => String,
                                                         storageRoot: StorageFS.StorageKey[StorageFS.Dir])(
                                                          implicit ev: Member.Aux[StorageAction, I, U],
                                                          ev2: Member.Aux[F, O, U]
                                                        ): Eff[O, A] = {
-    val storageFS = new StorageFS(underlying, nonceSource, storageRoot)
+    val storageFS = transform(StorageFS(underlying, nonceSource, storageRoot))
     val loggedProgram: Eff[O, (A, Vector[String])] =
       StorageProgram.runProgram[F, O, I, U, (A, Vector[String])](storageFS,
         StorageProgram.withLoggedKeys(prog)
@@ -206,12 +207,13 @@ object StorageFS {
   }
 
   def runSealedStorageProgramInto[I, U, F[_] : Monad, A](prog: Eff[I, A], underlying: Storage[F],
+                                                         transform: Storage[F] => Storage[F],
                                                          nonceSource: () => String,
                                                          storageRoot: StorageFS.StorageKey[StorageFS.Dir])(
                                                           implicit ev: Member.Aux[StorageAction, I, U],
                                                           ev2: Member[F, U]
                                                         ): Eff[U, A] = {
-    val storageFS = new StorageFS(underlying, nonceSource, storageRoot)
+    val storageFS = transform(StorageFS(underlying, nonceSource, storageRoot))
     type mem = Member.Aux[Writer[Vector[String], ?], Fx.prepend[Writer[Vector[String], ?], I], I]
     val loggedProgram: Eff[U, (A, Vector[String])] =
       StorageProgram.runProgramInto[F, I, U, (A, Vector[String])](storageFS,
@@ -238,7 +240,7 @@ object StorageFS {
 
 import slate.storage.StorageFS._
 
-final class StorageFS[F[_] : Monad](underlying: Storage[F], nonceSource: () => String, dirKey: StorageKey[Dir]) extends Storage[F] {
+final case class StorageFS[F[_] : Monad](underlying: Storage[F], nonceSource: () => String, dirKey: StorageKey[Dir]) extends Storage[F] {
 
   import StorageFS._
 
