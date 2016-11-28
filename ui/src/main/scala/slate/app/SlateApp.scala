@@ -15,11 +15,11 @@ import qq.Platform.Rec._
 import qq.cc.{CompiledFilter, QQCompilationException, QQCompiler, QQRuntimeException}
 import qq.data.{FilterAST, JSON, Program}
 import shapeless.{:+:, CNil}
-import slate.app.builtin.{GCalendarApp, GmailApp, JIRAApp, TodoistApp}
+import slate.app.builtin.{GCalendarApp, GmailApp, TodoistApp}
 import slate.app.caching.Caching
 import slate.app.caching.Program.ErrorGettingCachedProgram
 import slate.models.{AppModel, DatedAppContent, ExpandableContentModel}
-import slate.storage.{DomStorage, StorageAction, StorageFS, StorageProgram}
+import slate.storage._
 import slate.util.LoggerFactory
 import slate.util.Util._
 import slate.views.AppView.AppProps
@@ -31,7 +31,7 @@ import scala.scalajs.js.annotation.JSExport
 import scala.util.{Success, Try}
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
-import Observable.{fromTask=>toObservable}
+import Observable.{fromTask => toObservable}
 
 @JSExport
 object SlateApp extends scalajs.js.JSApp {
@@ -85,13 +85,7 @@ object SlateApp extends scalajs.js.JSApp {
           "redirect_uri" -> JSON.Str("https://ldhbkcmhfmoaepapkcopmigahjdiekil.chromiumapp.org/provider_cb")
         ))
       ),
-      SlateProgram(3, "JIRA", BootRefreshPolicy.Never, "https://dashboarder.atlassian.net", JIRAApp.program,
-        JSON.Obj(
-          "username" -> JSON.Str(Creds.jiraUsername),
-          "password" -> JSON.Str(Creds.jiraPassword)
-        )
-      ),
-      SlateProgram(4, "Google Calendar", BootRefreshPolicy.Always, "https://calendar.google.com", GCalendarApp.program, JSON.ObjMap(Map()))
+      SlateProgram(3, "Google Calendar", BootRefreshPolicy.Always, "https://calendar.google.com", GCalendarApp.program, JSON.ObjMap(Map()))
     )
   }
 
@@ -122,7 +116,7 @@ object SlateApp extends scalajs.js.JSApp {
     type StorageOrTask = Fx.fx2[StorageAction, Task]
 
     StorageProgram.runProgramInto(DomStorage.Local, prepareProgramFolder.into[StorageOrTask]).flatMap { programDirKey =>
-      StorageFS.runSealedStorageProgramInto(prog.into[StorageOrTask], DomStorage.Local, nonceSource, programDirKey)
+      StorageFS.runSealedStorageProgramInto(prog.into[StorageOrTask], DomStorage.Local, CompressedStorage[Task], nonceSource, programDirKey)
         .map(_.map(_.map(_.leftMap(r => Basis[ErrorCompilingPrograms, ErrorGettingCachedProgram].inverse(Right(r)))
           .flatMap {
             QQCompiler.compileProgram(SlatePrelude, _).leftMap(inj[ErrorCompilingPrograms][QQCompilationException])
@@ -201,7 +195,7 @@ object SlateApp extends scalajs.js.JSApp {
                   .toOption.flatMap(DatedAppContent.pkl.read.lift)
                   .toRight(InvalidJSON(encodedModels))
             })
-            .map(ms => (p, ms))), DomStorage.Local, nonceSource, dataDirKey
+            .map(ms => (p, ms))), DomStorage.Local, CompressedStorage[Task], nonceSource, dataDirKey
       ).detach
       cachedPrograms = cachedContent.map {
         case (p, models) => models.map(p.withProgram)
@@ -230,7 +224,7 @@ object SlateApp extends scalajs.js.JSApp {
           injectedErrors.map(errorsOrContent =>
             errorsOrContent.traverse[Eff[Fx.fx1[Task], ?], Unit](r =>
               StorageProgram.runProgram(
-                new StorageFS(DomStorage.Local, nonceSource, dataDirKey),
+                CompressedStorage(StorageFS(DomStorage.Local, nonceSource, dataDirKey)),
                 StorageProgram.update(makeDataKey(title, input), DatedAppContent.pkl.write(r).toString())
               )
             ).detach.as(AppProps(id, input, title, titleLink, Some(errorsOrContent.map(o => AppModel(o.content, o.date)))))

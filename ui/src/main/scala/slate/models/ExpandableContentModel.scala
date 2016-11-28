@@ -53,6 +53,4 @@ object ExpandableContentModel {
         Js.Arr(objects: _*)
       }
     }
-
-
 }
