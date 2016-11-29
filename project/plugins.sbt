@@ -1,5 +1,3 @@
-addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-M13")
-
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.13")
 
 addSbtPlugin("net.lullabyte" % "sbt-chrome-plugin" % "0.2.1")
