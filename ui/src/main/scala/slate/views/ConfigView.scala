@@ -6,7 +6,7 @@ import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.vdom.DomFrag
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import qq.data.JSON.{Bottom, JSONOrigin, Top}
+import qq.data.JSON._
 import qq.data.{JSON, LJSON, SJSON}
 import slate.app.SlateProgramConfig
 import slate.app.refresh.BootRefreshPolicy
@@ -143,67 +143,40 @@ object ConfigView {
     })
 
   def renderBranch(l: SJSON, lens: SJSON => JSON, subject: JSON => Unit): ReactElement = {
-    def makeArrayButtons(origin: JSONOrigin, seq: Vector[JSON]): Seq[ReactElement] = origin match {
-      case Top => Seq(
-        makeIconFAB("add", Callback {
-          subject(lens(JSON.Arr(JSON.Str("") +: seq)))
-        }),
-        makeIconFAB("remove", Callback {
-          subject(lens(JSON.Arr(seq.tail)))
-        })
-      )
-      case Bottom => Seq(
-        makeIconFAB("add", Callback {
-          subject(lens(JSON.Arr(seq :+ JSON.Str(""))))
-        }),
-        makeIconFAB("remove", Callback {
-          subject(lens(JSON.Arr(seq.init)))
-        })
-      )
+    def makeAddButton[J](origin: JSONOrigin, addDefault: J, values: Vector[J], construct: Vector[J] => JSON): ReactElement = makeIconFAB("add", Callback {
+      subject(lens(construct(if (origin == Top) values :+ addDefault else addDefault +: values)))
+    })
+    def makeRemoveButton[J](origin: JSONOrigin, values: Vector[J], construct: Vector[J] => JSON): ReactElement =
+      makeIconFAB("remove", Callback {
+        subject(lens(construct(if (origin == Top) values.init else values.tail)))
+      })
+    def makeModifierButtons[J](origin: JSONOrigin, values: Vector[J], addDefault: J, construct: Vector[J] => JSON): Seq[ReactElement] = {
+      val addButton = makeAddButton[J](origin, addDefault, values, construct)
+      val removeButton = makeRemoveButton[J](origin, values, construct)
+      if (values.nonEmpty) {
+        removeButton :: addButton :: Nil
+      } else origin match {
+        case Bottom => addButton :: Nil
+        case Top => Nil
+      }
     }
-    def makeObjectButtons(origin: JSONOrigin, map: Vector[(String, JSON)]): Seq[ReactElement] = origin match {
-      case Top =>
-        if (map.nonEmpty) {
-          val addButton = makeIconFAB("add", Callback {
-            subject(lens(JSON.ObjList(("" -> JSON.Str("")) +: map)))
-          })
-          val removeButton = makeIconFAB("remove", Callback {
-            subject(lens(JSON.ObjList(map.tail)))
-          })
-          removeButton :: addButton :: Nil
-        } else {
-          Nil
-        }
-      case Bottom =>
-        val addButton = makeIconFAB("add", Callback {
-          subject(lens(JSON.ObjList(map :+ ("" -> JSON.Str("")))))
-        })
-        if (map.nonEmpty) {
-          val removeButton = makeIconFAB("remove", Callback {
-            subject(lens(JSON.ObjList(map.init)))
-          })
-          removeButton :: addButton :: Nil
-        } else {
-          addButton :: Nil
-        }
-    }
+    val defaultArrayElement = JSON.str("")
+    val defaultObjectElement = "" -> JSON.str("")
     div(
       l match {
         case JSON.ObjList(kvPairs) =>
           Seq(
-            makeObjectButtons(Top, kvPairs): TagMod,
-            kvPairs.zipWithIndex.flatMap { case ((k, v), idx) =>
-              Seq(
-                makeSubKeyField(k, kn => JSON.ObjList(kvPairs.updated(idx, kn -> v)), subject),
-                makeSubJSONFields(v, vn => JSON.ObjList(kvPairs.updated(idx, k -> vn)), subject)
-              )
-            }: TagMod,
-            makeObjectButtons(Bottom, kvPairs): TagMod
+            makeModifierButtons(Top, kvPairs, defaultObjectElement, JSON.ObjList(_)): TagMod,
+            kvPairs.toIterator.zipWithIndex.map { case ((k, v), idx) =>
+              makeSubKeyField(k, kn => JSON.ObjList(kvPairs.updated(idx, kn -> v)), subject) +
+                (makeSubJSONFields(v, vn => JSON.ObjList(kvPairs.updated(idx, k -> vn)), subject): TagMod)
+            }.toList: TagMod,
+            makeModifierButtons(Bottom, kvPairs, defaultObjectElement, JSON.ObjList(_)): TagMod
           )
         case JSON.Arr(values) => Seq(
-          makeArrayButtons(Top, values): TagMod,
+          makeModifierButtons(Top, values, defaultArrayElement, JSON.Arr(_)): TagMod,
           values.zipWithIndex.map { case (j, idx) => makeSubJSONFields(j, jn => JSON.Arr(values.updated(idx, jn)), subject) }: TagMod,
-          makeArrayButtons(Bottom, values): TagMod
+          makeModifierButtons(Bottom, values, defaultArrayElement, JSON.Arr(_)): TagMod
         )
       }
     )

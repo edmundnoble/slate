@@ -134,8 +134,10 @@ object JSON {
   case object Bottom extends JSONOrigin
 
   sealed trait JSONModification
-  case object AddTo extends JSONModification
-  case object Delete extends JSONModification
+  case class AddTo(origin: JSONOrigin) extends JSONModification
+  case class DeleteFrom(origin: JSONOrigin) extends JSONModification
+  case class UpdateValue(index: Int, newValue: JSON) extends JSONModification
+  case class UpdateKey(index: Int, newKey: String) extends JSONModification
 
   import fastparse.all._
 
