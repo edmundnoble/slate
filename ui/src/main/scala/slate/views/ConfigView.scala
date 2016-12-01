@@ -74,6 +74,10 @@ object ConfigView {
       overflow.hidden
     )
 
+    val modifierButtons = style(
+      display.inline
+    )
+
     val animationGroup = new slate.views.ScrollFadeContainer("filter-group")
 
   }
@@ -116,12 +120,14 @@ object ConfigView {
       ),
       "bootRefreshPolicy", BootRefreshPolicy.Never, inject, subject)
 
-  def makeTextFieldId(): String = scala.util.Random.nextInt(100).toString
+  def makeTextFieldId(): String = "textField" + scala.util.Random.nextInt(998).toString
 
   def makeTextField(default: String, cb: String => Callback): ReactElement = {
+    val madeId = makeTextFieldId()
     div(`class` := "mdl-textfield mdl-js-textfield",
-      input(`class` := "mdl-textfield__input", `type` := "text", value := default,
-        onChange ==> ((e: ReactEventI) => cb(e.target.value)))
+      input(`class` := "mdl-textfield__input", `type` := "text", id := madeId,
+        onChange ==> ((e: ReactEventI) => cb(e.target.value))),
+      label(`class` := "mdl-textfield__label", `for` := madeId, default)
     )
   }
 
@@ -143,42 +149,43 @@ object ConfigView {
     })
 
   def renderBranch(l: SJSON, lens: SJSON => JSON, subject: JSON => Unit): ReactElement = {
-    def makeAddButton[J](origin: JSONOrigin, addDefault: J, values: Vector[J], construct: Vector[J] => JSON): ReactElement = makeIconFAB("add", Callback {
-      subject(lens(construct(if (origin == Top) values :+ addDefault else addDefault +: values)))
+    def makeAddButton[J](origin: JSONOrigin, addDefault: J, values: Vector[J], construct: Vector[J] => SJSON): ReactElement = makeIconFAB("add", Callback {
+      subject(lens(construct(if (origin == Top) addDefault +: values else values :+ addDefault)))
     })
-    def makeRemoveButton[J](origin: JSONOrigin, values: Vector[J], construct: Vector[J] => JSON): ReactElement =
+    def makeRemoveButton[J](origin: JSONOrigin, values: Vector[J], construct: Vector[J] => SJSON): ReactElement =
       makeIconFAB("remove", Callback {
-        subject(lens(construct(if (origin == Top) values.init else values.tail)))
+        subject(lens(construct(if (origin == Top) values.tail else values.init)))
       })
-    def makeModifierButtons[J](origin: JSONOrigin, values: Vector[J], addDefault: J, construct: Vector[J] => JSON): Seq[ReactElement] = {
+    def makeModifierButtons[J](origin: JSONOrigin, values: Vector[J], addDefault: J, construct: Vector[J] => SJSON): ReactElement = {
       val addButton = makeAddButton[J](origin, addDefault, values, construct)
       val removeButton = makeRemoveButton[J](origin, values, construct)
-      if (values.nonEmpty) {
+      val buttons = if (values.nonEmpty) {
         removeButton :: addButton :: Nil
       } else origin match {
         case Bottom => addButton :: Nil
         case Top => Nil
       }
+      div(Styles.modifierButtons, buttons)
     }
     val defaultArrayElement = JSON.str("")
     val defaultObjectElement = "" -> JSON.str("")
     div(
-      l match {
+      (l match {
         case JSON.ObjList(kvPairs) =>
           Seq(
-            makeModifierButtons(Top, kvPairs, defaultObjectElement, JSON.ObjList(_)): TagMod,
+            makeModifierButtons[(String, JSON)](Top, kvPairs, defaultObjectElement, JSON.ObjList): TagMod,
             kvPairs.toIterator.zipWithIndex.map { case ((k, v), idx) =>
               makeSubKeyField(k, kn => JSON.ObjList(kvPairs.updated(idx, kn -> v)), subject) +
                 (makeSubJSONFields(v, vn => JSON.ObjList(kvPairs.updated(idx, k -> vn)), subject): TagMod)
             }.toList: TagMod,
-            makeModifierButtons(Bottom, kvPairs, defaultObjectElement, JSON.ObjList(_)): TagMod
+            makeModifierButtons[(String, JSON)](Bottom, kvPairs, defaultObjectElement, JSON.ObjList): TagMod
           )
         case JSON.Arr(values) => Seq(
-          makeModifierButtons(Top, values, defaultArrayElement, JSON.Arr(_)): TagMod,
+          makeModifierButtons[JSON](Top, values, defaultArrayElement, JSON.Arr(_)): TagMod,
           values.zipWithIndex.map { case (j, idx) => makeSubJSONFields(j, jn => JSON.Arr(values.updated(idx, jn)), subject) }: TagMod,
-          makeModifierButtons(Bottom, values, defaultArrayElement, JSON.Arr(_)): TagMod
+          makeModifierButtons[JSON](Bottom, values, defaultArrayElement, JSON.Arr(_)): TagMod
         )
-      }
+      }): _*
     )
   }
 
