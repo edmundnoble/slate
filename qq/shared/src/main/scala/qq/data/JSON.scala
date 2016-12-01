@@ -14,6 +14,9 @@ sealed trait JSON {
   override def toString: String = JSON.render(this)
 }
 
+sealed trait SJSON extends JSON
+sealed trait LJSON extends JSON
+
 object JSON {
 
   def upickleToJSONRec: RecursiveFunction[Js.Value, JSON] = new RecursiveFunction[Js.Value, JSON] {
@@ -75,19 +78,19 @@ object JSON {
     renderRec(v).mkString
   }
 
-  case object True extends JSON
+  case object True extends LJSON
   def `true`: JSON = True
 
-  case object False extends JSON
+  case object False extends LJSON
   def `false`: JSON = False
 
-  case object Null extends JSON
+  case object Null extends LJSON
   def `null`: JSON = Null
 
-  final case class Str(value: String) extends JSON
+  final case class Str(value: String) extends LJSON
   def str(value: String): JSON = Str(value)
 
-  final case class Num(value: Double) extends JSON
+  final case class Num(value: Double) extends LJSON
   def num(value: Double): JSON = Num(value)
 
   sealed trait Obj extends JSON {
@@ -102,7 +105,7 @@ object JSON {
     private[Obj] val empty = ObjList(Vector.empty)
     def apply(): ObjList = empty
   }
-  final case class ObjList(value: Vector[(String, JSON)]) extends Obj {
+  final case class ObjList(value: Vector[(String, JSON)]) extends Obj with SJSON {
     override def toMap: ObjMap = ObjMap(value.toMap)
     override def toList: ObjList = this
     override def map[B, That](f: ((String, JSON)) => B)(implicit cbf: CanBuildFrom[Any, B, That]): That =
@@ -116,9 +119,52 @@ object JSON {
   }
   def obj(values: (String, JSON)*): JSON = Obj(values: _*)
 
-  final case class Arr(value: Vector[JSON]) extends JSON
+  final case class Arr(value: Vector[JSON]) extends SJSON
   object Arr {
     def apply(values: JSON*): Arr = Arr(values.toVector)
   }
   def arr(values: JSON*): JSON = Arr(values.toVector)
+
+  sealed trait JSONF[A] extends Any
+  case class ObjectF[A](labelled: Map[String, A]) extends AnyVal with JSONF[A]
+  case class ArrayF[A](elems: Vector[A]) extends AnyVal with JSONF[A]
+
+  sealed trait JSONOrigin
+  case object Top extends JSONOrigin
+  case object Bottom extends JSONOrigin
+
+  sealed trait JSONModification
+  case object AddTo extends JSONModification
+  case object Delete extends JSONModification
+
+  import fastparse.all._
+
+  def decompose(json: JSON): LJSON Either SJSON = json match {
+    case l: LJSON => Left(l)
+    case m: ObjMap => Right(m.toList)
+    case r: SJSON => Right(r)
+  }
+
+  val Digits = '0' to '9' contains (_: Char)
+  val digits = P(CharsWhile(Digits))
+  val exponent = P(CharIn("eE") ~ CharIn("+-").? ~ digits)
+  val fractional = P("." ~ digits)
+  val integral = P("0" | CharIn('1' to '9') ~ digits.?)
+  val number = P((CharIn("+-").? ~ integral ~ fractional.? ~ exponent.?).!.map(_.toDouble))
+  val parserForLJSON = P(
+    qq.cc.Parser.escapedStringLiteral.map(Str) |
+      number.map(Num) |
+      LiteralStr("false").map(_ => False) |
+      LiteralStr("true").map(_ => True) |
+      LiteralStr("null").map(_ => Null)
+  )
+
+  def renderLJSON(l: LJSON): String = l match {
+    case Str(string) => "\"" + string + "\""
+    case Num(num) => num.toString
+    case True => "true"
+    case False => "false"
+    case Null => "null"
+  }
+
 }

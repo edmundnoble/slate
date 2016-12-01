@@ -4,9 +4,12 @@ package views
 import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.{ReactComponentB, ReactNode, TopNode}
 import monix.execution.Scheduler
-import qq.data.JSON
+import monix.reactive.Observable
 import slate.app.SlateApp.AllErrors
+import slate.util.ExternalVar
+import slate.app.SlateProgramConfig
 import slate.models.AppModel
+import slate.views.ConfigView.ConfigViewProps
 import slate.views.ExpandableContentView.ExpandableContentProps
 
 import scala.scalajs.js
@@ -79,10 +82,17 @@ object AppView {
   implicit val errorReusability: Reusability[AllErrors] =
     Reusability.byRef
 
-  final case class AppProps(id: Int, input: JSON, title: String, titleLink: String, model: Option[AllErrors Either AppModel])
+  final case class AppProps(id: Int, defaultConfig: SlateProgramConfig, title: String, titleLink: String, model: Option[AllErrors Either AppModel])
 
   object AppProps {
     implicit val reusability: Reusability[AppProps] =
+      Reusability.byRefOr_==
+  }
+
+  final case class AppState(config: SlateProgramConfig)
+
+  object AppState {
+    implicit val reusability: Reusability[AppState] =
       Reusability.byRefOr_==
   }
 
@@ -115,14 +125,17 @@ object AppView {
     }
   }
 
-  def builder(implicit sch: Scheduler): ReactComponentB[AppProps, Unit, Unit, TopNode] = {
+  case class AppViewOut(reactElement: ReactComponentB[AppProps, Unit, Unit, TopNode],
+                        config: Observable[SlateProgramConfig])
+
+  def builder(extVar: ExternalVar[SlateProgramConfig])(implicit sch: Scheduler): ReactComponentB[AppProps, Unit, Unit, TopNode] = {
     import japgolly.scalajs.react.vdom.all._
 
     import scalacss.ScalaCssReact._
 
     ReactComponentB[AppProps]("Expandable content view")
       .stateless
-      .renderP { (_, props) =>
+      .renderP((_, props) =>
         div(Styles.panel, key := props.id,
           div(Styles.header,
             div(ExpandableContentView.Styles.headerLeft,
@@ -135,19 +148,31 @@ object AppView {
               )
             )
           ),
-          div(Styles.content,
-            Styles.animationGroup(
-              props.model.fold[List[ReactNode]](
-                LoadingView.builder() :: Nil
-              )(m => m.fold[List[ReactNode]]({ ex =>
-                ErrorView.builder(ex) :: Nil
-              }, appModel => appModel.content.map { model =>
-                ExpandableContentView.builder.build(ExpandableContentProps(model, initiallyExpanded = false))
-              })): _*
+          div(`class` := "mdl-tabs mdl-js-tabs mdl-js-ripple-effect mdl-js-ripple-effect--ignore-events",
+            div(`class` := "mdl-tabs__tab-bar",
+              a(href := "#content-panel", `class` := "mdl-tabs__tab is-active",
+                "Content"),
+              a(href := "#config-panel", `class` := "mdl-tabs__tab", "Config")
+            ),
+            div(`class` := "mdl-tabs__panel is-active", id := "content-panel",
+              div(Styles.content,
+                Styles.animationGroup(
+                  props.model.fold[List[ReactNode]](
+                    LoadingView.builder() :: Nil
+                  )(m => m.fold[List[ReactNode]]({ ex =>
+                    ErrorView.builder(ex) :: Nil
+                  }, appModel => appModel.content.map { model =>
+                    ExpandableContentView.builder.build(ExpandableContentProps(model, initiallyExpanded = false))
+                  })): _*
+                )
+              )
+            ),
+            div(`class` := "mdl-tabs__panel", id := "config-panel",
+              ConfigView.builder(extVar).build(ConfigViewProps(extVar.getter()))
             )
           )
         )
-      }
+      )
       .configure(Reusability.shouldComponentUpdate)
   }
 

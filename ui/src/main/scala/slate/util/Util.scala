@@ -12,12 +12,17 @@ import monix.reactive.Observable
 import scodec.Attempt
 import shapeless.{Coproduct, Inl, Inr}
 
+import scala.concurrent.duration.FiniteDuration
+
 object Util {
 
-  def raceFold[A, B](ob: Seq[Task[A]])(z: B)(fold: (B, A) => B): Observable[B] = {
-    Observable.fromIterable(ob)
-      .mapAsync(parallelism = 6)(x => x)
-      .scan(z)(fold)
+  def raceFold[A, B](ob: Seq[Task[A]])(z: B)(fold: (B, A) => B)(parallelism: Int, throttleLastPeriod: FiniteDuration): Observable[B] = {
+    if (ob.isEmpty) Observable.now(z)
+    else
+      Observable.fromIterable(ob)
+        .mapAsync(parallelism)(x => x)
+        .throttleLast(throttleLastPeriod)
+        .scan(z)(fold)
   }
 
   implicit val tagmodMonoid: Monoid[TagMod] = new Monoid[TagMod] {
