@@ -145,7 +145,7 @@ object JSON {
   def decompose(json: JSON): LJSON Either SJSON = json match {
     case l: LJSON => Left(l)
     case m: ObjMap => Right(m.toList)
-    case r: SJSON => Right(r)
+    case s: SJSON => Right(s)
   }
 
   val Digits = '0' to '9' contains (_: Char)
