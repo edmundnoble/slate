@@ -136,7 +136,8 @@ object JSON {
   sealed trait JSONModification
   case class AddTo(origin: JSONOrigin) extends JSONModification
   case class DeleteFrom(origin: JSONOrigin) extends JSONModification
-  case class UpdateValue(index: Int, newValue: JSON) extends JSONModification
+  case class SetTo(newValue: LJSON) extends JSONModification
+  case class RecIdx(index: Int, modification: JSONModification) extends JSONModification
   case class UpdateKey(index: Int, newKey: String) extends JSONModification
 
   import fastparse.all._

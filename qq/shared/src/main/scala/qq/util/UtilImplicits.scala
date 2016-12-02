@@ -46,21 +46,21 @@ trait UtilImplicits {
 
   // sum type encoded with a single bit
   implicit def eitherCodec[E, A](implicit E: Lazy[Codec[E]], A: Lazy[Codec[A]]): Codec[E Either A] = {
-    val enc = Encoder.apply {
-      (v: E Either A) =>
-        v.fold(e => E.value.encode(e).map(BitVector.one ++ _), a => A.value.encode(a).map(BitVector.zero ++ _))
+    val enc = Encoder { (v: E Either A) =>
+      v.fold(
+        e => E.value.encode(e).map(BitVector.one ++ _),
+        a => A.value.encode(a).map(BitVector.zero ++ _)
+      )
     }
-    val dec = Decoder.apply {
-      (in: BitVector) =>
-        if (in.isEmpty) {
-          Attempt.failure(Err.insufficientBits(1, 0))
-        } else {
-          if (in.head) {
-            E.value.decode(in.tail).map(_.map(Either.left))
-          } else {
-            A.value.decode(in.tail).map(_.map(Either.right))
-          }
-        }
+    val dec = Decoder { (in: BitVector) =>
+      if (in.isEmpty) {
+        Attempt.failure(Err.insufficientBits(1, 0))
+      } else {
+        if (in.head)
+          E.value.decode(in.tail).map(_.map(Either.left))
+        else
+          A.value.decode(in.tail).map(_.map(Either.right))
+      }
     }
     Codec(enc, dec)
   }

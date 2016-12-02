@@ -4,11 +4,13 @@ package caching
 
 import cats.implicits._
 import fastparse.all.ParseError
+import org.atnos.eff.Eff
 import qq.cc.{LocalOptimizer, _}
 import qq.data
 import qq.util.Recursion.RecursionEngine
 import scodec.bits.BitVector
 import shapeless.{:+:, CNil}
+import slate.storage.StorageAction._storageAction
 import slate.util.Util._
 
 // what goes into caching a QQ program in slate
@@ -34,24 +36,24 @@ object Program {
 
   // cache optimized, parsed programs using their hashcode as a key
   // store them as base64-encoded bytecode
-  def getCachedProgramByHash(qqProgram: SlateProgram[String])(implicit rec: RecursionEngine): StorageProgram[ErrorGettingCachedProgram Either data.Program[data.FilterAST]] = {
+  def getCachedProgramByHash[R: _storageAction](qqProgram: SlateProgram[String])(implicit rec: RecursionEngine): Eff[R, ErrorGettingCachedProgram Either data.Program[data.FilterAST]] = {
 
     import qq.protocol.FilterProtocol
 
-    Caching.getCachedByPrepare[ProgramSerializationException, ParseError, data.Program[data.FilterAST], SlateProgram[String]](qqProgram)(
-      prog => prog.title + prog.program.hashCode.toString, { (program: data.Program[data.FilterAST]) =>
-        FilterProtocol.programCodec
-          .encode(program)
-          .toEither
-          .bimap(InvalidBytecode(_), _.toBase64)
-      }, { (_, encodedProgram) =>
+    Caching.getCachedByPrepare[R, ProgramSerializationException, ParseError, data.Program[data.FilterAST], SlateProgram[String]](qqProgram)(
+      prog => prog.title + prog.program.hashCode.toString,
+      FilterProtocol.programCodec
+        .encode(_)
+        .toEither
+        .bimap(InvalidBytecode(_), _.toBase64),
+      (_, encodedProgram) =>
         BitVector.fromBase64(encodedProgram)
           .toRight(InvalidBase64(encodedProgram))
           .flatMap(
             FilterProtocol.programCodec.decode(_)
               .toEither.bimap(InvalidBytecode(_): ProgramSerializationException, _.value)
-          )
-      }, slateProgram => parseAndOptimizeProgram(slateProgram.program)
+          ),
+      slateProgram => parseAndOptimizeProgram(slateProgram.program)
     )
   }
 

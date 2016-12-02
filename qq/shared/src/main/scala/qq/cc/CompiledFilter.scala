@@ -47,7 +47,7 @@ object CompiledFilter {
   def asBinding(name: String, as: CompiledFilter, in: CompiledFilter): CompiledFilter = singleton { (j: JSON) =>
     for {
       bindings <- eff.reader.ask[CompiledFilterStack, VarBindings]
-      results <- as.apply(j)
+      results <- as(j)
       inRan <- results.traverseA(r => eff.reader.runReader(bindings + (name -> VarBinding(name, r)))(in(j))).into[CompiledFilterStack]
     } yield inRan.flatten
   }

@@ -162,8 +162,7 @@ object StorageFS {
             ))).as(DirMade(subDirKey))
         }(dirExistsAlready => (AlreadyPresent(dirExistsAlready): MkDirResult).pureEff[R])
     }
-  }
-    yield key
+  } yield key
 
 
   def removeFile[R: _storageAction](fileName: String, dirKey: StorageKey[Dir]): Eff[R, Unit] = for {
