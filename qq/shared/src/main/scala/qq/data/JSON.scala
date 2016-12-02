@@ -154,7 +154,7 @@ object JSON {
   val fractional = P("." ~ digits)
   val integral = P("0" | CharIn('1' to '9') ~ digits.?)
   val number = P((CharIn("+-").? ~ integral ~ fractional.? ~ exponent.?).!.map(_.toDouble))
-  val parserForLJSON = P(
+  val parserForLJSON: P[LJSON] = P(
     qq.cc.Parser.escapedStringLiteral.map(Str) |
       number.map(Num) |
       LiteralStr("false").map(_ => False) |
