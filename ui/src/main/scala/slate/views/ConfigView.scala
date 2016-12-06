@@ -6,9 +6,10 @@ import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.vdom.DomFrag
 import monix.execution.Scheduler
 import monix.reactive.Observable
+import org.scalajs.dom.svg.A
 import qq.data.JSON._
 import qq.data.{JSON, LJSON, SJSON}
-import slate.app.SlateProgramConfig
+import slate.app.{SlateProgramConfig, SlateProgramConfigModification}
 import slate.app.refresh.BootRefreshPolicy
 import slate.util.{ExternalVar, LoggerFactory}
 import slate.views.AppView.AppProps
@@ -86,22 +87,19 @@ object ConfigView {
 
   import scalacss.ScalaCssReact._
 
-  case class ConfigViewOut(reactElement: ReactComponentB[AppProps, Unit, Unit, TopNode],
-                           config: Observable[SlateProgramConfig])
-
-  case class ConfigViewProps(defaultConfig: SlateProgramConfig)
+  case class ConfigViewProps(currentConfig: SlateProgramConfig)
 
   object ConfigViewProps {
     implicit val reusability: Reusability[ConfigViewProps] =
       Reusability.byRefOr_==
   }
 
-  def radioButtons[A, B](options: Map[String, (A, String)], name: String, default: A, inject: A => B, subject: B => Unit): ReactElement = {
+  def radioButtons[A](options: Map[String, (A, String)], name: String, default: A, subject: A => Unit): ReactElement = {
     val buttons = options.map { case (optionId, (opt, lab)) =>
       val in: DomFrag =
         input(`type` := "radio", id := s"radio-button-$optionId", `class` := "mdl-radio__button", "name".reactAttr := name,
           onChange --> CallbackTo {
-            subject(inject(opt))
+            subject(opt)
           }
         )
       label(`class` := "mdl-radio mdl-js-radio mdl-js-ripple-effect",
@@ -112,13 +110,13 @@ object ConfigView {
     div(buttons)
   }
 
-  def bootRefreshPolicySelector[A](inject: BootRefreshPolicy => A, subject: A => Unit): ReactElement =
-    radioButtons[BootRefreshPolicy, A](
+  def bootRefreshPolicySelector(subject: BootRefreshPolicy => Unit): ReactElement =
+    radioButtons(
       Map(
-        ("always", (BootRefreshPolicy.Always, "Always")),
-        ("never", (BootRefreshPolicy.Never, "never"))
+        "always" -> (BootRefreshPolicy.Always -> "Always"),
+        "never" -> (BootRefreshPolicy.Never -> "Never")
       ),
-      "bootRefreshPolicy", BootRefreshPolicy.Never, inject, subject)
+      "bootRefreshPolicy", BootRefreshPolicy.Never, subject)
 
   def makeTextFieldId(): String = "textField" + scala.util.Random.nextInt(998).toString
 
@@ -138,27 +136,30 @@ object ConfigView {
     )
   }
 
-  def renderLeaf(l: LJSON, lens: LJSON => JSON, subject: JSON => Unit): ReactElement =
+  def renderLeaf(l: LJSON, modifications: List[JSONModification], subject: JSONModification => Unit): ReactElement = {
     makeTextField(JSON.renderLJSON(l), str => Callback {
-      subject(lens(JSON.parserForLJSON.parse(str).get.value))
+      val parsedLJSON = JSON.parserForLJSON.parse(str)
+      // TODO: tell user they done goofed
+      parsedLJSON.fold((_, _, _) => (), (json, _) => subject(SetTo(json)))
     })
+  }
 
-  def makeSubKeyField(key: String, mlens: String => JSON, subject: JSON => Unit): ReactElement =
+  def makeSubKeyField(index: Int, key: String, subject: JSONModification => Unit): ReactElement =
     makeTextField(key, str => Callback {
-      subject(mlens(str))
+      subject(UpdateKey(index, str))
     })
 
-  def renderBranch(l: SJSON, lens: SJSON => JSON, subject: JSON => Unit): ReactElement = {
-    def makeAddButton[J](origin: JSONOrigin, addDefault: J, values: Vector[J], construct: Vector[J] => SJSON): ReactElement = makeIconFAB("add", Callback {
-      subject(lens(construct(if (origin == Top) addDefault +: values else values :+ addDefault)))
+  def renderBranch(l: SJSON, modifications: List[JSONModification], subject: JSONModification => Unit): ReactElement = {
+    def makeAddButton[J](origin: JSONOrigin): ReactElement = makeIconFAB("add", Callback {
+      subject(AddTo(origin))
     })
-    def makeRemoveButton[J](origin: JSONOrigin, values: Vector[J], construct: Vector[J] => SJSON): ReactElement =
+    def makeRemoveButton[J](origin: JSONOrigin): ReactElement =
       makeIconFAB("remove", Callback {
-        subject(lens(construct(if (origin == Top) values.tail else values.init)))
+        subject(DeleteFrom(origin))
       })
-    def makeModifierButtons[J](origin: JSONOrigin, values: Vector[J], addDefault: J, construct: Vector[J] => SJSON): ReactElement = {
-      val addButton = makeAddButton[J](origin, addDefault, values, construct)
-      val removeButton = makeRemoveButton[J](origin, values, construct)
+    def makeModifierButtons[J](origin: JSONOrigin, values: Vector[J]): ReactElement = {
+      val addButton = makeAddButton[J](origin)
+      val removeButton = makeRemoveButton[J](origin)
       val buttons = if (values.nonEmpty) {
         removeButton :: addButton :: Nil
       } else origin match {
@@ -167,39 +168,37 @@ object ConfigView {
       }
       div(Styles.modifierButtons, buttons)
     }
-    val defaultArrayElement = JSON.str("")
-    val defaultObjectElement = "" -> JSON.str("")
     div(
       (l match {
         case JSON.ObjList(kvPairs) =>
           Seq(
-            makeModifierButtons[(String, JSON)](Top, kvPairs, defaultObjectElement, JSON.ObjList): TagMod,
+            makeModifierButtons[(String, JSON)](Top, kvPairs): TagMod,
             kvPairs.toIterator.zipWithIndex.map { case ((k, v), idx) =>
-              makeSubKeyField(k, kn => JSON.ObjList(kvPairs.updated(idx, kn -> v)), subject) +
-                (makeSubJSONFields(v, vn => JSON.ObjList(kvPairs.updated(idx, k -> vn)), subject): TagMod)
+              makeSubKeyField(idx, k, subject) +
+                (makeSubJSONFields(v, modifications.zoom(idx), m => subject(RecIdx(idx, m))): TagMod)
             }.toList: TagMod,
-            makeModifierButtons[(String, JSON)](Bottom, kvPairs, defaultObjectElement, JSON.ObjList): TagMod
+            makeModifierButtons[(String, JSON)](Bottom, kvPairs): TagMod
           )
         case JSON.Arr(values) => Seq(
-          makeModifierButtons[JSON](Top, values, defaultArrayElement, JSON.Arr(_)): TagMod,
-          values.zipWithIndex.map { case (j, idx) => makeSubJSONFields(j, jn => JSON.Arr(values.updated(idx, jn)), subject) }: TagMod,
-          makeModifierButtons[JSON](Bottom, values, defaultArrayElement, JSON.Arr(_)): TagMod
+          makeModifierButtons[JSON](Top, values): TagMod,
+          values.zipWithIndex.map { case (j, idx) => makeSubJSONFields(j, modifications.zoom(idx), m => subject(RecIdx(idx, m))) }: TagMod,
+          makeModifierButtons[JSON](Bottom, values): TagMod
         )
       }): _*
     )
   }
 
-  def makeSubJSONFields(value: JSON, mlens: JSON => JSON, subject: JSON => Unit): ReactElement = {
-    JSON.decompose(value).fold(renderLeaf(_, mlens, subject), renderBranch(_, mlens, subject))
+  def makeSubJSONFields(value: JSON, modifications: List[JSONModification], subject: JSONModification => Unit): ReactElement = {
+    JSON.decompose(value).fold(renderLeaf(_, modifications, subject), renderBranch(_, modifications, subject))
   }
 
-  def renderForm(json: JSON, subject: JSON => Unit): TagMod = {
-    makeSubJSONFields(json, identity, subject)
+  def renderForm(json: JSON, modifications: List[JSONModification], subject: JSONModification => Unit): TagMod = {
+    makeSubJSONFields(json, modifications, subject)
   }
 
-  def freeformJsonInput(subject: JSON => Unit): ReactComponentB[JSON, JSON, Unit, TopNode] = {
+  def freeformJsonInput(subject: JSONModification => Unit): ReactComponentB[JSON, List[JSONModification], Unit, TopNode] = {
     ReactComponentB[JSON]("freeform JSON input form")
-      .initialState_P(identity)
+      .initialState(Nil)
       .render_S { s =>
         form(action := "#",
           renderForm(s, subject)
@@ -208,10 +207,10 @@ object ConfigView {
       .domType[TopNode]
   }
 
-  def builder(extVar: ExternalVar[SlateProgramConfig])(implicit sch: Scheduler): ReactComponentB[ConfigViewProps, SlateProgramConfig, Unit, TopNode] = {
+  def builder(extVar: ExternalVar[SlateProgramConfig])(implicit sch: Scheduler): ReactComponentB[ConfigViewProps, List[SlateProgramConfigModification], Unit, TopNode] = {
     ReactComponentB[ConfigViewProps]("Expandable content view")
-      .initialState_P(_.defaultConfig)
-      .renderS { ($, state) =>
+      .initialState[List[SlateProgramConfigModification]](Nil)
+      .renderPS { ($, props, state) =>
         div(Styles.content,
           bootRefreshPolicySelector(p => state.copy(bootRefreshPolicy = p), (p: SlateProgramConfig) => {
             logger.debug(s"set new bootRefreshPolicy ${p.bootRefreshPolicy}")
@@ -222,7 +221,7 @@ object ConfigView {
             logger.debug(s"set new input value $j")
             extVar.setter(state.copy(input = j))
             $.setState(state.copy(input = j)).runNow()
-          }.build(state.input)
+          }.build(props.input)
         )
       }
       .domType[TopNode]

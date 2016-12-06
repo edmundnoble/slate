@@ -125,20 +125,34 @@ object JSON {
   }
   def arr(values: JSON*): JSON = Arr(values.toVector)
 
-  sealed trait JSONF[A] extends Any
-  case class ObjectF[A](labelled: Map[String, A]) extends AnyVal with JSONF[A]
-  case class ArrayF[A](elems: Vector[A]) extends AnyVal with JSONF[A]
-
   sealed trait JSONOrigin
   case object Top extends JSONOrigin
   case object Bottom extends JSONOrigin
 
-  sealed trait JSONModification
-  case class AddTo(origin: JSONOrigin) extends JSONModification
-  case class DeleteFrom(origin: JSONOrigin) extends JSONModification
-  case class SetTo(newValue: LJSON) extends JSONModification
-  case class RecIdx(index: Int, modification: JSONModification) extends JSONModification
-  case class UpdateKey(index: Int, newKey: String) extends JSONModification
+  sealed trait JSONModification {
+    def changesShape: Eval[Boolean]
+  }
+  final case class AddTo(origin: JSONOrigin) extends JSONModification {
+    override def changesShape: Eval[Boolean] = Eval.now(true)
+  }
+  final case class DeleteFrom(origin: JSONOrigin) extends JSONModification {
+    override def changesShape: Eval[Boolean] = Eval.now(true)
+  }
+  final case class SetTo(newValue: JSON) extends JSONModification {
+    override def changesShape: Eval[Boolean] = Eval.now(false)
+  }
+  final case class RecIdx(index: Int, modification: JSONModification) extends JSONModification {
+    override def changesShape: Eval[Boolean] = Eval.defer(modification.changesShape)
+  }
+  final case class UpdateKey(index: Int, newKey: String) extends JSONModification {
+    override def changesShape: Eval[Boolean] = Eval.now(false)
+  }
+
+  final implicit class modificationsOps(mods: List[JSONModification]) {
+    def zoom(index: Int): List[JSONModification] = mods.collect {
+      case RecIdx(i, m) if i == index => m
+    }
+  }
 
   import fastparse.all._
 
