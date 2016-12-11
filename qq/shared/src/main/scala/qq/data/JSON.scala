@@ -1,11 +1,13 @@
 package qq
 package data
 
-import cats.Eval
+import cats.{Eval, Functor}
+import cats.free.Free
 import cats.implicits._
 import qq.cc.VectorToNelOps
 import qq.util.Recursion.RecursiveFunction
 import qq.util.Unsafe
+import shapeless.tag.@@
 import upickle.Js
 
 import scala.collection.generic.CanBuildFrom
@@ -148,9 +150,104 @@ object JSON {
     override def changesShape: Eval[Boolean] = Eval.now(false)
   }
 
+  // Tag indicating data originates from a potential modification to some other dataset
+  sealed trait Modified
+
+  import shapeless.tag
+
+  val modifiedTag = tag[Modified]
+
+  // The branching functor for JSON, except each object key might be modified.
+  sealed trait ModifiedJSONF[A]
+  final case class ArrayF[A](values: Vector[A]) extends ModifiedJSONF[A]
+  final case class ObjectF[A](values: Vector[ObjectEntry[A]]) extends ModifiedJSONF[A]
+  final case class ObjectEntry[A](modified: Boolean, key: String, value: A) {
+    def map[B](f: A => B): ObjectEntry[B] = copy(value = f(value))
+  }
+
+  object ModifiedJSONF {
+    implicit val modifiedJSONFFunctorInstance: Functor[ModifiedJSONF] = new Functor[ModifiedJSONF] {
+      override def map[A, B](fa: ModifiedJSONF[A])(f: (A) => B): ModifiedJSONF[B] = fa match {
+        case ArrayF(values) => ArrayF(values.map(f))
+        case ObjectF(entries) => ObjectF(entries.map(_.map(f)))
+      }
+    }
+  }
+
+  // A json value with parts which might be modified!
+  // Really a tree where the branches are ModifiedJSONF and the leaves are either JSON trees or modified JSON trees.
+  type ModifiedJSON = Free[ModifiedJSONF, (JSON @@ Modified) Either JSON]
+
+  def unmodified(json: JSON): ModifiedJSON = json match {
+    case lj: LJSON => Free.pure(Right(lj))
+    case o: Obj => Free.liftF[ModifiedJSONF, ModifiedJSON](ObjectF(o.toList.value.map(t => ObjectEntry(modified = false, t._1, unmodified(t._2))))).flatMap(identity)
+    case Arr(a) => Free.liftF[ModifiedJSONF, ModifiedJSON](ArrayF(a.map(unmodified))).flatMap(identity)
+  }
+
+  def fromIsModified(json: JSON, isModified: Boolean): ModifiedJSON =
+    Free.pure(if (isModified) Left(modifiedTag(json)) else Right(json))
+
+  def commit(modifiedJSON: ModifiedJSON): JSON = modifiedJSON.fold(_.fold[JSON](_.asInstanceOf[JSON], identity[JSON]), {
+    case ArrayF(fs) => Arr(fs.map(commit))
+    case ObjectF(fs) => ObjList(fs.map { e => (e.key, commit(e.value)) })
+  })
+
   final implicit class modificationsOps(mods: List[JSONModification]) {
-    def zoom(index: Int): List[JSONModification] = mods.collect {
-      case RecIdx(i, m) if i == index => m
+    def zoom(index: Int): List[JSONModification] = mods.foldLeft[(Int, List[JSONModification])]((index, mods)) {
+      case ((i, ms), mod) =>
+        mod match {
+          case AddTo(_) => (i - 1, ms)
+          case DeleteFrom(_) => (i + 1, ms)
+          case RecIdx(ni, m) if ni == i => (ni, m :: ms)
+          case _ => (i, ms)
+        }
+    }._2
+    def apply(json: JSON, defaultArrElem: JSON, defaultObjElem: (String, JSON)): Option[ModifiedJSON] = mods.foldM[Option, ModifiedJSON](unmodified(json)) { (j, mod) =>
+      mod(j, defaultArrElem, defaultObjElem)
+    }
+  }
+
+  final implicit class modificationOps(mod: JSONModification) {
+    def apply(json: ModifiedJSON, defaultArrElem: JSON, defaultObjElem: (String, JSON)): Option[ModifiedJSON] = {
+      mod match {
+        case AddTo(origin) => json.resume match {
+          case Left(ObjectF(o)) =>
+            val newObjectEntry: ObjectEntry[ModifiedJSON] =
+              ObjectEntry[ModifiedJSON](modified = true, defaultObjElem._1, Free.pure(Left(modifiedTag(defaultObjElem._2))))
+            val oldObjectEntries: Vector[ObjectEntry[ModifiedJSON]] = o
+            val newObjectEntries: Vector[ObjectEntry[ModifiedJSON]] = if (origin == Top) oldObjectEntries :+ newObjectEntry else newObjectEntry +: oldObjectEntries
+            Some(Free.liftF[ModifiedJSONF, ModifiedJSON](ObjectF[ModifiedJSON](newObjectEntries)).flatMap[(JSON @@ Modified) Either JSON](identity[Free[ModifiedJSONF, (JSON @@ Modified) Either JSON]]))
+          case Left(ArrayF(a)) =>
+            val oldArrayEntries: Vector[ModifiedJSON] = a
+            val newElem: Free[ModifiedJSONF, Either[JSON @@ Modified, JSON]] = Free.pure(Left(modifiedTag(defaultArrElem)))
+            val newArrayEntries: Vector[ModifiedJSON] = if (origin == Top) oldArrayEntries :+ newElem else newElem +: oldArrayEntries
+            Some(Free.liftF[ModifiedJSONF, ModifiedJSON](ArrayF[ModifiedJSON](newArrayEntries)).flatMap(identity))
+          case _ => None
+        }
+        case DeleteFrom(origin) => json.resume match {
+          case Left(ObjectF(o)) if o.isEmpty => Some(Free.liftF[ModifiedJSONF, ModifiedJSON](ObjectF(if (origin == Top) o.tail else o.init)).flatMap(identity))
+          case Left(ArrayF(a)) => Some(Free.liftF[ModifiedJSONF, ModifiedJSON](ArrayF(if (origin == Top) a.tail else a.init)).flatMap(identity))
+          case _ => None
+        }
+        case RecIdx(i, m) => json.resume match {
+          case Left(ObjectF(o)) if o.length > i =>
+            val elem = o(i)
+            m(elem.value, defaultArrElem, defaultObjElem).map(nj => Free.liftF[ModifiedJSONF, ModifiedJSON](ObjectF[ModifiedJSON](o.updated(i, elem.copy(value = nj)))).flatMap(identity))
+          case Left(ArrayF(a)) if a.length > i =>
+            val elem = a(i)
+            m(elem, defaultArrElem, defaultObjElem).map(nj => Free.liftF[ModifiedJSONF, ModifiedJSON](ArrayF[ModifiedJSON](a.updated(i, nj))).flatMap(identity))
+          case _ => None
+        }
+        case UpdateKey(i, k) => json.resume match {
+          case Left(ObjectF(o)) if o.length > i =>
+            val elem = o(i)
+            Some(Free.liftF[ModifiedJSONF, ModifiedJSON](ObjectF[ModifiedJSON](o.updated(i, elem.copy(modified = true, key = k)))).flatMap(identity))
+          case _ =>
+            println(s"couldn't select $i from ${JSON.render(commit(json))}")
+            None
+        }
+        case SetTo(newValue) => Some(Free.pure(Left(modifiedTag(newValue))))
+      }
     }
   }
 

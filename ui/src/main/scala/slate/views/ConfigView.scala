@@ -6,14 +6,14 @@ import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.vdom.DomFrag
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import org.scalajs.dom.svg.A
+import monix.reactive.subjects.PublishToOneSubject
 import qq.data.JSON._
 import qq.data.{JSON, LJSON, SJSON}
-import slate.app.{SlateProgramConfig, SlateProgramConfigModification}
+import slate.app._
 import slate.app.refresh.BootRefreshPolicy
-import slate.util.{ExternalVar, LoggerFactory}
-import slate.views.AppView.AppProps
+import slate.util.LoggerFactory
 
+import scala.concurrent.duration._
 import scalacss.Defaults._
 
 object ConfigView {
@@ -79,6 +79,10 @@ object ConfigView {
       display.inline
     )
 
+    val modified = style(
+      color(black)
+    )
+
     val animationGroup = new slate.views.ScrollFadeContainer("filter-group")
 
   }
@@ -91,7 +95,7 @@ object ConfigView {
 
   object ConfigViewProps {
     implicit val reusability: Reusability[ConfigViewProps] =
-      Reusability.byRefOr_==
+      Reusability.caseClass
   }
 
   def radioButtons[A](options: Map[String, (A, String)], name: String, default: A, subject: A => Unit): ReactElement = {
@@ -120,13 +124,18 @@ object ConfigView {
 
   def makeTextFieldId(): String = "textField" + scala.util.Random.nextInt(998).toString
 
-  def makeTextField(default: String, cb: String => Callback): ReactElement = {
+  def makeTextField(default: String, modified: Boolean): (Observable[String], ReactElement) = {
     val madeId = makeTextFieldId()
-    div(`class` := "mdl-textfield mdl-js-textfield",
-      input(`class` := "mdl-textfield__input", `type` := "text", id := madeId,
-        onChange ==> ((e: ReactEventI) => cb(e.target.value))),
-      label(`class` := "mdl-textfield__label", `for` := madeId, default)
-    )
+    val publishSubject = PublishToOneSubject[String]
+    val field =
+      div(`class` := "mdl-textfield mdl-js-textfield", Some(Styles.modified: TagMod).filter(_ => modified),
+        input(`class` := "mdl-textfield__input", `type` := "text", id := madeId,
+          onChange ==> ((e: ReactEventI) => Callback {
+            publishSubject.onNext(e.target.value)
+          })),
+        label(`class` := "mdl-textfield__label", `for` := madeId, default)
+      )
+    (publishSubject, field)
   }
 
   def makeIconFAB(icon: String, cb: Callback): ReactElement = {
@@ -136,95 +145,147 @@ object ConfigView {
     )
   }
 
-  def renderLeaf(l: LJSON, modifications: List[JSONModification], subject: JSONModification => Unit): ReactElement = {
-    makeTextField(JSON.renderLJSON(l), str => Callback {
+  def renderLeaf(l: LJSON, parentModified: Boolean, updateRate: FiniteDuration, subject: JSONModification => Unit)(implicit sch: Scheduler): ReactElement = {
+    val (text, field) = makeTextField(JSON.renderLJSON(l), parentModified)
+    val _ = text.throttleLast(updateRate).map { str =>
       val parsedLJSON = JSON.parserForLJSON.parse(str)
-      // TODO: tell user they done goofed
+      // TODO: tell user if they done goofed
       parsedLJSON.fold((_, _, _) => (), (json, _) => subject(SetTo(json)))
-    })
+    }.runAsyncGetLast
+    field
   }
 
-  def makeSubKeyField(index: Int, key: String, subject: JSONModification => Unit): ReactElement =
-    makeTextField(key, str => Callback {
+  def makeSubKeyField(index: Int, modified: Boolean, updateRate: FiniteDuration, key: String, subject: JSONModification => Unit)(implicit sch: Scheduler): ReactElement = {
+    val (text, field) = makeTextField(key, modified)
+    val _ = text.throttleLast(updateRate).map { str =>
       subject(UpdateKey(index, str))
-    })
+    }.runAsyncGetLast
+    field
+  }
 
-  def renderBranch(l: SJSON, modifications: List[JSONModification], subject: JSONModification => Unit): ReactElement = {
-    def makeAddButton[J](origin: JSONOrigin): ReactElement = makeIconFAB("add", Callback {
+  def makeModifierButtons[J](origin: JSONOrigin, values: Vector[J], subject: JSONModification => Unit): ReactElement = {
+    val addButton = makeIconFAB("add", Callback {
       subject(AddTo(origin))
     })
-    def makeRemoveButton[J](origin: JSONOrigin): ReactElement =
-      makeIconFAB("remove", Callback {
-        subject(DeleteFrom(origin))
-      })
-    def makeModifierButtons[J](origin: JSONOrigin, values: Vector[J]): ReactElement = {
-      val addButton = makeAddButton[J](origin)
-      val removeButton = makeRemoveButton[J](origin)
-      val buttons = if (values.nonEmpty) {
-        removeButton :: addButton :: Nil
-      } else origin match {
-        case Bottom => addButton :: Nil
-        case Top => Nil
-      }
-      div(Styles.modifierButtons, buttons)
+    val removeButton = makeIconFAB("remove", Callback {
+      subject(DeleteFrom(origin))
+    })
+    val buttons = if (values.nonEmpty) {
+      removeButton :: addButton :: Nil
+    } else origin match {
+      case Bottom => addButton :: Nil
+      case Top => Nil
     }
-    div(
-      (l match {
-        case JSON.ObjList(kvPairs) =>
-          Seq(
-            makeModifierButtons[(String, JSON)](Top, kvPairs): TagMod,
-            kvPairs.toIterator.zipWithIndex.map { case ((k, v), idx) =>
-              makeSubKeyField(idx, k, subject) +
-                (makeSubJSONFields(v, modifications.zoom(idx), m => subject(RecIdx(idx, m))): TagMod)
-            }.toList: TagMod,
-            makeModifierButtons[(String, JSON)](Bottom, kvPairs): TagMod
-          )
-        case JSON.Arr(values) => Seq(
-          makeModifierButtons[JSON](Top, values): TagMod,
-          values.zipWithIndex.map { case (j, idx) => makeSubJSONFields(j, modifications.zoom(idx), m => subject(RecIdx(idx, m))) }: TagMod,
-          makeModifierButtons[JSON](Bottom, values): TagMod
+    div(Styles.modifierButtons, buttons)
+  }
+
+  def renderBranchF(l: ModifiedJSONF[ModifiedJSON], parentModified: Boolean, updateRate: FiniteDuration, subject: JSONModification => Unit)(implicit sch: Scheduler): ReactElement = {
+    val subFields = l match {
+      case ObjectF(kvPairs) =>
+        Seq[TagMod](
+          makeModifierButtons(Top, kvPairs, subject),
+          kvPairs.toIterator.zipWithIndex
+            .map { case (ObjectEntry(modified, k, v), idx) =>
+              makeSubKeyField(idx, parentModified && modified, updateRate, k, subject) +
+                (makeSubJSONFields(v, parentModified, updateRate, m => subject(RecIdx(idx, m))): TagMod)
+            }.toList,
+          makeModifierButtons(Bottom, kvPairs, subject)
         )
-      }): _*
-    )
+      case ArrayF(values) => Seq[TagMod](
+        makeModifierButtons(Top, values, subject),
+        values.toIterator.zipWithIndex
+          .map { case (j, idx) => makeSubJSONFields(j, parentModified, updateRate, m => subject(RecIdx(idx, m))) }
+          .toList,
+        makeModifierButtons(Bottom, values, subject)
+      )
+    }
+    div(subFields: _*)
   }
 
-  def makeSubJSONFields(value: JSON, modifications: List[JSONModification], subject: JSONModification => Unit): ReactElement = {
-    JSON.decompose(value).fold(renderLeaf(_, modifications, subject), renderBranch(_, modifications, subject))
+  def renderBranch(l: SJSON, parentModified: Boolean, updateRate: FiniteDuration, subject: JSONModification => Unit)(implicit sch: Scheduler): ReactElement = {
+    val subFields = l match {
+      case JSON.ObjList(kvPairs) =>
+        Seq[TagMod](
+          makeModifierButtons(Top, kvPairs, subject),
+          kvPairs.toIterator.zipWithIndex
+            .map { case ((k, v), idx) =>
+              makeSubKeyField(idx, parentModified, updateRate, k, subject) +
+                (makeSubJSONFields(JSON.fromIsModified(v, parentModified), parentModified, updateRate, m => subject(RecIdx(idx, m))): TagMod)
+            }.toList,
+          makeModifierButtons(Bottom, kvPairs, subject)
+        )
+      case JSON.Arr(values) => Seq[TagMod](
+        makeModifierButtons(Top, values, subject),
+        values.toIterator.zipWithIndex
+          .map { case (j, idx) => makeSubJSONFields(JSON.fromIsModified(j, parentModified), parentModified, updateRate, m => subject(RecIdx(idx, m))) }
+          .toList,
+        makeModifierButtons(Bottom, values, subject)
+      )
+    }
+    div(subFields: _*)
   }
 
-  def renderForm(json: JSON, modifications: List[JSONModification], subject: JSONModification => Unit): TagMod = {
-    makeSubJSONFields(json, modifications, subject)
+  def makeSubJSONFields(value: ModifiedJSON, parentModified: Boolean, updateRate: FiniteDuration, subject: JSONModification => Unit)(implicit sch: Scheduler): ReactElement = {
+    value.resume.fold(renderBranchF(_, parentModified, updateRate, subject), { modifiedOrNot =>
+      val isModifiedAsJSON = modifiedOrNot.fold(m => (true, m.asInstanceOf[JSON]), u => (parentModified, u))
+      val decomposed = JSON.decompose(isModifiedAsJSON._2)
+      decomposed.fold(renderLeaf(_, isModifiedAsJSON._1, updateRate, subject), renderBranch(_, isModifiedAsJSON._1, updateRate, subject))
+    })
   }
 
-  def freeformJsonInput(subject: JSONModification => Unit): ReactComponentB[JSON, List[JSONModification], Unit, TopNode] = {
-    ReactComponentB[JSON]("freeform JSON input form")
-      .initialState(Nil)
-      .render_S { s =>
+  def renderForm(json: ModifiedJSON, updateRate: FiniteDuration, subject: JSONModification => Unit)(implicit sch: Scheduler): TagMod = {
+    makeSubJSONFields(json, parentModified = false, updateRate, subject)
+  }
+
+  def freeformJsonInput(updateRate: FiniteDuration, subject: JSONModification => Unit)(implicit sch: Scheduler): ReactComponentB[extra.ExternalVar[ModifiedJSON], Unit, Unit, TopNode] = {
+    ReactComponentB[extra.ExternalVar[ModifiedJSON]]("freeform JSON input form")
+      .stateless
+      .render_P { p =>
         form(action := "#",
-          renderForm(s, subject)
+          renderForm(p.value, updateRate, subject)
         )
       }
       .domType[TopNode]
   }
 
-  def builder(extVar: ExternalVar[SlateProgramConfig])(implicit sch: Scheduler): ReactComponentB[ConfigViewProps, List[SlateProgramConfigModification], Unit, TopNode] = {
+  case class ConfigViewState(modifiedConfig: ModifiedSlateProgramConfig, modifications: List[SlateProgramConfigModification])
+
+  object ConfigViewState {
+
+    import SlateProgramConfig.modificationReusability
+
+    implicit val reusability: Reusability[ConfigViewState] =
+      Reusability.by[ConfigViewState, List[SlateProgramConfigModification]](_.modifications)
+  }
+
+  def builder(save: SlateProgramConfig => Callback)(implicit sch: Scheduler): ReactComponentB[ConfigViewProps, ConfigViewState, Unit, TopNode] = {
     ReactComponentB[ConfigViewProps]("Expandable content view")
-      .initialState[List[SlateProgramConfigModification]](Nil)
+      .initialState_P[ConfigViewState](p => ConfigViewState(ModifiedSlateProgramConfig.unmodified(p.currentConfig), Nil))
       .renderPS { ($, props, state) =>
+        val stateInputExtVar: extra.ExternalVar[ModifiedJSON] =
+          extra.ExternalVar(state.modifiedConfig.input)(i => $.setState(state.copy(modifiedConfig = state.modifiedConfig.copy(input = i))))
+        def addPendingModification(modification: SlateProgramConfigModification): Unit = {
+          modification(state.modifiedConfig) match {
+            case None =>
+              logger.debug(s"config modification failed: tried making modification $modification to ${state.modifiedConfig}")
+            case Some(newConfig) =>
+              logger.debug(s"successfully made a config modification: $modification, new config: $newConfig")
+              $.setState(ConfigViewState(newConfig, modification :: state.modifications)).runNow()
+          }
+        }
+        logger.debug(s"re-rendering config view")
         div(Styles.content,
-          bootRefreshPolicySelector(p => state.copy(bootRefreshPolicy = p), (p: SlateProgramConfig) => {
-            logger.debug(s"set new bootRefreshPolicy ${p.bootRefreshPolicy}")
-            extVar.setter(p)
-            $.setState(p).runNow()
-          }),
-          freeformJsonInput { j =>
-            logger.debug(s"set new input value $j")
-            extVar.setter(state.copy(input = j))
-            $.setState(state.copy(input = j)).runNow()
-          }.build(props.input)
+          bootRefreshPolicySelector(newPolicy => addPendingModification(BootRefreshPolicyModification(newPolicy))),
+          freeformJsonInput(1000.millis, { j =>
+            addPendingModification(InputModification(j))
+          }).build(stateInputExtVar)
         )
       }
       .domType[TopNode]
+      .componentDidUpdate(_ => Callback {
+        SlateApp.upgradeDom()
+      })
+      .configure(Reusability.shouldComponentUpdate)
   }
 
 }

@@ -200,9 +200,13 @@ object SlateApp extends scalajs.js.JSApp {
         logger.debug("Rendering...")
         ReactDOM.render(searchPage, container,
           js.ThisFunction.fromFunction1[ReactComponentM[SearchPageProps, Unit, Unit, TopNode], Unit](t => cb(Success(t))))
-        js.Dynamic.global.componentHandler.upgradeDom()
+        upgradeDom()
         Cancelable.empty
     }
+  }
+
+  def upgradeDom(): Unit = {
+    val _ = js.Dynamic.global.componentHandler.upgradeDom()
   }
 
   def loadAndRenderContent(extVar: ExternalVar[Map[Int, SlateProgramConfig]], dataDirKey: StorageFS.StorageKey[StorageFS.Dir], container: dom.Element)(implicit sch: Scheduler): Observable[SearchPageProps] =

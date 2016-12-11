@@ -2,7 +2,7 @@ package slate
 package views
 
 import japgolly.scalajs.react.extra.Reusability
-import japgolly.scalajs.react.{ReactComponentB, ReactNode, TopNode}
+import japgolly.scalajs.react.{Callback, ReactComponentB, ReactNode, TopNode}
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import slate.app.SlateApp.AllErrors
@@ -168,11 +168,12 @@ object AppView {
               )
             ),
             div(`class` := "mdl-tabs__panel", id := "config-panel",
-              ConfigView.builder(extVar).build(ConfigViewProps(extVar.getter()))
+              ConfigView.builder(c => Callback { extVar.setter(c) }).build(ConfigViewProps(extVar.getter()))
             )
           )
         )
       )
+      .domType[TopNode]
       .configure(Reusability.shouldComponentUpdate)
   }
 
