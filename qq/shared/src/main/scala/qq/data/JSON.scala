@@ -211,6 +211,7 @@ object JSON {
   def deleteFrom[J](seq: Vector[J], origin: JSONOrigin): Vector[J] = if (origin == Top) seq.tail else seq.init
 
   final implicit class modificationOps(mod: JSONModification) {
+    // this is the devil incarnate.
     def apply(json: ModifiedJSON, defaultArrElem: JSON, defaultObjElem: (String, JSON)): Option[ModifiedJSON] = {
       mod match {
         case AddTo(origin) =>
