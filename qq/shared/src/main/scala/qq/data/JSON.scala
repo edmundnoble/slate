@@ -160,10 +160,13 @@ object JSON {
   // The branching functor for JSON, except each object key might be modified.
   sealed trait ModifiedJSONF[A]
   final case class ArrayF[A](values: Vector[A]) extends ModifiedJSONF[A]
-  final case class ObjectF[A](values: Vector[ObjectEntry[A]]) extends ModifiedJSONF[A]
+  final case class ObjectF[A](entries: Vector[ObjectEntry[A]]) extends ModifiedJSONF[A]
   final case class ObjectEntry[A](modified: Boolean, key: String, value: A) {
     def map[B](f: A => B): ObjectEntry[B] = copy(value = f(value))
   }
+
+  def arrayf[A](values: Vector[A]): ModifiedJSONF[A] = ArrayF(values)
+  def objectf[A](entries: Vector[ObjectEntry[A]]): ModifiedJSONF[A] = ObjectF(entries)
 
   object ModifiedJSONF {
     implicit val modifiedJSONFFunctorInstance: Functor[ModifiedJSONF] = new Functor[ModifiedJSONF] {
@@ -178,16 +181,13 @@ object JSON {
   // Really a tree where the branches are ModifiedJSONF and the leaves are either JSON trees or modified JSON trees.
   type ModifiedJSON = Free[ModifiedJSONF, (JSON @@ Modified) Either JSON]
 
-  def unmodified(json: JSON): ModifiedJSON = json match {
-    case lj: LJSON => Free.pure(Right(lj))
-    case o: Obj => Free.liftF[ModifiedJSONF, ModifiedJSON](ObjectF(o.toList.value.map(t => ObjectEntry(modified = false, t._1, unmodified(t._2))))).flatMap(identity)
-    case Arr(a) => Free.liftF[ModifiedJSONF, ModifiedJSON](ArrayF(a.map(unmodified))).flatMap(identity)
-  }
+  def unmodified(json: JSON): ModifiedJSON = Free.pure(Right(json))
+  def modified(json: JSON): ModifiedJSON = Free.pure(Left(modifiedTag(json)))
 
   def fromIsModified(json: JSON, isModified: Boolean): ModifiedJSON =
     Free.pure(if (isModified) Left(modifiedTag(json)) else Right(json))
 
-  def commit(modifiedJSON: ModifiedJSON): JSON = modifiedJSON.fold(_.fold[JSON](_.asInstanceOf[JSON], identity[JSON]), {
+  def commit(modifiedJSON: ModifiedJSON): JSON = modifiedJSON.fold(_.merge, {
     case ArrayF(fs) => Arr(fs.map(commit))
     case ObjectF(fs) => ObjList(fs.map { e => (e.key, commit(e.value)) })
   })
@@ -209,42 +209,110 @@ object JSON {
 
   final implicit class modificationOps(mod: JSONModification) {
     def apply(json: ModifiedJSON, defaultArrElem: JSON, defaultObjElem: (String, JSON)): Option[ModifiedJSON] = {
+      val newArrayElem: Free[ModifiedJSONF, Either[JSON @@ Modified, JSON]] = Free.pure(Left(modifiedTag(defaultArrElem)))
+      val newObjectEntry: ObjectEntry[ModifiedJSON] = ObjectEntry[ModifiedJSON](modified = true, defaultObjElem._1, Free.pure(Left(modifiedTag(defaultObjElem._2))))
+      def adjoin[J](seq: Vector[J], elem: J, origin: JSONOrigin): Vector[J] = if (origin == Top) seq :+ elem else elem +: seq
+      def deleteFrom[J](seq: Vector[J], origin: JSONOrigin): Vector[J] = if (origin == Top) seq.tail else seq.init
       mod match {
         case AddTo(origin) => json.resume match {
-          case Left(ObjectF(o)) =>
-            val newObjectEntry: ObjectEntry[ModifiedJSON] =
-              ObjectEntry[ModifiedJSON](modified = true, defaultObjElem._1, Free.pure(Left(modifiedTag(defaultObjElem._2))))
-            val oldObjectEntries: Vector[ObjectEntry[ModifiedJSON]] = o
-            val newObjectEntries: Vector[ObjectEntry[ModifiedJSON]] = if (origin == Top) oldObjectEntries :+ newObjectEntry else newObjectEntry +: oldObjectEntries
-            Some(Free.liftF[ModifiedJSONF, ModifiedJSON](ObjectF[ModifiedJSON](newObjectEntries)).flatMap[(JSON @@ Modified) Either JSON](identity[Free[ModifiedJSONF, (JSON @@ Modified) Either JSON]]))
-          case Left(ArrayF(a)) =>
-            val oldArrayEntries: Vector[ModifiedJSON] = a
-            val newElem: Free[ModifiedJSONF, Either[JSON @@ Modified, JSON]] = Free.pure(Left(modifiedTag(defaultArrElem)))
-            val newArrayEntries: Vector[ModifiedJSON] = if (origin == Top) oldArrayEntries :+ newElem else newElem +: oldArrayEntries
-            Some(Free.liftF[ModifiedJSONF, ModifiedJSON](ArrayF[ModifiedJSON](newArrayEntries)).flatMap(identity))
+          case Left(ObjectF(oldObjectEntries)) =>
+            Some(Free.liftF(objectf(adjoin(oldObjectEntries, newObjectEntry, origin))).flatMap(identity))
+          case Left(ArrayF(oldArrayEntries)) =>
+            Some(Free.liftF(arrayf(adjoin(oldArrayEntries, newArrayElem, origin))).flatMap(identity))
+          case Right(Right(j)) => j match {
+            case ObjList(o) =>
+              Some(Free.liftF(objectf(adjoin(o.map { case (k, v) => ObjectEntry(modified = false, k, unmodified(v)) }, newObjectEntry, origin))).flatMap(identity))
+            case Arr(a) =>
+              Some(Free.liftF(arrayf(adjoin(a.map(unmodified), newArrayElem, origin))).flatMap(identity))
+            case _ => None
+          }
+          case Right(Left(mj)) => (mj: JSON) match {
+            case ObjList(o) =>
+              Some(Free.liftF(objectf(adjoin(o.map { case (k, v) => ObjectEntry(modified = true, k, modified(v)) }, newObjectEntry, origin))).flatMap(identity))
+            case Arr(a) =>
+              Some(Free.liftF(arrayf(adjoin(a.map(modified), newArrayElem, origin))).flatMap(identity))
+            case _ => None
+          }
           case _ => None
         }
         case DeleteFrom(origin) => json.resume match {
-          case Left(ObjectF(o)) if o.isEmpty => Some(Free.liftF[ModifiedJSONF, ModifiedJSON](ObjectF(if (origin == Top) o.tail else o.init)).flatMap(identity))
-          case Left(ArrayF(a)) => Some(Free.liftF[ModifiedJSONF, ModifiedJSON](ArrayF(if (origin == Top) a.tail else a.init)).flatMap(identity))
+          case Left(ObjectF(o)) if o.nonEmpty => Some(Free.liftF(objectf(deleteFrom(o, origin))).flatMap(identity))
+          case Left(ArrayF(a)) if a.nonEmpty => Some(Free.liftF(arrayf(deleteFrom(a, origin))).flatMap(identity))
+          case Right(Right(j)) => j match {
+            case ObjList(o) =>
+              Some(Free.liftF(objectf(deleteFrom(o.map { case (k, v) => ObjectEntry(modified = false, k, unmodified(v)) }, origin))).flatMap(identity))
+            case Arr(a) =>
+              Some(Free.liftF(arrayf(deleteFrom(a.map(unmodified), origin))).flatMap(identity))
+            case _ => None
+          }
+          case Right(Left(mj)) => (mj: JSON) match {
+            case ObjList(o) =>
+              Some(Free.liftF(objectf(deleteFrom(o.map { case (k, v) => ObjectEntry(modified = true, k, modified(v)) }, origin))).flatMap(identity))
+            case Arr(a) =>
+              Some(Free.liftF(arrayf(deleteFrom(a.map(modified), origin))).flatMap(identity))
+            case _ => None
+          }
           case _ => None
         }
         case RecIdx(i, m) => json.resume match {
           case Left(ObjectF(o)) if o.length > i =>
             val elem = o(i)
-            m(elem.value, defaultArrElem, defaultObjElem).map(nj => Free.liftF[ModifiedJSONF, ModifiedJSON](ObjectF[ModifiedJSON](o.updated(i, elem.copy(value = nj)))).flatMap(identity))
+            m(elem.value, defaultArrElem, defaultObjElem).map(nj => Free.liftF(objectf(o.updated(i, elem.copy(value = nj)))).flatMap(identity))
           case Left(ArrayF(a)) if a.length > i =>
-            val elem = a(i)
-            m(elem, defaultArrElem, defaultObjElem).map(nj => Free.liftF[ModifiedJSONF, ModifiedJSON](ArrayF[ModifiedJSON](a.updated(i, nj))).flatMap(identity))
+            m(a(i), defaultArrElem, defaultObjElem).map(nj => Free.liftF(arrayf(a.updated(i, nj))).flatMap(identity))
+          case Right(Right(j)) => j match {
+            case ObjList(o) =>
+              val elem = o(i)
+              m(unmodified(elem._2), defaultArrElem, defaultObjElem).map(nj =>
+                Free.liftF(objectf(o.map { case (k, v) => ObjectEntry(modified = false, k, unmodified(v)) }.updated(i, ObjectEntry(modified = false, elem._1, nj)))).flatMap(identity)
+              )
+            case Arr(a) =>
+              val elem = a(i)
+              m(unmodified(elem), defaultArrElem, defaultObjElem).map(nj =>
+                Free.liftF(arrayf[ModifiedJSON](a.map(unmodified).updated(i, nj))).flatMap(identity)
+              )
+            case _ => None
+          }
+          case Right(Left(mj)) => (mj: JSON) match {
+            case ObjList(o) =>
+              val elem = o(i)
+              m(modified(elem._2), defaultArrElem, defaultObjElem).map(nj =>
+                Free.liftF(objectf(o.map { case (k, v) => ObjectEntry(modified = false, k, modified(v)) }.updated(i, ObjectEntry(modified = false, elem._1, nj)))).flatMap(identity)
+              )
+            case Arr(a) =>
+              val elem = a(i)
+              m(modified(elem), defaultArrElem, defaultObjElem).map(nj =>
+                Free.liftF(arrayf[ModifiedJSON](a.map(modified).updated(i, nj))).flatMap(identity)
+              )
+            case _ => None
+          }
           case _ => None
         }
         case UpdateKey(i, k) => json.resume match {
           case Left(ObjectF(o)) if o.length > i =>
-            val elem = o(i)
-            Some(Free.liftF[ModifiedJSONF, ModifiedJSON](ObjectF[ModifiedJSON](o.updated(i, elem.copy(modified = true, key = k)))).flatMap(identity))
-          case _ =>
-            println(s"couldn't select $i from ${JSON.render(commit(json))}")
-            None
+            Some(Free.liftF(objectf(o.updated(i, o(i).copy(modified = true, key = k)))).flatMap(identity))
+          case Right(Right(ObjList(o))) if o.length > i =>
+            Some(
+              Free.liftF(
+                objectf(
+                  o.map { case (kn, v) => ObjectEntry(modified = false, kn, unmodified(v)) }
+                    .updated(i, ObjectEntry(modified = true, k, unmodified(o(i)._2)))
+                )
+              ).flatMap(identity)
+            )
+          case Right(Left(nj)) => (nj: JSON) match {
+            case ObjList(o) =>
+              Some(
+                Free.liftF(
+                  objectf(
+                    o.map { case (kn, v) => ObjectEntry(modified = false, kn, modified(v)) }
+                      .updated(i, ObjectEntry(modified = true, k, modified(o(i)._2)))
+                  )
+                ).flatMap(identity)
+              )
+            case _ => None
+          }
+          case _ => None
         }
         case SetTo(newValue) => Some(Free.pure(Left(modifiedTag(newValue))))
       }

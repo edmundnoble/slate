@@ -129,11 +129,11 @@ object ConfigView {
     val publishSubject = PublishToOneSubject[String]
     val field =
       div(`class` := "mdl-textfield mdl-js-textfield", Some(Styles.modified: TagMod).filter(_ => modified),
-        input(`class` := "mdl-textfield__input", `type` := "text", id := madeId,
+        input(`class` := "mdl-textfield__input", `type` := "text", id := madeId, if (modified) value := default else EmptyTag,
           onChange ==> ((e: ReactEventI) => Callback {
             publishSubject.onNext(e.target.value)
           })),
-        label(`class` := "mdl-textfield__label", `for` := madeId, default)
+        label(`class` := "mdl-textfield__label", `for` := madeId, if (!modified) default else EmptyTag)
       )
     (publishSubject, field)
   }
@@ -237,55 +237,52 @@ object ConfigView {
     makeSubJSONFields(json, parentModified = false, updateRate, subject)
   }
 
-  def freeformJsonInput(updateRate: FiniteDuration, subject: JSONModification => Unit)(implicit sch: Scheduler): ReactComponentB[extra.ExternalVar[ModifiedJSON], Unit, Unit, TopNode] = {
-    ReactComponentB[extra.ExternalVar[ModifiedJSON]]("freeform JSON input form")
+  def freeformJsonInput(updateRate: FiniteDuration, json: ModifiedJSON, subject: JSONModification => Unit)(implicit sch: Scheduler): ReactComponentB[Unit, Unit, Unit, TopNode] = {
+    ReactComponentB[Unit]("freeform JSON input form")
       .stateless
-      .render_P { p =>
+      .render { _ =>
         form(action := "#",
-          renderForm(p.value, updateRate, subject)
+          renderForm(json, updateRate, subject)
         )
       }
       .domType[TopNode]
   }
 
-  case class ConfigViewState(modifiedConfig: ModifiedSlateProgramConfig, modifications: List[SlateProgramConfigModification])
-
-  object ConfigViewState {
-
-    import SlateProgramConfig.modificationReusability
-
-    implicit val reusability: Reusability[ConfigViewState] =
-      Reusability.by[ConfigViewState, List[SlateProgramConfigModification]](_.modifications)
-  }
+  case class ConfigViewState(modifiedConfig: ModifiedSlateProgramConfig, changedShape: Boolean)
 
   def builder(save: SlateProgramConfig => Callback)(implicit sch: Scheduler): ReactComponentB[ConfigViewProps, ConfigViewState, Unit, TopNode] = {
+    def addPendingModification(state: ConfigViewState, setState: ConfigViewState => Unit, modification: SlateProgramConfigModification): Unit = {
+      modification(state.modifiedConfig) match {
+        case None =>
+          logger.debug(s"config modification failed: tried making modification $modification to ${state.modifiedConfig}")
+        case Some(newConfig) =>
+          logger.debug(s"successfully made a config modification: $modification, new input: ${JSON.render(commit(newConfig.input))}")
+          setState(ConfigViewState(newConfig, modification.changesShape))
+      }
+    }
     ReactComponentB[ConfigViewProps]("Expandable content view")
-      .initialState_P[ConfigViewState](p => ConfigViewState(ModifiedSlateProgramConfig.unmodified(p.currentConfig), Nil))
-      .renderPS { ($, props, state) =>
-        val stateInputExtVar: extra.ExternalVar[ModifiedJSON] =
-          extra.ExternalVar(state.modifiedConfig.input)(i => $.setState(state.copy(modifiedConfig = state.modifiedConfig.copy(input = i))))
-        def addPendingModification(modification: SlateProgramConfigModification): Unit = {
-          modification(state.modifiedConfig) match {
-            case None =>
-              logger.debug(s"config modification failed: tried making modification $modification to ${state.modifiedConfig}")
-            case Some(newConfig) =>
-              logger.debug(s"successfully made a config modification: $modification, new config: $newConfig")
-              $.setState(ConfigViewState(newConfig, modification :: state.modifications)).runNow()
-          }
-        }
+      .initialState_P[ConfigViewState](p => ConfigViewState(ModifiedSlateProgramConfig.unmodified(p.currentConfig), changedShape = false))
+      .render { $ =>
+        val setter = (st: ConfigViewState) => $.setState(st).runNow()
         logger.debug(s"re-rendering config view")
         div(Styles.content,
-          bootRefreshPolicySelector(newPolicy => addPendingModification(BootRefreshPolicyModification(newPolicy))),
-          freeformJsonInput(1000.millis, { j =>
-            addPendingModification(InputModification(j))
-          }).build(stateInputExtVar)
+          div(
+            "Refresh on startup?",
+            bootRefreshPolicySelector(newPolicy => addPendingModification($.state, setter, BootRefreshPolicyModification(newPolicy)))
+          ),
+          div(
+            "App input",
+            freeformJsonInput(1000.millis, $.state.modifiedConfig.input, { j =>
+              addPendingModification($.state, setter, InputModification(j))
+            }).build()
+          )
         )
       }
       .domType[TopNode]
       .componentDidUpdate(_ => Callback {
         SlateApp.upgradeDom()
       })
-      .configure(Reusability.shouldComponentUpdate)
+      .shouldComponentUpdate(_.nextState.changedShape)
   }
 
 }

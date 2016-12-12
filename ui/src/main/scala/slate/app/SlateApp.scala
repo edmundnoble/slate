@@ -93,9 +93,8 @@ object SlateApp extends scalajs.js.JSApp {
 
   private def runCompiledPrograms(configs: Map[Int, SlateProgramConfig]): Task[Vector[SlateProgram[ErrorCompilingPrograms Either Task[ErrorRunningPrograms Either Vector[JSON]]]]] =
     compiledPrograms.map(_.map(program =>
-      program.map(_.map { compiled =>
-        val config = configs(program.id)
-        CompiledFilter.run(config.input, Map.empty, compiled).map(
+      program.map(_.map {
+        CompiledFilter.run(configs(program.id).input, Map.empty, _).map(
           _.leftMap[ErrorRunningPrograms](exs => inl(QQRuntimeException(exs)))
         )
       })

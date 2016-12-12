@@ -14,9 +14,15 @@ case class SlateProgramConfig(input: JSON, bootRefreshPolicy: BootRefreshPolicy)
 // is expressible as a SlateProgramConfigModification. You can represent an arbitrary number of these
 // actions with an arbitrary collection like List[SlateProgramConfigModification].
 // This will constitute a monoid action on SlateProgramConfig.
-sealed trait SlateProgramConfigModification
-case class InputModification(jsonModification: JSONModification) extends SlateProgramConfigModification
-case class BootRefreshPolicyModification(newPolicy: BootRefreshPolicy) extends SlateProgramConfigModification
+sealed trait SlateProgramConfigModification {
+  def changesShape: Boolean
+}
+case class InputModification(jsonModification: JSONModification) extends SlateProgramConfigModification {
+  override def changesShape: Boolean = jsonModification.changesShape.value
+}
+case class BootRefreshPolicyModification(newPolicy: BootRefreshPolicy) extends SlateProgramConfigModification {
+  override def changesShape: Boolean = false
+}
 
 case class ModifiedSlateProgramConfig(input: ModifiedJSON, bootRefreshPolicy: BootRefreshPolicy, bootRefreshPolicyModified: Boolean) {
   def commit: SlateProgramConfig = SlateProgramConfig(JSON.commit(input), bootRefreshPolicy)
