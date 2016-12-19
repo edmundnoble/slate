@@ -1,178 +1,16 @@
-import chrome.Manifest
-import net.lullabyte.Chrome
+import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import org.scalajs.sbtplugin.cross.CrossProject
-import org.scalajs.sbtplugin.{AbstractJSDep, ScalaJSPlugin}
 import sbt.Keys._
 import sbt._
 import sbt.complete.Parser
 import scoverage.ScoverageKeys.coverageExcludedPackages
-import upickle.Js
 
 object SlateBuild {
 
-  lazy val commonDeps: Seq[Setting[_]] = Seq(
-    libraryDependencies ++= Seq(
-      "org.typelevel" %%% "cats-core" % "0.8.1",
-      "org.typelevel" %%% "cats-kernel" % "0.8.1",
-      "org.typelevel" %%% "cats-macros" % "0.8.1",
-      "org.typelevel" %%% "cats-free" % "0.8.1",
-      "org.atnos" %%% "eff-cats" % "2.0.0-RC26",
-      "org.atnos" %%% "eff-cats-monix" % "2.0.0-RC26",
-      "org.scalatest" %%% "scalatest" % "3.0.1" % "test",
-      "com.lihaoyi" %%% "upickle" % "0.4.3",
-      "com.lihaoyi" %%% "fastparse" % "0.4.1",
-      "io.monix" %%% "monix-types" % "2.1.1",
-      "io.monix" %%% "monix-eval" % "2.1.1",
-      "io.monix" %%% "monix-execution" % "2.1.1",
-      "io.monix" %%% "monix-reactive" % "2.1.1",
-      "io.monix" %%% "monix-cats" % "2.1.1",
-      "org.scodec" %%% "scodec-bits" % "1.1.2",
-      "org.scodec" %%% "scodec-core" % "1.10.3",
-      "com.chuusai" %%% "shapeless" % "2.3.2"
-    ),
-    resolvers += Resolver.sonatypeRepo("releases"),
-    resolvers += "Sonatype Public" at "https://oss.sonatype.org/content/groups/public/"
-  )
+  import ChromeBuild._
 
-  lazy val uiDeps: Setting[Seq[ModuleID]] = libraryDependencies ++= Seq(
-    "net.lullabyte" %%% "scala-js-chrome" % "0.2.1",
-    "org.scala-js" %%% "scalajs-dom" % "0.9.0",
-    "com.github.japgolly.scalajs-react" %%% "core" % "0.11.3",
-    "com.github.japgolly.scalajs-react" %%% "extra" % "0.11.3",
-    "com.github.japgolly.scalacss" %%% "core" % "0.5.0",
-    "com.github.japgolly.scalacss" %%% "ext-react" % "0.5.0"
-  )
-
-  //   React JS itself (Note the filenames, adjust as needed, eg. to remove addons.)
-  lazy val jsDeps: Setting[Seq[AbstractJSDep]] = jsDependencies ++= Seq(
-    "org.webjars.bower" % "react" % "15.0.1"
-      / "react-with-addons.js"
-      minified "react-with-addons.min.js"
-      commonJSName "React",
-
-    "org.webjars.bower" % "react" % "15.0.1"
-      / "react-dom.js"
-      minified "react-dom.min.js"
-      dependsOn "react-with-addons.js"
-      commonJSName "ReactDOM",
-
-    "org.webjars" % "chartjs" % "1.0.2"
-      / "Chart.js"
-      minified "Chart.min.js"
-  )
-
-  val chromePackageContent: SettingKey[File] = SettingKey[File]("chromePackageContent",
-    "The contents of this directory get copied to the into the chrome extension")
-  val unpackedProd: TaskKey[File] = TaskKey[File]("unpackedProd")
-  val unpackedDevFast: TaskKey[File] = TaskKey[File]("unpackedDevFast")
-  val unpackedDevOpt: TaskKey[File] = TaskKey[File]("unpackedDevOpt")
-  val chromePackage: TaskKey[File] = TaskKey[File]("chromePackage")
-  val chromeGenerateManifest: TaskKey[File] = TaskKey[File]("chromeGenerateManifest")
-  val chromeManifest: TaskKey[Manifest] = TaskKey[chrome.Manifest]("chromeManifest")
   val repl: TaskKey[Unit] = TaskKey[Unit]("repl")
-
-  object SnakeOptionPickle extends upickle.AttributeTagged {
-    def camelToSnake(s: String): String = {
-      s.split("(?=[A-Z])", -1).map(_.toLowerCase).mkString("_")
-    }
-    override def CaseR[T: this.Reader, V]
-    (f: T => V,
-     names: Array[String],
-     defaults: Array[Js.Value]): SnakeOptionPickle.Reader[V] = {
-      super.CaseR[T, V](f, names.map(camelToSnake), defaults)
-    }
-    override def CaseW[T: this.Writer, V]
-    (f: V => Option[T],
-     names: Array[String],
-     defaults: Array[Js.Value]): SnakeOptionPickle.Writer[V] = {
-      super.CaseW[T, V](f, names.map(camelToSnake), defaults)
-    }
-    override implicit def OptionW[T: Writer]: Writer[Option[T]] = Writer {
-      case None => Js.Null
-      case Some(s) => implicitly[Writer[T]].write(s)
-    }
-    override implicit def OptionR[T: Reader]: Reader[Option[T]] = Reader {
-      case Js.Null => None
-      case v: Js.Value => Some(implicitly[Reader[T]].read.apply(v))
-    }
-  }
-
-  def generateManifest(out: File)(manifest: ChromeManifest): File = {
-    val content = SnakeOptionPickle.write(manifest, indent = 2)
-    IO.write(out, content)
-    out
-  }
-
-  def copyResources(sourceMap: sbt.File, suffices: Seq[String]): Def.Initialize[Task[File]] = Def.task {
-    val file = (resourceDirectory in Compile).value
-    val targetValue = target.value
-    val unpacked = suffices.foldLeft(targetValue)(_ / _)
-    file.listFiles().foreach { resourceFile =>
-      val target = unpacked / resourceFile.getName
-      if (!target.exists() || resourceFile.lastModified() > target.lastModified()) {
-        if (resourceFile.isFile) {
-          IO.copyFile(resourceFile, target)
-        } else {
-          IO.copyDirectory(resourceFile, target)
-        }
-      }
-    }
-    IO.copyFile(sourceMap, unpacked / "main.js.map")
-    unpacked
-  }
-
-  def defineChromeBuildTask(folderName: String, buildTaskKey: TaskKey[Attributed[sbt.File]]): Def.Initialize[Task[File]] = Def.taskDyn {
-    val r = (buildTaskKey in Compile).value
-    val unpacked = Def.task {
-      copyResources(r.get(scalaJSSourceMap).get, Seq("chrome", folderName)).value
-    }
-    Def.task {
-      val file =
-        Chrome.buildExtentionDirectory(unpacked.value)(
-          (chromeGenerateManifest in Compile).value,
-          r.data,
-          (packageMinifiedJSDependencies in Compile).value,
-          (packageScalaJSLauncher in Compile).value.data,
-          (chromePackageContent in Compile).value
-        )
-      file
-    }
-  }
-
-  lazy val chromeTasks: Seq[Def.Setting[_]] = Seq(
-    chromePackageContent := file("content"),
-
-    unpackedProd <<= Def.task {
-      scalaJSSemantics ~= (_.withProductionMode(true))
-      defineChromeBuildTask("unpackedopt", fullOptJS).value
-    },
-
-    unpackedDevFast <<= Def.task {
-      defineChromeBuildTask("unpackedfast", fastOptJS).value
-    },
-
-    unpackedDevOpt <<= Def.task {
-      val oldOpts = scalaJSOptimizerOptions.value
-      scalaJSOptimizerOptions := oldOpts.withPrettyPrintFullOptJS(true)
-      val file = defineChromeBuildTask("unpackedunopt", fastOptJS).value
-      //      scalaJSOptimizerOptions := oldOpts
-      file
-    },
-
-    chromePackage <<= Def.task {
-      val out = target.value / "chrome"
-      val chromeAppDir = unpackedProd.value
-      val zipFile = new File(out, name.value + ".zip")
-      IO.zip(allSubpaths(chromeAppDir), zipFile)
-      zipFile
-    },
-
-    chromeGenerateManifest <<= Def.task {
-      generateManifest(target.value / "chrome" / "generated_manifest.json")(ChromeManifest.mySettings)
-    }
-
-  )
 
   val unitTest: TaskKey[Unit] = TaskKey[Unit]("unitTest")
   val itTest: TaskKey[Unit] = TaskKey[Unit]("itTest")
@@ -182,9 +20,9 @@ object SlateBuild {
   //val itTestQuick = TaskKey[Unit]("itTestQuick")
 
   val baseSettings: Seq[sbt.Def.Setting[_]] = Seq(
-    version := "0.0.1",
+    version := "0.0.4",
     scalaVersion := "2.11.8",
-    updateOptions ~= (_.withConsolidatedResolution(true)),
+    updateOptions ~= (_.withCachedResolution(true)),
     scalacOptions ++= Seq(
       "-encoding", "UTF-8",
       "-Xlint",
@@ -225,7 +63,6 @@ object SlateBuild {
   )
 
   val jsSettings: Seq[sbt.Def.Setting[_]] = Seq(
-    scalaJSUseRhino in Global := false,
     (relativeSourceMaps in fullOptJS) := true,
     (relativeSourceMaps in fastOptJS) := true
   )
@@ -248,8 +85,8 @@ object SlateBuild {
     taskKey <<= taskKey.dependsOn(chromeKey in ui)
 
   lazy val qq: CrossProject = crossProject.in(file("qq"))
-    .settings(baseSettings: _*)
-    .settings(commonDeps: _*)
+    .settings(baseSettings)
+    .settings(Dependencies.commonDeps)
     .jsSettings(jsSettings: _*)
     .jsSettings(ScalaJSPlugin.projectSettings: _*)
 
@@ -258,11 +95,11 @@ object SlateBuild {
 
   lazy val qqmacros: CrossProject = crossProject.in(file("qqmacros"))
     .dependsOn(qq)
-    .settings(baseSettings: _*)
-    .settings(commonDeps: _*)
-    .settings(libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-compiler" % _))
-    .jsSettings(jsSettings: _*)
-    .jsSettings(ScalaJSPlugin.projectSettings: _*)
+    .settings(baseSettings)
+    .settings(Dependencies.commonDeps)
+    .settings(Dependencies.scalaCompiler)
+    .jsSettings(jsSettings)
+    .jsSettings(ScalaJSPlugin.projectSettings)
 
   lazy val qqmacrosjvm: Project = qqmacros.jvm
   lazy val qqmacrosjs: Project = qqmacros.js
@@ -275,15 +112,15 @@ object SlateBuild {
     .settings(baseSettings)
     .settings(chromeTasks)
     .settings(jsSettings)
-    .settings(commonDeps)
-    .settings(uiDeps)
+    .settings(Dependencies.commonDeps)
+    .settings(Dependencies.uiDeps)
 
   lazy val uitests: Project = project.in(file("uitests"))
     .dependsOn(ui)
     .dependsOn(qqjvm)
-    .settings(libraryDependencies += "org.seleniumhq.selenium" % "selenium-java" % "2.35.0" % "test")
+    .settings(libraryDependencies += Dependencies.selenium)
     .settings(baseSettings)
-    .settings(commonDeps)
+    .settings(Dependencies.commonDeps)
     .settings(dependOnChrome(unpackedProd, testOptions in Test))
     .settings((test in Test) <<= (test in Test).dependsOn(compile in Test in qqjvm))
     .settings((testOptions in Test) <<= (testOptions in Test).dependsOn(compile in Test in qqjvm))
@@ -297,13 +134,14 @@ object SlateBuild {
     .dependsOn(qqjs)
     .settings(ScalaJSPlugin.projectSettings)
     .enablePlugins(ScalaJSPlugin)
+    // same resources as in ui
     .settings((resourceDirectory in Compile) := (resourceDirectory in Compile in ui).value)
-    .settings(baseSettings: _*)
-    .settings(disableTests: _*)
+    .settings(baseSettings)
+    .settings(disableTests)
     .settings(chromeTasks)
     .settings(jsSettings)
-    .settings(commonDeps: _*)
-    .settings(uiDeps: _*)
+    .settings(Dependencies.commonDeps)
+    .settings(Dependencies.uiDeps)
     .settings(libraryDependencies += "com.github.japgolly.scalajs-benchmark" %%% "benchmark" % "0.2.4-SNAPSHOT")
     // otherwise scalajs-benchmark doesn't work
     .settings(jsManifestFilter := {
