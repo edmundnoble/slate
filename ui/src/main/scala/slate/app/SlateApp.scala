@@ -31,7 +31,7 @@ import slate.views.DashboardPage.SearchPageProps
 import scala.concurrent.duration._
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
-import scala.util.{Success, Try}
+import scala.util.Success
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
 
@@ -100,9 +100,7 @@ object SlateApp extends scalajs.js.JSApp {
       })
     ))
 
-  case class InvalidJSON(str: String) extends Exception
-
-  type ErrorDeserializingProgramOutput = InvalidJSON :+: upickle.Invalid.Data :+: ErrorRunningPrograms
+  type ErrorDeserializingProgramOutput = upickle.Invalid.Json :+: upickle.Invalid.Data :+: ErrorRunningPrograms
 
   private def
   deserializeProgramOutput(configs: Map[Int, SlateProgramConfig]): Task[Vector[SlateProgram[ErrorCompilingPrograms Either Task[ErrorDeserializingProgramOutput Either Vector[ExpandableContentModel]]]]] =
@@ -124,22 +122,29 @@ object SlateApp extends scalajs.js.JSApp {
     dataDirKey <- StorageFS.mkDir("data", nonceSource, StorageFS.fsroot)
   } yield dataDirKey.get.fold(identity[StorageFS.StorageKey[StorageFS.Dir]])
 
-  type AllErrors = InvalidJSON :+: upickle.Invalid.Data :+: QQRuntimeException :+: ErrorCompilingPrograms
+  type AllErrors = upickle.Invalid.Json :+: upickle.Invalid.Data :+: QQRuntimeException :+: ErrorCompilingPrograms
+  type UpickleError = upickle.Invalid.Json :+: upickle.Invalid.Data :+: CNil
 
   def makeDataKey(title: String, input: JSON): String =
     title + "|" + input.hashCode()
 
-  def getCachedOutput(configs: Map[Int, SlateProgramConfig], dataDirKey: StorageFS.StorageKey[StorageFS.Dir], programs: Vector[SlateProgram[Unit]]): Task[Vector[Option[SlateProgram[InvalidJSON Either DatedAppContent]]]] = {
+  def getCachedOutput(configs: Map[Int, SlateProgramConfig], dataDirKey: StorageFS.StorageKey[StorageFS.Dir], programs: Vector[SlateProgram[Unit]]): Task[Vector[Option[SlateProgram[UpickleError Either DatedAppContent]]]] = {
     for {
       output <-
-      StorageFS.runSealedStorageProgramInto[StorageOrTask, JustTask, Task, Vector[Option[SlateProgram[InvalidJSON Either DatedAppContent]]]](
+      StorageFS.runSealedStorageProgramInto[StorageOrTask, JustTask, Task, Vector[Option[SlateProgram[UpickleError Either DatedAppContent]]]](
         programs.traverseA(program =>
-          Caching.getCachedBy[StorageOrTask, InvalidJSON, SlateProgram[Unit], DatedAppContent](program)(
+          Caching.getCachedBy[StorageOrTask, UpickleError, SlateProgram[Unit], DatedAppContent](program)(
             prg => makeDataKey(prg.title, configs(prg.id).input), {
               encodedModels =>
-                Try(upickle.json.read(encodedModels))
-                  .toOption.flatMap(DatedAppContent.pkl.read.lift)
-                  .toRight(InvalidJSON(encodedModels))
+                for {
+                  readJson <-
+                  Either.catchOnly[upickle.Invalid.Json](upickle.json.read(encodedModels))
+                    .leftMap(copInj[UpickleError](_))
+                  readModel <- Either
+                    .catchOnly[upickle.Invalid.Data](DatedAppContent.pkl.read(readJson))
+                    .leftMap(copInj[UpickleError](_))
+                } yield readModel
+
             })
             .map(program.withProgram(_).sequence)), DomStorage.Local, nonceSource, dataDirKey
       ).detach
@@ -180,7 +185,7 @@ object SlateApp extends scalajs.js.JSApp {
       })(
         builtinPrograms.map(program =>
           AppProps(program.id, configs(program.id), program.title, program.titleLink, cachedOutputsMapped.get(program.id).map {
-              _.program.leftMap(copInj[AllErrors][InvalidJSON](_)).map(pa => AppModel(pa.content, pa.date))
+              _.program.leftMap(copSub[AllErrors][UpickleError](_)).map(pa => AppModel(pa.content, pa.date))
           }))(collection.breakOut)
       )((l, ap) => ap +: l.filterNot(_.id == ap.id))(6, 400.millis)
       _ = logger.debug(s"refresh, ${results.length} apps loaded")

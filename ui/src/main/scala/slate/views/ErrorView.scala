@@ -5,7 +5,7 @@ import fastparse.all.ParseError
 import japgolly.scalajs.react._
 import org.scalajs.dom.html.Div
 import qq.cc.{QQCompilationException, QQRuntimeException}
-import slate.app.SlateApp.{AllErrors, InvalidJSON}
+import slate.app.SlateApp.AllErrors
 import slate.app.caching.Program.ProgramSerializationException
 import upickle.Invalid
 
@@ -45,7 +45,7 @@ object ErrorView {
                     _.impossible))))))))
   }
 
-  def renderInvalidJSON(err: InvalidJSON): TagMod = {
+  def renderInvalidJSON(err: Invalid.Json): TagMod = {
     "Error decaching output from qq program: " + err
   }
 
