@@ -8,6 +8,7 @@ import fastparse.core.Implicits
 import fastparse.parsers
 import fastparse.parsers.Terminals
 import qq.data._
+import qq.data.ast._
 
 object Parser {
 

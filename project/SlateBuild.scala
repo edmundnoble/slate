@@ -165,7 +165,7 @@ object SlateBuild {
   })
 
   lazy val slate: Project = project.in(file("."))
-    .aggregate(ui, uitests, uibench, qqjvm, qqjs, qqmacrosjvm, qqmacrosjs)
+    .aggregate(ui, uitests, qqjvm, qqjs, qqmacrosjvm, qqmacrosjs)
     .settings(Defaults.projectCore)
     .settings(baseSettings)
     .settings(ScalaJSPlugin.globalSettings)
