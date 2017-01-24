@@ -15,7 +15,7 @@ object QQRuntime {
 
   import QQRuntimeException._
 
-  val taskOfVectorOfNull: CompiledFilterResult[Vector[JSON]] = (JSON.`null` +: Vector.empty[JSON]).pureEff[CompiledFilterStack]
+  val taskOfVectorOfNull: Eff[CompiledFilterStack, Vector[JSON]] = (JSON.`null` +: Vector.empty[JSON]).pureEff[CompiledFilterStack]
   val emptyArray: JSON = JSON.Arr()
 
   final def funFromMathOperator(op: MathOperator): CompiledMathOperator = op match {

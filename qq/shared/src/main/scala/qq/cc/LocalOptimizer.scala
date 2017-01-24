@@ -90,8 +90,10 @@ object LocalOptimizer {
   @inline final def localOptimizationsƒ(tf: FilterAST)(implicit rec: RecursionEngine): FilterAST =
   repeatedly[FilterAST] { tf =>
     val unfixed: FilterComponent[FilterAST] = tf.unFix
-    (collectEnlist(unfixed) orElse idCompose(unfixed) orElse constMathReduce(unfixed) orElse
-      unlet(unfixed) orElse letFree(unfixed) orElse fuseGetPathOperation(unfixed)) map embed
+    val optimized =
+      collectEnlist(unfixed) orElse idCompose(unfixed) orElse constMathReduce(unfixed) orElse
+        unlet(unfixed) orElse letFree(unfixed) orElse fuseGetPathOperation(unfixed)
+    optimized map embed
   }(tf)
 
   // localOptimizationsƒ recursively applied deep into a filter

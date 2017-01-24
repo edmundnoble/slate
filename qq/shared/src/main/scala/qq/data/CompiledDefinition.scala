@@ -13,7 +13,7 @@ object CompiledDefinition {
     CompiledDefinition(name, 0, body = _ => Left(UndefinedOnPlatform(name)))
 
   // this is responsible for QQ's function application semantics
-  def standardEffectDistribution(func: Vector[JSON] => JSON => CompiledFilterResult[Vector[JSON]])
+  def standardEffectDistribution(func: Vector[JSON] => JSON => Eff[CompiledFilterStack, Vector[JSON]])
                                 (args: Vector[CompiledFilter]): OrCompilationError[CompiledFilter] =
     Right(
       CompiledFilter.singleton {

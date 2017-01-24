@@ -31,7 +31,7 @@ object QQCompiler {
   final def compileDefinitionStep(soFar: OrCompilationError[Vector[CompiledDefinition]],
                                   nextDefinition: Definition[FilterAST])
                                  (implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] =
-    soFar.map { (definitionsSoFar: Vector[CompiledDefinition]) =>
+    soFar.right.map { (definitionsSoFar: Vector[CompiledDefinition]) =>
       CompiledDefinition(nextDefinition.name, nextDefinition.params.length, (params: Vector[CompiledFilter]) => {
         val paramsAsDefinitions: Vector[CompiledDefinition] = (nextDefinition.params, params).zipped.map { (filterName, value) =>
           CompiledDefinition(filterName, 0, (_: Vector[CompiledFilter]) => Right(value))
@@ -47,7 +47,7 @@ object QQCompiler {
       builtinDefinitions <- SharedPreludes.all |+| JSONPrelude.all
       allDefinitions = builtinDefinitions ++ definitions
       definitionMap = allDefinitions
-        .map[(String, CompiledDefinition), Map[String, CompiledDefinition]](d => d.name -> d)(collection.breakOut)
+        .right.map[(String, CompiledDefinition), Map[String, CompiledDefinition]](d => d.name -> d)(collection.breakOut)
       compileProgram = Recursion.cataM[FilterComponent, OrCompilationError, CompiledFilter](compileStep(definitionMap, _))
       compiledProgram <- compileProgram(filter)
     } yield compiledProgram

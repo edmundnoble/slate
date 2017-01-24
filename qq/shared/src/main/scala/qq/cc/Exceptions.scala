@@ -39,10 +39,10 @@ object QQRuntimeException {
   def typeError[A](operation: String, typesAndValues: (String, JSON)*): Either[RuntimeErrs, A] =
     Either.left(NonEmptyList.of[QQRuntimeError](TypeError(operation, typesAndValues: _*)))
   def typeErrorE[S: _runtimeErr, A](operation: String, typesAndValues: (String, JSON)*): Eff[S, A] =
-    either.left(NonEmptyList.of[QQRuntimeError](TypeError(operation, typesAndValues: _*)))
-  def notARegex[S: _runtimeErr, A](asStr: String): CompiledFilterResult[A] =
+    either.left[S, NonEmptyList[QQRuntimeError], A](NonEmptyList.of[QQRuntimeError](TypeError(operation, typesAndValues: _*)))
+  def notARegex[S: _runtimeErr, A](asStr: String): Eff[CompiledFilterStack, A] =
     either.left(NonEmptyList.of[QQRuntimeError](NotARegex(asStr)))
-  def noSuchVariable[S: _runtimeErr, A](variableName: String): CompiledFilterResult[A] =
+  def noSuchVariable[S: _runtimeErr, A](variableName: String): Eff[CompiledFilterStack, A] =
     either.left(NonEmptyList.of[QQRuntimeError](NoSuchVariable(variableName)))
 }
 

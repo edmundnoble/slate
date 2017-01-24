@@ -6,6 +6,7 @@ import java.util.regex.Pattern
 import cats.data.{NonEmptyList, Validated}
 import cats.implicits._
 import org.atnos.eff.syntax.all._
+import org.atnos.eff._
 import qq.data.{CompiledDefinition, JSON}
 import qq.util.Recursion.RecursionEngine
 import qq.util._
@@ -70,23 +71,25 @@ object JSONPrelude extends Prelude {
       body = CompiledDefinition.standardEffectDistribution { params =>
         val regexRaw = params.head
         val replacementRaw = params.tail.head
-        (j: JSON) =>
-          val regexValidated: Validated[RuntimeErrs, Pattern] = regexRaw match {
-            case JSON.Str(string) => Pattern.compile(string).validNel
-            case k => NonEmptyList.of[QQRuntimeError](NotARegex(QQRuntime.print(k))).invalid
+        val regexValidated: Validated[RuntimeErrs, Pattern] = regexRaw match {
+          case JSON.Str(string) => Pattern.compile(string).validNel
+          case k => NonEmptyList.of[QQRuntimeError](NotARegex(QQRuntime.print(k))).invalid
+        }
+        val replacementValidated: Validated[RuntimeErrs, String] = replacementRaw match {
+          case JSON.Str(string) => string.validNel
+          case k => NonEmptyList.of[QQRuntimeError](TypeError("replace", "string" -> k)).invalid
+        }
+      { (j: JSON) =>
+        val valueRegexReplacementList: Validated[RuntimeErrs, Vector[JSON]] = (regexValidated |@| replacementValidated).map { (regex, replacement) =>
+          j match {
+            case JSON.Str(string) =>
+              (JSON.str(regex.matcher(string).replaceAll(replacement)) +: Vector.empty).validNel[QQRuntimeError]
+            case k => NonEmptyList.of[QQRuntimeError](TypeError("replace", "string" -> k)).invalid[Vector[JSON]]
           }
-          val replacementValidated: Validated[RuntimeErrs, String] = replacementRaw match {
-            case JSON.Str(string) => string.validNel
-            case k => NonEmptyList.of[QQRuntimeError](TypeError("replace", "string" -> k)).invalid
-          }
-          val valueRegexReplacementList: Validated[RuntimeErrs, Vector[JSON]] = (regexValidated |@| replacementValidated).map { (regex, replacement) =>
-            j match {
-              case JSON.Str(string) =>
-                (JSON.str(regex.matcher(string).replaceAll(replacement)) +: Vector.empty).validNel[QQRuntimeError]
-              case k => NonEmptyList.of[QQRuntimeError](TypeError("replace", "string" -> k)).invalid[Vector[JSON]]
-            }
-          }.flatten
-          valueRegexReplacementList.toEither.send[CompiledFilterStack]
+        }.flatten
+        Eff.send[OrRuntimeErr, CompiledFilter, Vector[JSON]](valueRegexReplacementList.toEither)
+         // valueRegexReplacementList.toEither.send[CompiledFilterStack]
+      }
       })
 
   // filter
@@ -177,7 +180,7 @@ object JSONPrelude extends Prelude {
       }
     )
 
-  def all(implicit rec: RecursionEngine): QQCompilationException Either Vector[CompiledDefinition] =
+  def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] =
     Right(
       Vector(
         `null`, `true`, `false`, orElse, b64Encode, includes, // exists, forall,
