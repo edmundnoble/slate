@@ -4,7 +4,7 @@ import cats.Eval
 import cats.implicits._
 import monix.eval.Task
 import org.scalatest.Assertion
-import qq.cc.{CompiledFilter, QQCompiler, QQRuntimeException, RuntimeErrs}
+import qq.cc.{InterpretedFilter, QQCompiler, QQRuntimeException, RuntimeErrs}
 import qq.data.{FilterAST, JSON, QQDSL, SelectKey}
 import qq.util.Recursion.RecursionEngine
 

@@ -39,11 +39,11 @@ object Interpreter {
         )
     })
 
-  def programInterpreterOf(source: String, program: CompiledFilter): Interpreter = taskSwitch orElse
+  def programInterpreterOf(source: String, program: InterpretedFilter): Interpreter = taskSwitch orElse
     Interpreter("program " + source + ", input:", {
       case input =>
         val inputJs: JSON = JSON.upickleToJSONRec(json read input)
-        val ranProgram = CompiledFilter.run(inputJs, Map.empty, program)
+        val ranProgram = InterpretedFilter.run(inputJs, Map.empty, program)
         Right(
           ranProgram.flatMap(_.fold[Task[(String, Interpreter)]]({ errs => Task.raiseError(QQRuntimeException(errs)) }, { outputs =>
             Task.now((outputs.map(JSON.render).mkString(", "), programInterpreterOf(source, program)))
@@ -68,7 +68,7 @@ object Interpreter {
               val () = Console.err.println("Error: " + err.merge.getMessage)
               ("", programInterpreter)
             }, { compiledFilter =>
-              val result = CompiledFilter.run(input, Map.empty, compiledFilter)
+              val result = InterpretedFilter.run(input, Map.empty, compiledFilter)
               result.flatMap(_.fold(es => Task.raiseError(QQRuntimeException(es)), Task.now)).map { outputs =>
                 (outputs.map(JSON.render).mkString(", "), inputInterpreterOf(source, input))
               }

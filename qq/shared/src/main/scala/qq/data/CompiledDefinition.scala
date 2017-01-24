@@ -2,30 +2,31 @@ package qq
 package data
 
 import cats.implicits._
+import org.atnos.eff.Eff
 import org.atnos.eff.syntax.all._
 import qq.cc._
 
-final case class CompiledDefinition
-(name: String, numParams: Int, body: (Vector[CompiledFilter] => OrCompilationError[CompiledFilter]))
+final case class CompiledDefinition[C]
+(name: String, numParams: Int, body: (Vector[C] => OrCompilationError[C]))
 
 object CompiledDefinition {
-  def undefinedOnPlatform(name: String): CompiledDefinition =
-    CompiledDefinition(name, 0, body = _ => Left(UndefinedOnPlatform(name)))
+  def undefinedOnPlatform[C](name: String): CompiledDefinition[C] =
+    CompiledDefinition[C](name, 0, body = _ => Left(UndefinedOnPlatform(name)))
 
   // this is responsible for QQ's function application semantics
-  def standardEffectDistribution(func: Vector[JSON] => JSON => Eff[CompiledFilterStack, Vector[JSON]])
-                                (args: Vector[CompiledFilter]): OrCompilationError[CompiledFilter] =
+  def standardEffectDistribution(func: Vector[JSON] => JSON => Eff[InterpretedFilterStack, Vector[JSON]])
+                                (args: Vector[InterpretedFilter]): OrCompilationError[InterpretedFilter] =
     Right(
-      CompiledFilter.singleton {
+      InterpretedFilter.singleton {
         (j: JSON) =>
           for {
-            rs <- args.traverseA[CompiledFilterStack, Vector[JSON]](_ (j))
+            rs <- args.traverseA[InterpretedFilterStack, Vector[JSON]](_ (j))
             a <- func(rs.flatten)(j)
           } yield a
       }
     )
 
-  final def noParamDefinition(name: String, fun: CompiledFilter): CompiledDefinition = {
+  final def noParamDefinition[C](name: String, fun: C): CompiledDefinition[C] = {
     CompiledDefinition(
       name, numParams = 0, { _ => Right(fun) }
     )

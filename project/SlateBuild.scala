@@ -115,6 +115,17 @@ object SlateBuild {
     .settings(Dependencies.commonDeps)
     .settings(Dependencies.uiDeps)
 
+  lazy val uimacros: Project = project.in(file("uimacros"))
+    .dependsOn(qqjs)
+    .dependsOn(qqmacrosjs)
+    .enablePlugins(ScalaJSPlugin)
+    .settings(baseSettings)
+    .settings(chromeTasks)
+    .settings(jsSettings)
+    .settings(Dependencies.commonDeps)
+    .settings(Dependencies.scalaCompiler)
+    .settings(Dependencies.uiDeps)
+
   lazy val uitests: Project = project.in(file("uitests"))
     .dependsOn(ui)
     .dependsOn(qqjvm)

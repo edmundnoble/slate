@@ -4,7 +4,7 @@ package macros
 import org.scalatest.{FreeSpec, Matchers}
 import qq.cc.{LocalOptimizer, Parser}
 import qq.data.{FilterAST, Program}
-import qq.macros.QQStager._
+import qq.macros.stager.QQStager._
 import qq.util.Recursion
 import qq.util.Recursion.RecursionEngine
 

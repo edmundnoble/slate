@@ -1,28 +1,36 @@
-package qq
-package macros
+package qq.macros.stager
 
 import cats.Eval
 import cats.implicits._
 import fastparse.core.Parsed
 import qq.Platform.Rec._
-import qq.cc.{LocalOptimizer, Parser}
+import qq.cc.{LocalOptimizer, NoSuchMethod, OrCompilationError, Parser, Prelude, QQCompilationException, QQCompiler, WrongNumParams}
 import qq.data._
-import qq.util.Recursion.RecursiveFunction
+import qq.data.ast._
+import qq.util.Recursion
+import qq.util.Recursion.{RecursionEngine, RecursiveFunction}
 
 import scala.language.experimental.macros
 import scala.reflect.macros.whitebox
 
-// this is used to pre-prepare QQ programs at compile time
-object QQStager {
+// this is used to pre-compile QQ programs at compile time
+class QQStager(c: whitebox.Context)(prelude: Prelude[c.Tree]) {
 
-  def qqimpl(c: whitebox.Context)(pieces: c.Tree*): c.Tree = {
-    import c.universe._
+  final implicit class qqops(val sc: StringContext) {
+
+    def qq(pieces: Any*): Program[FilterAST] = macro qqimpl
+
+  }
+
+  import c.universe._
+
+  def qqimpl(pieces: c.Tree*): c.Tree = {
     def lift[T: Liftable](value: T): Tree = implicitly[Liftable[T]].apply(value)
 
     implicit def disjunctionLiftable[E: Liftable, A: Liftable]: Liftable[E Either A] =
       Liftable[E Either A](_.fold(
-        e => q"scala.util.Left(${lift[E](e)})",
-        a => q"scala.util.Right(${lift[A](a)})"
+        e => q"scala.util.Left(${lift(e)})",
+        a => q"scala.util.Right(${lift(a)})"
       ))
 
     implicit def definitionLiftable[F: Liftable]: Liftable[Definition[F]] =
@@ -84,12 +92,8 @@ object QQStager {
       }
     }
 
-    implicit def concreteFilterLiftable: Liftable[FilterAST] =
-      Liftable(liftFilter(_))
-
-    implicit def programLiftable: Liftable[Program[FilterAST]] = Liftable[Program[FilterAST]](
-      value => q"qq.data.Program(${lift(value.defns)}, ${lift(value.main)})"
-    )
+    case class PreCompiledDefinition
+    (name: String, numParams: Int, body: Vector[c.universe.Tree] => OrCompilationError[c.universe.Tree])
 
     val program = c.prefix.tree match {
       // access data of string interpolation
@@ -105,20 +109,18 @@ object QQStager {
       case _ =>
         c.abort(c.enclosingPosition, "invalid") // TODO: make the error message more readable
     }
+
     val parsedProgram: Program[FilterAST] = Parser.program.parse(program) match {
       case f@Parsed.Failure(_, _, _) =>
         c.abort(c.enclosingPosition, "QQ parsing error: " + f.extra.traced.trace)
       case Parsed.Success(prog, _) => prog
     }
-    val optimizedProgram = LocalOptimizer.optimizeProgram(parsedProgram)
-    lift(optimizedProgram)
-  }
 
-  final implicit class qqops(val sc: StringContext) {
+  val optimizedProgram = LocalOptimizer.optimizeProgram(parsedProgram)
+  val compiledProgram = QQCompiler.compileProgram(new QQStagerRuntime(c))(prelude, optimizedProgram)
+  lift(optimizedProgram)
+}
 
-    def qq(pieces: Any*): Program[FilterAST] = macro QQStager.qqimpl
-
-  }
 
 }
 

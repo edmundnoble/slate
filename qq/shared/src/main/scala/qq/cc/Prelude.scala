@@ -8,24 +8,24 @@ import qq.util.Recursion.RecursionEngine
 
 
 object Prelude {
-  val empty = new Prelude {
-    override def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] =
+  def empty[C] = new Prelude[C] {
+    override def all(runtime: QQRuntime[C])(implicit rec: RecursionEngine): OrCompilationError[Vector[C]] =
       Right(Vector.empty)
   }
 
-  implicit val preludeMonoid: Monoid[Prelude] = new Monoid[Prelude] {
-    override def empty: Prelude = Prelude.empty
+  implicit def preludeMonoid[C]: Monoid[Prelude[C]] = new Monoid[Prelude[C]] {
+    override def empty: Prelude[C] = Prelude.empty
 
-    override def combine(f1: Prelude, f2: Prelude): Prelude = new Prelude {
-      override def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] = for {
-        fst <- f1.all
-        snd <- f2.all
+    override def combine(f1: Prelude[C], f2: Prelude[C]): Prelude[C] = new Prelude[C] {
+      override def all(runtime: QQRuntime[C])(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition[C]]] = for {
+        fst <- f1.all(runtime)
+        snd <- f2.all(runtime)
       } yield fst ++ snd
     }
   }
 }
 
-trait Prelude {
-  def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]]
+trait Prelude[C] {
+  def all(runtime: QQRuntime[C])(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition[C]]]
 }
 

@@ -12,7 +12,7 @@ import org.atnos.eff.syntax.all._
 import org.atnos.eff.{Eff, Fx}
 import org.scalajs.dom
 import qq.Platform.Rec._
-import qq.cc.{CompiledFilter, QQCompilationException, QQCompiler, QQRuntimeException}
+import qq.cc.{InterpretedFilter, QQCompilationException, QQCompiler, QQRuntimeException}
 import qq.data.{FilterAST, JSON, Program}
 import shapeless.{:+:, CNil}
 import slate.app.builtin.{GCalendarApp, GmailApp}
@@ -65,7 +65,7 @@ object SlateApp extends scalajs.js.JSApp {
     programDirKey <- StorageFS.mkDir[R]("program", nonceSource, StorageFS.fsroot)
   } yield programDirKey.get.fold(identity[StorageFS.StorageKey[StorageFS.Dir]])
 
-  def compiledPrograms: Task[Vector[SlateProgram[Either[ErrorCompilingPrograms, CompiledFilter]]]] = {
+  def compiledPrograms: Task[Vector[SlateProgram[Either[ErrorCompilingPrograms, InterpretedFilter]]]] = {
 
     def getCachedProgramIfApplicable(program: SlateProgram[Either[Program[FilterAST], String]]): Eff[StorageOrTask, SlateProgram[Either[ErrorGettingCachedProgram, Program[FilterAST]]]] = {
       program.program.fold(p =>

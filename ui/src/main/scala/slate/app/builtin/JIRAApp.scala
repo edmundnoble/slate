@@ -3,7 +3,7 @@ package app
 package builtin
 
 import qq.data.{FilterAST, Program}
-import qq.macros.QQStager._
+import qq.macros.stager.QQStager._
 
 object JIRAApp {
 

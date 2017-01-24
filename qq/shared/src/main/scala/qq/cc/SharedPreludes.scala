@@ -13,14 +13,14 @@ object SharedPreludes extends Prelude {
 
       val print: CompiledDefinition =
         CompiledDefinition.noParamDefinition("print",
-          CompiledFilter.singleton { (jsv: JSON) =>
+          InterpretedFilter.singleton { (jsv: JSON) =>
             println("debug: " + QQRuntime.print(jsv))
             (jsv +: Vector.empty).pureEff
           }
         )
 
       val empty: CompiledDefinition =
-        CompiledDefinition.noParamDefinition("empty", CompiledFilter.constL(Vector.empty))
+        CompiledDefinition.noParamDefinition("empty", InterpretedFilter.constL(Vector.empty))
 
       Right(Vector(print, empty))
     }

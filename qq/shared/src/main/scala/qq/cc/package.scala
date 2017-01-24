@@ -16,10 +16,10 @@ package object cc {
   type OrRuntimeErr[+A] = Either[RuntimeErrs, A]
   type _runtimeErr[R] = Member[Either[RuntimeErrs, ?], R]
 
-  type CompiledMathOperator = (JSON, JSON) => Either[RuntimeErrs, JSON]
-  type CompiledFilterStack = Fx.fx3[VarEnv, TaskParallel, OrRuntimeErr]
-  type CompiledProgramStack = Fx.fx2[TaskParallel, OrRuntimeErr]
-  type CompiledFilter = FlatTraverseArrs[CompiledFilterStack, Vector, JSON, JSON]
+  type InterpretedMathOperator = (JSON, JSON) => Either[RuntimeErrs, JSON]
+  type InterpretedFilterStack = Fx.fx3[VarEnv, TaskParallel, OrRuntimeErr]
+  type InterpretedProgramStack = Fx.fx2[TaskParallel, OrRuntimeErr]
+  type InterpretedFilter = FlatTraverseArrs[InterpretedFilterStack, Vector, JSON, JSON]
 
   type OrCompilationError[T] = QQCompilationException Either T
 

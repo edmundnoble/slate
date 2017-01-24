@@ -10,7 +10,7 @@ import org.atnos.eff.syntax.all._
 import org.scalajs.dom.XMLHttpRequest
 import qq.Json
 import qq.Platform.Rec._
-import qq.cc.{CompiledFilter, CompiledFilterStack, OrCompilationError, OrRuntimeErr, Prelude, QQRuntimeError, QQRuntimeException, RuntimeErrs, TypeError}
+import qq.cc.{InterpretedFilter, InterpretedFilterStack, OrCompilationError, OrRuntimeErr, Prelude, QQRuntimeError, QQRuntimeException, RuntimeErrs, TypeError}
 import qq.data.{CompiledDefinition, JSON}
 import qq.util.Recursion.RecursionEngine
 import qq.util._
@@ -26,7 +26,7 @@ object SlatePrelude extends Prelude {
 
   def googleAuth: CompiledDefinition =
     noParamDefinition("googleAuth",
-      CompiledFilter.constE(identify.getAuthToken(interactive = true).map[Vector[JSON]](JSON.Str(_) +: Vector.empty).parallel.send[CompiledFilterStack]))
+      CompiledFilter.constE(identify.getAuthToken(interactive = true).map[Vector[JSON]](JSON.Str(_) +: Vector.empty).parallel.send[InterpretedFilterStack]))
 
   def launchAuth: CompiledDefinition =
     CompiledDefinition("launchAuth", 2, CompiledDefinition.standardEffectDistribution {
@@ -45,8 +45,8 @@ object SlatePrelude extends Prelude {
         val urlWithQueryParams = Applicative[Validated[RuntimeErrs, ?]].map2(urlVerified, queryParamsVerified)(Ajax.addQueryParams)
         for {
           webAuthResult <-
-          Eff.send[OrRuntimeErr, CompiledFilterStack, String](urlWithQueryParams.toEither)
-            .flatMap(identify.launchWebAuthFlow(interactive = true, _).parallel.send[CompiledFilterStack])
+          Eff.send[OrRuntimeErr, InterpretedFilterStack, String](urlWithQueryParams.toEither)
+            .flatMap(identify.launchWebAuthFlow(interactive = true, _).parallel.send[InterpretedFilterStack])
           accessToken = webAuthResult.substring(webAuthResult.indexOf("&code=") + "&code=".length)
         } yield JSON.obj("code" -> JSON.Str(accessToken)) +: Vector.empty
     })
@@ -92,7 +92,7 @@ object SlatePrelude extends Prelude {
             ).toEither.sequence[TaskParallel, OrRuntimeErr[XMLHttpRequest]].map(_.flatten).parallel.send[Stack]
           )
           asJson = Json.stringToJSON(resp.responseText).fold(Task.raiseError(_), t => Task.now(t +: Vector.empty)).parallel
-        } yield asJson).into[CompiledFilterStack]
+        } yield asJson).into[InterpretedFilterStack]
     })
 
   def httpDelete: CompiledDefinition = makeAjaxDefinition("httpDelete", AjaxMethod.DELETE)
@@ -119,7 +119,7 @@ object SlatePrelude extends Prelude {
 
   def nowRFC3339: CompiledDefinition =
     noParamDefinition("nowRFC3339",
-      CompiledFilter.constE(Task.eval(JSON.str(toRFC3339(new js.Date())) +: Vector.empty).parallel.send[CompiledFilterStack]))
+      CompiledFilter.constE(Task.eval(JSON.str(toRFC3339(new js.Date())) +: Vector.empty).parallel.send[InterpretedFilterStack]))
 
   // TODO: remove from here and AppView
   def formatDatetimeFriendlyImpl(d: js.Date): String = {
@@ -156,13 +156,13 @@ object SlatePrelude extends Prelude {
     case JSON.Str(s) =>
       val asDate = js.Date.parse(s)
       val fuzzy = formatDatetimeFriendlyImpl(new js.Date(asDate))
-      (JSON.str(fuzzy) +: Vector.empty).pureEff[CompiledFilterStack]
+      (JSON.str(fuzzy) +: Vector.empty).pureEff[InterpretedFilterStack]
     case k =>
-      typeErrorE[CompiledFilterStack, Vector[JSON]]("formatDatetimeFriendly", "string" -> k)
+      typeErrorE[InterpretedFilterStack, Vector[JSON]]("formatDatetimeFriendly", "string" -> k)
   })
 
   def randomHex: CompiledDefinition = noParamDefinition("randomHex", CompiledFilter.constE {
-    Eff.send[TaskParallel, CompiledFilterStack, Vector[JSON]](Task.eval(JSON.str(Vector.fill(6) {
+    Eff.send[TaskParallel, InterpretedFilterStack, Vector[JSON]](Task.eval(JSON.str(Vector.fill(6) {
       java.lang.Integer.toHexString(scala.util.Random.nextInt(256))
     }.mkString) +: Vector.empty).parallel)
   })

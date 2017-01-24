@@ -10,7 +10,7 @@ import qq.util.Recursion.RecursionEngine
 // tools for running parts of the compiler together
 object Runner {
 
-  def parseAndCompile(program: String)(implicit rec: RecursionEngine): (QQCompilationException Either ParseError) Either CompiledFilter = {
+  def parseAndCompile(program: String)(implicit rec: RecursionEngine): (QQCompilationException Either ParseError) Either InterpretedFilter = {
     Parser.program.parse(program) match {
       case Parsed.Success(parsedProgram, _) =>
         val optimized = LocalOptimizer.optimizeProgram(parsedProgram)
@@ -23,7 +23,7 @@ object Runner {
   // parse, compile, and run
   def run(qqProgram: String)(input: JSON)
          (implicit rec: RecursionEngine): (QQCompilationException Either ParseError) Either Task[RuntimeErrs Either Vector[JSON]] = {
-    parseAndCompile(qqProgram).map(CompiledFilter.run(input, Map.empty, _))
+    parseAndCompile(qqProgram).map(InterpretedFilter.run(input, Map.empty, _))
   }
 
 }
