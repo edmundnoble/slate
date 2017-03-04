@@ -13,12 +13,12 @@ object SlateBuild {
 
   lazy val commonDeps: Seq[Setting[_]] = Seq(
     libraryDependencies ++= Seq(
-      "org.typelevel" %%% "cats-core" % "0.8.1",
-      "org.typelevel" %%% "cats-kernel" % "0.8.1",
-      "org.typelevel" %%% "cats-macros" % "0.8.1",
-      "org.typelevel" %%% "cats-free" % "0.8.1",
-      "org.atnos" %%% "eff-cats" % "2.0.0-RC26",
-      "org.atnos" %%% "eff-cats-monix" % "2.0.0-RC26",
+      "org.typelevel" %%% "cats-core" % "0.9.0",
+      "org.typelevel" %%% "cats-kernel" % "0.9.0",
+      "org.typelevel" %%% "cats-macros" % "0.9.0",
+      "org.typelevel" %%% "cats-free" % "0.9.0",
+      "org.atnos" %%% "eff" % "3.0.3",
+      "org.atnos" %%% "eff-monix" % "3.0.3",
       "org.scalatest" %%% "scalatest" % "3.0.1" % "test",
       "com.lihaoyi" %%% "upickle" % "0.4.3",
       "com.lihaoyi" %%% "fastparse" % "0.4.1",
@@ -184,7 +184,8 @@ object SlateBuild {
   val baseSettings: Seq[sbt.Def.Setting[_]] = Seq(
     version := "0.0.1",
     scalaVersion := "2.11.8",
-    updateOptions ~= (_.withConsolidatedResolution(true)),
+    scalaOrganization := "org.typelevel",
+    updateOptions ~= (_.withCachedResolution(true)),
     scalacOptions ++= Seq(
       "-encoding", "UTF-8",
       "-Xlint",
@@ -202,7 +203,8 @@ object SlateBuild {
       "-Ywarn-infer-any",
       "-Ywarn-nullary-override",
       "-Ywarn-nullary-unit",
-      "-Xfuture"
+      "-Xfuture",
+      "-Ypartial-unification"
     ),
     scalacOptions in Compile += "-Ywarn-value-discard",
     coverageExcludedPackages := ";qq.*Main;",
@@ -220,12 +222,10 @@ object SlateBuild {
     stackTest <<= {
       (testOnly in Test).toTask(" -- -oD -n StackTest")
     },
-    addCompilerPlugin("com.milessabin" % "si2712fix-plugin" % "1.2.0" cross CrossVersion.full),
     addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.3" cross CrossVersion.binary)
   )
 
   val jsSettings: Seq[sbt.Def.Setting[_]] = Seq(
-    scalaJSUseRhino in Global := false,
     (relativeSourceMaps in fullOptJS) := true,
     (relativeSourceMaps in fastOptJS) := true
   )
@@ -292,42 +292,42 @@ object SlateBuild {
     .settings(nonBrowserTest := ())
     .settings(stackTest := ())
 
-  lazy val uibench: Project = project.in(file("uibench"))
-    .dependsOn(ui)
-    .dependsOn(qqjs)
-    .settings(ScalaJSPlugin.projectSettings)
-    .enablePlugins(ScalaJSPlugin)
-    .settings((resourceDirectory in Compile) := (resourceDirectory in Compile in ui).value)
-    .settings(baseSettings: _*)
-    .settings(disableTests: _*)
-    .settings(chromeTasks)
-    .settings(jsSettings)
-    .settings(commonDeps: _*)
-    .settings(uiDeps: _*)
-    .settings(libraryDependencies += "com.github.japgolly.scalajs-benchmark" %%% "benchmark" % "0.2.4-SNAPSHOT")
-    // otherwise scalajs-benchmark doesn't work
-    .settings(jsManifestFilter := {
-    import org.scalajs.core.tools.jsdep.{JSDependency, JSDependencyManifest}
-
-    (seq: Traversable[JSDependencyManifest]) => {
-      seq map { manifest =>
-
-        def isOkToInclude(jsDep: JSDependency): Boolean = {
-          !List("react-dom", "react-with-addons").exists(jsDep.resourceName.startsWith)
-        }
-
-        new JSDependencyManifest(
-          origin = manifest.origin,
-          libDeps = manifest.libDeps filter isOkToInclude,
-          requiresDOM = manifest.requiresDOM,
-          compliantSemantics = manifest.compliantSemantics
-        )
-      }
-    }
-  })
+//  lazy val uibench: Project = project.in(file("uibench"))
+//    .dependsOn(ui)
+//    .dependsOn(qqjs)
+//    .settings(ScalaJSPlugin.projectSettings)
+//    .enablePlugins(ScalaJSPlugin)
+//    .settings((resourceDirectory in Compile) := (resourceDirectory in Compile in ui).value)
+//    .settings(baseSettings: _*)
+//    .settings(disableTests: _*)
+//    .settings(chromeTasks)
+//    .settings(jsSettings)
+//    .settings(commonDeps: _*)
+//    .settings(uiDeps: _*)
+//    .settings(libraryDependencies += "com.github.japgolly.scalajs-benchmark" %%% "benchmark" % "0.2.4-SNAPSHOT")
+//     otherwise scalajs-benchmark doesn't work
+//    .settings(jsManifestFilter := {
+//    import org.scalajs.core.tools.jsdep.{JSDependency, JSDependencyManifest}
+//
+//    (seq: Traversable[JSDependencyManifest]) => {
+//      seq map { manifest =>
+//
+//        def isOkToInclude(jsDep: JSDependency): Boolean = {
+//          !List("react-dom", "react-with-addons").exists(jsDep.resourceName.startsWith)
+//        }
+//
+//        new JSDependencyManifest(
+//          origin = manifest.origin,
+//          libDeps = manifest.libDeps filter isOkToInclude,
+//          requiresDOM = manifest.requiresDOM,
+//          compliantSemantics = manifest.compliantSemantics
+//        )
+//      }
+//    }
+//  })
 
   lazy val slate: Project = project.in(file("."))
-    .aggregate(ui, uitests, uibench, qqjvm, qqjs, qqmacrosjvm, qqmacrosjs)
+    .aggregate(ui, uitests, qqjvm, qqjs, qqmacrosjvm, qqmacrosjs)
     .settings(Defaults.projectCore)
     .settings(baseSettings)
     .settings(ScalaJSPlugin.globalSettings)

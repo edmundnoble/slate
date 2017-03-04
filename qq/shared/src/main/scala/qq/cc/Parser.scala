@@ -6,7 +6,6 @@ import cats.implicits._
 import fastparse.all._
 import fastparse.core.Implicits
 import fastparse.parsers
-import fastparse.parsers.Terminals
 import qq.data._
 
 object Parser {
@@ -63,7 +62,7 @@ object Parser {
 
   val escapedStringLiteral: P[String] = P(
     quote ~/
-      ((Terminals.ElemLiteral('\\') ~/ (Terminals.ElemLiteral('n').map(_ => "\n") | Terminals.ElemLiteral('"').map(_ => "\"") | Terminals.ElemLiteral('\\').!)) |
+      ((parsers.Terminals.ElemLiteral('\\') ~/ (parsers.Terminals.ElemLiteral('n').map(_ => "\n") | parsers.Terminals.ElemLiteral('"').map(_ => "\"") | parsers.Terminals.ElemLiteral('\\').!)) |
         CharIn(escapedStringLiteralChars: _*).!).rep.map(_.mkString) ~ quote
   )
 
@@ -116,7 +115,7 @@ object Parser {
   private val paths =
     for {
       path <- fullPath
-      f <- (whitespace ~ (setPathFilter(path) | modifyPathFilter(path))) | Terminals.Pass().map(_ => dsl.getPath(path))
+      f <- (whitespace ~ (setPathFilter(path) | modifyPathFilter(path))) | parsers.Terminals.Pass().map(_ => dsl.getPath(path))
     } yield f
 
   private val filterIdentifier: P[String] = P(
@@ -221,7 +220,7 @@ object Parser {
     (whitespace ~
       (definition.rep(min = 1, sep = whitespace) ~ whitespace)
         .?.map(_.getOrElse(Vector.empty)) ~
-      filter ~ whitespace ~ Terminals.End())
+      filter ~ whitespace ~ parsers.Terminals.End())
       .map((Program[FilterAST] _).tupled)
   )
 

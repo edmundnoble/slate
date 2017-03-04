@@ -6,7 +6,7 @@ import cats.implicits._
 import org.atnos.eff.Eff._
 import org.atnos.eff._
 import org.atnos.eff.syntax.all._
-import slate.storage.StorageFS.{Dir, StorageKey}
+import slate.storage.StorageFS.{Dir, Key}
 
 class StorageFSTests extends SlateSuite {
   def logStorageProgram[A](prog: StorageProgram[A]): StorageProgram[A] = {
@@ -17,12 +17,12 @@ class StorageFSTests extends SlateSuite {
   }
 
   implicit final class MkDirResultOps(result: StorageFS.MkDirResult) {
-    @inline def assertDirMade: StorageKey[Dir] = result match {
+    @inline def assertDirMade: Key[Dir] = result match {
       case StorageFS.DirMade(k) => k
-      case StorageFS.AlreadyPresent(_) => assert(false, "dir was already present before being made").asInstanceOf[StorageKey[Dir]]
+      case StorageFS.AlreadyPresent(_) => assert(false, "dir was already present before being made").asInstanceOf[Key[Dir]]
     }
-    @inline def assertAlreadyPresent: StorageKey[Dir] = result match {
-      case StorageFS.DirMade(_) => assert(false, "dir was not already present before being made").asInstanceOf[StorageKey[Dir]]
+    @inline def assertAlreadyPresent: Key[Dir] = result match {
+      case StorageFS.DirMade(_) => assert(false, "dir was not already present before being made").asInstanceOf[Key[Dir]]
       case StorageFS.AlreadyPresent(k) => k
     }
   }
@@ -59,8 +59,8 @@ class StorageFSTests extends SlateSuite {
         nestedDir <- StorageFS.getDir(nestedKeyValue.assertDirMade)
         _ = nestedDir.value.isEmpty shouldBe true
       } yield (firstKeyValue, nestedKeyValue, secondKey.value)
-      val dirKey = StorageFS.StorageKey[Dir]("dir", "0")
-      val nestedKey = StorageFS.StorageKey[Dir]("nested", "1")
+      val dirKey = StorageFS.Key[Dir]("dir", "0")
+      val nestedKey = StorageFS.Key[Dir]("nested", "1")
       StorageProgram.runProgram(PureStorage, addDir)
         .detach.run(initializedFS).value._2 shouldBe ((StorageFS.DirMade(dirKey), StorageFS.DirMade(nestedKey), StorageFS.AlreadyPresent(dirKey)))
     }
