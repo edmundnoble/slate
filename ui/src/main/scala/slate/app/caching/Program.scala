@@ -2,6 +2,7 @@ package slate
 package app
 package caching
 
+import cats.Monad
 import cats.implicits._
 import fastparse.all.ParseError
 import qq.cc.{LocalOptimizer, _}
@@ -10,6 +11,7 @@ import qq.util.Recursion.RecursionEngine
 import scodec.bits.BitVector
 import shapeless.{:+:, CNil}
 import slate.app.SlateApp.SlateProgram
+import slate.storage.Storage
 import slate.util.Util._
 
 // what goes into caching a QQ program in slate
@@ -35,11 +37,12 @@ object Program {
 
   // cache optimized, parsed programs using their hashcode as a key
   // store them as base64-encoded bytecode
-  def getCachedProgramByHash(qqProgram: SlateProgram[String])(implicit rec: RecursionEngine): StorageProgram[ErrorGettingCachedProgram Either data.Program[data.FilterAST]] = {
+  def getCachedProgramByHash[F[_]: Monad](qqProgram: SlateProgram[String])
+                                         (implicit storage: Storage[F], rec: RecursionEngine): F[ErrorGettingCachedProgram Either data.Program[data.FilterAST]] = {
 
     import qq.protocol.FilterProtocol
 
-    Caching.getCachedByPrepare[ProgramSerializationException, ParseError, data.Program[data.FilterAST], SlateProgram[String]](qqProgram)(
+    Caching.getCachedByPrepare[F, ProgramSerializationException, ParseError, data.Program[data.FilterAST], SlateProgram[String]](qqProgram)(
       prog => prog.title + prog.program.hashCode.toString, { (program: data.Program[data.FilterAST]) =>
         FilterProtocol.programCodec
           .encode(program)

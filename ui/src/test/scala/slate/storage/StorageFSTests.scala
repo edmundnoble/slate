@@ -1,37 +1,22 @@
 package slate
 package storage
 
-import cats.data.{State, Writer}
+import cats.Monad
+import cats.data.State
 import cats.implicits._
-import org.atnos.eff.Eff._
-import org.atnos.eff._
-import org.atnos.eff.syntax.all._
-import slate.storage.StorageFS.{Dir, Key}
+import slate.storage.PureStorage.StringMapState
+import slate.storage.StorageFS._
 
 class StorageFSTests extends SlateSuite {
-  def logStorageProgram[A](prog: StorageProgram[A]): StorageProgram[A] = {
-    type mem = Member.Aux[Writer[Vector[String], ?], Fx.fx2[StorageAction, Writer[Vector[String], ?]], Fx.fx1[StorageAction]]
-    writer.runWriterUnsafe[Fx.fx2[StorageAction, Writer[Vector[String], ?]], Fx.fx1[StorageAction], Vector[String], A](
-      StorageProgram.logActions[Fx.fx1[StorageAction], Fx.fx2[StorageAction, Writer[Vector[String], ?]], NoFx, A](prog)
-    )(println)(implicitly[mem])
-  }
-
-  implicit final class MkDirResultOps(result: StorageFS.MkDirResult) {
-    @inline def assertDirMade: Key[Dir] = result match {
-      case StorageFS.DirMade(k) => k
-      case StorageFS.AlreadyPresent(_) => assert(false, "dir was already present before being made").asInstanceOf[Key[Dir]]
-    }
-    @inline def assertAlreadyPresent: Key[Dir] = result match {
-      case StorageFS.DirMade(_) => assert(false, "dir was not already present before being made").asInstanceOf[Key[Dir]]
-      case StorageFS.AlreadyPresent(k) => k
-    }
-  }
-
   val initializedFS: Map[String, String] =
-    StorageProgram.runProgram(PureStorage, StorageFS.initFS).detach.run(Map.empty).value._1
+    StorageFS.initFS(None)(Monad[StringMapState], PureStorage.Storage).run(Map.empty).value._1
 
-  def makeDetNonceSource: () => String = new (() => String) {
+  final class ResettableNonceSource extends (() => String) {
     var i = 0
+
+    def reset(): Unit =
+      i = 0
+
     override def apply(): String = {
       val t = i
       i += 1
@@ -39,95 +24,118 @@ class StorageFSTests extends SlateSuite {
     }
   }
 
-  "init" in {
+  def makeDetNonceSource: ResettableNonceSource = new ResettableNonceSource
+
+
+  final val detNonceSource: ResettableNonceSource = makeDetNonceSource
+
+  implicit final val storageFS: StorageFS[State[Map[String, String], ?]] =
+    new StorageFS[State[Map[String, String], ?]](PureStorage.Storage, makeDetNonceSource, StorageFS.fsroot)
+
+  class Fixture {
+    detNonceSource.reset()
+  }
+
+  "init should create root folder" in new Fixture {
     val outDir =
-      StorageProgram.runProgram(PureStorage, StorageFS.getDir(StorageFS.fsroot))
-        .detach.run(initializedFS).value._2.value
-    outDir.isEmpty shouldBe true
+      StorageFS.getDir(StorageFS.fsroot).run(initializedFS).value._2
+    assert(outDir.value.isEmpty)
   }
 
   "mkDir" - {
 
-    "should not overwrite" in {
-      val detNonceSource = makeDetNonceSource
+    "should return a key to a dir that exists" in new Fixture {
+      val dirKey = Key[Dir]("dir", "0")
       val addDir = for {
-        firstKey <- StorageFS.mkDir("dir", detNonceSource, StorageFS.fsroot)
-        firstKeyValue = firstKey.value
-        nestedKey <- StorageFS.mkDir("nested", detNonceSource, firstKeyValue.assertDirMade)
-        nestedKeyValue = nestedKey.value
-        secondKey <- StorageFS.mkDir("dir", detNonceSource, StorageFS.fsroot)
-        nestedDir <- StorageFS.getDir(nestedKeyValue.assertDirMade)
-        _ = nestedDir.value.isEmpty shouldBe true
-      } yield (firstKeyValue, nestedKeyValue, secondKey.value)
-      val dirKey = StorageFS.Key[Dir]("dir", "0")
-      val nestedKey = StorageFS.Key[Dir]("nested", "1")
-      StorageProgram.runProgram(PureStorage, addDir)
-        .detach.run(initializedFS).value._2 shouldBe ((StorageFS.DirMade(dirKey), StorageFS.DirMade(nestedKey), StorageFS.AlreadyPresent(dirKey)))
+        _ <- StorageFS.mkDir(
+          "dir", detNonceSource, StorageFS.fsroot,
+          alreadyPresent = (_, _) => fail("dir did not exist"), dirMade = (_, k) => k shouldBe dirKey
+        )
+        addedDir <- StorageFS.getDir(dirKey)
+      } yield assert(addedDir.value.isEmpty)
+      addDir.run(initializedFS).value
     }
 
-    "should return a key to a dir that exists" in {
-      val detNonceSource = makeDetNonceSource
+    "should not overwrite an existing dir" in new Fixture {
+      val dirKey = Key[Dir]("dir", "0")
+      val nestedKey = Key[Dir]("nested", "1")
       val addDir = for {
-        newDirKey <- StorageFS.mkDir("dir", detNonceSource, StorageFS.fsroot)
-        addedDir <- StorageFS.getDir(newDirKey.value.assertDirMade)
-      } yield addedDir
-      val result = StorageProgram.runProgram(PureStorage, addDir)
-        .detach.run(initializedFS).value._2.value
-
-      result.isEmpty shouldBe true
+        firstKey <- mkDir(
+          "dir", detNonceSource, fsroot,
+          alreadyPresent = (_, _) => fail("dir folder already existed"),
+          dirMade = { (_, k) => k shouldBe dirKey; k }
+        )
+        firstKeyValue = firstKey.value
+        nestedKey <- mkDir(
+          "nested", detNonceSource, firstKey.value,
+          alreadyPresent = (_, _) => fail("nested dir already existed"),
+          dirMade = { (_, k) => k shouldBe nestedKey; k }
+        )
+        nestedKeyValue = nestedKey.value
+        secondKey <- mkDir(
+          "dir", detNonceSource, fsroot,
+          alreadyPresent = { (_, k) => k shouldBe dirKey; k },
+          dirMade = (_, _) => fail("dir didn't exist or was overwritten")
+        )
+        secondKeyValue = secondKey.value
+        nestedDir <- getDir(nestedKeyValue)
+        _ = nestedDir.value.isEmpty shouldBe true
+      } yield (firstKeyValue, nestedKeyValue, secondKeyValue)
+      addDir.run(initializedFS).value
     }
 
   }
 
   "file data" - {
-    class Fixture {
-      val nonceSource: () => String = makeDetNonceSource
-    }
-
     "update/get" in new Fixture {
       val prog = for {
-        _ <- StorageFS.updateFileInDir("f", nonceSource, "datas", StorageFS.fsroot)
-        d <- StorageFS.getFileInDir("f", StorageFS.fsroot)
+        _ <- updateFileInDir("f", detNonceSource, "datas", fsroot)
+        d <- getFileInDir("f", fsroot)
         _ = d.value shouldBe "datas"
       } yield ()
-      StorageProgram.runProgram(PureStorage, prog).detach.run(initializedFS).value
+      prog.run(initializedFS).value
     }
 
     "update/get/remove" in new Fixture {
       val prog = for {
-        k <- StorageFS.updateFileInDir("f", nonceSource, "datas", StorageFS.fsroot)
-        f <- traverseA(k)(StorageFS.getFile[Fx.fx1[StorageAction]])
-        d <- traverseA(f.flatten)(_ => StorageFS.getFileInDir("f", StorageFS.fsroot))
-        _ = d.flatten.value shouldBe "datas"
-        _ <- StorageFS.removeFile("f", StorageFS.fsroot)
+        fKey <- updateFileInDir("f", detNonceSource, "datas", fsroot)
+        fFile <- getFile(fKey.value)
+        _ = fFile.value.data shouldBe "datas"
+        fFileInRoot <- getFileInDir("f", fsroot)
+        _ = fFileInRoot.flatten.value shouldBe "datas"
+        _ <- removeFile(
+          "f", fsroot,
+          wasNotPresent = fail("file f was not present when removed"),
+          wasPresent = ()
+        )
+        fFileRemoved <- getFile(fKey.value)
+        _ = fFileRemoved shouldBe None
       } yield ()
-      StorageProgram.runProgram(PureStorage, prog).detach.run(initializedFS).value._1 shouldBe initializedFS
+
+      prog.run(initializedFS).value._1 shouldBe initializedFS
     }
   }
 
   "storage wrapper" - {
-    class Fixture {
-      val storageFS: StorageFS[State[Map[String, String], ?]] =
-        new StorageFS[State[Map[String, String], ?]](PureStorage, makeDetNonceSource, StorageFS.fsroot)
-    }
 
     "update/get" in new Fixture {
-      val prog: StorageProgram[Unit] = for {
-        _ <- StorageProgram.update("key", "value")
-        v <- StorageProgram.get("key")
-        _ = v.value shouldBe "value"
+      val prog: StringMapState[Unit] = for {
+        _ <- storageFS.update("key", "value")
+        v <- storageFS("key")
+        _ = v shouldBe Some("value")
       } yield ()
-      StorageProgram.runProgram(storageFS, prog).detach.run(initializedFS).value
+      prog.run(initializedFS).value
     }
 
     "update/get/remove" in new Fixture {
-      val prog: StorageProgram[Unit] = for {
-        _ <- StorageProgram.update("key", "value")
-        v <- StorageProgram.get("key")
-        _ = v.value shouldBe "value"
-        _ <- StorageProgram.remove("key")
+      val prog: StringMapState[Unit] = for {
+        _ <- storageFS.update("key", "value")
+        v <- storageFS("key")
+        _ = v shouldBe Some("value")
+        _ <- storageFS.remove("key")
+        _ = v shouldBe None
       } yield ()
-      StorageProgram.runProgram(storageFS, prog).detach.run(initializedFS).value._1 shouldBe initializedFS
+      prog.run(initializedFS).value._1 shouldBe initializedFS
     }
   }
 

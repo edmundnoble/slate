@@ -1,13 +1,9 @@
 package slate
 package storage
 
-import cats.Monoid
-import cats.data.Writer
+import cats.{Applicative, Monad, Monoid, Traverse}
+import cats.data.{Writer, WriterT}
 import cats.implicits._
-import org.atnos.eff.Eff._
-import org.atnos.eff._
-import org.atnos.eff.syntax.all._
-import slate.storage.StorageAction.{_StorageAction, _lsAction}
 
 import scala.scalajs.js
 import scala.scalajs.js.{Array, WrappedArray}
@@ -30,30 +26,28 @@ object StorageFS {
         .imap { case (name, nonce) => Key[Any](name, nonce) } { k => (k.name, k.nonce) }
   }
 
+  type DirKey = Key[Dir]
+  type FileKey = Key[File]
+
   val fsroot: Key[Dir] = Key[Dir]("fsroot", "fsroot")
 
-  import StorageAction._storageAction
-
   /** idempotent */
-  def initFS[R: _storageAction](rootDir: Option[Dir]): Eff[R, Dir] = {
-    for {
-      newRoot <- rootDir.map(_.pureEff[R]).getOrElse {
-        StorageProgram.update[R](fsroot.render, Dir.codec.from(Dir.empty)).as(Dir.empty)
-      }
-    } yield newRoot
-  }
+  def initFS[F[_] : Applicative](rootDir: Option[Dir])(implicit storage: Storage[F]): F[Dir] =
+    rootDir.map(_.pure[F]).getOrElse {
+      storage.update(fsroot.render, Dir.codec.from(Dir.empty)).as(Dir.empty)
+    }
 
-  import qq.util.Unsafe._
   import qq.Platform.Js.Unsafe._
 
   /** idempotent */
-  def checkFS[R: _storageAction : _lsAction](rootDir: Option[Dir]): Eff[R, Dir] = {
+  def checkFS[F[_] : Monad](rootDir: Option[Dir])(implicit storage: Storage[F], lsStorage: LsStorage[F]): F[Dir] = {
     for {
-      initializedRoot <- initFS[R](rootDir)
-      allKnownKeys <- foldKeys(initializedRoot,
+      initializedRoot <- initFS[F](rootDir)
+      allKnownKeys <- foldKeys[Set[String], F](
+        initializedRoot,
         v => Set(v.render), v => Set(v.render)
-      )
-      allKeys <- Eff.send[LsAction, R, List[String]](StorageAction.LsKeys)
+      )(Monad[F], storage, catsStdInstancesForSet.algebra[String])
+      allKeys <- lsStorage.lsKeys
       // TODO: check if this works :D
       //_ <- allKeys.traverseA(key => if (!allKnownKeys(key)) StorageProgram.remove(key) else ().pureEff)
       _ = println(allKnownKeys -- allKeys)
@@ -108,55 +102,55 @@ object StorageFS {
   def parseDate(str: String): Option[js.Date] =
     Try(new js.Date(js.Date.parse(str))).toOption
 
-  def getRaw[R: _StorageAction](key: Key[_]): Eff[R, Option[String]] =
-    StorageProgram.get(key.name + Delimiters.keyDelimiter + key.nonce)
+  def getRaw[F[_]](key: Key[_])(implicit storage: Storage[F]): F[Option[String]] =
+    storage(key.name + Delimiters.keyDelimiter + key.nonce)
 
-  def getDir[R: _StorageAction](key: Key[Dir]): Eff[R, Option[Dir]] = {
+  def getDir[F[_] : Monad](key: Key[Dir])(implicit storage: Storage[F]): F[Option[Dir]] = {
     for {
-      raw <- getRaw[R](key)
+      raw <- getRaw(key)
     } yield raw.flatMap(Dir.codec.to)
   }
 
-  def getDirKey[R: _storageAction](path: Vector[String]): Eff[R, Option[Key[Dir]]] =
-    getDirKeyFromRoot(path, fsroot)
+  def getDirKey[F[_] : Monad](path: Vector[String])(implicit storage: Storage[F]): F[Option[Key[Dir]]] =
+    getDirKeyFromRoot[F](path, fsroot)
 
-  def getDirKeyFromRoot[R: _storageAction](path: Vector[String], rootKey: Key[Dir]): Eff[R, Option[Key[Dir]]] = {
-    path.foldM[Eff[R, ?], Option[Key[Dir]]](Some(rootKey)) { (b, s) =>
-      b.traverseA(getDir[R]).map(_.flatten).map(_.flatMap(_.childDirKeys.find(_.name == s)))
+  def getDirKeyFromRoot[F[_] : Monad](path: Vector[String], rootKey: Key[Dir])(implicit storage: Storage[F]): F[Option[Key[Dir]]] = {
+    path.foldM[F, Option[Key[Dir]]](Some(rootKey)) { (b, s) =>
+      b.traverse[F, Option[Dir]](getDir[F]).map(_.flatten).map(_.flatMap(_.childDirKeys.find(_.name == s)))
     }
   }
 
-  def getFile[R: _storageAction](key: Key[File]): Eff[R, Option[File]] = {
+  def getFile[F[_] : Monad](key: Key[File])(implicit storage: Storage[F]): F[Option[File]] = {
     for {
       raw <- getRaw(key)
     } yield raw.map(File)
   }
 
-  def getDirPath[R: _storageAction](path: Vector[String]): Eff[R, Option[Dir]] = {
+  def getDirPath[F[_] : Monad](path: Vector[String])(implicit storage: Storage[F]): F[Option[Dir]] = {
     for {
-      dirKey <- getDirKey[R](path)
-      dir <- dirKey.traverseA(getDir[R])
+      dirKey <- getDirKey[F](path)
+      dir <- dirKey.traverse(getDir[F])
     } yield dir.flatten
   }
 
-  def getFileInDir[R: _storageAction](fileName: String, dirKey: Key[Dir]): Eff[R, Option[String]] = for {
-    dir <- getDir[R](dirKey)
+  def getFileInDir[F[_] : Monad](fileName: String, dirKey: Key[Dir])(implicit storage: Storage[F]): F[Option[String]] = for {
+    dir <- getDir[F](dirKey)
     hash = dir.flatMap(_.findFileByName(fileName))
-    file <- hash.flatTraverse[Eff[R, ?], File](getFile[R])
+    file <- hash.flatTraverse[F, File](getFile[F])
   } yield file.map(_.data)
 
-  def updateFileInDir[R: _storageAction](fileName: String, nonceSource: () => String, data: String, dirKey: Key[Dir]): Eff[R, Option[Key[File]]] = for {
-    maybeDir <- getDir[R](dirKey)
+  def updateFileInDir[F[_] : Monad](fileName: String, nonceSource: () => String, data: String, dirKey: Key[Dir])(implicit storage: Storage[F]): F[Option[Key[File]]] = for {
+    maybeDir <- getDir[F](dirKey)
     maybeDirAndMaybeFileKey = maybeDir.fproduct(_.findFileByName(fileName))
-    key <- maybeDirAndMaybeFileKey.traverseA {
+    key <- maybeDirAndMaybeFileKey.traverse {
       case (dir, maybeFileKey) =>
         maybeFileKey.map(fileKey =>
-          StorageProgram.update(fileKey.render, data).as(fileKey)
-        ).getOrElse[Eff[R, Key[File]]] {
+          storage.update(fileKey.render, data).as(fileKey)
+        ).getOrElse[F[Key[File]]] {
           val fileKey = Key[File](fileName, nonceSource())
           for {
-            _ <- StorageProgram.update(fileKey.render, data)
-            _ <- StorageProgram.update(dirKey.render, Dir.codec.from(dir.addFileKey(fileKey)))
+            _ <- storage.update(fileKey.render, data)
+            _ <- storage.update(dirKey.render, Dir.codec.from(dir.addFileKey(fileKey)))
           } yield fileKey
         }
     }
@@ -164,51 +158,57 @@ object StorageFS {
 
   // returns None if outside does not exist.
   @inline
-  def mkDir[R: _storageAction, B](dirName: String, nonceSource: () => String, outside: Key[Dir],
-                                  alreadyPresent: (Dir, Key[Dir]) => B, dirMade: (Dir, Key[Dir]) => B): Eff[R, Option[B]] = for {
-    maybeOutsideDir <- getDir[R](outside)
+  def mkDir[F[_] : Monad, B](dirName: String, nonceSource: () => String, outside: Key[Dir],
+                             alreadyPresent: (Dir, Key[Dir]) => B, dirMade: (Dir, Key[Dir]) => B)(implicit storage: Storage[F]): F[Option[B]] = for {
+    maybeOutsideDir <- getDir[F](outside)
     maybeOutsideDirAndExistingKey = maybeOutsideDir.fproduct(_.findDirByName(dirName))
-    out <- maybeOutsideDirAndExistingKey.traverseA {
+    out <- maybeOutsideDirAndExistingKey.traverse {
       case (dir, maybeDirKey) =>
-        maybeDirKey.fold[Eff[R, B]] {
+        maybeDirKey.fold[F[B]] {
           val subDirKey = Key[Dir](dirName, nonceSource())
           val newDir = Dir.empty
-          (StorageProgram.update(subDirKey.render, Dir.codec.from(newDir)) >>
-            StorageProgram.update(outside.render, Dir.codec.from(
-              dir.addDirKey(subDirKey)
-            ))).as(dirMade(Dir.empty, subDirKey))
-        }(dirExistsAlready => alreadyPresent(dir, dirExistsAlready).pureEff[R])
+          (storage.update(subDirKey.render, Dir.codec.from(newDir)) >>
+            storage.update(outside.render, Dir.codec.from(dir.addDirKey(subDirKey)))
+            ).as(dirMade(Dir.empty, subDirKey))
+        }(dirExistsAlready => alreadyPresent(dir, dirExistsAlready).pure[F])
     }
   } yield out
 
-  def removeFile[R: _StorageAction, B](fileName: String, outsideKey: Key[Dir], wasNotPresent: B, wasPresent: B): Eff[R, B] = for {
-    outsideDir <- getDir[R](outsideKey)
-    insideFileKey = outsideDir.flatMap(_.childFileKeys.find(_.name == fileName))
-    out <- insideFileKey.fold(wasNotPresent.pureEff[R])(k =>
-      for {
-        _ <- StorageProgram.remove[R](k.render)
-        _ <- StorageProgram.update[R](outsideKey.render,
-          Dir.codec.from(outsideDir.get.copy(childFileKeys = outsideDir.get.childFileKeys.filter(_.name != fileName)))
-        )
-      } yield wasPresent
-    )
-  } yield out
+  @inline
+  def removeFile[F[_] : Monad, B](fileName: String, outsideKey: Key[Dir], wasNotPresent: B, wasPresent: B)(implicit storage: Storage[F]): F[B] =
+    for {
+      outsideDir <- getDir[F](outsideKey)
+      insideFileKey = outsideDir.flatMap(_.childFileKeys.find(_.name == fileName))
+      out <- insideFileKey.fold(wasNotPresent.pure[F])(k =>
+        for {
+          _ <- storage.remove(k.render)
+          _ <- storage.update(outsideKey.render,
+            Dir.codec.from(outsideDir.get.copy(childFileKeys = outsideDir.get.childFileKeys.filter(_.name != fileName)))
+          )
+        } yield wasPresent
+      )
+    } yield out
 
-  def foldKeys[A, R: _storageAction](rootDir: Dir, fileKeyAction: Key[File] => A, dirKeyAction: Key[Dir] => A)
-                                    (implicit A: Monoid[A]): Eff[R, A] =
-    EffMonad[R].tailRecM[(WrappedArray[Dir], A), A]((WrappedArray(rootDir), A.empty)) { case (q, a) =>
-      Eff.traverseA[R, WrappedArray, Dir, (WrappedArray[Dir], A) Either A](q) { dir =>
+  implicit val travvy: Traverse[WrappedArray] =
+    qq.util.Unsafe.builderTraverse[WrappedArray]
+
+  @inline
+  // this could be more efficient: fuse something
+  def foldKeys[A, F[_] : Monad](rootDir: Dir, fileKeyAction: Key[File] => A, dirKeyAction: Key[Dir] => A)
+                               (implicit storage: Storage[F], A: Monoid[A]): F[A] =
+    Monad[F].tailRecM[(WrappedArray[Dir], A), A]((WrappedArray(rootDir), A.empty)) { case (q, a) =>
+      q.traverse[F, (WrappedArray[Dir], A) Either A] { dir =>
         val combinedFileKeys = A.combine(
           A.combineAll(new WrappedArray(dir.childFileKeys.map(fileKeyAction))),
           A.combineAll(new WrappedArray(dir.childDirKeys.map(dirKeyAction)))
         )
         val combineSoFar = A.combine(combinedFileKeys, a)
         if (dir.childDirKeys.isEmpty) {
-          Eff.pure(Either.right[(WrappedArray[Dir], A), A](combineSoFar))
+          Either.right[(WrappedArray[Dir], A), A](combineSoFar).pure[F]
         } else {
-          Eff.traverseA(new WrappedArray(dir.childDirKeys))(getDir[R])(builderTraverse[WrappedArray]).map(_.flatten).map(ks => Either.left[(WrappedArray[Dir], A), A]((ks, combineSoFar)))
+          new WrappedArray(dir.childDirKeys).traverse(getDir[F]).map(_.flatten).map(ks => Either.left[(WrappedArray[Dir], A), A]((ks, combineSoFar)))
         }
-      }(builderTraverse[WrappedArray]).map { results =>
+      }.map { results =>
         val r = results.foldLeft((WrappedArray.empty[Dir], A.empty)) {
           case ((ar, d), bar) =>
             (ar ++ bar.fold(_._1, _ => WrappedArray.empty), A.combine(d, bar.fold(_._2, identity)))
@@ -220,48 +220,41 @@ object StorageFS {
 
   type StrVecWriter[A] = Writer[Vector[String], A]
 
-  def runSealedStorageProgram[I, I2, U, U2, UN, A](prog: Eff[I, A], underlying: Storage[UN],
-                                                   transform: Storage[UN] => Storage[U],
-                                                   nonceSource: () => String,
-                                                   storageRoot: StorageFS.Key[StorageFS.Dir])(
-                                                    implicit ev: Member.Aux[StorageAction, I, U],
-                                                    ev3: IntoPoly[UN, U2],
-                                                    ev4: Member.Aux[StrVecWriter, U, U2],
-                                                    ev5: Member.Aux[StrVecWriter, I, I2],
-                                                    ev6: Member.Aux[StorageAction, I2, U2]
-                                                  ): Eff[U2, A] = {
-    val storageFS = transform(StorageFS(underlying, nonceSource, storageRoot))
+  def runSealedStorageProgram[F[_] : Monad, A](program: Alg[Storage, Monad, A], storage: Storage[F],
+                                               transform: Storage[F] => Storage[F],
+                                               nonceSource: () => String,
+                                               storageRoot: StorageFS.DirKey): F[A] = {
+    val storageFS: Storage[WriterT[F, Vector[String], ?]] =
+      LoggedKeyStorage(transform(StorageFS(storage, nonceSource, storageRoot)))
 
-    val loggedProgram: Eff[U, A] =
-      StorageProgram.runProgram[I, U, A](LoggedKeyStorage(storageFS), prog)
-    loggedProgram.runWriterFold(writer.MonoidFold[Vector[String]]).flatMap {
-      case (v, usedKeys) =>
-        StorageProgram.runProgram[I2, U2, A](underlying.into[U2](ev3), for {
-          programDir <- StorageFS.getDir[I2](storageRoot)
-          _ <- Eff.traverseA[I2, Option, Dir, List[Unit]](programDir) { dir =>
-            val keysToRemove = dir.childFileKeys.map(_.name).toSet -- usedKeys
-            keysToRemove.toList.traverseA(StorageFS.removeFile[I2, Unit](_, storageRoot, (), ()))
-          }
-        } yield v)(ev6)
-    }
+    val loggedProgramResult = program.apply(storageFS)
+    for {
+      loggedResult <- loggedProgramResult.run
+      (usedKeys, v) = loggedResult
+      dir <- getDir[F](storageRoot)(Monad[F], storage)
+      keysToRemove = dir.map(_.childFileKeys.map(_.name).toSet -- usedKeys)
+      _ <- keysToRemove.traverse(_.toList.traverse(removeFile[F, Unit](_, storageRoot, (), ())(Monad[F], storage)))
+    } yield v
   }
 
 }
 
 import slate.storage.StorageFS._
 
-final case class StorageFS[F](underlying: Storage[F], nonceSource: () => String, dirKey: Key[Dir]) extends Storage[F] {
+final case class StorageFS[F[_] : Monad](underlying: Storage[F], nonceSource: () => String, dirKey: Key[Dir]) extends Storage[F] {
 
   import StorageFS._
 
-  override def apply(key: String): Eff[F, Option[String]] =
-    StorageProgram.runProgram(underlying, getFileInDir[Fx.prepend[StorageAction, F]](key, dirKey))
+  override def apply(key: String): F[Option[String]] =
+    getFileInDir[F](key, dirKey)(Monad[F], underlying)
 
-  override def update(key: String, data: String): Eff[F, Unit] =
-    StorageProgram.runProgram(underlying, updateFileInDir[Fx.prepend[StorageAction, F]](key, nonceSource, data, dirKey)).map(_ => ())
+  //    StorageProgram.runProgram(underlying, getFileInDir[Fx.prepend[StorageAction, F]](key, dirKey))
 
-  override def remove(key: String): Eff[F, Unit] =
-    StorageProgram.runProgram(underlying, removeFile[Fx.prepend[StorageAction, F], Unit](key, dirKey, (), ()))
+  override def update(key: String, data: String): F[Unit] =
+    updateFileInDir[F](key, nonceSource, data, dirKey)(Monad[F], underlying).map(_ => ())
+
+  override def remove(key: String): F[Unit] =
+    removeFile[F, Unit](key, dirKey, (), ())(Monad[F], underlying)
 
 }
 

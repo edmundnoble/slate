@@ -3,212 +3,107 @@ package storage
 
 import cats.data._
 import cats.implicits._
-import org.atnos.eff.Eff._
-import org.atnos.eff.addon.monix._
-import org.atnos.eff._
-import org.atnos.eff.syntax.all._
+import cats.{Applicative, Monad, ~>}
+import monix.eval.Task
 import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
-import slate.storage.StorageAction.LsKeys
+
+import scala.scalajs.js
+import scala.scalajs.js.WrappedArray
 
 // Operations on a Storage with F effects
 // To abstract over text key-value storage that has different effects performed by its operations
 // Examples of uses:
 // localStorage, sessionStorage: use F = Task
 // pure: Use F = State[Map[String, String], ?]]
-trait Storage[F] {
+trait Storage[F[_]] {
   self =>
-  def apply(key: String): Eff[F, Option[String]]
+  def apply(key: String): F[Option[String]]
 
-  def update(key: String, data: String): Eff[F, Unit]
+  def update(key: String, data: String): F[Unit]
 
-  def remove(key: String): Eff[F, Unit]
+  def remove(key: String): F[Unit]
 
-  def into[G](implicit ev: IntoPoly[F, G]): Storage[G] = new Storage[G] {
-    override def apply(key: String): Eff[G, Option[String]] =
-      self(key).into[G]
+  final def into[G[_]](implicit ev: F ~> G): Storage[G] = new Storage[G] {
+    override def apply(key: String): G[Option[String]] =
+      ev(self(key))
 
-    override def update(key: String, data: String): Eff[G, Unit] =
-      self.update(key, data).into[G]
+    override def update(key: String, data: String): G[Unit] =
+      ev(self.update(key, data))
 
-    override def remove(key: String): Eff[G, Unit] =
-      self.remove(key).into[G]
+    override def remove(key: String): G[Unit] =
+      ev(self.remove(key))
   }
 }
 
-trait LsStorage[F] {
+trait LsStorage[F[_]] {
   self =>
-  def lsKeys: Eff[F, List[String]]
+  val lsKeys: F[WrappedArray[String]]
 
-  def into[G](implicit ev: IntoPoly[F, G]): LsStorage[G] = new LsStorage[G] {
-    override def lsKeys: Eff[G, List[String]] =
-      self.lsKeys.into[G]
+  final def into[G[_]](implicit ev: F ~> G): LsStorage[G] = new LsStorage[G] {
+    override val lsKeys: G[WrappedArray[String]] =
+      ev(self.lsKeys)
   }
 }
 
-object LsStorage {
+final case class LoggedKeyStorage[F[_] : Monad](underlying: Storage[F]) extends Storage[WriterT[F, Vector[String], ?]] {
+  override def apply(key: String): WriterT[F, Vector[String], Option[String]] =
+    WriterT(underlying(key).map(v => (key +: Vector.empty, v)))
 
-  // finally tagless encoding isomorphism
-  def taglessToTrans[F](stor: LsStorage[F]): Translate[LsAction, F] = new Translate[LsAction, F] {
-    override def apply[A](fa: LsAction[A]): Eff[F, A] = fa.run(stor)
-  }
+  override def update(key: String, data: String): WriterT[F, Vector[String], Unit] =
+    WriterT(underlying.update(key, data).map(v => (key +: Vector.empty, v)))
 
-  def taglessFromTrans[F](nat: Translate[LsAction, F]): LsStorage[F] = new LsStorage[F] {
-    override def lsKeys: Eff[F, List[String]] = nat(LsKeys)
-  }
+  override def remove(key: String): WriterT[F, Vector[String], Unit] =
+    WriterT.lift(underlying.remove(key))
 }
 
-object Storage {
+final case class LoggedActionStorage[F[_]: Applicative](underlying: Storage[F]) extends Storage[WriterT[F, Vector[String], ?]] {
+  override def apply(key: String): WriterT[F, Vector[String], Option[String]]=
+    WriterT(underlying(key).map(v => (s"Get($key)" +: Vector.empty, v)))
 
-  def taglessFromTrans[F](nat: Translate[StorageAction, F]): Storage[F] = new Storage[F] {
-    override def apply(key: String): Eff[F, Option[String]] = nat(StorageAction.Get(key))
+  override def update(key: String, data: String): WriterT[F, Vector[String], Unit] =
+    WriterT(underlying.update(key, data).map(v => (s"Update($key, $data)" +: Vector.empty, v)))
 
-    override def update(key: String, data: String): Eff[F, Unit] = nat(StorageAction.Update(key, data))
-
-    override def remove(key: String): Eff[F, Unit] = nat(StorageAction.Remove(key))
-  }
-
-  // finally tagless encoding isomorphism
-  def taglessToTrans[F](stor: Storage[F]): Translate[StorageAction, F] = new Translate[StorageAction, F] {
-    override def apply[A](fa: StorageAction[A]): Eff[F, A] = fa.run(stor)
-  }
-
-  def composeIntos[F, G, H](fst: IntoPoly[F, G], snd: IntoPoly[G, H]): IntoPoly[F, H] = new IntoPoly[F, H] {
-    def apply[A](e: Eff[F, A]): Eff[H, A] = snd(fst(e))
-  }
-
-}
-
-// Finally tagless storage action monad (http://okmij.org/ftp/tagless-final/)
-abstract class StorageAction[T] {
-  def run[F](storage: Storage[F]): Eff[F, T]
-}
-
-abstract class LsAction[T] {
-  def run[F](storage: LsStorage[F]): Eff[F, T]
-}
-
-object StorageAction {
-
-  final case class Get(key: String) extends StorageAction[Option[String]] {
-    override def run[F](storage: Storage[F]): Eff[F, Option[String]] =
-      storage(key)
-  }
-
-  final case class Update(key: String, value: String) extends StorageAction[Unit] {
-    override def run[F](storage: Storage[F]): Eff[F, Unit] =
-      storage.update(key, value)
-  }
-
-  final case class Remove(key: String) extends StorageAction[Unit] {
-    override def run[F](storage: Storage[F]): Eff[F, Unit] =
-      storage.remove(key)
-  }
-
-  final case object LsKeys extends LsAction[List[String]] {
-    override def run[F](storage: LsStorage[F]): Eff[F, List[String]] =
-      storage.lsKeys
-  }
-
-  type _storageAction[R] = StorageAction <= R
-  type _StorageAction[R] = StorageAction |= R
-  type _lsAction[R] = LsAction <= R
-  type _LsAction[R] = LsAction |= R
-
-}
-
-// DSL methods
-object StorageProgram {
-
-  import StorageAction._
-
-  def get[F: _StorageAction](key: String): Eff[F, Option[String]] =
-    Get(key).send[F]
-
-  def update[F: _StorageAction](key: String, value: String): Eff[F, Unit] =
-    Update(key, value).send[F]
-
-  def remove[F: _StorageAction](key: String): Eff[F, Unit] =
-    Remove(key).send[F]
-
-  def getOrSet[F: _StorageAction](key: String, value: => String): Eff[F, String] = {
-    for {
-      cur <- get(key)
-      result <- cur.fold(update[F](key, value).as(value))(_.pureEff[F])
-    } yield result
-  }
-
-  def runProgram[I, U, A](storage: Storage[U], program: Eff[I, A])
-                            (implicit ev: Member.Aux[StorageAction, I, U]): Eff[U, A] = {
-    interpret.translate[I, U, StorageAction, A](program)(Storage.taglessToTrans[U](storage))
-  }
-
-  def runLsProgram[I, U, A](storage: LsStorage[U], program: Eff[I, A])
-                              (implicit ev: Member.Aux[LsAction, I, U]): Eff[U, A] = {
-    interpret.translate[I, U, LsAction, A](program)(LsStorage.taglessToTrans[U](storage))
-  }
-
-  def runProgramWithLsProgram[I, U, U2, A](storage: Storage[U2], lsStorage: LsStorage[U], program: Eff[I, A])
-                                             (implicit ev: Member.Aux[StorageAction, U, U2],
-                                              ev2: Member.Aux[LsAction, I, U]): Eff[U2, A] = {
-    runProgram[U, U2, A](storage, runLsProgram[I, U, A](lsStorage, program).into)
-  }
-
-
-}
-
-final case class LoggedKeyStorage[F: Member[Writer[Vector[String], ?], ?]](underlying: Storage[F]) extends Storage[F] {
-  override def apply(key: String): Eff[F, Option[String]] =
-    writer.tell[F, Vector[String]](key +: Vector.empty) >> underlying(key)
-
-  override def update(key: String, data: String): Eff[F, Unit] =
-    writer.tell[F, Vector[String]](key +: Vector.empty) >> underlying.update(key, data)
-
-  override def remove(key: String): Eff[F, Unit] =
-    underlying.remove(key)
-}
-
-final case class LoggedActionStorage[F: Member[Writer[Vector[String], ?], ?]](underlying: Storage[F]) extends Storage[F] {
-  override def apply(key: String): Eff[F, Option[String]] =
-    writer.tell[F, Vector[String]](s"Get($key)" +: Vector.empty) >> underlying(key)
-
-  override def update(key: String, data: String): Eff[F, Unit] =
-    writer.tell[F, Vector[String]](s"Update($key, $data)" +: Vector.empty) >> underlying.update(key, data)
-
-  override def remove(key: String): Eff[F, Unit] =
-    writer.tell[F, Vector[String]](s"Remove($key)" +: Vector.empty) >> underlying.remove(key)
+  override def remove(key: String): WriterT[F, Vector[String], Unit] =
+    WriterT(underlying.remove(key).map(v => (s"Remove($key)" +: Vector.empty, v)))
 }
 
 // Implementation for dom.ext.Storage values
-final class DomStorage[F: task._Task](underlying: SStorage) extends Storage[F] {
-  override def apply(key: String): Eff[F, Option[String]] =
-    task.taskDelay(underlying(key))
+final class DomStorage(underlying: SStorage) extends Storage[Task] {
+  override def apply(key: String): Task[Option[String]] =
+    Task.eval(underlying(key))
 
-  override def update(key: String, data: String): Eff[F, Unit] =
-    task.taskDelay(underlying.update(key, data))
+  override def update(key: String, data: String): Task[Unit] =
+    Task.eval(underlying.update(key, data))
 
-  override def remove(key: String): Eff[F, Unit] =
-    task.taskDelay(underlying.remove(key))
+  override def remove(key: String): Task[Unit] =
+    Task.eval(underlying.remove(key))
 }
 
-final class DomLsStorage[F: task._Task](underlying: SStorage) extends LsStorage[F] {
+final class DomLsStorage(underlying: SStorage) extends LsStorage[Task] {
 
-  override def lsKeys: Eff[F, List[String]] =
-    task.taskDelay(
-      (0 to underlying.length)
-        .flatMap[String, List[String]](underlying.key)(collection.breakOut)
-    )
+  override val lsKeys: Task[WrappedArray[String]] =
+    Task.eval {
+      var i = 0
+      val arr: js.Array[String] = js.Array()
+      val len = underlying.length
+      while (i != len) {
+        arr.push(underlying.key(i).get)
+        i += 1
+      }
+      new WrappedArray(arr)
+    }
 
 }
 
 object DomStorage {
 
-  def Local[F: task._Task]: DomStorage[F] = new DomStorage[F](LocalStorage)
+  val Local: DomStorage = new DomStorage(LocalStorage)
 
-  def Session[F: task._Task]: DomStorage[F] = new DomStorage[F](SessionStorage)
+  val Session: DomStorage = new DomStorage(SessionStorage)
 
-  def LocalLs[F: task._Task]: DomLsStorage[F] = new DomLsStorage[F](LocalStorage)
+  val LocalLs: DomLsStorage = new DomLsStorage(LocalStorage)
 
-  def SessionLs[F: task._Task]: DomLsStorage[F] = new DomLsStorage[F](SessionStorage)
+  val SessionLs: DomLsStorage = new DomLsStorage(SessionStorage)
 
 }
 
@@ -219,27 +114,23 @@ object PureStorage {
 
   type StringMap = Map[String, String]
 
-  type MapStateS = Fx.fx1[StringMapState]
+  val Storage = new Storage[StringMapState] {
 
-  type MapStateE[A] = Eff[MapStateS, A]
+    override def apply(key: String): StringMapState[Option[String]] =
+      State.get[Map[String, String]].map(_.get(key))
 
-  val Storage = new Storage[MapStateS] {
+    override def update(key: String, data: String): StringMapState[Unit] =
+      State.modify[Map[String, String]](_ + (key -> data))
 
-    override def apply(key: String): MapStateE[Option[String]] =
-      Eff.send[StringMapState, MapStateS, Option[String]](State.get[Map[String, String]].map(_.get(key)))
-
-    override def update(key: String, data: String): MapStateE[Unit] =
-      Eff.send[StringMapState, MapStateS, Unit](State.modify[Map[String, String]](_ + (key -> data)))
-
-    override def remove(key: String): MapStateE[Unit] =
-      Eff.send[StringMapState, MapStateS, Unit](State.modify[Map[String, String]](_ - key))
+    override def remove(key: String): StringMapState[Unit] =
+      State.modify[Map[String, String]](_ - key)
 
   }
 
-  val LsStorage = new LsStorage[MapStateS] {
+  val LsStorage = new LsStorage[StringMapState] {
 
-    override def lsKeys: MapStateE[List[String]] =
-      Eff.send[StringMapState, MapStateS, List[String]](State.get[Map[String, String]].map(_.keysIterator.toList))
+    override val lsKeys: StringMapState[WrappedArray[String]] =
+      State.inspect(_.keysIterator.to[WrappedArray])
 
   }
 
