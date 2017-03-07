@@ -76,9 +76,9 @@ final class DomStorage(underlying: SStorage) extends Storage[Task] with LsStorag
 
 object DomStorage {
 
-  val Local: DomStorage = new DomStorage(LocalStorage)
+  lazy val Local: DomStorage = new DomStorage(LocalStorage)
 
-  val Session: DomStorage = new DomStorage(SessionStorage)
+  lazy val Session: DomStorage = new DomStorage(SessionStorage)
 
 }
 

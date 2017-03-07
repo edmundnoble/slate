@@ -155,8 +155,8 @@ object SlateBuild {
     unpackedDevOpt <<= Def.task {
       val oldOpts = scalaJSOptimizerOptions.value
       scalaJSOptimizerOptions := oldOpts.withPrettyPrintFullOptJS(true)
-      val file = defineChromeBuildTask("unpackedunopt", fastOptJS).value
-      //      scalaJSOptimizerOptions := oldOpts
+      val file = defineChromeBuildTask("unpackedunopt", fullOptJS).value
+//            scalaJSOptimizerOptions := oldOpts
       file
     },
 

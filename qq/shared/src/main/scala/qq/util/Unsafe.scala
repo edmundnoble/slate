@@ -40,7 +40,7 @@ object Unsafe {
       while (iter.hasNext) {
         val elem: A = iter.next()
         val comp: G[B] = f(elem)
-        acc = (acc |@| comp).map { (a, c) =>
+        acc = evidence.map2(acc, comp) { (a, c) =>
           a += c
           a
         }

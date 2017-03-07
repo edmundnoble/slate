@@ -29,7 +29,6 @@ import scala.scalajs.js.annotation.JSExport
 import scala.util.{Success, Try}
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
-import Observable.{fromTask => toObservable}
 import slate.storage.StorageFS.Dir
 
 @JSExport
@@ -216,8 +215,8 @@ object SlateApp extends scalajs.js.JSApp {
 
   def loadContent(dataDirKey: StorageFS.DirKey): Observable[Task[SearchPageProps]] = {
     (for {
-      programOutput <- toObservable(runCompiledPrograms.map(deserializeProgramOutput))
-      cachedOutputs <- toObservable(getCachedOutput(dataDirKey, programOutput.map(_.withoutProgram)).map(_.flatten))
+      programOutput <- Observable.fromTask(runCompiledPrograms.map(deserializeProgramOutput))
+      cachedOutputs <- Observable.fromTask(getCachedOutput(dataDirKey, programOutput.map(_.withoutProgram)).map(_.flatten))
       cachedOutputsMapped = cachedOutputs.groupBy(_.id).mapValues(_.head)
       results <- raceFold(programOutput.collect {
         case SlateProgram(id, title, bootRefreshPolicy, titleLink, out, input)
@@ -252,9 +251,8 @@ object SlateApp extends scalajs.js.JSApp {
     } yield results).map(_.map(appProps => SearchPageProps(appProps.sortBy(_.id).toList)))
   }
 
-  def render(container: org.scalajs.dom.raw.Element, content: SearchPageProps)(
-    implicit scheduler: Scheduler): Task[ReactComponentM[SearchPageProps, Unit, Unit, TopNode]] = {
-
+  def render(container: dom.raw.Element, content: SearchPageProps)
+            (implicit scheduler: Scheduler): Task[ReactComponentM[SearchPageProps, Unit, Unit, TopNode]] = Task.defer {
     val searchPage =
       DashboardPage
         .makeDashboardPage
@@ -285,11 +283,9 @@ object SlateApp extends scalajs.js.JSApp {
         _ <- StorageFS.checkFS[Task](root)
         dataDirKey <- makeTopLevelFolder[Task, StorageFS.DirKey]("data", (_, k) => k, (_, k) => k)
         _ <- loadContent(dataDirKey)
-          .flatMap(toObservable)
+          .mapTask(identity)
           .throttleLast(loadingThrottle)
-          .flatMap(r =>
-            toObservable(render(container, r)).map(_ => r)
-          )
+          .mapTask(r => render(container, r).map(_ => r))
           .completedL
       } yield ()
     val _ = run.runAsync(new monix.eval.Callback[Unit] {
@@ -299,7 +295,7 @@ object SlateApp extends scalajs.js.JSApp {
     })
   }
 
-  // TODO: cache
+  // TODO: cache?
   private def appendStyles = Task.delay {
 
     import slate.views._
