@@ -43,14 +43,14 @@ object StorageFS {
   def checkFS[F[_] : Monad](rootDir: Option[Dir])(implicit storage: Storage[F], lsStorage: LsStorage[F]): F[Dir] = {
     for {
       initializedRoot <- initFS[F](rootDir)
-      allKnownKeys <- foldKeys[Set[String], F](
+      allFoundKeys <- foldKeys[Set[String], F](
         initializedRoot,
         v => Set(v.render), v => Set(v.render)
       )(Monad[F], storage, catsStdInstancesForSet.algebra[String])
+      allKnownKeys = allFoundKeys + fsroot.render
       allKeys <- lsStorage.lsKeys
       // TODO: check if this works :D
       //_ <- allKeys.traverseA(key => if (!allKnownKeys(key)) StorageProgram.remove(key) else ().pureEff)
-      _ = println(allKnownKeys -- allKeys)
     } yield initializedRoot
   }
 
@@ -110,6 +110,9 @@ object StorageFS {
       raw <- getRaw(key)
     } yield raw.flatMap(Dir.codec.to)
   }
+
+  def getRoot[F[_]: Monad](implicit storage: Storage[F]): F[Option[Dir]] =
+    getDir[F](fsroot)
 
   def getDirKey[F[_] : Monad](path: Vector[String])(implicit storage: Storage[F]): F[Option[Key[Dir]]] =
     getDirKeyFromRoot[F](path, fsroot)
@@ -204,10 +207,11 @@ object StorageFS {
           A.combineAll(new WrappedArray(dir.childDirKeys.map(dirKeyAction)))
         )
         val combineSoFar = A.combine(combinedFileKeys, a)
+        val newDirs = new WrappedArray(dir.childDirKeys).traverse(getDir[F])
         if (dir.childDirKeys.isEmpty) {
           Either.right[(WrappedArray[Dir], A), A](combineSoFar).pure[F]
         } else {
-          new WrappedArray(dir.childDirKeys).traverse(getDir[F]).map(_.flatten).map(ks => Either.left[(WrappedArray[Dir], A), A]((ks, combineSoFar)))
+          newDirs.map(_.flatten).map(ks => Either.left[(WrappedArray[Dir], A), A]((ks, combineSoFar)))
         }
       }.map { results =>
         val r = results.foldLeft((WrappedArray.empty[Dir], A.empty)) {

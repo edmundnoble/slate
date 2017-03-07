@@ -281,7 +281,8 @@ object SlateApp extends scalajs.js.JSApp {
     val run: Task[Unit] =
       for {
         _ <- appendStyles
-        _ <- StorageFS.checkFS[Task](None)
+        root <- StorageFS.getRoot[Task]
+        _ <- StorageFS.checkFS[Task](root)
         dataDirKey <- makeTopLevelFolder[Task, StorageFS.DirKey]("data", (_, k) => k, (_, k) => k)
         _ <- loadContent(dataDirKey)
           .flatMap(toObservable)
