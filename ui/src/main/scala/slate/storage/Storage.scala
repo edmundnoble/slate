@@ -3,7 +3,7 @@ package storage
 
 import cats.data._
 import cats.implicits._
-import cats.{Applicative, Monad, ~>}
+import cats.{Applicative, Monad}
 import monix.eval.Task
 import org.scalajs.dom.ext.{LocalStorage, SessionStorage, Storage => SStorage}
 
@@ -16,33 +16,15 @@ import scala.scalajs.js.WrappedArray
 // localStorage, sessionStorage: use F = Task
 // pure: Use F = State[Map[String, String], ?]]
 trait Storage[F[_]] {
-  self =>
   def apply(key: String): F[Option[String]]
 
   def update(key: String, data: String): F[Unit]
 
   def remove(key: String): F[Unit]
-
-  final def into[G[_]](implicit ev: F ~> G): Storage[G] = new Storage[G] {
-    override def apply(key: String): G[Option[String]] =
-      ev(self(key))
-
-    override def update(key: String, data: String): G[Unit] =
-      ev(self.update(key, data))
-
-    override def remove(key: String): G[Unit] =
-      ev(self.remove(key))
-  }
 }
 
 trait LsStorage[F[_]] {
-  self =>
   val lsKeys: F[WrappedArray[String]]
-
-  final def into[G[_]](implicit ev: F ~> G): LsStorage[G] = new LsStorage[G] {
-    override val lsKeys: G[WrappedArray[String]] =
-      ev(self.lsKeys)
-  }
 }
 
 final case class LoggedKeyStorage[F[_] : Monad](underlying: Storage[F]) extends Storage[WriterT[F, Vector[String], ?]] {
@@ -56,8 +38,8 @@ final case class LoggedKeyStorage[F[_] : Monad](underlying: Storage[F]) extends 
     WriterT.lift(underlying.remove(key))
 }
 
-final case class LoggedActionStorage[F[_]: Applicative](underlying: Storage[F]) extends Storage[WriterT[F, Vector[String], ?]] {
-  override def apply(key: String): WriterT[F, Vector[String], Option[String]]=
+final case class LoggedActionStorage[F[_] : Applicative](underlying: Storage[F]) extends Storage[WriterT[F, Vector[String], ?]] {
+  override def apply(key: String): WriterT[F, Vector[String], Option[String]] =
     WriterT(underlying(key).map(v => (s"Get($key)" +: Vector.empty, v)))
 
   override def update(key: String, data: String): WriterT[F, Vector[String], Unit] =
@@ -68,7 +50,7 @@ final case class LoggedActionStorage[F[_]: Applicative](underlying: Storage[F]) 
 }
 
 // Implementation for dom.ext.Storage values
-final class DomStorage(underlying: SStorage) extends Storage[Task] {
+final class DomStorage(underlying: SStorage) extends Storage[Task] with LsStorage[Task] {
   override def apply(key: String): Task[Option[String]] =
     Task.eval(underlying(key))
 
@@ -77,9 +59,6 @@ final class DomStorage(underlying: SStorage) extends Storage[Task] {
 
   override def remove(key: String): Task[Unit] =
     Task.eval(underlying.remove(key))
-}
-
-final class DomLsStorage(underlying: SStorage) extends LsStorage[Task] {
 
   override val lsKeys: Task[WrappedArray[String]] =
     Task.eval {
@@ -101,38 +80,22 @@ object DomStorage {
 
   val Session: DomStorage = new DomStorage(SessionStorage)
 
-  val LocalLs: DomLsStorage = new DomLsStorage(LocalStorage)
-
-  val SessionLs: DomLsStorage = new DomLsStorage(SessionStorage)
-
 }
 
 // Implementation for pure maps
-object PureStorage {
+object PureStorage extends Storage[StringMapState] with LsStorage[StringMapState] {
 
-  type StringMapState[A] = State[StringMap, A]
+  override def apply(key: String): StringMapState[Option[String]] =
+    State.inspect(_.get(key))
 
-  type StringMap = Map[String, String]
+  override def update(key: String, data: String): StringMapState[Unit] =
+    State.modify(_ + (key -> data))
 
-  val Storage = new Storage[StringMapState] {
+  override def remove(key: String): StringMapState[Unit] =
+    State.modify(_ - key)
 
-    override def apply(key: String): StringMapState[Option[String]] =
-      State.get[Map[String, String]].map(_.get(key))
-
-    override def update(key: String, data: String): StringMapState[Unit] =
-      State.modify[Map[String, String]](_ + (key -> data))
-
-    override def remove(key: String): StringMapState[Unit] =
-      State.modify[Map[String, String]](_ - key)
-
-  }
-
-  val LsStorage = new LsStorage[StringMapState] {
-
-    override val lsKeys: StringMapState[WrappedArray[String]] =
-      State.inspect(_.keysIterator.to[WrappedArray])
-
-  }
+  override val lsKeys: StringMapState[WrappedArray[String]] =
+    State.inspect(_.keysIterator.to[WrappedArray])
 
 }
 

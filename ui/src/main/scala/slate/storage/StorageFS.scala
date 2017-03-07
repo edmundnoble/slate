@@ -33,9 +33,9 @@ object StorageFS {
 
   /** idempotent */
   def initFS[F[_] : Applicative](rootDir: Option[Dir])(implicit storage: Storage[F]): F[Dir] =
-    rootDir.map(_.pure[F]).getOrElse {
+    rootDir.fold {
       storage.update(fsroot.render, Dir.codec.from(Dir.empty)).as(Dir.empty)
-    }
+    }(_.pure[F])
 
   import qq.Platform.Js.Unsafe._
 
@@ -175,19 +175,20 @@ object StorageFS {
   } yield out
 
   @inline
-  def removeFile[F[_] : Monad, B](fileName: String, outsideKey: Key[Dir], wasNotPresent: B, wasPresent: B)(implicit storage: Storage[F]): F[B] =
+  def removeFile[F[_] : Monad, B](fileName: String, outsideKey: Key[Dir], wasNotPresent: => B, wasPresent: => B)(implicit storage: Storage[F]): F[Option[B]] = {
     for {
       outsideDir <- getDir[F](outsideKey)
-      insideFileKey = outsideDir.flatMap(_.childFileKeys.find(_.name == fileName))
-      out <- insideFileKey.fold(wasNotPresent.pure[F])(k =>
+      insideFileKey = outsideDir.map(_.childFileKeys.find(_.name == fileName))
+      out <- insideFileKey.traverse(_.fold(wasNotPresent.pure[F])(k =>
         for {
           _ <- storage.remove(k.render)
           _ <- storage.update(outsideKey.render,
             Dir.codec.from(outsideDir.get.copy(childFileKeys = outsideDir.get.childFileKeys.filter(_.name != fileName)))
           )
         } yield wasPresent
-      )
+      ))
     } yield out
+  }
 
   implicit val travvy: Traverse[WrappedArray] =
     qq.util.Unsafe.builderTraverse[WrappedArray]
@@ -254,7 +255,7 @@ final case class StorageFS[F[_] : Monad](underlying: Storage[F], nonceSource: ()
     updateFileInDir[F](key, nonceSource, data, dirKey)(Monad[F], underlying).map(_ => ())
 
   override def remove(key: String): F[Unit] =
-    removeFile[F, Unit](key, dirKey, (), ())(Monad[F], underlying)
+    removeFile[F, Unit](key, dirKey, (), ())(Monad[F], underlying).map(_ => ())
 
 }
 

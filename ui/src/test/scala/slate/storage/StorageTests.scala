@@ -2,12 +2,10 @@ package slate
 package storage
 
 import cats.data.State
-import cats.implicits._
-import slate.storage.PureStorage.StringMapState
 
 class StorageTests extends SlateSuite {
 
-  implicit val storage = PureStorage.Storage
+  implicit val storage = PureStorage
 
   "pure interpreter" - {
     "get key" in {

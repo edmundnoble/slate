@@ -276,8 +276,7 @@ object SlateApp extends scalajs.js.JSApp {
 
     val container: dom.Element =
       dom.document.body.children.namedItem("container")
-    implicit val storage = DomStorage.Local
-    implicit val lsStorage = DomStorage.LocalLs
+    implicit val storage: DomStorage = DomStorage.Local
     val loadingThrottle: FiniteDuration = 1000.millis
     val run: Task[Unit] =
       for {
