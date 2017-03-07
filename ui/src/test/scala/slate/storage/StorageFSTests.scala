@@ -112,14 +112,12 @@ class StorageFSTests extends SlateSuite {
         fKey <- updateFileInDir[StringMapState]("f", detNonceSource, "datas", fsroot)
         fFile <- getFile[StringMapState](fKey.value)
         _ = fFile.value.data shouldBe "datas"
-        _ = println("bout to remove file")
         _ <- removeFile[StringMapState, Unit](
           "f", fsroot,
           wasNotPresent = fail("file f was not present when removed"),
           wasPresent = ()
-        )(Monad[StringMapState], storage)
-        _ = println("bout to remove file")
-        fFileRemoved <- getFile[StringMapState](fKey.value)(Monad[StringMapState], storage)
+        )
+        fFileRemoved <- getFile[StringMapState](fKey.value)
         _ = fFileRemoved shouldBe None
       } yield ()
 
