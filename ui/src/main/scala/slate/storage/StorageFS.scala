@@ -49,8 +49,7 @@ object StorageFS {
       )(Monad[F], storage, catsStdInstancesForSet.algebra[String])
       allKnownKeys = allFoundKeys + fsroot.render
       allKeys <- lsStorage.lsKeys
-      // TODO: check if this works :D
-      //_ <- allKeys.traverseA(key => if (!allKnownKeys(key)) StorageProgram.remove(key) else ().pureEff)
+      _ <- allKeys.traverse(key => if (!allKnownKeys(key)) storage.remove(key) else ().pure[F])
     } yield initializedRoot
   }
 
