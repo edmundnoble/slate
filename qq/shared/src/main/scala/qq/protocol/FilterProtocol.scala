@@ -2,6 +2,7 @@ package qq
 package protocol
 
 import qq.data._
+import qq.data.ast._
 import qq.util._
 import scodec._
 import scodec.codecs.CoproductBuilderAuto._

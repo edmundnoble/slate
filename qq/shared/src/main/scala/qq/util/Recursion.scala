@@ -106,6 +106,15 @@ object Recursion {
     }
   }
 
+  @inline final def transCata[F[_] : Traverse, G[_]: Traverse]
+  (rewrite: F[Fix[G]] => G[Fix[G]]): RecursiveFunction[Fix[F], Fix[G]] = new RecursiveFunction[Fix[F], Fix[G]] {
+    override def run(tf: Fix[F], loop: Fix[F] => Eval[Fix[G]]): Eval[Fix[G]] = {
+      val looped: Eval[F[Fix[G]]] = tf.unFix.traverse(loop)
+      val rewritten: Eval[Fix[G]] = looped.map(rewrite.andThen(Fix[G]))
+      rewritten
+    }
+  }
+
   @inline final def transCataT[F[_] : Traverse]
   (rewrite: Fix[F] => Fix[F]): RecursiveFunction[Fix[F], Fix[F]] = new RecursiveFunction[Fix[F], Fix[F]] {
     override def run(tf: Fix[F], loop: Fix[F] => Eval[Fix[F]]): Eval[Fix[F]] = {

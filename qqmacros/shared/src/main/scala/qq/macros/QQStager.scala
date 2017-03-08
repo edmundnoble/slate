@@ -7,6 +7,7 @@ import fastparse.core.Parsed
 import qq.Platform.Rec._
 import qq.cc.{LocalOptimizer, Parser}
 import qq.data._
+import qq.data.ast._
 import qq.util.Recursion.RecursiveFunction
 
 import scala.language.experimental.macros
@@ -30,57 +31,57 @@ object QQStager {
 
     implicit def mathOpLiftable: Liftable[MathOperator] =
       Liftable {
-        case Add => q"qq.data.Add"
-        case Subtract => q"qq.data.Subtract"
-        case Multiply => q"qq.data.Multiply"
-        case Divide => q"qq.data.Divide"
-        case Modulo => q"qq.data.Modulo"
-        case Equal => q"qq.data.Equal"
-        case LTE => q"qq.data.LTE"
-        case GTE => q"qq.data.GTE"
-        case LessThan => q"qq.data.LessThan"
-        case GreaterThan => q"qq.data.GreaterThan"
+        case Add => q"qq.data.ast.Add"
+        case Subtract => q"qq.data.ast.Subtract"
+        case Multiply => q"qq.data.ast.Multiply"
+        case Divide => q"qq.data.ast.Divide"
+        case Modulo => q"qq.data.ast.Modulo"
+        case Equal => q"qq.data.ast.Equal"
+        case LTE => q"qq.data.ast.LTE"
+        case GTE => q"qq.data.ast.GTE"
+        case LessThan => q"qq.data.ast.LessThan"
+        case GreaterThan => q"qq.data.ast.GreaterThan"
       }
 
     implicit def pathLiftable: Liftable[PathComponent] =
       Liftable {
-        case CollectResults => q"qq.data.CollectResults"
-        case SelectKey(k) => q"qq.data.SelectKey(${lift(k)})"
-        case SelectIndex(i) => q"qq.data.SelectIndex(${lift(i)})"
-        case SelectRange(s, e) => q"qq.data.SelectRange(${lift(s)}, ${lift(e)})"
+        case CollectResults => q"qq.data.ast.CollectResults"
+        case SelectKey(k) => q"qq.data.ast.SelectKey(${lift(k)})"
+        case SelectIndex(i) => q"qq.data.ast.SelectIndex(${lift(i)})"
+        case SelectRange(s, e) => q"qq.data.ast.SelectRange(${lift(s)}, ${lift(e)})"
       }
 
     def pathOpLift[A](f: A => Eval[c.universe.Tree]): PathOperationF[A] => Eval[c.universe.Tree] = {
-      case PathGet => Eval.now(q"qq.data.PathGet")
-      case PathModify(m) => f(m).map { r => q"qq.data.PathModify($r)" }
-      case PathSet(s) => f(s).map { r => q"qq.data.PathSet($r)" }
+      case PathGet => Eval.now(q"qq.data.ast.PathGet")
+      case PathModify(m) => f(m).map { r => q"qq.data.ast.PathModify($r)" }
+      case PathSet(s) => f(s).map { r => q"qq.data.ast.PathSet($r)" }
     }
 
     val liftFilter: RecursiveFunction[FilterAST, c.universe.Tree] = new RecursiveFunction[FilterAST, c.universe.Tree] {
       override def run(value: FilterAST, loop: FilterAST => Eval[c.universe.Tree]): Eval[c.universe.Tree] = {
         val sub: Eval[c.universe.Tree] = value.unFix match {
-          case PathOperation(pc, op) => pathOpLift(loop)(op) map { o => q"qq.data.PathOperation[qq.data.FilterAST](${lift(pc)}, $o)" }
-          case AsBinding(name, as, in) => (loop(as) |@| loop(in)).map { (a, i) => q"qq.data.AsBinding[qq.data.FilterAST](${lift(name)}, $a, $i)" }
-          case Dereference(name) => Eval.now(q"qq.data.Dereference[qq.data.FilterAST](${lift(name)})")
-          case ComposeFilters(first, second) => (loop(first) |@| loop(second)).map { (f, s) => q"qq.data.ComposeFilters[qq.data.FilterAST]($f, $s)" }
-          case SilenceExceptions(child) => loop(child) map { f => q"qq.data.SilenceExceptions[qq.data.FilterAST]($f)" }
-          case EnlistFilter(child) => loop(child) map { f => q"qq.data.EnlistFilter[qq.data.FilterAST]($f)" }
-          case EnsequenceFilters(first, second) => (loop(first) |@| loop(second)).map { (f, s) => q"qq.data.EnsequenceFilters[qq.data.FilterAST]($f, $s)" }
+          case PathOperation(pc, op) => pathOpLift(loop)(op) map { o => q"qq.data.ast.PathOperation[qq.data.FilterAST](${lift(pc)}, $o)" }
+          case AsBinding(name, as, in) => (loop(as) |@| loop(in)).map { (a, i) => q"qq.data.ast.AsBinding[qq.data.FilterAST](${lift(name)}, $a, $i)" }
+          case Dereference(name) => Eval.now(q"qq.data.ast.Dereference[qq.data.FilterAST](${lift(name)})")
+          case ComposeFilters(first, second) => (loop(first) |@| loop(second)).map { (f, s) => q"qq.data.ast.ComposeFilters[qq.data.FilterAST]($f, $s)" }
+          case SilenceExceptions(child) => loop(child) map { f => q"qq.data.ast.SilenceExceptions[qq.data.FilterAST]($f)" }
+          case EnlistFilter(child) => loop(child) map { f => q"qq.data.ast.EnlistFilter[qq.data.FilterAST]($f)" }
+          case EnsequenceFilters(first, second) => (loop(first) |@| loop(second)).map { (f, s) => q"qq.data.ast.EnsequenceFilters[qq.data.FilterAST]($f, $s)" }
           case EnjectFilters(obj) => obj.traverse[Eval, (c.universe.Tree, c.universe.Tree)] { case (k, v) =>
             for {
               ke <- k.traverse(loop).map(e => lift(e.leftMap(lift(_))))
               ve <- loop(v)
             } yield (ke, ve)
           }
-            .map { o => q"qq.data.EnjectFilters[qq.data.FilterAST](${lift(o)})" }
-          case CallFilter(name: String, params) => params.traverse(loop).map { p => q"qq.data.CallFilter[qq.data.FilterAST](${lift(name)}, $p)" }
-          case FilterNot() => Eval.now(q"qq.data.FilterNot[qq.data.FilterAST]()")
-          case ConstNumber(v) => Eval.now(q"qq.data.ConstNumber[qq.data.FilterAST](${lift(v)})")
-          case ConstBoolean(v) => Eval.now(q"qq.data.ConstBoolean[qq.data.FilterAST](${lift(v)})")
-          case ConstString(v) => Eval.now(q"qq.data.ConstString[qq.data.FilterAST](${lift(v)})")
-          case FilterMath(first, second, op) => (loop(first) |@| loop(second)).map { (f, s) => q"qq.data.FilterMath[qq.data.FilterAST]($f, $s, ${lift(op)})" }
+            .map { o => q"qq.data.ast.EnjectFilters[qq.data.FilterAST](${lift(o)})" }
+          case CallFilter(name: String, params) => params.traverse(loop).map { p => q"qq.data.ast.CallFilter[qq.data.FilterAST](${lift(name)}, $p)" }
+          case FilterNot() => Eval.now(q"qq.data.ast.FilterNot[qq.data.FilterAST]()")
+          case ConstNumber(v) => Eval.now(q"qq.data.ast.ConstNumber[qq.data.FilterAST](${lift(v)})")
+          case ConstBoolean(v) => Eval.now(q"qq.data.ast.ConstBoolean[qq.data.FilterAST](${lift(v)})")
+          case ConstString(v) => Eval.now(q"qq.data.ast.ConstString[qq.data.FilterAST](${lift(v)})")
+          case FilterMath(first, second, op) => (loop(first) |@| loop(second)).map { (f, s) => q"qq.data.ast.FilterMath[qq.data.FilterAST]($f, $s, ${lift(op)})" }
         }
-        sub.map(f => q"qq.util.Fix[qq.data.FilterComponent]($f)")
+        sub.map(f => q"qq.util.Fix[qq.data.ast.FilterComponent]($f)")
       }
     }
 

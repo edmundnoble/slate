@@ -1,6 +1,7 @@
 package qq
 package data
 
+import qq.data.ast._
 import qq.util.Fix
 
 // smart constructors that make a FilterComponent node including its children
@@ -23,6 +24,7 @@ object QQDSL {
     def |+|(next: FilterAST): FilterAST = ensequence(f, next)
     def +(next: FilterAST): FilterAST = add(f, next)
     def ===(next: FilterAST): FilterAST = equal(f, next)
+    def =!=(next: FilterAST): FilterAST = equal(f, next) | not
     def <==(next: FilterAST): FilterAST = lte(f, next)
     def >==(next: FilterAST): FilterAST = gte(f, next)
     def <(next: FilterAST): FilterAST = lessThan(f, next)
@@ -43,7 +45,7 @@ object QQDSL {
     getPath(Vector.empty)
 
   @inline implicit def getPath(components: Vector[PathComponent]): FilterAST = {
-    Fix(PathOperation(components, PathGet))
+    FilterComponent.embed(PathOperation(components, PathGet))
   }
 
   @inline implicit def getPathS(component: PathComponent): FilterAST = {
@@ -109,18 +111,17 @@ object QQDSL {
   @inline def greaterThan(first: FilterAST, second: FilterAST): FilterAST =
     Fix(FilterMath(first, second, GreaterThan))
 
-
   @inline def not: FilterAST =
-    Fix(FilterNot())
+    FilterComponent.embed(FilterNot())
 
   @inline def constNumber(value: Double): FilterAST =
-    Fix(ConstNumber(value))
+    FilterComponent.embed(ConstNumber(value))
 
   @inline def constString(value: String): FilterAST =
-    Fix(ConstString(value))
+    FilterComponent.embed(ConstString(value))
 
   @inline def constBoolean(value: Boolean): FilterAST =
-    Fix(ConstBoolean(value))
+    FilterComponent.embed(ConstBoolean(value))
 
   @inline def asBinding(name: String, as: FilterAST, in: FilterAST): FilterAST =
     Fix(AsBinding[FilterAST](name, as, in))

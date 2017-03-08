@@ -10,7 +10,6 @@ import qq.data
 import qq.util.Recursion.RecursionEngine
 import scodec.bits.BitVector
 import shapeless.{:+:, CNil}
-import slate.app.SlateApp.SlateProgram
 import slate.storage.Storage
 import slate.util.Util._
 
@@ -48,14 +47,14 @@ object Program {
           .encode(program)
           .toEither
           .bimap(InvalidBytecode(_), _.toBase64)
-      }, { (_, encodedProgram) =>
+      }, (_, encodedProgram) =>
         BitVector.fromBase64(encodedProgram)
           .toRight(InvalidBase64(encodedProgram))
           .flatMap(
             FilterProtocol.programCodec.decode(_)
               .toEither.bimap(InvalidBytecode(_): ProgramSerializationException, _.value)
-          )
-      }, slateProgram => parseAndOptimizeProgram(slateProgram.program)
+          ),
+      slateProgram => parseAndOptimizeProgram(slateProgram.program)
     )
   }
 

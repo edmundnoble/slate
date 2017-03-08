@@ -2,6 +2,7 @@ package qq
 package cc
 
 import qq.data._
+import qq.data.ast._
 import qq.util.Recursion.RecursionEngine
 import qq.util.{Fix, Recursion}
 
@@ -27,8 +28,8 @@ object LocalOptimizer {
   // The identity filter is an identity with respect to composition of filters
   final def idCompose(fr: FilterComponent[FilterAST]): Option[FilterComponent[FilterAST]] = {
     fr match {
-      case ComposeFilters(Fix(PathOperation(o, PathGet)), Fix(s))  if o.isEmpty=> Some(s)
-      case ComposeFilters(Fix(f), Fix(PathOperation(o, PathGet)))  if o.isEmpty=> Some(f)
+      case ComposeFilters(Fix(PathOperation(o, PathGet)), Fix(s)) if o.isEmpty => Some(s)
+      case ComposeFilters(Fix(f), Fix(PathOperation(o, PathGet))) if o.isEmpty => Some(f)
       case _ => None
     }
   }
@@ -36,7 +37,7 @@ object LocalOptimizer {
   // The collect and enlist operations are inverses
   final def collectEnlist(fr: FilterComponent[FilterAST]): Option[FilterComponent[FilterAST]] = {
     fr match {
-      case EnlistFilter(Fix(ComposeFilters(Fix(f), Fix(PathOperation(CollectResults +: o, PathGet)))))if o.isEmpty  => Some(f)
+      case EnlistFilter(Fix(ComposeFilters(Fix(f), Fix(PathOperation(CollectResults +: o, PathGet))))) if o.isEmpty => Some(f)
       case EnlistFilter(Fix(PathOperation(CollectResults +: o, PathGet))) if o.isEmpty => Some(PathOperation(Vector.empty, PathGet))
       case _ => None
     }
@@ -88,9 +89,11 @@ object LocalOptimizer {
   // until none of the optimizations applies anymore
   @inline final def localOptimizationsƒ(tf: FilterAST)(implicit rec: RecursionEngine): FilterAST =
   repeatedly[FilterAST] { tf =>
-    val unfixed = tf.unFix
-    (collectEnlist(unfixed) orElse idCompose(unfixed) orElse constMathReduce(unfixed) orElse
-      unlet(unfixed) orElse letFree(unfixed) orElse fuseGetPathOperation(unfixed)) map embed
+    val unfixed: FilterComponent[FilterAST] = tf.unFix
+    val optimized =
+      collectEnlist(unfixed) orElse idCompose(unfixed) orElse constMathReduce(unfixed) orElse
+        unlet(unfixed) orElse letFree(unfixed) orElse fuseGetPathOperation(unfixed)
+    optimized map embed
   }(tf)
 
   // localOptimizationsƒ recursively applied deep into a filter

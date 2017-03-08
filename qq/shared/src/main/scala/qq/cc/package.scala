@@ -14,12 +14,11 @@ package object cc {
   type VarEnv[A] = Reader[VarBindings, A]
   type RuntimeErrs = NonEmptyList[QQRuntimeError]
   type OrRuntimeErr[+A] = Either[RuntimeErrs, A]
-  type _orRuntimeErr[R] = Member[Either[RuntimeErrs, ?], R]
+  type _runtimeErr[R] = Member[Either[RuntimeErrs, ?], R]
 
   type CompiledMathOperator = (JSON, JSON) => Either[RuntimeErrs, JSON]
   type CompiledFilterStack = Fx.fx3[VarEnv, TaskParallel, OrRuntimeErr]
   type CompiledProgramStack = Fx.fx2[TaskParallel, OrRuntimeErr]
-  type CompiledFilterResult[A] = Eff[CompiledFilterStack, A]
   type CompiledFilter = FlatTraverseArrs[CompiledFilterStack, Vector, JSON, JSON]
 
   type OrCompilationError[T] = QQCompilationException Either T

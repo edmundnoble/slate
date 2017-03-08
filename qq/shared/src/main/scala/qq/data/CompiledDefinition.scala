@@ -2,6 +2,7 @@ package qq
 package data
 
 import cats.implicits._
+import org.atnos.eff._
 import org.atnos.eff.syntax.all._
 import qq.cc._
 
@@ -13,7 +14,7 @@ object CompiledDefinition {
     CompiledDefinition(name, 0, body = _ => Left(UndefinedOnPlatform(name)))
 
   // this is responsible for QQ's function application semantics
-  def standardEffectDistribution(func: Vector[JSON] => JSON => CompiledFilterResult[Vector[JSON]])
+  def standardEffectDistribution(func: Vector[JSON] => JSON => Eff[CompiledFilterStack, Vector[JSON]])
                                 (args: Vector[CompiledFilter]): OrCompilationError[CompiledFilter] =
     Right(
       CompiledFilter.singleton {

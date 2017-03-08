@@ -47,12 +47,12 @@ object CompiledFilter {
   def asBinding(name: String, as: CompiledFilter, in: CompiledFilter): CompiledFilter = singleton { (j: JSON) =>
     for {
       bindings <- eff.reader.ask[CompiledFilterStack, VarBindings]
-      results <- as.apply(j)
+      results <- as(j)
       inRan <- results.traverseA(r => eff.reader.runReader(bindings + (name -> VarBinding(name, r)))(in(j))).into[CompiledFilterStack]
     } yield inRan.flatten
   }
 
-  def runStack[A](bindings: VarBindings, result: CompiledFilterResult[Vector[A]]): Task[Either[NonEmptyList[QQRuntimeError], Vector[A]]] = {
+  def runStack[A](bindings: VarBindings, result: Eff[CompiledFilterStack, Vector[A]]): Task[Either[NonEmptyList[QQRuntimeError], Vector[A]]] = {
     // TODO: investigate the compiler crash that happens without providing these type arguments explicitly
     type mem = eff.Member.Aux[VarEnv, CompiledFilterStack, CompiledProgramStack]
     type mem1 = eff.Member.Aux[OrRuntimeErr, CompiledProgramStack, Fx.fx1[TaskParallel]]

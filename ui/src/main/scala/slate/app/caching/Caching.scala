@@ -22,7 +22,7 @@ object Caching {
     decode: (String, String) => ErrS Either A,
     prepare: I => ErrP Either A)(implicit storage: Storage[F]): F[(ErrP :+: ErrS :+: CNil) Either A] = {
 
-    val injectError = inj[ErrP :+: ErrS :+: CNil]
+    val injectError = copInj[ErrP :+: ErrS :+: CNil]
     val key = getKey(input)
 
     for {
