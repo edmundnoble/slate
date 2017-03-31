@@ -1,8 +1,6 @@
-package qq
-package cc
+package qq.ast
 
 import qq.data._
-import qq.data.ast._
 import qq.util.Recursion.RecursionEngine
 import qq.util.{Fix, Recursion}
 
@@ -28,8 +26,8 @@ object LocalOptimizer {
   // The identity filter is an identity with respect to composition of filters
   final def idCompose(fr: FilterComponent[FilterAST]): Option[FilterComponent[FilterAST]] = {
     fr match {
-      case ComposeFilters(Fix(PathOperation(o, PathGet)), Fix(s)) if o.isEmpty => Some(s)
-      case ComposeFilters(Fix(f), Fix(PathOperation(o, PathGet))) if o.isEmpty => Some(f)
+      case ComposeFilters(Fix(PathOperation(PathGet, o)), Fix(s)) if o.isEmpty => Some(s)
+      case ComposeFilters(Fix(f), Fix(PathOperation(PathGet, o))) if o.isEmpty => Some(f)
       case _ => None
     }
   }
@@ -37,8 +35,8 @@ object LocalOptimizer {
   // The collect and enlist operations are inverses
   final def collectEnlist(fr: FilterComponent[FilterAST]): Option[FilterComponent[FilterAST]] = {
     fr match {
-      case EnlistFilter(Fix(ComposeFilters(Fix(f), Fix(PathOperation(CollectResults +: o, PathGet))))) if o.isEmpty => Some(f)
-      case EnlistFilter(Fix(PathOperation(CollectResults +: o, PathGet))) if o.isEmpty => Some(PathOperation(Vector.empty, PathGet))
+      case EnlistFilter(Fix(ComposeFilters(Fix(f), Fix(PathOperation(PathGet, CollectResults +: o))))) if o.isEmpty => Some(f)
+      case EnlistFilter(Fix(PathOperation(PathGet, CollectResults +: o))) if o.isEmpty => Some(PathOperation(PathGet, Vector.empty))
       case _ => None
     }
   }
@@ -62,7 +60,7 @@ object LocalOptimizer {
 
   final def unlet(fr: FilterComponent[FilterAST]): Option[FilterComponent[FilterAST]] = fr match {
     case AsBinding(n, Fix(a), Fix(i))
-      if i == Dereference(n) || i == PathOperation(Vector.empty, PathGet) =>
+      if i == Dereference(n) || i == PathOperation(PathGet, Vector.empty) =>
       Some(a)
     case _ => None
   }
@@ -80,8 +78,8 @@ object LocalOptimizer {
   }
 
   final def fuseGetPathOperation(fr: FilterComponent[FilterAST]): Option[FilterComponent[FilterAST]] = fr match {
-    case ComposeFilters(Fix(PathOperation(components1, PathGet)), Fix(PathOperation(components2, PathGet))) =>
-      Some(PathOperation[FilterAST](components1 ++ components2, PathGet))
+    case ComposeFilters(Fix(PathOperation(PathGet, components1)), Fix(PathOperation(PathGet, components2))) =>
+      Some(PathOperation[FilterAST](PathGet, components1 ++ components2))
     case _ => None
   }
 

@@ -6,7 +6,7 @@ import qq.util.Recursion.RecursionEngine
 
 class LocalOptimizerTest extends QQSyncTestSuite {
 
-  import qq.cc.LocalOptimizer.optimizeFilter
+  import qq.ast.LocalOptimizer.optimizeFilter
 
   "optimize simple compositions" in {
     optimizeFilter(id | selectKey("key")) shouldBe getPathS(selectKey("key"))

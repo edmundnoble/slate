@@ -1,10 +1,10 @@
 package qq
-package data
 package ast
 
 
 import cats.implicits._
 import cats.{Applicative, Eval, Foldable, Traverse}
+import qq.data.FilterAST
 import qq.util.Fix
 
 import scala.language.higherKinds
@@ -26,7 +26,7 @@ sealed abstract class LeafComponent[A] extends FilterComponent[A] {
 sealed abstract class ConstantComponent[A] extends LeafComponent[A]
 
 // AST node containing a path selector subtree and an operation
-final case class PathOperation[A](pathComponents: Vector[PathComponent], operation: PathOperationF[A]) extends FilterComponent[A] {
+final case class PathOperation[A](operation: PathOperationF[A], pathComponents: Vector[PathComponent]) extends FilterComponent[A] {
   override def children: Vector[A] = operation.child.fold(Vector.empty[A])(_ +: Vector.empty)
 }
 
@@ -78,7 +78,7 @@ final case class CallFilter[A](name: String, params: Vector[A]) extends FilterCo
 }
 
 // not, i.e., bang (!)
-final case class FilterNot[A]() extends LeafComponent[A]
+case class FilterNot[A]() extends LeafComponent[A]
 
 // constants!
 final case class ConstNumber[A](value: Double) extends ConstantComponent[A]
@@ -116,12 +116,12 @@ case object GreaterThan extends MathOperator
 
 object FilterComponent {
 
-  implicit def qqFilterComponentTraverse = new Traverse[FilterComponent] {
+  implicit def qqFilterComponentTraverse: Traverse[FilterComponent] = new Traverse[FilterComponent] {
 
     override def traverse[G[_], A, B](fa: FilterComponent[A])(f: (A) => G[B])(implicit G: Applicative[G]): G[FilterComponent[B]] = {
       fa match {
         case l: LeafComponent[_] => G.pure(l.retag[B])
-        case PathOperation(components, operationF) => operationF.traverse(f).map(PathOperation(components, _))
+        case PathOperation(operationF, components) => operationF.traverse(f).map(PathOperation(_, components))
         case AsBinding(name, as, in) => G.map2(f(as), f(in))(AsBinding(name, _, _))
         case CallFilter(name, params) => params.traverse(f).map(CallFilter(name, _))
         case FilterMath(first, second, op) => G.map2(f(first), f(second))(FilterMath(_, _, op))

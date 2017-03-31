@@ -2,14 +2,14 @@ package slate
 package app
 package builtin
 
-import qq.data.{FilterAST, Program}
-import qq.macros.QQStager._
+import qq.cc.{InterpretedFilter, QQInterpreterRuntime}
+import qq.macros.stager._
 
 object GmailApp {
 
-  val program: Program[FilterAST] Either String =
+  val program: InterpretedFilter Either String =
     Left(
-      qq"""
+      QQStager(QQInterpreterRuntime, SlatePrelude, """
 def authHeaders: { Authorization: "Bearer " + googleAuth };
 
 def listUnreadThreadParams: {
@@ -39,6 +39,7 @@ def unreadThreadDetailsToContent: {
 
 [unreadThreadDetails] | unreadThreadDetailsToContent
     """
+      )
     )
 
 }

@@ -22,16 +22,16 @@ object SlateBuild {
 
   val baseSettings: Seq[sbt.Def.Setting[_]] = Seq(
     version := "0.0.1",
-    scalaVersion := "2.11.8",
+    scalaVersion := "2.12.1",
     scalaOrganization := "org.typelevel",
     updateOptions ~= (_.withCachedResolution(true)),
     scalacOptions ++= Seq(
       "-encoding", "UTF-8",
       "-Xlint",
-      "-Xexperimental",
       "-deprecation",
       "-feature",
       "-language:implicitConversions",
+      "-language:reflectiveCalls",
       "-language:higherKinds",
       "-unchecked",
       "-Xfatal-warnings",
@@ -116,6 +116,17 @@ object SlateBuild {
     .settings(Dependencies.commonDeps)
     .settings(Dependencies.uiDeps)
 
+  lazy val uimacros: Project = project.in(file("uimacros"))
+    .dependsOn(qqjs)
+    .dependsOn(qqmacrosjs)
+    .enablePlugins(ScalaJSPlugin)
+    .settings(baseSettings)
+    .settings(ChromeBuild.chromeTasks)
+    .settings(jsSettings)
+    .settings(Dependencies.commonDeps)
+    .settings(Dependencies.scalaCompiler)
+    .settings(Dependencies.uiDeps)
+
   lazy val uitests: Project = project.in(file("uitests"))
     .dependsOn(ui)
     .dependsOn(qqjvm)
@@ -130,39 +141,39 @@ object SlateBuild {
     .settings(nonBrowserTest := ())
     .settings(stackTest := ())
 
-//  lazy val uibench: Project = project.in(file("uibench"))
-//    .dependsOn(ui)
-//    .dependsOn(qqjs)
-//    .settings(ScalaJSPlugin.projectSettings)
-//    .enablePlugins(ScalaJSPlugin)
-//    .settings((resourceDirectory in Compile) := (resourceDirectory in Compile in ui).value)
-//    .settings(baseSettings)
-//    .settings(disableTests)
-//    .settings(ChromeBuild.chromeTasks)
-//    .settings(jsSettings)
-//    .settings(Dependencies.commonDeps)
-//    .settings(Dependencies.uiDeps)
-//    .settings(libraryDependencies += "com.github.japgolly.scalajs-benchmark" %%% "benchmark" % "0.2.4-SNAPSHOT")
-//    // otherwise scalajs-benchmark doesn't work
-//    .settings(jsManifestFilter := {
-//    import org.scalajs.core.tools.jsdep.{JSDependency, JSDependencyManifest}
-//
-//    (seq: Traversable[JSDependencyManifest]) => {
-//      seq map { manifest =>
-//
-//        def isOkToInclude(jsDep: JSDependency): Boolean = {
-//          !List("react-dom", "react-with-addons").exists(jsDep.resourceName.startsWith)
-//        }
-//
-//        new JSDependencyManifest(
-//          origin = manifest.origin,
-//          libDeps = manifest.libDeps filter isOkToInclude,
-//          requiresDOM = manifest.requiresDOM,
-//          compliantSemantics = manifest.compliantSemantics
-//        )
-//      }
-//    }
-//  })
+  //  lazy val uibench: Project = project.in(file("uibench"))
+  //    .dependsOn(ui)
+  //    .dependsOn(qqjs)
+  //    .settings(ScalaJSPlugin.projectSettings)
+  //    .enablePlugins(ScalaJSPlugin)
+  //    .settings((resourceDirectory in Compile) := (resourceDirectory in Compile in ui).value)
+  //    .settings(baseSettings)
+  //    .settings(disableTests)
+  //    .settings(ChromeBuild.chromeTasks)
+  //    .settings(jsSettings)
+  //    .settings(Dependencies.commonDeps)
+  //    .settings(Dependencies.uiDeps)
+  //    .settings(libraryDependencies += "com.github.japgolly.scalajs-benchmark" %%% "benchmark" % "0.2.4-SNAPSHOT")
+  //    // otherwise scalajs-benchmark doesn't work
+  //    .settings(jsManifestFilter := {
+  //    import org.scalajs.core.tools.jsdep.{JSDependency, JSDependencyManifest}
+  //
+  //    (seq: Traversable[JSDependencyManifest]) => {
+  //      seq map { manifest =>
+  //
+  //        def isOkToInclude(jsDep: JSDependency): Boolean = {
+  //          !List("react-dom", "react-with-addons").exists(jsDep.resourceName.startsWith)
+  //        }
+  //
+  //        new JSDependencyManifest(
+  //          origin = manifest.origin,
+  //          libDeps = manifest.libDeps filter isOkToInclude,
+  //          requiresDOM = manifest.requiresDOM,
+  //          compliantSemantics = manifest.compliantSemantics
+  //        )
+  //      }
+  //    }
+  //  })
 
   lazy val slate: Project = project.in(file("."))
     .aggregate(ui, uitests, qqjvm, qqjs, qqmacrosjvm, qqmacrosjs)

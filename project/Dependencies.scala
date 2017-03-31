@@ -11,11 +11,11 @@ object Dependencies {
       "org.typelevel" %%% "cats-kernel" % "0.9.0",
       "org.typelevel" %%% "cats-macros" % "0.9.0",
       "org.typelevel" %%% "cats-free" % "0.9.0",
-      "org.atnos" %%% "eff" % "3.0.3",
-      "org.atnos" %%% "eff-monix" % "3.0.3",
+      "org.atnos" %%% "eff" % "3.1.0",
+      "org.atnos" %%% "eff-monix" % "3.1.0",
       "org.scalatest" %%% "scalatest" % "3.0.1" % "test",
-      "com.lihaoyi" %%% "upickle" % "0.4.3",
-      "com.lihaoyi" %%% "fastparse" % "0.4.1",
+      "com.lihaoyi" %%% "upickle" % "0.4.4",
+      "com.lihaoyi" %%% "fastparse" % "0.4.2",
       "io.monix" %%% "monix-types" % "2.1.1",
       "io.monix" %%% "monix-eval" % "2.1.1",
       "io.monix" %%% "monix-execution" % "2.1.1",
@@ -30,12 +30,12 @@ object Dependencies {
   )
 
   lazy val uiDeps: Setting[Seq[ModuleID]] = libraryDependencies ++= Seq(
-    "net.lullabyte" %%% "scala-js-chrome" % "0.2.1",
+    "net.lullabyte" %%% "scala-js-chrome" % "0.4.0",
     "org.scala-js" %%% "scalajs-dom" % "0.9.1",
     "com.github.japgolly.scalajs-react" %%% "core" % "0.11.3",
     "com.github.japgolly.scalajs-react" %%% "extra" % "0.11.3",
-    "com.github.japgolly.scalacss" %%% "core" % "0.5.0",
-    "com.github.japgolly.scalacss" %%% "ext-react" % "0.5.0"
+    "com.github.japgolly.scalacss" %%% "core" % "0.5.1",
+    "com.github.japgolly.scalacss" %%% "ext-react" % "0.5.1"
   )
 
   //   React JS itself (Note the filenames, adjust as needed, eg. to remove addons.)

@@ -1,39 +1,10 @@
 package qq
 package protocol
 
-import qq.data._
-import qq.data.ast._
-import qq.util._
-import scodec._
-import scodec.codecs.CoproductBuilderAuto._
-import scodec.codecs.CoproductBuilderAutoDiscriminators._
+import qq.ast._
 import scodec.codecs._
-import scodec.codecs.implicits._
-import shapeless._
-
 
 object FilterProtocol {
-
-  implicit def componentCodec[A](implicit v: Lazy[Codec[A]]): Codec[FilterComponent[A]] =
-    Codec.coproduct[FilterComponent[A]].auto
-
-  def filterCodec: Codec[FilterAST] = implicitly[Codec[FilterAST]]
-
-  def definitionsCodec: Codec[Program.Definitions[FilterAST]] = implicitly[Codec[Program.Definitions[FilterAST]]]
-
-  def programCodec: Codec[Program[FilterAST]] = implicitly[Codec[Program[FilterAST]]]
-
-  def deriveGeneric[A, Rec](implicit lgen: Generic.Aux[A, Rec], auto: Lazy[Codec[Rec]]): Codec[A] =
-    auto.value.xmap(lgen.from, lgen.to)
-
-  implicit def mathOpCodec: Codec[MathOperator] =
-    Codec.coproduct[MathOperator].auto
-
-  implicit def pathCodec: Codec[PathComponent] =
-    Codec.coproduct[PathComponent].auto
-
-  implicit def pathOpFCodec[A](implicit A: Lazy[Codec[A]]): Codec[PathOperationF[A]] =
-    Codec.coproduct[PathOperationF[A]].auto
 
   implicit def mathOperatorDiscriminated[A]: Discriminated[MathOperator, Int] = Discriminated(uint(3))
 
@@ -63,19 +34,19 @@ object FilterProtocol {
 
   implicit def filterComponentDiscriminated[A]: Discriminated[FilterComponent[A], Int] = Discriminated(uint(4))
 
-  implicit def composeDiscriminator[A]: Discriminator[FilterComponent[A], ComposeFilters[A], Int] = Discriminator(1)
-  implicit def silenceDiscriminator[A]: Discriminator[FilterComponent[A], SilenceExceptions[A], Int] = Discriminator(2)
-  implicit def enlistDiscriminator[A]: Discriminator[FilterComponent[A], EnlistFilter[A], Int] = Discriminator(3)
-  implicit def ensequenceDiscriminator[A]: Discriminator[FilterComponent[A], EnsequenceFilters[A], Int] = Discriminator(4)
-  implicit def enjectDiscriminator[A]: Discriminator[FilterComponent[A], EnjectFilters[A], Int] = Discriminator(5)
-  implicit def callDiscriminator[A]: Discriminator[FilterComponent[A], CallFilter[A], Int] = Discriminator(6)
-  implicit def notDiscriminator[A]: Discriminator[FilterComponent[A], FilterNot[A], Int] = Discriminator(7)
-  implicit def filterMathDiscriminator[A]: Discriminator[FilterComponent[A], FilterMath[A], Int] = Discriminator(8)
-  implicit def constNumberDiscriminator[A]: Discriminator[FilterComponent[A], ConstNumber[A], Int] = Discriminator(9)
-  implicit def constStringDiscriminator[A]: Discriminator[FilterComponent[A], ConstString[A], Int] = Discriminator(10)
-  implicit def constBooleanDiscriminator[A]: Discriminator[FilterComponent[A], ConstBoolean[A], Int] = Discriminator(11)
-  implicit def asBindingDiscriminator[A]: Discriminator[FilterComponent[A], AsBinding[A], Int] = Discriminator(12)
-  implicit def dereferenceDiscriminator[A]: Discriminator[FilterComponent[A], Dereference[A], Int] = Discriminator(13)
-  implicit def pathOperationDiscriminator[A]: Discriminator[FilterComponent[A], PathOperation[A], Int] = Discriminator(14)
+  implicit def composeDiscriminator[A]: Discriminator[FilterComponent[A], ComposeFilters[A], Int] = Discriminator(0)
+  implicit def silenceDiscriminator[A]: Discriminator[FilterComponent[A], SilenceExceptions[A], Int] = Discriminator(1)
+  implicit def enlistDiscriminator[A]: Discriminator[FilterComponent[A], EnlistFilter[A], Int] = Discriminator(2)
+  implicit def ensequenceDiscriminator[A]: Discriminator[FilterComponent[A], EnsequenceFilters[A], Int] = Discriminator(3)
+  implicit def enjectDiscriminator[A]: Discriminator[FilterComponent[A], EnjectFilters[A], Int] = Discriminator(4)
+  implicit def callDiscriminator[A]: Discriminator[FilterComponent[A], CallFilter[A], Int] = Discriminator(5)
+  implicit def notDiscriminator[A]: Discriminator[FilterComponent[A], FilterNot[A], Int] = Discriminator(6)
+  implicit def filterMathDiscriminator[A]: Discriminator[FilterComponent[A], FilterMath[A], Int] = Discriminator(7)
+  implicit def constNumberDiscriminator[A]: Discriminator[FilterComponent[A], ConstNumber[A], Int] = Discriminator(8)
+  implicit def constStringDiscriminator[A]: Discriminator[FilterComponent[A], ConstString[A], Int] = Discriminator(9)
+  implicit def constBooleanDiscriminator[A]: Discriminator[FilterComponent[A], ConstBoolean[A], Int] = Discriminator(10)
+  implicit def asBindingDiscriminator[A]: Discriminator[FilterComponent[A], AsBinding[A], Int] = Discriminator(11)
+  implicit def dereferenceDiscriminator[A]: Discriminator[FilterComponent[A], Dereference[A], Int] = Discriminator(12)
+  implicit def pathOperationDiscriminator[A]: Discriminator[FilterComponent[A], PathOperation[A], Int] = Discriminator(13)
 
 }

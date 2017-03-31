@@ -2,7 +2,6 @@ package slate
 package storage
 
 import cats.Monad
-import cats.data.State
 import org.scalatest.Assertion
 import slate.storage.StorageFS._
 

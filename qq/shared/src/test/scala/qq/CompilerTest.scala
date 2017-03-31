@@ -4,7 +4,7 @@ import cats.Eval
 import cats.implicits._
 import monix.eval.Task
 import org.scalatest.Assertion
-import qq.cc.{CompiledFilter, QQCompiler, QQRuntimeException, RuntimeErrs}
+import qq.cc.{InterpretedFilter, QQCompiler, RuntimeError, RuntimeErrs}
 import qq.data.{FilterAST, JSON, QQDSL, SelectKey}
 import qq.util.Recursion.RecursionEngine
 
@@ -132,17 +132,17 @@ class CompilerTest extends QQAsyncTestSuite {
       CompilerTestCase(
         JSON.num(2),
         setPath(Vector(collectResults), getPath(Vector.empty)),
-        QQRuntimeException.typeError("collect results from", "array" -> JSON.num(2))
+        RuntimeError.typeError("collect results from", "array" -> JSON.num(2))
       ),
       CompilerTestCase(
         JSON.num(2),
         setPath(Vector(selectKey("key")), getPath(Vector.empty)),
-        QQRuntimeException.typeError("select key \"key\" in", "object" -> JSON.num(2))
+        RuntimeError.typeError("select key \"key\" in", "object" -> JSON.num(2))
       ),
       CompilerTestCase(
         JSON.num(2),
         setPath(Vector(selectIndex(2)), getPath(Vector.empty)),
-        QQRuntimeException.typeError("select index 2 in", "array" -> JSON.num(2))
+        RuntimeError.typeError("select index 2 in", "array" -> JSON.num(2))
       )
     )
 
@@ -181,17 +181,17 @@ class CompilerTest extends QQAsyncTestSuite {
       CompilerTestCase(
         JSON.num(2),
         modifyPath(Vector(collectResults), getPath(Vector.empty)),
-        QQRuntimeException.typeError("collect results from", "array" -> JSON.num(2))
+        RuntimeError.typeError("collect results from", "array" -> JSON.num(2))
       ),
       CompilerTestCase(
         JSON.num(2),
         modifyPath(Vector(selectKey("key")), getPath(Vector.empty)),
-        QQRuntimeException.typeError("select key \"key\" in", "object" -> JSON.num(2))
+        RuntimeError.typeError("select key \"key\" in", "object" -> JSON.num(2))
       ),
       CompilerTestCase(
         JSON.num(2),
         modifyPath(Vector(selectIndex(2)), getPath(Vector.empty)),
-        QQRuntimeException.typeError("select index 2 in", "array" -> JSON.num(2))
+        RuntimeError.typeError("select index 2 in", "array" -> JSON.num(2))
       )
     )
 

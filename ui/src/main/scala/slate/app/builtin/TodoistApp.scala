@@ -2,13 +2,14 @@ package slate
 package app
 package builtin
 
-import qq.data.{FilterAST, Program}
-import qq.macros.QQStager._
+import qq.cc.{InterpretedFilter, QQInterpreterRuntime}
+import qq.macros.stager._
 
 object TodoistApp {
-  val program: Program[FilterAST] Either String =
+  val program: InterpretedFilter Either String =
     Left(
-      qq"""
+      QQStager(QQInterpreterRuntime, SlatePrelude,
+        """
 def oAuthParams: { scope: "data:read", client_id, state: randomHex };
 def doOAuth: launchAuth("https://todoist.com/oauth/authorize"; oAuthParams);
 
@@ -22,6 +23,7 @@ def doOAuth: launchAuth("https://todoist.com/oauth/authorize"; oAuthParams);
        [$$items | .[] | select(.project_id == $$project | .id)] | select(. != [empty]) |
        { title: $$project | .name, content: [.[].content | { title: ., content: "" }] })
 """
+      )
     )
 
 }

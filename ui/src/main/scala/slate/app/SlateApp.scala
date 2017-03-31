@@ -10,7 +10,7 @@ import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.Observable
 import org.scalajs.dom
 import qq.Platform.Rec._
-import qq.cc.{CompiledFilter, QQCompilationException, QQCompiler, QQRuntimeException}
+import qq.cc.{CompileError, InterpretedFilter, ParserCompiler, QQCompiler, QQInterpreterRuntime, RuntimeError}
 import qq.data.{FilterAST, JSON, Program}
 import shapeless.{:+:, CNil}
 import slate.app.builtin.{GCalendarApp, GmailApp}
@@ -40,7 +40,7 @@ object SlateApp extends scalajs.js.JSApp {
 
   final class EmptyResponseException extends java.lang.Exception("Empty response")
 
-  def builtinPrograms: Vector[SlateProgram[(SlateProgramConfig, Program[FilterAST] Either String)]] =
+  def builtinPrograms: Vector[SlateProgram[(SlateProgramConfig, InterpretedFilter Either String)]] =
     Vector(
       SlateProgram(1, "Gmail", "https://gmail.com",
         (SlateProgramConfig(JSON.Obj(), BootRefreshPolicy.IfOlderThan(120)), GmailApp.program)),
@@ -48,7 +48,7 @@ object SlateApp extends scalajs.js.JSApp {
         (SlateProgramConfig(JSON.Obj(), BootRefreshPolicy.IfOlderThan(60)), GCalendarApp.program))
     )
 
-  type ErrorCompilingPrograms = QQCompilationException :+: ErrorGettingCachedProgram
+  type ErrorCompilingPrograms = CompileError :+: ErrorGettingCachedProgram
 
   def nonceSource(): String = {
     val int = scala.util.Random.nextInt(1000)
@@ -61,16 +61,17 @@ object SlateApp extends scalajs.js.JSApp {
                                                  (implicit storage: Storage[F]): F[B] =
     StorageFS.mkDir[F, B](name, nonceSource, StorageFS.fsroot, alreadyPresent, dirMade).map(_.get)
 
-  def compiledPrograms: Task[Vector[SlateProgram[Either[ErrorCompilingPrograms, CompiledFilter]]]] = {
+  def compiledPrograms: Task[Vector[SlateProgram[Either[ErrorCompilingPrograms, InterpretedFilter]]]] = {
 
     implicit val storage: Storage[Task] =
       DomStorage.Local
 
-    def getCachedProgramIfApplicable[F[_] : Monad](program: SlateProgram[Either[Program[FilterAST], String]])
-                                                  (implicit storage: Storage[F]): F[SlateProgram[Either[ErrorGettingCachedProgram, Program[FilterAST]]]] = {
+    def getCompiledProgramIfApplicable[F[_] : Monad](program: SlateProgram[Either[InterpretedFilter, String]])
+                                                    (implicit storage: Storage[F]): F[SlateProgram[Either[ErrorGettingCachedProgram, InterpretedFilter]]] = {
       program.program.fold(p =>
-        program.withProgram(Either.right[ErrorGettingCachedProgram, Program[FilterAST]](p)).pure[F],
-        s => caching.Program.getCachedProgramByHash[F](program.withProgram(s)).map(program.withProgram))
+        program.withProgram(Either.right[ErrorGettingCachedProgram, InterpretedFilter](p)).pure[F],
+        s => parser.program.parse(s).fold(l => Either.left(l), r => Either.right(r)) // caching.Program.getCachedProgramByHash[F](program.withProgram(s)).map(program.withProgram)
+      )
     }
 
     val prog: Alg[Storage, Monad, Vector[SlateProgram[Either[ErrorGettingCachedProgram, Program[FilterAST]]]]] =
@@ -97,7 +98,7 @@ object SlateApp extends scalajs.js.JSApp {
     } yield errorHandledCompiledPrograms
   }
 
-  type ErrorRunningPrograms = QQRuntimeException :+: CNil
+  type ErrorRunningPrograms = RuntimeError :+: CNil
 
   private def runCompiledPrograms(configs: Map[Int, SlateProgramConfig]): Task[Vector[SlateProgram[ErrorCompilingPrograms Either Task[ErrorRunningPrograms Either Vector[JSON]]]]] =
     compiledPrograms.map {
@@ -106,7 +107,7 @@ object SlateApp extends scalajs.js.JSApp {
           program.map(
             _.map { compiled =>
               CompiledFilter.run(configs(program.id).input, Map.empty, compiled).map {
-                _.leftMap[ErrorRunningPrograms](exs => inl(QQRuntimeException(exs)))
+                _.leftMap[ErrorRunningPrograms](exs => inl(RuntimeError(exs)))
               }
             }
           )
@@ -133,7 +134,7 @@ object SlateApp extends scalajs.js.JSApp {
       )))
     }
 
-  type AllErrors = upickle.Invalid.Json :+: upickle.Invalid.Data :+: QQRuntimeException :+: ErrorCompilingPrograms
+  type AllErrors = upickle.Invalid.Json :+: upickle.Invalid.Data :+: RuntimeError :+: ErrorCompilingPrograms
   type UpickleError = upickle.Invalid.Json :+: upickle.Invalid.Data :+: CNil
 
   def makeDataKey(title: String, input: JSON): String =

@@ -9,7 +9,7 @@ import monix.execution.Cancelable
 import org.scalajs.dom
 import org.scalajs.dom.raw.Blob
 import org.scalajs.dom.{Event, FormData, XMLHttpRequest}
-import qq.cc.{QQRuntimeError, QQRuntimeException}
+import qq.cc.{QQRuntimeError, RuntimeError}
 import qq.data.JSON
 import qq.data.JSON.ObjList
 
@@ -131,7 +131,7 @@ object Ajax {
           if ((req.status >= 200 && req.status < 300) || req.status == 304)
             callback.onSuccess(req)
           else
-            callback.onError(QQRuntimeException(NonEmptyList(AjaxException(req, url), Nil)))
+            callback.onError(RuntimeError(NonEmptyList(AjaxException(req, url), Nil)))
         }
       }
 

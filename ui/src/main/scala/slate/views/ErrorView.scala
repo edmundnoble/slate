@@ -4,7 +4,7 @@ package views
 import fastparse.all.ParseError
 import japgolly.scalajs.react._
 import org.scalajs.dom.html.Div
-import qq.cc.{QQCompilationException, QQRuntimeException}
+import qq.cc.{CompileError, RuntimeError}
 import slate.app.SlateApp.AllErrors
 import slate.app.caching.Program.ProgramSerializationException
 import upickle.Invalid
@@ -61,11 +61,11 @@ object ErrorView {
     "Error parsing QQ program: " + err
   }
 
-  def renderQQCompilerException(err: QQCompilationException): TagMod = {
+  def renderQQCompilerException(err: CompileError): TagMod = {
     "Error compiling QQ program: " + err
   }
 
-  def renderQQRuntimeException(err: QQRuntimeException): TagMod = {
+  def renderQQRuntimeException(err: RuntimeError): TagMod = {
     ("Errors running QQ program:": TagMod) +
       div(
         err.errors.map(e => div(Styles.runtimeError, e.message)).toList: _*

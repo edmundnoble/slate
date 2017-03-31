@@ -4,12 +4,12 @@ package bench
 import japgolly.scalajs.benchmark._
 import japgolly.scalajs.benchmark.gui.{GuiParam, GuiParams, GuiSuite}
 import qq.Platform.Rec._
-import qq.cc.{CompiledFilter, OrCompilationError, QQCompiler}
+import qq.cc.{CompiledFilter, QQCompiler}
 import qq.data.{FilterAST, QQDSL}
 
 object CompilerBench {
 
-  @inline final def runCompilerBench(filt: FilterAST): OrCompilationError[CompiledFilter] =
+  @inline final def runCompilerBench(filt: FilterAST): OrCompileError[CompiledFilter] =
     QQCompiler.compileFilter(Vector.empty, filt)
 
   val qqCompilerSuite: GuiSuite[Int] = GuiSuite(

@@ -2,14 +2,15 @@ package slate
 package app
 package builtin
 
-import qq.data.{FilterAST, Program}
-import qq.macros.QQStager._
+import qq.cc.{InterpretedFilter, QQInterpreterRuntime}
+import qq.macros.stager._
 
 object JIRAApp {
 
-  val program: Program[FilterAST] Either String =
+  val program: InterpretedFilter Either String =
     Left(
-      qq"""
+      QQStager(QQInterpreterRuntime, SlatePrelude,
+        """
 def authHeaders: (.username + ":" + .password | b64Encode) | { Authorization: "Basic " + . };
 
 def extractIssues: .issues[] | {
@@ -47,6 +48,7 @@ $$auth as authHeaders in
          | extractFilters($$auth)
          | contentFromFilter
 """
+      )
     )
 
 }

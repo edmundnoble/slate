@@ -1,7 +1,7 @@
 package qq
 package data
 
-import qq.data.ast._
+import qq.ast._
 import qq.util.Fix
 
 // smart constructors that make a FilterComponent node including its children
@@ -45,7 +45,7 @@ object QQDSL {
     getPath(Vector.empty)
 
   @inline implicit def getPath(components: Vector[PathComponent]): FilterAST = {
-    FilterComponent.embed(PathOperation(components, PathGet))
+    FilterComponent.embed(PathOperation(PathGet, components))
   }
 
   @inline implicit def getPathS(component: PathComponent): FilterAST = {
@@ -53,11 +53,11 @@ object QQDSL {
   }
 
   @inline def setPath(components: Vector[PathComponent], value: FilterAST): FilterAST = {
-    Fix(PathOperation(components, PathSet(value)))
+    Fix(PathOperation(PathSet(value), components))
   }
 
   @inline def modifyPath(components: Vector[PathComponent], modify: FilterAST): FilterAST = {
-    Fix(PathOperation(components, PathModify(modify)))
+    Fix(PathOperation(PathModify(modify), components))
   }
 
   @inline def define(name: String, params: Vector[String], body: FilterAST): Definition[FilterAST] =

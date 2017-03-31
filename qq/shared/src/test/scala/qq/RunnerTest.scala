@@ -3,7 +3,7 @@ package qq
 import cats.data.NonEmptyList
 import cats.implicits._
 import org.scalatest.Assertion
-import qq.cc.QQRuntimeException._
+import qq.cc.RuntimeError._
 import qq.cc.{QQRuntimeError, Runner, RuntimeErrs, TypeError}
 import qq.data.JSON
 

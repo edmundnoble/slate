@@ -5,7 +5,8 @@ package caching
 import cats.Monad
 import cats.implicits._
 import fastparse.all.ParseError
-import qq.cc.{LocalOptimizer, _}
+import qq.ast.LocalOptimizer
+import qq.cc._
 import qq.data
 import qq.util.Recursion.RecursionEngine
 import scodec.bits.BitVector
@@ -15,9 +16,9 @@ import slate.util.Util._
 
 // what goes into caching a QQ program in slate
 object Program {
-
-  def parseAndOptimizeProgram(program: String)(implicit rec: RecursionEngine): ParseError Either data.Program[data.FilterAST] = {
-    val parsedQQProgram = Parser.program.parse(program).toEither.bimap(ParseError(_), _.value)
+  def parseProgram(program: String)(implicit rec: RecursionEngine): ParseError Either InterpretedFilter = {
+    val parser = new ParserCompiler(QQInterpreterRuntime, SlatePrelude)
+    val parsedQQProgram = parser.program.parse(program).toEither.bimap(ParseError(_), _.value)
     val optimizedProgram = parsedQQProgram.map(LocalOptimizer.optimizeProgram)
     optimizedProgram
   }
@@ -37,12 +38,19 @@ object Program {
   // cache optimized, parsed programs using their hashcode as a key
   // store them as base64-encoded bytecode
   def getCachedProgramByHash[F[_]: Monad](qqProgram: SlateProgram[String])
-                                         (implicit storage: Storage[F], rec: RecursionEngine): F[ErrorGettingCachedProgram Either data.Program[data.FilterAST]] = {
+                                         (implicit storage: Storage[F], rec: RecursionEngine): F[ErrorGettingCachedProgram Either InterpretedFilter] = {
 
     import qq.protocol.FilterProtocol
 
-    Caching.getCachedByPrepare[F, ProgramSerializationException, ParseError, data.Program[data.FilterAST], SlateProgram[String]](qqProgram)(
-      prog => prog.title + prog.program.hashCode.toString, { (program: data.Program[data.FilterAST]) =>
+    val cacheKey = qqProgram.title + qqProgram.program.hashCode.toString
+
+    val injectError = copInj[ErrorGettingCachedProgram]
+
+    for {
+      cached <- storage(cacheKey)
+    } yield ???
+
+    cacheCaching.getCachedByPrepare[F, ProgramSerializationException, ParseError, InterpretedFilter, SlateProgram[String]](qqProgram)(
         FilterProtocol.programCodec
           .encode(program)
           .toEither

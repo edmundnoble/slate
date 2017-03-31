@@ -1,31 +1,25 @@
 package qq
 package cc
 
-import cats.implicits._
 import cats.Monoid
+import org.atnos.eff.{Eff, Fx, list}
+import qq.ast.QQRuntime
+import qq.cc.CompileError.OrCompileError
 import qq.data.CompiledDefinition
-import qq.util.Recursion.RecursionEngine
-
 
 object Prelude {
-  val empty = new Prelude {
-    override def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] =
-      Right(Vector.empty)
-  }
+  def empty[C]: Prelude[C] =
+    _ => Vector.empty
 
-  implicit val preludeMonoid: Monoid[Prelude] = new Monoid[Prelude] {
-    override def empty: Prelude = Prelude.empty
+  implicit def preludeMonoid[C]: Monoid[Prelude[C]] = new Monoid[Prelude[C]] {
+    def empty: Prelude[C] = Prelude.empty
 
-    override def combine(f1: Prelude, f2: Prelude): Prelude = new Prelude {
-      override def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] = for {
-        fst <- f1.all
-        snd <- f2.all
-      } yield fst ++ snd
-    }
+    def combine(f1: Prelude[C], f2: Prelude[C]): Prelude[C] =
+      runtime => f1.all(runtime) ++ f2.all(runtime)
   }
 }
 
-trait Prelude {
-  def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]]
+trait Prelude[C] {
+  def all(runtime: QQRuntime[C]): Vector[CompiledDefinition[C]]
 }
 

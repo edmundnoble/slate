@@ -1,5 +1,4 @@
 package qq
-package data
 package ast
 
 import cats.{Applicative, Eval, Traverse}
@@ -28,10 +27,10 @@ sealed abstract class PathOperationF[+A] {
 case object PathGet extends PathOperationF[Nothing] {
   def child = None
 }
-case class PathModify[A](value: A) extends PathOperationF[A] {
+case class PathModify[+A](value: A) extends PathOperationF[A] {
   def child = Some(value)
 }
-case class PathSet[A](value: A) extends PathOperationF[A] {
+case class PathSet[+A](value: A) extends PathOperationF[A] {
   def child = Some(value)
 }
 

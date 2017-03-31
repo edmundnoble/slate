@@ -3,50 +3,63 @@ package cc
 
 import java.util.regex.Pattern
 
+import cats.Applicative
 import cats.data.{NonEmptyList, Validated}
 import cats.implicits._
 import org.atnos.eff.syntax.all._
 import org.atnos.eff._
+import qq.ast.QQRuntime
+import qq.cc.CompileError.OrCompileError
+import qq.cc.Prelude.PreludeStack
 import qq.data.{CompiledDefinition, JSON}
-import qq.util.Recursion.RecursionEngine
 import qq.util._
 import scodec.bits.ByteVector
 
-object JSONPrelude extends Prelude {
+object JSONPrelude extends Prelude[InterpretedFilter] {
 
   import CompiledDefinition.noParamDefinition
-  import QQRuntimeException._
+  import RuntimeError._
 
   // null constant
-  def `null`: CompiledDefinition = noParamDefinition("null", CompiledFilter.const(JSON.Null))
+  def `null`: CompiledDefinition[InterpretedFilter] = {
+    noParamDefinition("null", InterpretedFilter.const(JSON.Null))
+  }
 
   // true constant
-  def `true`: CompiledDefinition = noParamDefinition("true", CompiledFilter.const(JSON.True))
+  def `true`: CompiledDefinition[InterpretedFilter] = {
+    noParamDefinition("true", InterpretedFilter.const(JSON.True))
+  }
 
   // false constant
-  def `false`: CompiledDefinition = noParamDefinition("false", CompiledFilter.const(JSON.False))
+  def `false`: CompiledDefinition[InterpretedFilter] = {
+    noParamDefinition("false", InterpretedFilter.const(JSON.False))
+  }
 
   // x | orElse(y): null coalescing operator
-  def orElse: CompiledDefinition = CompiledDefinition("orElse", 1, { params =>
-    val default = params.head
-    Right(
-      CompiledFilter.singleton((j: JSON) =>
-        if (j == JSON.Null) default(JSON.Null)
-        else (j +: Vector.empty).pureEff[CompiledFilterStack]
+  def orElse: CompiledDefinition[InterpretedFilter] = {
+    CompiledDefinition("orElse", 1, params => {
+      Right(
+        InterpretedFilter.singleton((j: JSON) => {
+          if (j == JSON.Null) params.head(JSON.Null)
+          else (j +: Vector.empty).pureEff[InterpretedFilterStack]
+        }
+        )
       )
-    )
-  })
+    })
+  }
 
   // base 64 encoding, duh
-  def b64Encode: CompiledDefinition = noParamDefinition("b64Encode", CompiledFilter.singleton {
-    case JSON.Str(str) => (JSON.str(ByteVector.encodeUtf8(str).right.getOrElse(ByteVector.empty).toBase64) +: Vector.empty).pureEff[CompiledFilterStack]
-    case k => typeErrorE("b64Encode", "string" -> k)
-  })
+  def b64Encode: CompiledDefinition[InterpretedFilter] = {
+    noParamDefinition("b64Encode", InterpretedFilter.singleton {
+      case JSON.Str(str) => (JSON.str(ByteVector.encodeUtf8(str).right.getOrElse(ByteVector.empty).toBase64) +: Vector.empty).pureEff
+      case k => typeErrorE("b64Encode", "string" -> k)
+    })
+  }
 
   // array/object length
-  def length: CompiledDefinition =
+  def length: CompiledDefinition[InterpretedFilter] = {
     noParamDefinition(
-      "length", CompiledFilter.singleton {
+      "length", InterpretedFilter.singleton {
         case arr: JSON.Arr => (JSON.num(arr.value.length) +: Vector.empty).pureEff
         case JSON.Str(str) => (JSON.num(str.length) +: Vector.empty).pureEff
         case obj: JSON.ObjMap => (JSON.num(obj.value.size) +: Vector.empty).pureEff
@@ -55,137 +68,179 @@ object JSONPrelude extends Prelude {
         case k => typeErrorE("length", "array | string | object | null" -> k)
       }
     )
+  }
 
   // object keys
-  def keys: CompiledDefinition =
+  def keys: CompiledDefinition[InterpretedFilter] = {
     noParamDefinition(
-      "keys", CompiledFilter.singleton {
-        case obj: JSON.Obj => (JSON.arr(obj.map(p => JSON.str(p._1))(collection.breakOut): _*) +: Vector.empty).pureEff[CompiledFilterStack]
+      "keys", InterpretedFilter.singleton {
+        case obj: JSON.Obj => (JSON.arr(obj.map(p => JSON.str(p._1))(collection.breakOut): _*) +: Vector.empty).pureEff
         case k => typeErrorE("keys", "object" -> k)
       }
     )
+  }
 
   // regex replace
-  def replaceAll: CompiledDefinition =
+  def replaceAll: CompiledDefinition[InterpretedFilter] = {
     CompiledDefinition(name = "replaceAll", numParams = 2,
-      body = CompiledDefinition.standardEffectDistribution { params =>
+      body = CompiledDefinition.standardEffectDistribution { params => {
         val regexRaw = params.head
         val replacementRaw = params.tail.head
         val regexValidated: Validated[RuntimeErrs, Pattern] = regexRaw match {
           case JSON.Str(string) => Pattern.compile(string).validNel
-          case k => NonEmptyList.of[QQRuntimeError](NotARegex(QQRuntime.print(k))).invalid
+          case k => NonEmptyList.of[QQRuntimeError](NotARegex(JSON.render(k))).invalid
         }
         val replacementValidated: Validated[RuntimeErrs, String] = replacementRaw match {
           case JSON.Str(string) => string.validNel
           case k => NonEmptyList.of[QQRuntimeError](TypeError("replace", "string" -> k)).invalid
         }
-      { (j: JSON) =>
-        val valueRegexReplacementList: Validated[RuntimeErrs, Vector[JSON]] = (regexValidated |@| replacementValidated).map { (regex, replacement) =>
-          j match {
-            case JSON.Str(string) =>
-              (JSON.str(regex.matcher(string).replaceAll(replacement)) +: Vector.empty).validNel[QQRuntimeError]
-            case k => NonEmptyList.of[QQRuntimeError](TypeError("replace", "string" -> k)).invalid[Vector[JSON]]
-          }
-        }.flatten
-        Eff.send[OrRuntimeErr, CompiledFilterStack, Vector[JSON]](valueRegexReplacementList.toEither)
+        (j: JSON) => {
+          Eff.send[OrRuntimeErr, InterpretedFilterStack, Vector[JSON]](
+            Applicative[OrRuntimeErrs].map2(regexValidated, replacementValidated) { (regex, replacement) => {
+              j match {
+                case JSON.Str(string) =>
+                  (JSON.str(regex.matcher(string).replaceAll(replacement)) +: Vector.empty).validNel[QQRuntimeError]
+                case k => NonEmptyList.of[QQRuntimeError](TypeError("replace", "string" -> k)).invalid[Vector[JSON]]
+              }
+            }
+            }.flatten.toEither)
+        }
       }
-      })
+      }
+    )
+  }
 
   // filter
-  def select: CompiledDefinition = CompiledDefinition("select", 1, {
-    case params =>
-      val filterFun = params.head
+  def select: CompiledDefinition[InterpretedFilter] = {
+    CompiledDefinition("select", 1, { params => {
       Right(
-        CompiledFilter.singleton {
-          (value: JSON) => filterFun(value).map(_.filter(_ == JSON.True).map(_ => value))
-        }
+        InterpretedFilter.singleton(
+          value => params.head(value).map(_.filter(_ == JSON.True).map(_ => value))
+        )
       )
-  })
+    }
+    })
+  }
 
   // array or object includes
-  def includes: CompiledDefinition = CompiledDefinition.undefinedOnPlatform("includes")
+  def includes: CompiledDefinition[InterpretedFilter] = {
+    CompiledDefinition.undefinedOnPlatform("includes")
+  }
 
   // type filters
 
-  def arrays: CompiledDefinition =
+  def arrays: CompiledDefinition[InterpretedFilter] = {
     noParamDefinition(
-      "arrays", CompiledFilter.singleton {
-        case arr: JSON.Arr => ((arr: JSON) +: Vector.empty).pureEff[CompiledFilterStack]
+      "arrays", InterpretedFilter.singleton {
+        case arr: JSON.Arr => ((arr: JSON) +: Vector.empty).pureEff
         case _ => Vector.empty[JSON].pureEff
       })
+  }
 
-  def objects: CompiledDefinition =
+  def objects: CompiledDefinition[InterpretedFilter] = {
     noParamDefinition(
-      "objects", CompiledFilter.singleton {
-        case obj: JSON.Obj => ((obj: JSON) +: Vector.empty).pureEff[CompiledFilterStack]
+      "objects", InterpretedFilter.singleton {
+        case obj: JSON.Obj => ((obj: JSON) +: Vector.empty).pureEff
         case _ => Vector.empty[JSON].pureEff
       })
+  }
 
-  def iterables: CompiledDefinition =
+  def iterables: CompiledDefinition[InterpretedFilter] = {
     noParamDefinition(
-      "iterables", CompiledFilter.singleton {
-        case arr: JSON.Arr => ((arr: JSON) +: Vector.empty).pureEff[CompiledFilterStack]
-        case obj: JSON.Obj => ((obj: JSON) +: Vector.empty).pureEff[CompiledFilterStack]
+      "iterables", InterpretedFilter.singleton {
+        case arr: JSON.Arr => ((arr: JSON) +: Vector.empty).pureEff
+        case obj: JSON.Obj => ((obj: JSON) +: Vector.empty).pureEff
         case _ => Vector.empty[JSON].pureEff
       })
+  }
 
-  def booleans: CompiledDefinition =
+  def booleans: CompiledDefinition[InterpretedFilter] = {
     noParamDefinition(
-      "booleans", CompiledFilter.singleton {
-        case bool@(JSON.True | JSON.False) => ((bool: JSON) +: Vector.empty).pureEff[CompiledFilterStack]
+      "booleans", InterpretedFilter.singleton {
+        case bool@(JSON.True | JSON.False) => ((bool: JSON) +: Vector.empty).pureEff
         case _ => Vector.empty[JSON].pureEff
       })
+  }
 
-  def numbers: CompiledDefinition =
+  def numbers: CompiledDefinition[InterpretedFilter] = {
     noParamDefinition(
-      "numbers", CompiledFilter.singleton {
-        case num: JSON.Num => ((num: JSON) +: Vector.empty).pureEff[CompiledFilterStack]
+      "numbers", InterpretedFilter.singleton {
+        case num: JSON.Num => ((num: JSON) +: Vector.empty).pureEff
         case _ => Vector.empty[JSON].pureEff
       })
+  }
 
-  def strings: CompiledDefinition =
+  def strings: CompiledDefinition[InterpretedFilter] = {
     noParamDefinition(
-      "strings", CompiledFilter.singleton {
-        case str: JSON.Str => ((str: JSON) +: Vector.empty).pureEff[CompiledFilterStack]
+      "strings", InterpretedFilter.singleton {
+        case str: JSON.Str => ((str: JSON) +: Vector.empty).pureEff
         case _ => Vector.empty[JSON].pureEff
       })
+  }
 
-  def nulls: CompiledDefinition =
+  def nulls: CompiledDefinition[InterpretedFilter] = {
     noParamDefinition(
-      "nulls", CompiledFilter.singleton {
-        case JSON.Null => (JSON.`null` +: Vector.empty).pureEff[CompiledFilterStack]
+      "nulls", InterpretedFilter.singleton {
+        case JSON.Null => (JSON.`null` +: Vector.empty).pureEff
         case _ => Vector.empty[JSON].pureEff
       })
+  }
 
-  def values: CompiledDefinition =
+  def values: CompiledDefinition[InterpretedFilter] = {
     noParamDefinition(
-      "values", CompiledFilter.singleton {
+      "values", InterpretedFilter.singleton {
         case JSON.Null => Vector.empty[JSON].pureEff
-        case k => (k +: Vector.empty).pureEff[CompiledFilterStack]
+        case k => (k +: Vector.empty).pureEff
       })
+  }
 
-  def scalars: CompiledDefinition =
+  def scalars: CompiledDefinition[InterpretedFilter] = {
     noParamDefinition(
-      "scalars", CompiledFilter.singleton {
-        case _: JSON.Arr => Vector.empty[JSON].pureEff[CompiledFilterStack]
-        case _: JSON.Obj => Vector.empty[JSON].pureEff[CompiledFilterStack]
-        case k => (k +: Vector.empty).pureEff[CompiledFilterStack]
+      "scalars", InterpretedFilter.singleton {
+        case _: JSON.Arr => Vector.empty[JSON].pureEff
+        case _: JSON.Obj => Vector.empty[JSON].pureEff
+        case k => (k +: Vector.empty).pureEff
       })
+  }
 
-  def toStringDef: CompiledDefinition =
+  def toStringDef: CompiledDefinition[InterpretedFilter] = {
     noParamDefinition(
-      "toString", CompiledFilter.singleton { j: JSON =>
-        (JSON.str(JSON.render(j)) +: Vector.empty).pureEff[CompiledFilterStack]
+      "toString", InterpretedFilter.singleton((j: JSON) =>
+        (JSON.str(JSON.render(j)) +: Vector.empty).pureEff)
+    )
+  }
+
+  def map(runtime: QQRuntime[InterpretedFilter]): CompiledDefinition[InterpretedFilter] = {
+    CompiledDefinition[InterpretedFilter]("map", 1,
+      body = p => {
+        Right(
+          runtime.composeFilters(
+            runtime.path.get.ret(runtime.path.get.collectResults),
+            p(0)
+          )
+        )
+      }
+    )
+  }
+
+  val print: CompiledDefinition[InterpretedFilter] =
+    CompiledDefinition.noParamDefinition("print",
+      InterpretedFilter.singleton { (jsv: JSON) => {
+        println("debug: " + JSON.render(jsv))
+        (jsv +: Vector.empty).pureEff
+      }
       }
     )
 
-  def all(implicit rec: RecursionEngine): OrCompilationError[Vector[CompiledDefinition]] =
-    Right(
-      Vector(
-        `null`, `true`, `false`, orElse, b64Encode, includes, // exists, forall,
-        length, keys, replaceAll, select, arrays, objects, iterables, booleans,
-        numbers, strings, nulls, values, scalars, toStringDef
-      )
+  val empty: CompiledDefinition[InterpretedFilter] =
+    CompiledDefinition.noParamDefinition("empty", InterpretedFilter.constL(Vector.empty))
+
+  def all(runtime: QQRuntime[InterpretedFilter]): Vector[CompiledDefinition[InterpretedFilter]] = {
+    Vector(
+      `null`, `true`, `false`, orElse, b64Encode, includes, // exists, forall,
+      length, keys, replaceAll, select, arrays, objects, iterables, booleans,
+      numbers, strings, nulls, values, scalars, toStringDef,
+      map(runtime), print, empty
     )
 
 }
