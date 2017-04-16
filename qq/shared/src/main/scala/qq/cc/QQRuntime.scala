@@ -354,4 +354,8 @@ object QQRuntime {
   }
 
   def print(value: JSON): String = JSON.render(value)
+
+  def printTypeAndValue(value: JSON): String =
+    if (value == JSON.Null) print(JSON.Null)
+    else printType(value) + " (" + print(value) + ")"
 }

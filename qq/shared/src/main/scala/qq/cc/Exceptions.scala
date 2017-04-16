@@ -24,15 +24,14 @@ case class QQRuntimeException(errors: NonEmptyList[QQRuntimeError])
   override def equals(obj: scala.Any): Boolean = obj match {
     case other: QQRuntimeException =>
       errors.map(_.message) == other.errors.map(_.message)
-    case _ => false
+    case _ =>
+      false
   }
 }
 
 object QQRuntimeException {
-  implicit def qqruntimeExceptionSemigroup: Semigroup[QQRuntimeException] = new Semigroup[QQRuntimeException] {
-    override def combine(f1: QQRuntimeException, f2: QQRuntimeException): QQRuntimeException =
-      QQRuntimeException(f1.errors |+| f2.errors)
-  }
+  implicit def qqruntimeExceptionSemigroup: Semigroup[QQRuntimeException] =
+    (f1: QQRuntimeException, f2: QQRuntimeException) => QQRuntimeException(f1.errors |+| f2.errors)
 
   type _either[E, R] = Member[Either[E, ?], R]
 
@@ -52,7 +51,12 @@ case class TypeError(operation: String, typesAndValues: (String, JSON)*)
   extends QQRuntimeError(
     "tried to " + operation + " with arguments with bad types (\n" +
       typesAndValues.map { case (expectedType, value) =>
-        "expected a/an " + expectedType + " but got a " + QQRuntime.printType(value) + " ( " + QQRuntime.print(value) + " ) "
+        def vowel(c: Char): Boolean =
+          (c == 'a') | (c == 'e') | (c == 'i') | (c == 'o') | (c == 'u')
+        def `a/an`(str: String) =
+          if (vowel(str.charAt(0))) "an " + str else if (str == "null") str else "a " + str
+        "expected " + `a/an`(expectedType) +
+          " but got " + `a/an`(QQRuntime.printTypeAndValue(value))
       }.mkString(",\n") + "\n)"
   )
 
