@@ -1,9 +1,10 @@
 package slate
 package views
 
-import japgolly.scalajs.react
-import japgolly.scalajs.react.CompScope.DuringCallbackU
+import japgolly.scalajs.react.vdom.VdomElement
 import japgolly.scalajs.react._
+import japgolly.scalajs.react.component.Scala
+import japgolly.scalajs.react.component.ScalaBuilder.Lifecycle.RenderScope
 import japgolly.scalajs.react.extra.Reusability
 import slate.util.ExternalVar
 import monix.execution.Scheduler
@@ -14,12 +15,10 @@ import scalacss.Defaults._
 
 object DashboardPage {
 
-  import japgolly.scalajs.react.vdom.all._
-
   import scalacss.ScalaCssReact._
 
-  def makeAppCell(result: AppProps, extVar: ExternalVar[SlateProgramConfig])(implicit sch: Scheduler): ReactElement = {
-    AppView.builder(extVar).build(result)
+  def makeAppCell(result: AppProps, extVar: ExternalVar[SlateProgramConfig])(implicit sch: Scheduler): VdomElement = {
+    VdomElement(AppView.builder(extVar).build.apply(result).raw)
   }
 
   case class SearchPageProps(appProps: List[AppProps])
@@ -31,17 +30,19 @@ object DashboardPage {
 
   type ConfigMap = Map[Int, SlateProgramConfig]
 
-  def makeDashboardPage(extVar: ExternalVar[Map[Int, SlateProgramConfig]], props: SearchPageProps)(implicit sch: Scheduler): ReactComponentU[SearchPageProps, Unit, Unit, react.TopNode] = {
-    ReactComponentB[SearchPageProps]("Main dashboard page")
+  def makeDashboardPage(extVar: ExternalVar[Map[Int, SlateProgramConfig]], props: SearchPageProps)(implicit sch: Scheduler): Scala.Unmounted[SearchPageProps, Unit, Unit] = {
+    ScalaComponent.builder[SearchPageProps]("Main dashboard page")
       .stateless
+      .noBackend
       .renderP(renderDashboard(extVar))
-      .domType[TopNode]
-      .build(props)
+      .build.apply(props)
   }
 
   private def renderDashboard(extVar: ExternalVar[Map[Int, SlateProgramConfig]])
-                             ($: DuringCallbackU[SearchPageProps, Unit, Unit],
-                              props: SearchPageProps)(implicit sch: Scheduler): ReactElement = {
+                             ($: RenderScope[SearchPageProps, Unit, Unit],
+                              props: SearchPageProps)(implicit sch: Scheduler): VdomElement = {
+    import japgolly.scalajs.react.vdom.all._
+
     div(Styles.layoutContainer,
       div(`class` := "mdl-color--grey-200 mdl-layout mdl-js-layout",
         id := "react-root",
@@ -59,11 +60,11 @@ object DashboardPage {
             )
           )
         ),
-        "main".reactTag(Styles.layoutContent,
-          div(Styles.container,
-            props.appProps.map(app =>
+        HtmlTag("main")(Styles.layoutContent,
+          div((Styles.container: TagMod) ::
+            props.appProps.map[TagMod, List[TagMod]](app =>
               makeAppCell(app, ExternalVar[SlateProgramConfig](() => extVar.getter()(app.id), spc => extVar.setter(extVar.getter() + (app.id -> spc))))
-            )
+            ): _*
           )
         )
       )

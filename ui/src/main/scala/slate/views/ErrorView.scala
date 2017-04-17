@@ -3,7 +3,6 @@ package views
 
 import fastparse.all.ParseError
 import japgolly.scalajs.react._
-import org.scalajs.dom.html.Div
 import qq.cc.{QQCompilationException, QQRuntimeException}
 import slate.app.SlateApp.AllErrors
 import slate.app.caching.Program.ProgramSerializationException
@@ -12,6 +11,7 @@ import upickle.Invalid
 import scalacss.Defaults._
 
 object ErrorView {
+
   object Styles extends StyleSheet.Inline {
 
     import dsl._
@@ -20,7 +20,7 @@ object ErrorView {
 
     val danger: StyleA = style(
       margin(20 px),
-        fontFamily :=! "San Francisco"
+      fontFamily :=! "San Francisco"
     )
 
     val runtimeError: StyleA = style(
@@ -33,7 +33,7 @@ object ErrorView {
 
   import scalacss.ScalaCssReact._
 
-  def builder(ex: AllErrors): ReactTagOf[Div] = {
+  def builder(ex: AllErrors): VdomElement = {
     div(Styles.danger, key := ex.toString.hashCode,
       div(
         ex.eliminate(renderInvalidJSON,
@@ -66,10 +66,12 @@ object ErrorView {
   }
 
   def renderQQRuntimeException(err: QQRuntimeException): TagMod = {
-    ("Errors running QQ program:": TagMod) +
+    TagMod(
+      "Errors running QQ program:",
       div(
         err.errors.map(e => div(Styles.runtimeError, e.message)).toList: _*
       )
+    )
   }
 
 }

@@ -2,7 +2,8 @@ package slate
 package views
 
 import cats.Monoid
-import japgolly.scalajs.react.{CallbackTo, ReactComponentB, TopNode}
+import japgolly.scalajs.react.{CallbackTo, Children}
+import japgolly.scalajs.react.component.ScalaBuilder
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.Observable
 
@@ -10,11 +11,11 @@ object ReactiveReact {
   case class ReactiveState[ST](reactivePart: ST, cancelableFuture: CancelableFuture[Unit])
 
   // todo: cancel on willUnmount
-  implicit class ReactiveOps[P, ST, B, N <: TopNode](val builder: ReactComponentB[P, ST, B, N]) {
+  implicit class ReactiveOps[P, ST, B](val builder: ScalaBuilder.Step4[P, Children.None, ST, B]) {
 
     @inline final def reactiveReplaceL[R]
     (getReactivePart: P => Observable[R], setReactivePart: (ST, R) => ST)
-    (implicit sch: Scheduler): ReactComponentB[P, ST, B, N] =
+    (implicit sch: Scheduler): ScalaBuilder.Step4[P, Children.None, ST, B] =
       builder.componentWillMount($ =>
         CallbackTo.lift { () =>
           val _ = getReactivePart($.props).foreach { r =>
@@ -26,13 +27,13 @@ object ReactiveReact {
     @inline final def reactiveReplace
     (implicit sch: Scheduler,
      propsAreReactiveEv: P =:= Observable[ST]
-    ): ReactComponentB[P, ST, B, N] =
+    ): ScalaBuilder.Step4[P, Children.None, ST, B] =
       reactiveReplaceL[ST](propsAreReactiveEv, (_, r) => r)
 
-    @inline final def reactiveMonoid
+    @inline final def reactiveMonoio
     (implicit sch: Scheduler, ST: Monoid[ST],
      propsAreReactiveEv: P =:= Observable[ST]
-    ): ReactComponentB[P, ST, B, N] =
+    ): ScalaBuilder.Step4[P, Children.None, ST, B] =
       builder.componentWillMount($ =>
         CallbackTo.lift { () =>
           val _ = $.props.foldLeftF(ST.empty)(ST.combine).foreach { r =>

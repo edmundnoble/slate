@@ -3,11 +3,13 @@ package views
 
 import cats.data.Ior
 import japgolly.scalajs.react._
+import japgolly.scalajs.react.component.{Scala, ScalaBuilder}
 import japgolly.scalajs.react.extra.Reusability
-import japgolly.scalajs.react.vdom.DomFrag
+import japgolly.scalajs.react.vdom.TagOf
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import monix.reactive.subjects.PublishToOneSubject
+import org.scalajs.dom.html.Label
 import qq.data.JSON._
 import qq.data.{JSON, LJSON}
 import shapeless.tag.@@
@@ -100,10 +102,10 @@ object ConfigView {
       Reusability.caseClass
   }
 
-  def radioButtons[A](options: Map[String, (A, String)], name: String, default: A, subject: A => Unit): ReactElement = {
-    val buttons = options.map { case (optionId, (opt, lab)) =>
-      val in: DomFrag =
-        input(`type` := "radio", id := s"radio-button-$optionId", `class` := "mdl-radio__button", "name".reactAttr := name,
+  def radioButtons[A](options: Map[String, (A, String)], name: String, default: A, subject: A => Unit): VdomElement = {
+    val buttons: List[TagOf[Label]] = options.map { case (optionId, (opt, lab)) =>
+      val in: VdomElement =
+        input(`type` := "radio", id := s"radio-button-$optionId", `class` := "mdl-radio__button", VdomAttr[String]("name") := name,
           onChange --> CallbackTo {
             subject(opt)
           }
@@ -112,11 +114,11 @@ object ConfigView {
         in,
         span(`class` := "mdl-radio__label", lab)
       )
-    }
-    div(buttons)
+    }(collection.breakOut)
+    div(buttons: _*)
   }
 
-  def bootRefreshPolicySelector(subject: BootRefreshPolicy => Unit): ReactElement =
+  def bootRefreshPolicySelector(subject: BootRefreshPolicy => Unit): VdomElement =
     radioButtons(
       Map(
         "always" -> (BootRefreshPolicy.Always -> "Always"),
@@ -126,28 +128,28 @@ object ConfigView {
 
   def makeTextFieldId(): String = "textField" + scala.util.Random.nextInt(998).toString
 
-  def makeTextField(default: Ior[String @@ Modified, String]): (Observable[String], ReactElement) = {
+  def makeTextField(default: Ior[String @@ Modified, String]): (Observable[String], VdomElement) = {
     val madeId = makeTextFieldId()
     val publishSubject = PublishToOneSubject[String]
     val field =
       div(`class` := "mdl-textfield mdl-js-textfield",
-        input(`class` := "mdl-textfield__input", `type` := "text", id := madeId, default.right.map(value := _),
-          onChange ==> ((e: ReactEventI) => Callback {
+        input(`class` := "mdl-textfield__input", `type` := "text", id := madeId, TagMod.fromTraversableOnce(default.right.map(value := _)),
+          onChange ==> ((e: ReactEventFromInput) => Callback {
             publishSubject.onNext(e.target.value)
           })),
-        label(`class` := "mdl-textfield__label", `for` := madeId, default.left)
+        label(`class` := "mdl-textfield__label", `for` := madeId, TagMod.fromTraversableOnce(default.left.map(s => s: TagMod)))
       )
     (publishSubject, field)
   }
 
-  def makeIconFAB(icon: String, cb: Callback): ReactElement = {
+  def makeIconFAB(icon: String, cb: Callback): VdomElement = {
     button(`class` := "mdl-button mdl-js-button mdl-button--fab",
       onClick --> cb,
       i(`class` := "material-icons", icon)
     )
   }
 
-  def renderLeaf(l: Ior[LJSON @@ Modified, LJSON], updateRate: FiniteDuration, subject: JSONModification => Unit)(implicit sch: Scheduler): ReactElement = {
+  def renderLeaf(l: Ior[LJSON @@ Modified, LJSON], updateRate: FiniteDuration, subject: JSONModification => Unit)(implicit sch: Scheduler): VdomElement = {
     val (text, field) = makeTextField(l.bimap(mj => modifiedTag(JSON.renderLJSON(mj)), JSON.renderLJSON))
     val _ = text.throttleLast(updateRate).map { str =>
       val parsedLJSON = JSON.parserForLJSON.parse(str)
@@ -157,7 +159,7 @@ object ConfigView {
     field
   }
 
-  def makeSubKeyField(index: Int, updateRate: FiniteDuration, key: Ior[String @@ Modified, String], subject: JSONModification => Unit)(implicit sch: Scheduler): ReactElement = {
+  def makeSubKeyField(index: Int, updateRate: FiniteDuration, key: Ior[String @@ Modified, String], subject: JSONModification => Unit)(implicit sch: Scheduler): VdomElement = {
     val (text, field) = makeTextField(key)
     val _ = text.throttleLast(updateRate).map { str =>
       subject(UpdateKey(index, str))
@@ -165,46 +167,46 @@ object ConfigView {
     field
   }
 
-  def makeModifierButtons[J](origin: JSONOrigin, values: Vector[J], subject: JSONModification => Unit): ReactElement = {
+  def makeModifierButtons[J](origin: JSONOrigin, values: Vector[J], subject: JSONModification => Unit): VdomElement = {
     val addButton = makeIconFAB("add", Callback {
       subject(AddTo(origin))
     })
     val removeButton = makeIconFAB("remove", Callback {
       subject(DeleteFrom(origin))
     })
-    val buttons = if (values.nonEmpty) {
+    val buttons: List[TagMod] = if (values.nonEmpty) {
       removeButton :: addButton :: Nil
     } else origin match {
       case Bottom => addButton :: Nil
       case Top => Nil
     }
-    div(Styles.modifierButtons, buttons)
+    div((Styles.modifierButtons: TagMod) :: buttons: _*)
   }
 
-  def renderBranchF(l: ModifiedJSONF[ModifiedJSON], updateRate: FiniteDuration, subject: JSONModification => Unit)(implicit sch: Scheduler): ReactElement = {
+  def renderBranchF(l: ModifiedJSONF[ModifiedJSON], updateRate: FiniteDuration, subject: JSONModification => Unit)(implicit sch: Scheduler): VdomElement = {
     l match {
       case ObjectF(kvPairs) =>
         div(
-          makeModifierButtons(Top, kvPairs, subject),
+          (makeModifierButtons(Top, kvPairs, subject) ::
           kvPairs.toIterator.zipWithIndex
-            .map { case (ObjectEntry(k, v), idx) =>
-              makeSubKeyField(idx, updateRate, k, subject) +
-                (makeSubJSONFields(v, updateRate, m => subject(RecIdx(idx, m))): TagMod)
-            }.toList,
-          makeModifierButtons(Bottom, kvPairs, subject)
+            .flatMap { case (ObjectEntry(k, v), idx) =>
+              makeSubKeyField(idx, updateRate, k, subject) ::
+                (makeSubJSONFields(v, updateRate, m => subject(RecIdx(idx, m))): TagMod) :: Nil
+            }.toList) :+
+          makeModifierButtons(Bottom, kvPairs, subject): _*
         )
       case ArrayF(values) =>
         div(
-          makeModifierButtons(Top, values, subject),
+          (makeModifierButtons(Top, values, subject) ::
           values.toIterator.zipWithIndex
             .map { case (j, idx) => makeSubJSONFields(j, updateRate, m => subject(RecIdx(idx, m))) }
-            .toList,
-          makeModifierButtons(Bottom, values, subject)
+            .toList) :+
+          makeModifierButtons(Bottom, values, subject): _*
         )
     }
   }
 
-  def makeSubJSONFields(value: ModifiedJSON, updateRate: FiniteDuration, subject: JSONModification => Unit)(implicit sch: Scheduler): ReactElement = {
+  def makeSubJSONFields(value: ModifiedJSON, updateRate: FiniteDuration, subject: JSONModification => Unit)(implicit sch: Scheduler): VdomElement = {
     value.resume.fold(renderBranchF(_, updateRate, subject), renderLeaf(_, updateRate, subject))
   }
 
@@ -212,20 +214,20 @@ object ConfigView {
     makeSubJSONFields(json, updateRate, subject)
   }
 
-  def freeformJsonInput(updateRate: FiniteDuration, json: ModifiedJSON, subject: JSONModification => Unit)(implicit sch: Scheduler): ReactComponentB[Unit, Unit, Unit, TopNode] = {
-    ReactComponentB[Unit]("freeform JSON input form")
-      .stateless
-      .render { _ =>
+  def freeformJsonInput(updateRate: FiniteDuration, json: ModifiedJSON, subject: JSONModification => Unit)
+                       (implicit sch: Scheduler): Scala.Unmounted[Unit, Unit, Unit] = {
+    Scala.builder[Unit]("freeform JSON input form")
+      .renderStatic {
         form(action := "#",
           renderForm(json, updateRate, subject)
         )
       }
-      .domType[TopNode]
+    .build.apply()
   }
 
   case class ConfigViewState(modifiedConfig: ModifiedSlateProgramConfig, changedShape: Boolean)
 
-  def builder(save: SlateProgramConfig => Callback)(implicit sch: Scheduler): ReactComponentB[ConfigViewProps, ConfigViewState, Unit, TopNode] = {
+  def builder(save: SlateProgramConfig => Callback)(implicit sch: Scheduler): ScalaBuilder.Step4[ConfigViewProps, Children.None, ConfigViewState, Unit] = {
     def addPendingModification(state: ConfigViewState, setState: ConfigViewState => Unit, modification: SlateProgramConfigModification): Unit = {
       modification(state.modifiedConfig) match {
         case None =>
@@ -235,7 +237,7 @@ object ConfigView {
           setState(ConfigViewState(newConfig, modification.changesShape))
       }
     }
-    ReactComponentB[ConfigViewProps]("Expandable content view")
+    Scala.builder[ConfigViewProps]("Expandable content view")
       .initialState_P[ConfigViewState](p => ConfigViewState(ModifiedSlateProgramConfig.unmodified(p.currentConfig), changedShape = false))
       .render { $ =>
         val setter = (st: ConfigViewState) => $.setState(st).runNow()
@@ -249,15 +251,14 @@ object ConfigView {
             "App input",
             freeformJsonInput(1000.millis, $.state.modifiedConfig.input, { j =>
               addPendingModification($.state, setter, InputModification(j))
-            }).build()
+            })
           )
         )
       }
-      .domType[TopNode]
       .componentDidUpdate(_ => Callback {
         SlateApp.upgradeDom()
       })
-      .shouldComponentUpdate(_.nextState.changedShape)
+      .shouldComponentUpdate(u => CallbackTo { u.nextState.changedShape })
   }
 
 }

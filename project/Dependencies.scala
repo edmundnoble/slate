@@ -30,12 +30,13 @@ object Dependencies {
   )
 
   lazy val uiDeps: Setting[Seq[ModuleID]] = libraryDependencies ++= Seq(
+//    "io.suzaku" %%% "diode" % "1.1.1",
     "net.lullabyte" %%% "scala-js-chrome" % "0.2.1",
     "org.scala-js" %%% "scalajs-dom" % "0.9.1",
-    "com.github.japgolly.scalajs-react" %%% "core" % "0.11.3",
-    "com.github.japgolly.scalajs-react" %%% "extra" % "0.11.3",
-    "com.github.japgolly.scalacss" %%% "core" % "0.5.0",
-    "com.github.japgolly.scalacss" %%% "ext-react" % "0.5.0"
+    "com.github.japgolly.scalajs-react" %%% "core" % "1.0.0-RC2",
+    "com.github.japgolly.scalajs-react" %%% "extra" % "1.0.0-RC2",
+    "com.github.japgolly.scalacss" %%% "core" % "0.5.3-RC1",
+    "com.github.japgolly.scalacss" %%% "ext-react" % "0.5.3-RC1"
   )
 
   //   React JS itself (Note the filenames, adjust as needed, eg. to remove addons.)

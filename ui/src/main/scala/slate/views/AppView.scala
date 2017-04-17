@@ -1,8 +1,9 @@
 package slate
 package views
 
+import japgolly.scalajs.react.component.{Scala, ScalaBuilder}
 import japgolly.scalajs.react.extra.Reusability
-import japgolly.scalajs.react.{Callback, ReactComponentB, ReactNode, TopNode}
+import japgolly.scalajs.react._
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import slate.app.SlateApp.AllErrors
@@ -72,12 +73,15 @@ object AppView {
       overflow.hidden
     )
 
-    val animationGroup = new slate.views.ScrollFadeContainer("filter-group")
+    def animationGroup = {
+      new slate.views.ScrollFadeContainer("filter-group")
+    }
 
   }
 
-  implicit def dateReusability: Reusability[js.Date] =
+  implicit def dateReusability: Reusability[js.Date] = {
     Reusability.double(0).contramap(_.getTime())
+  }
 
   implicit val errorReusability: Reusability[AllErrors] =
     Reusability.byRef
@@ -125,16 +129,17 @@ object AppView {
     }
   }
 
-  case class AppViewOut(reactElement: ReactComponentB[AppProps, Unit, Unit, TopNode],
+  case class AppViewOut(reactElement: Scala.Unmounted[AppProps, Unit, Unit],
                         config: Observable[SlateProgramConfig])
 
-  def builder(extVar: ExternalVar[SlateProgramConfig])(implicit sch: Scheduler): ReactComponentB[AppProps, Unit, Unit, TopNode] = {
+  def builder(extVar: ExternalVar[SlateProgramConfig])(implicit sch: Scheduler): ScalaBuilder.Step4[AppProps, Children.None, Unit, Unit] = {
     import japgolly.scalajs.react.vdom.all._
 
     import scalacss.ScalaCssReact._
 
-    ReactComponentB[AppProps]("Expandable content view")
+    ScalaComponent.builder[AppProps]("Expandable content view")
       .stateless
+      .noBackend
       .renderP((_, props) =>
         div(Styles.panel, key := props.id,
           div(Styles.header,
@@ -146,7 +151,7 @@ object AppView {
               div(Styles.headerRightDate,
                 "last updated " + formatDatetimeFriendlyImpl(mo.updated)
               )
-            )
+            ).whenDefined
           ),
           div(`class` := "mdl-tabs mdl-js-tabs mdl-js-ripple-effect mdl-js-ripple-effect--ignore-events",
             div(`class` := "mdl-tabs__tab-bar",
@@ -155,25 +160,25 @@ object AppView {
               a(href := "#config-panel", `class` := "mdl-tabs__tab", "Config")
             ),
             div(`class` := "mdl-tabs__panel is-active", id := "content-panel",
-              div(Styles.content,
-                Styles.animationGroup(
-                  props.model.fold[List[ReactNode]](
-                    LoadingView.builder() :: Nil
-                  )(m => m.fold[List[ReactNode]]({ ex =>
-                    ErrorView.builder(ex) :: Nil
-                  }, appModel => appModel.content.map { model =>
-                    ExpandableContentView.builder.build(ExpandableContentProps(model, initiallyExpanded = false))
-                  })): _*
-                )
+              div((Styles.content: TagMod) ::
+                props.model.map[List[TagMod]](m => m.fold[List[TagMod]]({ ex =>
+                  ErrorView.builder(ex) :: Nil
+                }, appModel => appModel.content.map[TagMod, List[TagMod]] { model =>
+                  ExpandableContentView.builder.build.apply(ExpandableContentProps(model, initiallyExpanded = false))
+                })
+                ).getOrElse[List[TagMod]](
+                  LoadingView.builder() :: Nil
+                ): _*
               )
             ),
             div(`class` := "mdl-tabs__panel", id := "config-panel",
-              ConfigView.builder(c => Callback { extVar.setter(c) }).build(ConfigViewProps(extVar.getter()))
+              ConfigView.builder(c =>
+                Callback(extVar.setter(c))
+              ).build.apply(ConfigViewProps(extVar.getter()))
             )
           )
         )
       )
-      .domType[TopNode]
       .configure(Reusability.shouldComponentUpdate)
   }
 

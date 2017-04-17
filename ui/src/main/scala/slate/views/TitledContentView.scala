@@ -1,8 +1,9 @@
 package slate
 package views
 
+import japgolly.scalajs.react.component.ScalaBuilder
 import japgolly.scalajs.react.extra.Reusability
-import japgolly.scalajs.react.{ReactComponentB, _}
+import japgolly.scalajs.react._
 import slate.models.TitledContentModel
 
 import scalacss.Defaults._
@@ -34,7 +35,7 @@ object TitledContentView {
     )
 
     val fade = style(
-      &.after(
+      &.after.apply(
         height(1.2 em),
         bottom(0 px),
         position absolute,
@@ -69,7 +70,7 @@ object TitledContentView {
     )
 
     val titleFade = style(
-      &.after(
+      &.after.apply(
         height(1.2 em),
         bottom(0 px),
         right(0 px),
@@ -83,25 +84,24 @@ object TitledContentView {
 
   }
 
-  def builder: ReactComponentB[TitledContentModel, Unit, Unit, TopNode] = {
+  def builder: ScalaBuilder.Step4[TitledContentModel, Children.None, Unit, Unit] = {
     import japgolly.scalajs.react.vdom.all._
 
     import scalacss.ScalaCssReact._
 
-    ReactComponentB[TitledContentModel]("Issue")
+    ScalaComponent.builder[TitledContentModel]("Issue")
       .renderP((_, model) =>
         li(Styles.base, key := model.title,
-          model.content.nonEmpty ?= (Styles.tallCell: TagMod),
-          div(model.content.isEmpty ?= (Styles.tall: TagMod),
+          Styles.tallCell.when(model.content.nonEmpty),
+          div(Styles.tall.when(model.content.isEmpty),
             span(Styles.title,
               a(Styles.title,
                 model.title,
-                href := model.titleUrl
+                href :=? model.titleUrl
               )
             ),
-            model.content.nonEmpty ?=
-              (div(Styles.content,
-                model.content): TagMod)
+            div(Styles.content,
+              model.content).when(model.content.nonEmpty)
           )
         )
       )

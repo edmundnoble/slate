@@ -2,6 +2,7 @@ package slate
 package views
 
 import japgolly.scalajs.react._
+import japgolly.scalajs.react.component.ScalaBuilder
 import japgolly.scalajs.react.extra.Reusability
 import monix.execution.Scheduler
 import slate.models.ExpandableContentModel
@@ -9,6 +10,7 @@ import slate.models.ExpandableContentModel
 import scalacss.Defaults._
 
 object ExpandableContentView {
+
   object Styles extends StyleSheet.Inline {
 
     import dsl._
@@ -91,12 +93,14 @@ object ExpandableContentView {
   }
 
   final case class ExpandableState(expanded: Boolean) {
-    final def toggleExpanded = copy(expanded = !expanded)
+    final def toggleExpanded = {
+      copy(expanded = !expanded)
+    }
   }
 
   object ExpandableState {
     implicit val reusability: Reusability[ExpandableState] =
-      Reusability.caseClass[ExpandableState]
+      Reusability.by(_.expanded)
   }
 
   final case class ExpandableContentProps(model: ExpandableContentModel, initiallyExpanded: Boolean)
@@ -107,20 +111,22 @@ object ExpandableContentView {
   }
 
   def builder(implicit sch: Scheduler
-             ): ReactComponentB[ExpandableContentProps, ExpandableState, Unit, TopNode] = {
+             ): ScalaBuilder.Step4[ExpandableContentProps, Children.None, ExpandableState, Unit] = {
     import japgolly.scalajs.react.vdom.all._
 
     import scalacss.ScalaCssReact._
 
     def buttonStyleForState(state: ExpandableState): TagMod = {
-      (if (state.expanded) (Styles.filterButtonExpanded: TagMod) else EmptyTag) +
-        (Styles.filterButtonIcon: TagMod) + ("expand_more": TagMod)
+      val nodes: Seq[TagMod] =
+        if (state.expanded) Seq(Styles.filterButtonExpanded: TagMod)
+        else Seq.empty
+      TagMod(nodes :+ (Styles.filterButtonIcon: TagMod) :+ ("expand_more": TagMod): _*)
     }
 
-    ReactComponentB[ExpandableContentProps]("Expandable content view")
+    ScalaComponent.builder[ExpandableContentProps]("Expandable content view")
       .initialState_P[ExpandableState](props => ExpandableState(expanded = props.initiallyExpanded))
       .renderPS { ($, props, state) =>
-        val titleLink = href := props.model.titleUrl
+        val titleLink = href :=? props.model.titleUrl
         div(key := props.model.title, Styles.base,
           div(Styles.header,
             div(Styles.headerLeft,
@@ -133,11 +139,10 @@ object ExpandableContentView {
               i(buttonStyleForState(state))
             )
           ),
-          span(Styles.content,
-            Styles.animationGroup(
-              (if (state.expanded) props.model.content.map(TitledContentView.builder.build(_))
+          span(
+            (Styles.content: TagMod) ::
+              (if (state.expanded) props.model.content.map(TitledContentView.builder.build.apply(_): VdomElement)
               else Nil): _*
-            )
           )
         )
       }

@@ -3,7 +3,7 @@ package app
 
 import cats._
 import cats.implicits._
-import japgolly.scalajs.react.{ReactComponentM, ReactDOM, TopNode}
+import japgolly.scalajs.react.Callback
 import monix.cats._
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
@@ -28,7 +28,6 @@ import slate.views.DashboardPage.SearchPageProps
 import scala.concurrent.duration._
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
-import scala.util.Success
 import scalacss.defaults.PlatformExports
 import scalacss.internal.StringRenderer
 import slate.storage.StorageFS.Dir
@@ -217,14 +216,13 @@ object SlateApp extends scalajs.js.JSApp {
   }
 
   def render(extVar: ExternalVar[Map[Int, SlateProgramConfig]], container: org.scalajs.dom.raw.Element, content: SearchPageProps)(
-    implicit scheduler: Scheduler): Task[ReactComponentM[SearchPageProps, Unit, Unit, TopNode]] = {
+    implicit scheduler: Scheduler): Task[Unit] = {
 
     val searchPage = DashboardPage.makeDashboardPage(extVar, content)
-    Task.create[ReactComponentM[SearchPageProps, Unit, Unit, TopNode]] {
+    Task.create[Unit] {
       (_, cb) =>
         logger.debug("Rendering...")
-        ReactDOM.render(searchPage, container,
-          js.ThisFunction.fromFunction1[ReactComponentM[SearchPageProps, Unit, Unit, TopNode], Unit](t => cb(Success(t))))
+        searchPage.renderIntoDOM(container, Callback(cb.onSuccess(())))
         upgradeDom()
         Cancelable.empty
     }

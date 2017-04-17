@@ -5,7 +5,7 @@ import cats.{Monoid, ~>}
 import fastparse.all.Parsed
 import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.vdom.TagMod
-import japgolly.scalajs.react.{CallbackTo, vdom}
+import japgolly.scalajs.react.CallbackTo
 import monix.eval.Task
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.Observable
@@ -26,8 +26,8 @@ object Util {
   }
 
   implicit val tagmodMonoid: Monoid[TagMod] = new Monoid[TagMod] {
-    override def empty: TagMod = vdom.EmptyTag
-    override def combine(f1: TagMod, f2: TagMod): TagMod = f1 + f2
+    def empty: TagMod = TagMod()
+    def combine(f1: TagMod, f2: TagMod): TagMod = TagMod(f1, f2)
   }
 
   def taskToCallback[A](fa: Task[A])(implicit scheduler: Scheduler): CallbackTo[CancelableFuture[A]] = {
