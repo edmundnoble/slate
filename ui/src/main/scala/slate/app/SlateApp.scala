@@ -276,6 +276,7 @@ object SlateApp extends scalajs.js.JSApp {
         ExpandableContentView.Styles,
         ErrorView.Styles,
         TitledContentView.Styles,
+        ConfigView.Styles,
         AppView.Styles
       ).map(_.renderA(renderer)).mkString("\n")
     val aggregateStyles = PlatformExports.createStyleElement(addStyles)

@@ -76,7 +76,8 @@ object ConfigView {
 
     val content = style(
       width(100 %%),
-      overflow.hidden
+      overflow.hidden,
+      margin(10 px)
     )
 
     val modifierButtons = style(
@@ -85,6 +86,16 @@ object ConfigView {
 
     val modified = style(
       color(black)
+    )
+
+    val configSection = style(
+      marginBottom(10 px)
+    )
+
+    val buttons = style(
+      display.flex,
+      flexDirection.column,
+      flexWrap.wrap
     )
 
     val animationGroup = new slate.views.ScrollFadeContainer("filter-group")
@@ -115,7 +126,7 @@ object ConfigView {
         span(`class` := "mdl-radio__label", lab)
       )
     }(collection.breakOut)
-    div(buttons: _*)
+    div((Styles.buttons: TagMod) :: buttons: _*)
   }
 
   def bootRefreshPolicySelector(subject: BootRefreshPolicy => Unit): VdomElement =
@@ -124,7 +135,8 @@ object ConfigView {
         "always" -> (BootRefreshPolicy.Always -> "Always"),
         "never" -> (BootRefreshPolicy.Never -> "Never")
       ),
-      "bootRefreshPolicy", BootRefreshPolicy.Never, subject)
+      "bootRefreshPolicy", BootRefreshPolicy.Never, subject
+    )
 
   def makeTextFieldId(): String = "textField" + scala.util.Random.nextInt(998).toString
 
@@ -243,11 +255,11 @@ object ConfigView {
         val setter = (st: ConfigViewState) => $.setState(st).runNow()
         logger.debug(s"re-rendering config view with state ${$.state}")
         div(Styles.content,
-          div(
+          div(Styles.configSection,
             "Refresh on startup?",
             bootRefreshPolicySelector(newPolicy => addPendingModification($.state, setter, BootRefreshPolicyModification(newPolicy)))
           ),
-          div(
+          div(Styles.configSection,
             "App input",
             freeformJsonInput(1000.millis, $.state.modifiedConfig.input, { j =>
               addPendingModification($.state, setter, InputModification(j))
