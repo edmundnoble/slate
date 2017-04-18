@@ -89,13 +89,27 @@ object ConfigView {
     )
 
     val configSection = style(
-      marginBottom(10 px)
+      marginBottom(20 px)
     )
 
-    val buttons = style(
+    val verticalFlex = style(
       display.flex,
       flexDirection.column,
       flexWrap.wrap
+    )
+
+    val buttons = style(
+      verticalFlex
+    )
+
+    val radioButton = style(
+      addClassName("mdl-radio__button"),
+      margin(5 px),
+      marginTop.`0`
+    )
+
+    val configSectionTitle = style(
+      marginBottom(5 px)
     )
 
     val animationGroup = new slate.views.ScrollFadeContainer("filter-group")
@@ -116,7 +130,8 @@ object ConfigView {
   def radioButtons[A](options: Map[String, (A, String)], name: String, default: A, subject: A => Unit): VdomElement = {
     val buttons: List[TagOf[Label]] = options.map { case (optionId, (opt, lab)) =>
       val in: VdomElement =
-        input(`type` := "radio", id := s"radio-button-$optionId", `class` := "mdl-radio__button", VdomAttr[String]("name") := name,
+        input(Styles.radioButton,
+          `type` := "radio", id := s"radio-button-$optionId", VdomAttr[String]("name") := name,
           onChange --> CallbackTo {
             subject(opt)
           }
@@ -129,7 +144,7 @@ object ConfigView {
     div((Styles.buttons: TagMod) :: buttons: _*)
   }
 
-  def bootRefreshPolicySelector(subject: BootRefreshPolicy => Unit): VdomElement =
+  def bootRefreshPolicySelector(subject: BootRefreshPolicy => Unit): VdomElement = {
     radioButtons(
       Map(
         "always" -> (BootRefreshPolicy.Always -> "Always"),
@@ -137,8 +152,11 @@ object ConfigView {
       ),
       "bootRefreshPolicy", BootRefreshPolicy.Never, subject
     )
+  }
 
-  def makeTextFieldId(): String = "textField" + scala.util.Random.nextInt(998).toString
+  def makeTextFieldId(): String = {
+    "textField" + scala.util.Random.nextInt(998).toString
+  }
 
   def makeTextField(default: Ior[String @@ Modified, String]): (Observable[String], VdomElement) = {
     val madeId = makeTextFieldId()
@@ -198,8 +216,8 @@ object ConfigView {
   def renderBranchF(l: ModifiedJSONF[ModifiedJSON], updateRate: FiniteDuration, subject: JSONModification => Unit)(implicit sch: Scheduler): VdomElement = {
     l match {
       case ObjectF(kvPairs) =>
-        div(
-          (makeModifierButtons(Top, kvPairs, subject) ::
+        div(((Styles.verticalFlex: TagMod) ::
+          makeModifierButtons(Top, kvPairs, subject) ::
           kvPairs.toIterator.zipWithIndex
             .flatMap { case (ObjectEntry(k, v), idx) =>
               makeSubKeyField(idx, updateRate, k, subject) ::
@@ -208,8 +226,8 @@ object ConfigView {
           makeModifierButtons(Bottom, kvPairs, subject): _*
         )
       case ArrayF(values) =>
-        div(
-          (makeModifierButtons(Top, values, subject) ::
+        div(((Styles.verticalFlex: TagMod) ::
+          makeModifierButtons(Top, values, subject) ::
           values.toIterator.zipWithIndex
             .map { case (j, idx) => makeSubJSONFields(j, updateRate, m => subject(RecIdx(idx, m))) }
             .toList) :+
@@ -234,7 +252,7 @@ object ConfigView {
           renderForm(json, updateRate, subject)
         )
       }
-    .build.apply()
+      .build.apply()
   }
 
   case class ConfigViewState(modifiedConfig: ModifiedSlateProgramConfig, changedShape: Boolean)
@@ -249,6 +267,7 @@ object ConfigView {
           setState(ConfigViewState(newConfig, modification.changesShape))
       }
     }
+
     Scala.builder[ConfigViewProps]("Expandable content view")
       .initialState_P[ConfigViewState](p => ConfigViewState(ModifiedSlateProgramConfig.unmodified(p.currentConfig), changedShape = false))
       .render { $ =>
@@ -256,11 +275,11 @@ object ConfigView {
         logger.debug(s"re-rendering config view with state ${$.state}")
         div(Styles.content,
           div(Styles.configSection,
-            "Refresh on startup?",
+            div(Styles.configSectionTitle, "Refresh on startup?"),
             bootRefreshPolicySelector(newPolicy => addPendingModification($.state, setter, BootRefreshPolicyModification(newPolicy)))
           ),
           div(Styles.configSection,
-            "App input",
+            div(Styles.configSectionTitle, "App input"),
             freeformJsonInput(1000.millis, $.state.modifiedConfig.input, { j =>
               addPendingModification($.state, setter, InputModification(j))
             })
@@ -270,7 +289,9 @@ object ConfigView {
       .componentDidUpdate(_ => Callback {
         SlateApp.upgradeDom()
       })
-      .shouldComponentUpdate(u => CallbackTo { u.nextState.changedShape })
+      .shouldComponentUpdate(u => CallbackTo {
+        u.nextState.changedShape
+      })
   }
 
 }
