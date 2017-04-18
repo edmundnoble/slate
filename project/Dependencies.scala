@@ -30,7 +30,8 @@ object Dependencies {
   )
 
   lazy val uiDeps: Setting[Seq[ModuleID]] = libraryDependencies ++= Seq(
-//    "io.suzaku" %%% "diode" % "1.1.1",
+    "io.suzaku" %%% "diode" % "1.1.1",
+    "io.suzaku" %%% "diode-react" % "1.1.1",
     "net.lullabyte" %%% "scala-js-chrome" % "0.2.1",
     "org.scala-js" %%% "scalajs-dom" % "0.9.1",
     "com.github.japgolly.scalajs-react" %%% "core" % "1.0.0-RC2",
