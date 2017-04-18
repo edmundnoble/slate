@@ -99,7 +99,7 @@ object ConfigView {
     )
 
     val fabButton = style(
-      addClassNames("mdl-js-button", "mdl-button--fab"),
+      addClassNames("mdl-button", "mdl-js-button", "mdl-button--fab"),
       margin(5 px)
     )
 
@@ -114,6 +114,7 @@ object ConfigView {
     )
 
     val configSectionTitle = style(
+      TitledContentView.Styles.title,
       marginBottom(5 px)
     )
 

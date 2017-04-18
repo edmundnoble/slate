@@ -57,6 +57,7 @@ object TitledContentView {
     )
 
     val title = style(
+      fontWeight._500,
       width(100 %%),
       //      addClassName("mdl-typography--headline"),
       color(rgba(0, 0, 0, 0.86)),
