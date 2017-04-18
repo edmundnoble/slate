@@ -98,7 +98,12 @@ object ConfigView {
       flexWrap.wrap
     )
 
-    val buttons = style(
+    val fabButton = style(
+      addClassNames("mdl-js-button", "mdl-button--fab"),
+      margin(5 px)
+    )
+
+    val radioButtons = style(
       verticalFlex
     )
 
@@ -141,7 +146,7 @@ object ConfigView {
         span(`class` := "mdl-radio__label", lab)
       )
     }(collection.breakOut)
-    div((Styles.buttons: TagMod) :: buttons: _*)
+    div((Styles.radioButtons: TagMod) :: buttons: _*)
   }
 
   def bootRefreshPolicySelector(subject: BootRefreshPolicy => Unit): VdomElement = {
@@ -173,7 +178,7 @@ object ConfigView {
   }
 
   def makeIconFAB(icon: String, cb: Callback): VdomElement = {
-    button(`class` := "mdl-button mdl-js-button mdl-button--fab",
+    button(Styles.fabButton,
       onClick --> cb,
       i(`class` := "material-icons", icon)
     )
