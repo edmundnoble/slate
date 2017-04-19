@@ -252,13 +252,24 @@ final case class StorageFS[F[_] : Monad](underlying: Storage[F], nonceSource: ()
   override def apply(key: String): F[Option[String]] =
     getFileInDir[F](key, dirKey)(Monad[F], underlying)
 
-  //    StorageProgram.runProgram(underlying, getFileInDir[Fx.prepend[StorageAction, F]](key, dirKey))
-
   override def update(key: String, data: String): F[Unit] =
     updateFileInDir[F](key, nonceSource, data, dirKey)(Monad[F], underlying).map(_ => ())
 
   override def remove(key: String): F[Unit] =
     removeFile[F, Unit](key, dirKey, (), ())(Monad[F], underlying).map(_ => ())
 
+}
+
+final case class ChdirStorageFS[F[_]: Monad](underlying: StorageFS[F], subDirKey: Key[Dir]) extends Storage[F] {
+  val under = underlying.underlying
+
+  override def apply(key: String): F[Option[String]] =
+    getFileInDir[F](key, subDirKey)(Monad[F], under)
+
+  override def update(key: String, data: String): F[Unit] =
+    updateFileInDir[F](key, underlying.nonceSource, data, subDirKey)(Monad[F], under).map(_ => ())
+
+  override def remove(key: String): F[Unit] =
+    removeFile[F, Unit](key, subDirKey, (), ())(Monad[F], under).map(_ => ())
 }
 

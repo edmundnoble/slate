@@ -1,14 +1,15 @@
 package slate
 package views
 
+import diode.react.ModelProxy
 import japgolly.scalajs.react.component.{Scala, ScalaBuilder}
 import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react._
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import slate.app.SlateApp.AllErrors
+import slate.app.SlateApp.{AllErrors, ProgramState}
 import slate.util.ExternalVar
-import slate.app.SlateProgramConfig
+import slate.app.{SlateProgram, SlateProgramConfig}
 import slate.models.AppModel
 import slate.views.ConfigView.ConfigViewProps
 import slate.views.ExpandableContentView.ExpandableContentProps
@@ -86,20 +87,6 @@ object AppView {
   implicit val errorReusability: Reusability[AllErrors] =
     Reusability.byRef
 
-  final case class AppProps(id: Int, defaultConfig: SlateProgramConfig, title: String, titleLink: String, model: Option[AllErrors Either AppModel])
-
-  object AppProps {
-    implicit val reusability: Reusability[AppProps] =
-      Reusability.byRefOr_==
-  }
-
-  final case class AppState(config: SlateProgramConfig)
-
-  object AppState {
-    implicit val reusability: Reusability[AppState] =
-      Reusability.byRefOr_==
-  }
-
   // TODO: remove from here and SlatePrelude
   def formatDatetimeFriendlyImpl(d: js.Date): String = {
     val diff = js.Date.now() - d.getTime()
@@ -129,25 +116,22 @@ object AppView {
     }
   }
 
-  case class AppViewOut(reactElement: Scala.Unmounted[AppProps, Unit, Unit],
-                        config: Observable[SlateProgramConfig])
-
-  def builder(extVar: ExternalVar[SlateProgramConfig])(implicit sch: Scheduler): ScalaBuilder.Step4[AppProps, Children.None, Unit, Unit] = {
+  def builder(modelProxy: ModelProxy[SlateProgram[ProgramState]])
+             (implicit sch: Scheduler): ScalaBuilder.Step4[ModelProxy[SlateProgram[ProgramState]], Children.None, Unit, Unit] = {
     import japgolly.scalajs.react.vdom.all._
 
     import scalacss.ScalaCssReact._
 
-    ScalaComponent.builder[AppProps]("Expandable content view")
-      .stateless
-      .noBackend
+    ScalaComponent.builder[ModelProxy[SlateProgram[ProgramState]]]("Expandable content view")
+      .initialState_P(_.apply())
       .renderP((_, props) =>
-        div(Styles.panel, key := props.id,
+        div(Styles.panel, key := props().id,
           div(Styles.header,
             div(ExpandableContentView.Styles.headerLeft,
-              span(Styles.title, props.title.toUpperCase()),
-              a(Styles.linkIcon, target := "_blank", "link", href := props.titleLink)
+              span(Styles.title, props().title.toUpperCase()),
+              a(Styles.linkIcon, target := "_blank", "link", href := props().titleLink)
             ),
-            props.model.flatMap(_.right.toOption).map(mo =>
+            props().program.appContent.flatMap(_.right.toOption).map(mo =>
               div(Styles.headerRightDate,
                 "last updated " + formatDatetimeFriendlyImpl(mo.updated)
               )
@@ -161,7 +145,7 @@ object AppView {
             ),
             div(`class` := "mdl-tabs__panel is-active", id := "content-panel",
               div((Styles.content: TagMod) ::
-                props.model.map[List[TagMod]](m => m.fold[List[TagMod]]({ ex =>
+                props().program.appContent.map[List[TagMod]](m => m.fold[List[TagMod]]({ ex =>
                   ErrorView.builder(ex) :: Nil
                 }, appModel => appModel.content.map[TagMod, List[TagMod]] { model =>
                   ExpandableContentView.builder.build.apply(ExpandableContentProps(model, initiallyExpanded = false))
@@ -172,9 +156,7 @@ object AppView {
               )
             ),
             div(`class` := "mdl-tabs__panel", id := "config-panel",
-              ConfigView.builder(c =>
-                Callback(extVar.setter(c))
-              ).build.apply(ConfigViewProps(extVar.getter()))
+              ConfigView.builder(props).build.apply(ConfigViewProps(extVar.getter()))
             )
           )
         )

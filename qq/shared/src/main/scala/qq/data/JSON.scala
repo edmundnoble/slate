@@ -133,22 +133,22 @@ object JSON {
   case object Bottom extends JSONOrigin
 
   sealed trait JSONModification {
-    def changesShape: Eval[Boolean]
+    def changesShape: Boolean
   }
   final case class AddTo(origin: JSONOrigin) extends JSONModification {
-    override def changesShape: Eval[Boolean] = Eval.now(true)
+    def changesShape: Boolean = true
   }
   final case class DeleteFrom(origin: JSONOrigin) extends JSONModification {
-    override def changesShape: Eval[Boolean] = Eval.now(true)
+    def changesShape: Boolean = true
   }
   final case class SetTo(newValue: LJSON) extends JSONModification {
-    override def changesShape: Eval[Boolean] = Eval.now(false)
+    def changesShape: Boolean = false
   }
   final case class RecIdx(index: Int, modification: JSONModification) extends JSONModification {
-    override def changesShape: Eval[Boolean] = Eval.defer(modification.changesShape)
+    def changesShape: Boolean = modification.changesShape
   }
   final case class UpdateKey(index: Int, newKey: String) extends JSONModification {
-    override def changesShape: Eval[Boolean] = Eval.now(false)
+    def changesShape: Boolean = false
   }
 
   // Tag indicating data originates from a potential modification to some other dataset
@@ -156,7 +156,7 @@ object JSON {
 
   import shapeless.tag
 
-  val modifiedTag = tag[Modified]
+  val modifiedTag: tag.Tagger[Modified] = tag[Modified]
 
   // The branching functor for JSON, except each object key might be modified.
   sealed trait ModifiedJSONF[A]

@@ -5,7 +5,7 @@ import upickle.Js
 
 import scala.scalajs.js
 
-case class DatedAppContent(content: List[ExpandableContentModel], date: js.Date)
+final case class DatedAppContent(content: List[ExpandableContentModel], date: js.Date)
 
 object DatedAppContent {
 

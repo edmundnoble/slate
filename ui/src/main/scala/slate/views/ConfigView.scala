@@ -2,6 +2,7 @@ package slate
 package views
 
 import cats.data.Ior
+import diode.Dispatcher
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.{Scala, ScalaBuilder}
 import japgolly.scalajs.react.extra.Reusability
@@ -261,9 +262,9 @@ object ConfigView {
       .build.apply()
   }
 
-  case class ConfigViewState(modifiedConfig: ModifiedSlateProgramConfig, changedShape: Boolean)
+  final case class ConfigViewState(modifiedConfig: ModifiedSlateProgramConfig, changedShape: Boolean)
 
-  def builder(save: SlateProgramConfig => Callback)(implicit sch: Scheduler): ScalaBuilder.Step4[ConfigViewProps, Children.None, ConfigViewState, Unit] = {
+  def builder(dispatcher: Dispatcher)(implicit sch: Scheduler): ScalaBuilder.Step4[ConfigViewProps, Children.None, ConfigViewState, Unit] = {
     def addPendingModification(state: ConfigViewState, setState: ConfigViewState => Unit, modification: SlateProgramConfigModification): Unit = {
       modification(state.modifiedConfig) match {
         case None =>

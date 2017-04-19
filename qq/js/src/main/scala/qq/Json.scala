@@ -31,11 +31,11 @@ object Json {
 
   final val jsToUpickleRec: RecursiveFunction[Any, Js.Value] =
     (value: Any, loop: Any => Eval[Js.Value]) => value match {
+      case null => Eval.now(Js.Null)
       case s: String => Eval.now(Js.Str(s))
       case n: Double => Eval.now(Js.Num(n))
       case true => Eval.now(Js.True)
       case false => Eval.now(Js.False)
-      case null => Eval.now(Js.Null)
       case s: js.Array[Any@unchecked] =>
         Unsafe.builderTraverse[js.WrappedArray]
           .traverse[Eval, Any, Js.Value](new js.WrappedArray[Any](s))((a: Any) => loop(a))
@@ -81,6 +81,40 @@ object Json {
         Unsafe.builderTraverse[Seq]
           .traverse[Eval, (String, JSON), (String, js.Any)](obj.toList.value) { case (s, d) => loop(d) map (r => (s, r)) }
           .map(js.Dictionary[Any](_: _*))
+    }
+
+  @inline final val upickleToJSONRec: RecursiveFunction[Js.Value, JSON] =
+    (value: Js.Value, loop: Js.Value => Eval[JSON]) => value match {
+      case Js.Str(s) => Eval.now(JSON.Str(s))
+      case Js.Num(n) => Eval.now(JSON.Num(n))
+      case Js.True => Eval.now(JSON.True)
+      case Js.False => Eval.now(JSON.False)
+      case Js.Null => Eval.now(JSON.Null)
+      case arr: Js.Arr =>
+        Unsafe.builderTraverse[Seq]
+          .traverse[Eval, Js.Value, JSON](arr.value)(loop)
+          .map(s => JSON.Arr(s.toVector))
+      case obj: Js.Obj =>
+        Unsafe.builderTraverse[Seq]
+          .traverse[Eval, (String, Js.Value), (String, JSON)](obj.value) { case (s, d) => loop(d) map (r => (s, r)) }
+          .map(s => JSON.ObjList(s.toVector))
+    }
+
+  @inline final val JSONToUpickleRec: RecursiveFunction[JSON, Js.Value] =
+    (value: JSON, loop: JSON => Eval[Js.Value]) => value match {
+      case JSON.Str(s) => Eval.now(Js.Str(s))
+      case JSON.Num(n) => Eval.now(Js.Num(n))
+      case JSON.True => Eval.now(Js.True)
+      case JSON.False => Eval.now(Js.False)
+      case JSON.Null => Eval.now(Js.Null)
+      case arr: JSON.Arr =>
+        Unsafe.builderTraverse[Seq]
+          .traverse[Eval, JSON, Js.Value](arr.value)(loop)
+          .map(s => Js.Arr(s: _*))
+      case obj: JSON.Obj =>
+        Unsafe.builderTraverse[Seq]
+          .traverse[Eval, (String, JSON), (String, Js.Value)](obj.toList.value) { case (s, d) => loop(d) map (r => (s, r)) }
+          .map(s => Js.Obj(s: _*))
     }
 
 
